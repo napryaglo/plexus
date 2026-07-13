@@ -1,5 +1,9 @@
 import { Graph } from '@pragmatic-lab/fresco'
 
+// A layout position from Fresco. Fresco's Point (X/Y) satisfies this;
+// declared locally so the adapter's tests don't need mural's Point.
+export interface PointLike { X: number; Y: number }
+
 // Diagram <-> Fresco Graph adapter.
 //
 // Pure logic, deliberately decoupled from the mural framework: it works
@@ -60,4 +64,45 @@ export function extract(
     }
 
     return { graph, index }
+}
+
+export interface NodeSize { width: number; height: number }
+
+// A resolved top-left position to write onto a figure.
+export interface PositionSet { id: string; left: number; top: number }
+
+// The result of running a layout: where each surviving node should go
+// (as top-left corners) and which original nodes the transforms dropped.
+export interface LayoutOutcome
+{
+    setPositions:  PositionSet[]
+    droppedNodeIds: string[]
+}
+
+// Turns Fresco layout output into a diagram-space outcome.
+//
+// Fresco positions are node *centers*; mural figures are placed by their
+// top-left corner (Left/Top), so each center is shifted by half the
+// figure's size. `droppedNodeIds` are ids present before layout (in the
+// index) but absent from the transformed graph — i.e. removed by a graph
+// transform such as DropIsolatedNodes / FilterNodes.
+export function computeOutcome(
+    index: Map<string, FigureLike>,
+    transformed: Graph,
+    positions: Map<string, PointLike>,
+    sizeOf: (fig: FigureLike) => NodeSize,
+): LayoutOutcome
+{
+    const surviving = new Set(transformed.nodes.map((n) => n.Id))
+
+    const setPositions: PositionSet[] = []
+    for (const [id, pt] of positions) {
+        const fig = index.get(id)
+        if (!fig) continue
+        const { width, height } = sizeOf(fig)
+        setPositions.push({ id, left: pt.X - width / 2, top: pt.Y - height / 2 })
+    }
+
+    const droppedNodeIds = [...index.keys()].filter((id) => !surviving.has(id))
+    return { setPositions, droppedNodeIds }
 }
