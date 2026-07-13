@@ -17,7 +17,7 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web"
   },
   "dependencies": {
-    "@pragmatic-lab/fresco": "^0.2.1",
+    "@pragmatic-lab/fresco": "^0.2.2",
     "@pragmatic-lab/mural": "^0.1.4"
   },
   "devDependencies": {

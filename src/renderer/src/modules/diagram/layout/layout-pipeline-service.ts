@@ -116,10 +116,10 @@ export class LayoutPipelineService extends ServiceBase
             if (slot.kind !== 'strategy-slot') continue
             const key = SLOT_CONFIG_KEY[slot.slotId]
             if (key === undefined) continue
-            stages.Add(new LayoutStageVM(stageLabel(slot.slotId), slot.strategies, (className) => {
-                const layout = this.Config.layout as Record<string, string | null | undefined>
-                if (className === undefined) delete layout[key]
-                else layout[key] = className
+            stages.Add(new LayoutStageVM(stageLabel(slot.slotId), slot.strategies, (spec) => {
+                const layout = this.Config.layout as Record<string, unknown>
+                if (spec === undefined) delete layout[key]
+                else layout[key] = spec
             }))
         }
         this.set_property_value(LayoutPipelineService.StagesKey, stages)

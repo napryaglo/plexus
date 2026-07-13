@@ -11,22 +11,53 @@
 import LayoutInspector from "./layout-inspector.js"
 import LayoutPipelineService from "./layout-pipeline-service.js"
 import LayoutStageVM from "./layout-stage-vm.js"
+import NumberParamVM from "./layout-param-vm.js"
+import BoolParamVM from "./layout-param-vm.js"
 
 resources LayoutInspectorResources {
 
-    // One stage row: a two-column grid — left is the stage label, right is a
-    // ComboBox of the strategies available for that stage. The fixed-width
-    // label in an Auto column keeps the two columns aligned across all rows.
-    DataTemplate [ DataType = LayoutStageVM ] {
-        Grid [ Margin = (0,3,0,3) ] {
+    // A numeric strategy parameter: label + spin edit.
+    DataTemplate [ DataType = NumberParamVM ] {
+        Grid [ Margin = (12,2,0,2) ] {
             ColumnDefinitions {
                 ColumnDefinition [ Width = GridLength.Auto ]
                 ColumnDefinition [ Width = GridLength.Star ]
             }
-            TextBlock [ Grid.Column = 0, Text = $Label, Style = @BodySmall, Width = 120,
+            TextBlock [ Grid.Column = 0, Text = $Label, Style = @BodySmall, Width = 108,
                         Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (0,0,8,0) ]
-            ComboBox  [ Grid.Column = 1, ItemsSource = $Options, SelectedItem = $Selected,
+            SpinEdit  [ Grid.Column = 1, Value = $Value, Minimum = 0, Maximum = 100000,
                         VerticalAlignment = Center ]
+        }
+    }
+
+    // A boolean strategy parameter: label + switch.
+    DataTemplate [ DataType = BoolParamVM ] {
+        Grid [ Margin = (12,2,0,2) ] {
+            ColumnDefinitions {
+                ColumnDefinition [ Width = GridLength.Auto ]
+                ColumnDefinition [ Width = GridLength.Star ]
+            }
+            TextBlock [ Grid.Column = 0, Text = $Label, Style = @BodySmall, Width = 108,
+                        Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (0,0,8,0) ]
+            Switch    [ Grid.Column = 1, IsChecked = $Value, HorizontalAlignment = Left, VerticalAlignment = Center ]
+        }
+    }
+
+    // One stage row: a two-column grid (label + strategy ComboBox), with the
+    // selected strategy's editable parameters listed below.
+    DataTemplate [ DataType = LayoutStageVM ] {
+        StackPanel [ Orientation = Vertical, Margin = (0,3,0,3) ] {
+            Grid {
+                ColumnDefinitions {
+                    ColumnDefinition [ Width = GridLength.Auto ]
+                    ColumnDefinition [ Width = GridLength.Star ]
+                }
+                TextBlock [ Grid.Column = 0, Text = $Label, Style = @BodySmall, Width = 120,
+                            Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (0,0,8,0) ]
+                ComboBox  [ Grid.Column = 1, ItemsSource = $Options, SelectedItem = $Selected,
+                            VerticalAlignment = Center ]
+            }
+            ItemsControl [ ItemsSource = $Params, ItemsPanel = @VerticalStackPanel ]
         }
     }
 
