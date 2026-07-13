@@ -4,9 +4,9 @@ import {
     Model,
     ObservableCollection,
     RelayCommand,
-} from 'mural/runtime'
-import { ApplicationSettings, Setting, SettingKind } from 'mural/framework'
-import type { IDocument } from 'mural/framework'
+} from '@pragmatic-lab/mural/runtime'
+import { ApplicationSettings, Setting, SettingKind } from '@pragmatic-lab/mural/framework'
+import type { IDocument } from '@pragmatic-lab/mural/framework'
 import type { FileSystemService } from '../file-system/file-system-service.js'
 
 // View-models for the settings editor shown in the center content region (the

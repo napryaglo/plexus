@@ -4,11 +4,11 @@ import {
     ServiceBase,
     ServiceKey,
     type IServiceProvider,
-} from 'mural/runtime'
+} from '@pragmatic-lab/mural/runtime'
 import {
     ConnectorEndpoint,
     DiagramDocument,
-} from 'mural/framework'
+} from '@pragmatic-lab/mural/framework'
 
 // DiagramWorkspaceService — owns Plexus's seeded diagram DOCUMENT (an IDocument),
 // ported from the Diagrammer demo (demo/demos/diagram).

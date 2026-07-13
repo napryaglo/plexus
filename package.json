@@ -1,12 +1,12 @@
 {
-  "name": "plexus",
+  "name": "@pragmatic-lab/plexus",
   "version": "0.0.0",
   "private": true,
   "description": "Plexus — a diagram editor built on mural, packaged as an Electron desktop app (electron-vite). Sibling app in the mural repo: consumes mural through its published package surface (no relative ../src imports, no internals), so extracting to its own repo later is a config change, not a rewrite.",
   "main": "./out/main/index.js",
   "scripts": {
     "//": "compile:mu compiles the mural UI .mu -> .mu.js via the mural CLI (Vite then bundles it). dev runs electron-vite with HMR; build produces the packaged renderer/main/preload under out/. mural is consumed from the local registry (Verdaccio); when framework source changes, republish mural and reinstall here (or `npm link` for live iteration) — the renderer bundles mural's built dist.",
-    "compile:mu": "node node_modules/mural/dist/tooling/cli.js compile src/renderer/src/plexus-icons.mu src/renderer/src/modules/diagram/diagram.module.mu src/renderer/src/modules/architecture-repository/architecture-repository.module.mu src/renderer/src/modules/technology-library/technology-library.module.mu src/renderer/src/modules/project-explorer/project-explorer.module.mu src/renderer/src/modules/architecture-meta-models/architecture-meta-models.module.mu src/renderer/src/services/panels/panels.resources.mu src/renderer/src/services/settings/settings.resources.mu src/renderer/src/modules/diagram/diagram.resources.mu src/renderer/src/app.mu",
+    "compile:mu": "node node_modules/@pragmatic-lab/mural/dist/tooling/cli.js compile src/renderer/src/plexus-icons.mu src/renderer/src/modules/diagram/diagram.module.mu src/renderer/src/modules/architecture-repository/architecture-repository.module.mu src/renderer/src/modules/technology-library/technology-library.module.mu src/renderer/src/modules/project-explorer/project-explorer.module.mu src/renderer/src/modules/architecture-meta-models/architecture-meta-models.module.mu src/renderer/src/services/panels/panels.resources.mu src/renderer/src/services/settings/settings.resources.mu src/renderer/src/modules/diagram/diagram.resources.mu src/renderer/src/app.mu",
     "dev": "npm run compile:mu && electron-vite dev",
     "build": "npm run compile:mu && electron-vite build",
     "start": "electron-vite preview",
@@ -15,7 +15,7 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web"
   },
   "dependencies": {
-    "mural": "^0.1.3"
+    "@pragmatic-lab/mural": "^0.1.3"
   },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.2",

@@ -39,7 +39,7 @@ export default defineConfig({
     // root dist and the renderer picks it up on reload, no cache dance. Safe —
     // exclude only skips bundling, resolution is unaffected.
     optimizeDeps: {
-      exclude: ['mural'],
+      exclude: ['@pragmatic-lab/mural'],
     },
     build: {
       rollupOptions: {

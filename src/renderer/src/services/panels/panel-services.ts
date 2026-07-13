@@ -20,7 +20,7 @@ import {
     ObservableCollection,
     ServiceBase,
     type IServiceProvider,
-} from 'mural/runtime';
+} from '@pragmatic-lab/mural/runtime';
 
 // One row in a capability's section list. A Model so the panel template binds
 // $Label; mirrors the demo's DemoVM row.

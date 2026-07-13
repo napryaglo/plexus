@@ -11,8 +11,8 @@
 // round-trips (was a multi-second white window). See fonts.css.
 import './fonts.css'
 import { app } from './app.mu.js'
-import { HtmlTarget } from 'mural/visual-engine'
-import { ContentHostService, InspectorService } from 'mural/framework'
+import { HtmlTarget } from '@pragmatic-lab/mural/visual-engine'
+import { ContentHostService, InspectorService } from '@pragmatic-lab/mural/framework'
 import { DiagramWorkspaceService } from './modules/diagram/services/diagram-workspace-service.js'
 import { attachAutoOpenInspector } from './modules/diagram/behaviors/auto-open-inspector-behavior.js'
 import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'

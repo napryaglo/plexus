@@ -1,5 +1,5 @@
-import { ServiceBase, ServiceKey } from 'mural/runtime'
-import type { IServiceProvider } from 'mural/runtime'
+import { ServiceBase, ServiceKey } from '@pragmatic-lab/mural/runtime'
+import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import type {
   FileEntry,
   IFileSystemApi,
