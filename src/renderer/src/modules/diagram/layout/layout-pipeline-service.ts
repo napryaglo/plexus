@@ -45,48 +45,53 @@ export class LayoutPipelineService extends ServiceBase
 {
     public static readonly Key = new ServiceKey<LayoutPipelineService>('LayoutPipelineService')
 
-    // Observable so the run-mode selector and status readout update in the UI.
+    // Every member bound from the .mu template MUST be a registered property:
+    // mural's binding engine reads a path on a Model only via a registered
+    // PropertyKey (get_property_value) — it does NOT fall back to plain fields.
+    // Plain fields below (Catalog/Config/etc.) are used only from TS.
     public static readonly ModeKey = Model.RegisterProperty<RunMode>(
         LayoutPipelineService, 'Mode', 'positions', MetaData.None)
     public static readonly StatusKey = Model.RegisterProperty<string>(
         LayoutPipelineService, 'Status', '', MetaData.None)
+    public static readonly StagesSummaryKey = Model.RegisterProperty<string>(
+        LayoutPipelineService, 'StagesSummary', '', MetaData.None)
+    public static readonly InspectorKey = Model.RegisterProperty<LayoutInspector>(
+        LayoutPipelineService, 'Inspector', undefined as unknown as LayoutInspector, MetaData.None)
+    public static readonly RunCommandKey = Model.RegisterProperty<ICommand>(
+        LayoutPipelineService, 'RunCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly ApplyPreviewCommandKey = Model.RegisterProperty<ICommand>(
+        LayoutPipelineService, 'ApplyPreviewCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly CancelPreviewCommandKey = Model.RegisterProperty<ICommand>(
+        LayoutPipelineService, 'CancelPreviewCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly UsePositionsModeCommandKey = Model.RegisterProperty<ICommand>(
+        LayoutPipelineService, 'UsePositionsModeCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly UsePreviewModeCommandKey = Model.RegisterProperty<ICommand>(
+        LayoutPipelineService, 'UsePreviewModeCommand', undefined as unknown as ICommand, MetaData.None)
 
-    // The catalog is static data; the builder UI enumerates it.
+    // Plain fields — used only from TS (not bound in markup).
     public readonly Catalog: CatalogSlot[] = GetPipelineCatalog()
-
-    // A read-only, catalog-derived summary of the pipeline slots and how
-    // many strategies each offers — shown in the builder until per-slot
-    // interactive editing lands.
-    public readonly StagesSummary: string = GetPipelineCatalog()
-        .map((s) => `${s.slotId}  (${s.strategies.length})`)
-        .join('\n')
-
-    // The pipeline the user is composing. Mutated by the builder UI; read
-    // afresh on each Run. Persisted per-diagram in a later task.
-    public Config: PipelineConfiguration = structuredClone(DEFAULT_CONFIG)
-
-    // Target positions staged by a preview run, awaiting an explicit Apply.
-    public PreviewPositions: PositionSet[] | undefined
-
-    // The inspector panel host added to the shell's Inspector region. The
-    // builder template renders against this; its bindings reach back here
-    // via $service(LayoutPipelineService).
-    public readonly Inspector = new LayoutInspector()
-
-    // Selectable run modes, for the mode buttons in the builder.
     public readonly ModeOptions: RunMode[] = ['positions', 'preview']
-
-    public readonly RunCommand: ICommand = new RelayCommand(() => this.Run())
-    public readonly ApplyPreviewCommand: ICommand = new RelayCommand(() => this.applyPreview())
-    public readonly CancelPreviewCommand: ICommand = new RelayCommand(() => this.cancelPreview())
-    public readonly UsePositionsModeCommand: ICommand = new RelayCommand(() => { this.Mode = 'positions' })
-    public readonly UsePreviewModeCommand: ICommand = new RelayCommand(() => { this.Mode = 'preview' })
+    public Config: PipelineConfiguration = structuredClone(DEFAULT_CONFIG)
+    public PreviewPositions: PositionSet[] | undefined
 
     private _presets: LayoutPresetsStore | undefined
 
     constructor(provider: IServiceProvider)
     {
         super(provider)
+
+        // The inspector panel host added to the shell's Inspector region.
+        this.set_property_value(LayoutPipelineService.InspectorKey, new LayoutInspector())
+
+        // Catalog-derived, read-only summary of the pipeline slots (strategy count).
+        this.set_property_value(LayoutPipelineService.StagesSummaryKey,
+            this.Catalog.map((s) => `${s.slotId}  (${s.strategies.length})`).join('\n'))
+
+        this.set_property_value(LayoutPipelineService.RunCommandKey, new RelayCommand(() => this.Run()))
+        this.set_property_value(LayoutPipelineService.ApplyPreviewCommandKey, new RelayCommand(() => this.applyPreview()))
+        this.set_property_value(LayoutPipelineService.CancelPreviewCommandKey, new RelayCommand(() => this.cancelPreview()))
+        this.set_property_value(LayoutPipelineService.UsePositionsModeCommandKey, new RelayCommand(() => { this.Mode = 'positions' }))
+        this.set_property_value(LayoutPipelineService.UsePreviewModeCommandKey, new RelayCommand(() => { this.Mode = 'preview' }))
     }
 
     public get Mode(): RunMode { return this.get_property_value(LayoutPipelineService.ModeKey) }
@@ -94,6 +99,14 @@ export class LayoutPipelineService extends ServiceBase
 
     public get Status(): string { return this.get_property_value(LayoutPipelineService.StatusKey) }
     private set Status(v: string) { this.set_property_value(LayoutPipelineService.StatusKey, v) }
+
+    public get StagesSummary(): string { return this.get_property_value(LayoutPipelineService.StagesSummaryKey) }
+    public get Inspector(): LayoutInspector { return this.get_property_value(LayoutPipelineService.InspectorKey) }
+    public get RunCommand(): ICommand { return this.get_property_value(LayoutPipelineService.RunCommandKey) }
+    public get ApplyPreviewCommand(): ICommand { return this.get_property_value(LayoutPipelineService.ApplyPreviewCommandKey) }
+    public get CancelPreviewCommand(): ICommand { return this.get_property_value(LayoutPipelineService.CancelPreviewCommandKey) }
+    public get UsePositionsModeCommand(): ICommand { return this.get_property_value(LayoutPipelineService.UsePositionsModeCommandKey) }
+    public get UsePreviewModeCommand(): ICommand { return this.get_property_value(LayoutPipelineService.UsePreviewModeCommandKey) }
 
     // Lazily created so a non-desktop context (should not happen in the
     // renderer) doesn't fail at construction just because presets are unused.
