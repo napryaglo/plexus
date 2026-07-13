@@ -2,6 +2,52 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+## Implementation status (2026-07-13)
+
+Executed inline, directly on `main` in both repos. Tasks 1–12 complete and
+committed; Tasks 13–14 deferred. Deviations from the plan as written:
+
+- **Task 1** shipped the element metadata as a TS data module
+  (`pipeline-elements-data.ts`), not JSON — `tsc` copies neither JSON nor
+  yaml into `dist/`, so a `.ts` module is the browser-safe form that actually
+  ships. A test validates it against the class-side metadata.
+- **Task 3** excludes the internal `crossing-counter` stage from the catalog
+  (not user-configurable in `PipelineConfiguration`); `LayoutPipeline` /
+  `GraphPipeline` / `IGraphTransform` were already public via the stage
+  barrels.
+- **Fresco dep** was installed in Plexus at Task 7 (the pure adapter imports
+  `Graph`), not Task 10. Vitest needed `resolve.conditions` + `deps.inline`
+  pinning to load mural's built `dist` (its exports nest a `development`
+  condition → unshipped `src`).
+- **Destructive run mode was dropped for v1** (decision during impl): mural
+  exposes no undo/transaction API, so node removal could not be made
+  reversible. Run modes are now `positions | preview`. Apply is a direct
+  `figure.Left/Top` write (re-renders; not on any undo stack).
+- **Task 12 UI** is a compiling, runnable v1: mode buttons, Run/Apply/Cancel,
+  status, and a catalog-derived read-only stage summary (`StagesSummary`).
+  Full per-slot interactive strategy editing is deferred — catalog items are
+  runtime-typeless plain objects, so `DataType`-matched item templates don't
+  apply; that needs an `ItemTemplate`/selector approach worked out against the
+  running app. Verified by `compile:mu` + `typecheck`, not visually.
+- **Task 13 (per-diagram persistence): not applicable yet.** `DiagramWorkspaceService`
+  is in-memory only (one seeded doc, no doc switching / file save), so there
+  is no document surface to persist against. Revisit when Plexus gains real
+  documents. Named-preset store (global) exists (`layout-presets-store.ts`)
+  but has no save UI yet.
+- **Task 14 (preview ghost overlay): deferred.** Preview mode functions
+  (stages positions; Apply commits) but without a visual ghost — Apply moves
+  shapes blind. The overlay is canvas-adorner work best done with the running
+  app. To resume: render `LayoutPipelineService.PreviewPositions` on the
+  diagram's adorner layer, wire the existing `ApplyPreviewCommand` /
+  `CancelPreviewCommand`.
+
+**Next session:** run `npm run dev` in Plexus, open a diagram, right-click →
+"Layout…", try Run in both modes; then build Task 14 and (if warranted) the
+interactive per-slot editing.
+
+---
+
+
 **Goal:** Add a right-Inspector "Layout" panel in Plexus that lets a user compose a Fresco graph-transform + layout pipeline from a catalog and run it on the active diagram, in one of three run modes.
 
 **Architecture:** Catalog-driven and config-serialized (approach B from the design). Fresco gains a static, browser-safe `PipelineCatalog` plus a parameter-carrying `PipelineConfiguration`. Plexus gains a pure `DiagramGraphAdapter` (diagram ⇄ Fresco `Graph`, operating on small structural interfaces so it is unit-testable headless) and a `LayoutPipelineService` that renders the builder from the catalog and applies results via the existing undoable diagram-command path.
