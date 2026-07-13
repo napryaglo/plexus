@@ -10,6 +10,7 @@
 // for the active diagram document (materializing the Diagram control in-tree).
 
 import ToolBoxService from "./services/diagram-panel-services.js"
+import LayoutPipelineService from "./layout/layout-pipeline-service.js"
 
 resources DiagramResources {
     // ── Icon geometries ─────────────────────────────────────────────────
@@ -216,6 +217,14 @@ resources DiagramResources {
             [ Header           = "Format Shape",
               Command          = $service(InspectorService).AddInspectorCommand,
               CommandParameter = $Inspector ]
+        MenuSeparator
+        // Layout — opens the layout-pipeline builder in the Inspector region.
+        // The inspector instance lives on LayoutPipelineService; adding it via
+        // the same AddInspectorCommand surfaces the builder panel.
+        MenuItem
+            [ Header           = "Layout…",
+              Command          = $service(InspectorService).AddInspectorCommand,
+              CommandParameter = $service(LayoutPipelineService).Inspector ]
     }
 
     // ── Toolbox ItemsPanel — a uniform-cell wrap grid so the tiles fit a

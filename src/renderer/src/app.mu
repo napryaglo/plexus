@@ -65,6 +65,12 @@ import PanelsResources from "./services/panels/panels.resources.mu.js"
 import DiagramWorkspaceService from "./modules/diagram/services/diagram-workspace-service.js"
 import DiagramResources from "./modules/diagram/diagram.resources.mu.js"
 
+// Layout pipeline inspector: composes a Fresco layout pipeline and runs it on
+// the active diagram. Root-registered so the shell Inspector region reaches
+// the same instance the canvas menu opens.
+import LayoutPipelineService from "./modules/diagram/layout/layout-pipeline-service.js"
+import LayoutInspectorResources from "./modules/diagram/layout/layout-inspector.resources.mu.js"
+
 
 // Settings: persistence store, the footer-gear launcher, and the settings-page
 // view resources. ApplicationSettings (framework, auto-provided by EditorShell)
@@ -100,6 +106,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // resolve the SAME instance. It no longer holds a control — the canvas is
         // materialized by DataTemplate[DiagramDocument] in the content region.
         DiagramWorkspaceService
+        // Layout pipeline inspector service — reachable shell-wide (the Inspector
+        // region template and the canvas "Layout" menu resolve this instance).
+        LayoutPipelineService
         // Content region host — a DocumentsContentHostService (TDI: open-set +
         // ActiveDocument + Close) bound to the framework's ContentHostService.Key.
         // The shell's content region, the tab strip, the settings launcher, and
@@ -139,6 +148,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // the framework EditorShell default, data-driven from the app's declared
         // commands + the active document — so no per-app shell template override.
         merge DiagramResources
+
+        // Layout pipeline builder view (DataTemplate[LayoutInspector]).
+        merge LayoutInspectorResources
 
         // The app root — the framework's default EditorShell. All regions are
         // data-driven (services + the active document), so the app declares no

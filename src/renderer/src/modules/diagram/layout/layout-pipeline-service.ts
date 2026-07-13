@@ -1,8 +1,10 @@
 import {
     MetaData,
     Model,
+    RelayCommand,
     ServiceBase,
     ServiceKey,
+    type ICommand,
     type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
 import {
@@ -23,6 +25,7 @@ import {
 } from './diagram-graph-adapter.js'
 import { planForMode, type RunMode } from './run-modes.js'
 import { LayoutPresetsStore } from './layout-presets-store.js'
+import { LayoutInspector } from './layout-inspector.js'
 import { DiagramWorkspaceService } from '../services/diagram-workspace-service.js'
 
 // Fallback node size when a figure has not been measured yet (RenderSize 0).
@@ -51,12 +54,33 @@ export class LayoutPipelineService extends ServiceBase
     // The catalog is static data; the builder UI enumerates it.
     public readonly Catalog: CatalogSlot[] = GetPipelineCatalog()
 
+    // A read-only, catalog-derived summary of the pipeline slots and how
+    // many strategies each offers — shown in the builder until per-slot
+    // interactive editing lands.
+    public readonly StagesSummary: string = GetPipelineCatalog()
+        .map((s) => `${s.slotId}  (${s.strategies.length})`)
+        .join('\n')
+
     // The pipeline the user is composing. Mutated by the builder UI; read
     // afresh on each Run. Persisted per-diagram in a later task.
     public Config: PipelineConfiguration = structuredClone(DEFAULT_CONFIG)
 
     // Target positions staged by a preview run, awaiting an explicit Apply.
     public PreviewPositions: PositionSet[] | undefined
+
+    // The inspector panel host added to the shell's Inspector region. The
+    // builder template renders against this; its bindings reach back here
+    // via $service(LayoutPipelineService).
+    public readonly Inspector = new LayoutInspector()
+
+    // Selectable run modes, for the mode buttons in the builder.
+    public readonly ModeOptions: RunMode[] = ['positions', 'preview']
+
+    public readonly RunCommand: ICommand = new RelayCommand(() => this.Run())
+    public readonly ApplyPreviewCommand: ICommand = new RelayCommand(() => this.applyPreview())
+    public readonly CancelPreviewCommand: ICommand = new RelayCommand(() => this.cancelPreview())
+    public readonly UsePositionsModeCommand: ICommand = new RelayCommand(() => { this.Mode = 'positions' })
+    public readonly UsePreviewModeCommand: ICommand = new RelayCommand(() => { this.Mode = 'preview' })
 
     private _presets: LayoutPresetsStore | undefined
 
