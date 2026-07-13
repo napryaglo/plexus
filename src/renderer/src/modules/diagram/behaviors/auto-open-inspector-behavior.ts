@@ -1,4 +1,4 @@
-import { Diagram, DiagramDocument, type InspectorService } from '@visualisation-sub/mural/framework'
+import { Diagram, DiagramDocument, type InspectorService } from 'mural/framework'
 
 // Auto-open the document's Format Shape inspector the FIRST time a shape is
 // selected on its canvas. After that first open it does nothing — if the user

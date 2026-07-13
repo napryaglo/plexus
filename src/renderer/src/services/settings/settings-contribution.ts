@@ -1,6 +1,6 @@
-import { Application, type IServiceProvider } from '@visualisation-sub/mural/runtime'
-import { ApplicationSettings, type IDocument, type ISettingsContribution } from '@visualisation-sub/mural/framework'
-import type { Geometry } from '@visualisation-sub/mural/visual-engine'
+import { Application, type IServiceProvider } from 'mural/runtime'
+import { ApplicationSettings, type IDocument, type ISettingsContribution } from 'mural/framework'
+import type { Geometry } from 'mural/visual-engine'
 import { FileSystemService } from '../file-system/file-system-service.js'
 import { SettingsPage } from './settings-page.js'
 

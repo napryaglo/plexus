@@ -20,7 +20,7 @@ import {
     ObservableCollection,
     ServiceBase,
     type IServiceProvider,
-} from '@visualisation-sub/mural/runtime';
+} from 'mural/runtime';
 
 // One row in a capability's section list. A Model so the panel template binds
 // $Label; mirrors the demo's DemoVM row.

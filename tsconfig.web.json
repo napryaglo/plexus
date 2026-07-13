@@ -1,5 +1,5 @@
 {
-  // Web side: the renderer. `@visualisation-sub/mural/*` type-checks against
+  // Web side: the renderer. `mural/*` type-checks against
   // the built dist `.d.ts` (via the file:../.. dependency) — the same public
   // surface an external consumer sees. The renderer is bundled by Vite, which
   // resolves the runtime `.js` (see electron.vite.config resolve.conditions).

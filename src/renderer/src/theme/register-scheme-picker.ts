@@ -1,12 +1,12 @@
-import type { Application } from '@visualisation-sub/mural/runtime'
-import { DataTemplate } from '@visualisation-sub/mural/basic'
+import type { Application } from 'mural/runtime'
+import { DataTemplate } from 'mural/basic'
 import {
     ShellControlAlignment,
     ShellControlDefinition,
     ShellModule,
     ShellRegion,
     ThemeSelector,
-} from '@visualisation-sub/mural/framework'
+} from 'mural/framework'
 
 // Contribute the framework's ThemeSelector (theme + scheme picker, incl. the
 // "Custom…" base-colour flow) as a right-aligned status-bar shell control — the

@@ -1,6 +1,6 @@
 // Renderer bootstrap — a thin plain-JS entry (mural convention: bootstraps
 // stay plain JS). Vite bundles this and everything it pulls in, resolving
-// `@visualisation-sub/mural/*` to the built dist (see electron.vite.config).
+// `mural/*` to the built dist (see electron.vite.config).
 //
 // `app` is the initialized Application compiled from app.mu; handing it an
 // HtmlTarget mounts the mural UI into #app. In the Electron renderer this is
@@ -11,8 +11,8 @@
 // round-trips (was a multi-second white window). See fonts.css.
 import './fonts.css'
 import { app } from './app.mu.js'
-import { HtmlTarget } from '@visualisation-sub/mural/visual-engine'
-import { ContentHostService, InspectorService } from '@visualisation-sub/mural/framework'
+import { HtmlTarget } from 'mural/visual-engine'
+import { ContentHostService, InspectorService } from 'mural/framework'
 import { DiagramWorkspaceService } from './modules/diagram/services/diagram-workspace-service.js'
 import { attachAutoOpenInspector } from './modules/diagram/behaviors/auto-open-inspector-behavior.js'
 import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'

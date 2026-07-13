@@ -2,7 +2,7 @@
   "name": "plexus",
   "version": "0.0.0",
   "private": true,
-  "description": "Plexus — a diagram editor built on @visualisation-sub/mural, packaged as an Electron desktop app (electron-vite). Sibling app in the mural repo: consumes mural through its published package surface (no relative ../src imports, no internals), so extracting to its own repo later is a config change, not a rewrite.",
+  "description": "Plexus — a diagram editor built on mural, packaged as an Electron desktop app (electron-vite). Sibling app in the mural repo: consumes mural through its published package surface (no relative ../src imports, no internals), so extracting to its own repo later is a config change, not a rewrite.",
   "main": "./out/main/index.js",
   "scripts": {
     "//": "compile:mu compiles the mural UI .mu -> .mu.js via the mural CLI (Vite then bundles it). dev runs electron-vite with HMR; build produces the packaged renderer/main/preload under out/. Rebuild the repo-root dist (npm run build there) when framework source changes — the renderer bundles mural's built dist.",
@@ -15,7 +15,7 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web"
   },
   "dependencies": {
-    "@visualisation-sub/mural": "file:../.."
+    "mural": "file:../.."
   },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.2",

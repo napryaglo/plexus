@@ -14,8 +14,8 @@ import {
     ObservableCollection,
     ServiceKey,
     type IServiceProvider,
-} from '@visualisation-sub/mural/runtime';
-import type { ToolboxShape } from '@visualisation-sub/mural/framework';
+} from 'mural/runtime';
+import type { ToolboxShape } from 'mural/framework';
 import { DiagramWorkspaceService } from './diagram-workspace-service.js';
 
 // Shapes — the toolbox of shapes to drag onto the canvas. Unlike the other

@@ -1,4 +1,4 @@
-import type { ISettingsStore } from '@visualisation-sub/mural/framework'
+import type { ISettingsStore } from 'mural/framework'
 import type { ISettingsBridge } from '../../../../shared/settings-api.js'
 
 // ElectronSettingsStore — the Plexus host's ISettingsStore, adapting the preload

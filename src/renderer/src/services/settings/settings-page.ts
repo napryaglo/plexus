@@ -4,9 +4,9 @@ import {
     Model,
     ObservableCollection,
     RelayCommand,
-} from '@visualisation-sub/mural/runtime'
-import { ApplicationSettings, Setting, SettingKind } from '@visualisation-sub/mural/framework'
-import type { IDocument } from '@visualisation-sub/mural/framework'
+} from 'mural/runtime'
+import { ApplicationSettings, Setting, SettingKind } from 'mural/framework'
+import type { IDocument } from 'mural/framework'
 import type { FileSystemService } from '../file-system/file-system-service.js'
 
 // View-models for the settings editor shown in the center content region (the

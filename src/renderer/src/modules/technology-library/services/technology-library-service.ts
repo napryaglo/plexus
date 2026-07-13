@@ -6,7 +6,7 @@
 import {
     PlexusPanelService,
 } from '../../../services/panels/panel-services.js';
-import { ServiceKey, type IServiceProvider } from '@visualisation-sub/mural/runtime';
+import { ServiceKey, type IServiceProvider } from 'mural/runtime';
 
 export class TechnologyLibraryService extends PlexusPanelService
 {

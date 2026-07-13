@@ -1,6 +1,6 @@
 # Plexus
 
-A diagram editor built on **`@visualisation-sub/mural`**, packaged as an
+A diagram editor built on **`mural`**, packaged as an
 **Electron** desktop app (electron-vite).
 
 *Plexus* — a network of interconnected nodes — for the connective, graph
@@ -10,7 +10,7 @@ nature of diagrams (nodes and the edges between them).
 
 Plexus is the primary thing driving mural's API to maturity, so it lives here
 as a **sibling app** — but it consumes mural through its **published package
-surface** (`@visualisation-sub/mural/*`), never relative `../src` paths and
+surface** (`mural/*`), never relative `../src` paths and
 never internals. That gives two things at once:
 
 - **API-boundary discipline** — the app only sees what an external consumer
@@ -29,7 +29,7 @@ documents, app menu, offline). The split:
 
 - **Renderer** (`src/renderer`) is Chromium, so mural's `HtmlTarget` / SVG
   pipeline runs exactly as in a browser. Vite bundles it, resolving
-  `@visualisation-sub/mural/*` to the framework's **built dist** (see
+  `mural/*` to the framework's **built dist** (see
   `electron.vite.config.ts` — pinned off the `development` condition so src
   `.ts` isn't bundled). The mural UI is authored in `src/renderer/src/app.mu`
   and compiled to `app.mu.js` by the mural CLI before Vite bundles it.

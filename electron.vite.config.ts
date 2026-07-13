@@ -4,7 +4,7 @@ import { defineConfig } from 'electron-vite'
 
 // electron-vite drives three separate Rollup/Vite builds — main (Node),
 // preload (Node, isolated bridge), and renderer (Chromium). The renderer is
-// where mural lives: Vite bundles `@visualisation-sub/mural/*` from the
+// where mural lives: Vite bundles `mural/*` from the
 // `file:../..` linked dependency.
 export default defineConfig({
   main: {},
@@ -39,7 +39,7 @@ export default defineConfig({
     // root dist and the renderer picks it up on reload, no cache dance. Safe —
     // exclude only skips bundling, resolution is unaffected.
     optimizeDeps: {
-      exclude: ['@visualisation-sub/mural'],
+      exclude: ['mural'],
     },
     build: {
       rollupOptions: {
