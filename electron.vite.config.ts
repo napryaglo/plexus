@@ -39,7 +39,12 @@ export default defineConfig({
     // root dist and the renderer picks it up on reload, no cache dance. Safe —
     // exclude only skips bundling, resolution is unaffected.
     optimizeDeps: {
-      exclude: ['@pragmatic-lab/mural'],
+      // Exclude fresco alongside mural: fresco imports @pragmatic-lab/mural,
+      // and pre-bundling fresco while mural is excluded leaves fresco's mural
+      // import external — a mixed optimized/non-optimized graph that produces
+      // stale "504 Outdated Optimize Dep" errors. Excluding both serves them as
+      // live dist ESM sharing one mural instance.
+      exclude: ['@pragmatic-lab/mural', '@pragmatic-lab/fresco'],
     },
     build: {
       rollupOptions: {
