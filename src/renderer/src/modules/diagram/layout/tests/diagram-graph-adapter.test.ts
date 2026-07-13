@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import { Graph } from '@pragmatic-lab/fresco'
 
-import { extract, computeOutcome } from './diagram-graph-adapter.js'
+import { extract, computeOutcome } from '../diagram-graph-adapter.js'
 
 test('extract assigns stable ids to figures missing one and indexes them', () => {
     const a = { Id: undefined as string | undefined, Left: 0, Top: 0 }

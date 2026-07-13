@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 
-import { planForMode } from './run-modes.js'
-import type { LayoutOutcome } from './diagram-graph-adapter.js'
+import { planForMode } from '../run-modes.js'
+import type { LayoutOutcome } from '../diagram-graph-adapter.js'
 
 const outcome: LayoutOutcome = {
     setPositions: [{ id: 'a', left: 1, top: 2 }],
