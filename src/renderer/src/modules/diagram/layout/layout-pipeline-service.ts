@@ -1,6 +1,7 @@
 import {
     MetaData,
     Model,
+    ObservableCollection,
     RelayCommand,
     ServiceBase,
     ServiceKey,
@@ -26,7 +27,30 @@ import {
 import { planForMode, type RunMode } from './run-modes.js'
 import { LayoutPresetsStore } from './layout-presets-store.js'
 import { LayoutInspector } from './layout-inspector.js'
+import { LayoutStageVM } from './layout-stage-vm.js'
 import { DiagramWorkspaceService } from '../services/diagram-workspace-service.js'
+
+// Maps a catalog strategy-slot id to its PipelineConfiguration.layout field.
+// graph-transforms is intentionally absent — it is a transform list, not a
+// single-select stage.
+const SLOT_CONFIG_KEY: Record<string, string> = {
+    'layer-assigner':      'layerAssigner',
+    'layer-improver':      'layerImprover',
+    'first-layer-orderer': 'firstLayerOrderer',
+    'dummy-inserter':      'dummyInserter',
+    'reorderer':           'reorderer',
+    'improver':            'improver',
+    'position-computer':   'positionComputer',
+    'vertical-aligner':    'verticalAligner',
+    'edge-router':         'edgeRouter',
+    'port-assigner':       'portAssigner',
+}
+
+// 'layer-assigner' -> 'Layer Assigner'
+function stageLabel(slotId: string): string
+{
+    return slotId.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
 
 // Fallback node size when a figure has not been measured yet (RenderSize 0).
 const FALLBACK_SIZE: NodeSize = { width: 80, height: 40 }
@@ -53,8 +77,8 @@ export class LayoutPipelineService extends ServiceBase
         LayoutPipelineService, 'Mode', 'positions', MetaData.None)
     public static readonly StatusKey = Model.RegisterProperty<string>(
         LayoutPipelineService, 'Status', '', MetaData.None)
-    public static readonly StagesSummaryKey = Model.RegisterProperty<string>(
-        LayoutPipelineService, 'StagesSummary', '', MetaData.None)
+    public static readonly StagesKey = Model.RegisterProperty<ObservableCollection<LayoutStageVM>>(
+        LayoutPipelineService, 'Stages', undefined as unknown as ObservableCollection<LayoutStageVM>, MetaData.None)
     public static readonly InspectorKey = Model.RegisterProperty<LayoutInspector>(
         LayoutPipelineService, 'Inspector', undefined as unknown as LayoutInspector, MetaData.None)
     public static readonly RunCommandKey = Model.RegisterProperty<ICommand>(
@@ -83,9 +107,22 @@ export class LayoutPipelineService extends ServiceBase
         // The inspector panel host added to the shell's Inspector region.
         this.set_property_value(LayoutPipelineService.InspectorKey, new LayoutInspector())
 
-        // Catalog-derived, read-only summary of the pipeline slots (strategy count).
-        this.set_property_value(LayoutPipelineService.StagesSummaryKey,
-            this.Catalog.map((s) => `${s.slotId}  (${s.strategies.length})`).join('\n'))
+        // One ComboBox row per configurable strategy slot (the transform-list
+        // slot is excluded). Selecting a strategy writes its className into
+        // Config.layout; "(default)" clears it (framework default applies).
+        const stages = new ObservableCollection<LayoutStageVM>()
+        for (const slot of this.Catalog)
+        {
+            if (slot.kind !== 'strategy-slot') continue
+            const key = SLOT_CONFIG_KEY[slot.slotId]
+            if (key === undefined) continue
+            stages.Add(new LayoutStageVM(stageLabel(slot.slotId), slot.strategies, (className) => {
+                const layout = this.Config.layout as Record<string, string | null | undefined>
+                if (className === undefined) delete layout[key]
+                else layout[key] = className
+            }))
+        }
+        this.set_property_value(LayoutPipelineService.StagesKey, stages)
 
         this.set_property_value(LayoutPipelineService.RunCommandKey, new RelayCommand(() => this.Run()))
         this.set_property_value(LayoutPipelineService.ApplyPreviewCommandKey, new RelayCommand(() => this.applyPreview()))
@@ -100,7 +137,7 @@ export class LayoutPipelineService extends ServiceBase
     public get Status(): string { return this.get_property_value(LayoutPipelineService.StatusKey) }
     private set Status(v: string) { this.set_property_value(LayoutPipelineService.StatusKey, v) }
 
-    public get StagesSummary(): string { return this.get_property_value(LayoutPipelineService.StagesSummaryKey) }
+    public get Stages(): ObservableCollection<LayoutStageVM> { return this.get_property_value(LayoutPipelineService.StagesKey) }
     public get Inspector(): LayoutInspector { return this.get_property_value(LayoutPipelineService.InspectorKey) }
     public get RunCommand(): ICommand { return this.get_property_value(LayoutPipelineService.RunCommandKey) }
     public get ApplyPreviewCommand(): ICommand { return this.get_property_value(LayoutPipelineService.ApplyPreviewCommandKey) }

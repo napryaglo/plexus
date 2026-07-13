@@ -10,8 +10,25 @@
 
 import LayoutInspector from "./layout-inspector.js"
 import LayoutPipelineService from "./layout-pipeline-service.js"
+import LayoutStageVM from "./layout-stage-vm.js"
 
 resources LayoutInspectorResources {
+
+    // One stage row: a two-column grid — left is the stage label, right is a
+    // ComboBox of the strategies available for that stage. The fixed-width
+    // label in an Auto column keeps the two columns aligned across all rows.
+    DataTemplate [ DataType = LayoutStageVM ] {
+        Grid [ Margin = (0,3,0,3) ] {
+            ColumnDefinitions {
+                ColumnDefinition [ Width = GridLength.Auto ]
+                ColumnDefinition [ Width = GridLength.Star ]
+            }
+            TextBlock [ Grid.Column = 0, Text = $Label, Style = @BodySmall, Width = 120,
+                        Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (0,0,8,0) ]
+            ComboBox  [ Grid.Column = 1, ItemsSource = $Options, SelectedItem = $Selected,
+                        VerticalAlignment = Center ]
+        }
+    }
 
     DataTemplate [ DataType = LayoutInspector ] {
         ScrollViewer [ HorizontalScrollEnabled = false ] {
@@ -42,11 +59,12 @@ resources LayoutInspectorResources {
                 TextBlock [ Style = @BodySmall, Text = $service(LayoutPipelineService).Status,
                             Foreground = @OnSurfaceVariant, TextWrapping = Wrap, Margin = (0,0,0,12) ]
 
-                // Catalog-derived list of pipeline stages (read-only in v1).
-                TextBlock [ Style = @BodySmall, Text = "Pipeline stages (strategy count)",
-                            Foreground = @OnSurfaceVariant ]
-                TextBlock [ Style = @BodySmall, Text = $service(LayoutPipelineService).StagesSummary,
-                            Foreground = @OnSurface, TextWrapping = Wrap, Margin = (0,2,0,0) ]
+                // Layout stages — one labelled ComboBox per stage; the choice
+                // writes into the pipeline configuration used by Run.
+                TextBlock [ Style = @BodySmall, Text = "Layout stages",
+                            Foreground = @OnSurfaceVariant, Margin = (0,0,0,4) ]
+                ItemsControl [ ItemsSource = $service(LayoutPipelineService).Stages,
+                               ItemsPanel = @VerticalStackPanel ]
             }
         }
     }
