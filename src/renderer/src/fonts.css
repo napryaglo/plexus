@@ -1,0 +1,21 @@
+/* Self-hosted Material Symbols Outlined — replaces the Google Fonts CDN
+   <link> that used to sit in index.html. The renderer bootstrap (main.js)
+   AWAITS this face before mounting the shell (mural pins layout to the icon-
+   font metrics), so serving it from the CDN meant two blocking network round-
+   trips (googleapis CSS -> gstatic font) in front of the first paint — a white
+   window for seconds on any latency. Pointing the face at the .ttf we already
+   ship (the diagram module's glyph-baking asset) makes that await resolve from
+   local disk in milliseconds, and drops the render-blocking external stylesheet.
+
+   Same family name the .mu FontFamily / glyph resources reference. The .ttf is
+   the full variable font; a bare @font-face binds its default instance (wght
+   400, FILL 0), matching the CDN's `@24,400,0,0` request closely enough for the
+   icon glyphs. font-display: block keeps icons invisible (not tofu boxes) during
+   the brief load rather than flashing fallback squares. */
+@font-face {
+    font-family: "Material Symbols Outlined";
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url("./modules/diagram/assets/material-symbols-outlined.ttf") format("truetype");
+}

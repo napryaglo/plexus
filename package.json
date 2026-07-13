@@ -1,0 +1,28 @@
+{
+  "name": "plexus",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Plexus — a diagram editor built on @visualisation-sub/mural, packaged as an Electron desktop app (electron-vite). Sibling app in the mural repo: consumes mural through its published package surface (no relative ../src imports, no internals), so extracting to its own repo later is a config change, not a rewrite.",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "//": "compile:mu compiles the mural UI .mu -> .mu.js via the mural CLI (Vite then bundles it). dev runs electron-vite with HMR; build produces the packaged renderer/main/preload under out/. Rebuild the repo-root dist (npm run build there) when framework source changes — the renderer bundles mural's built dist.",
+    "compile:mu": "node ../../dist/tooling/cli.js compile src/renderer/src/plexus-icons.mu src/renderer/src/modules/diagram/diagram.module.mu src/renderer/src/modules/architecture-repository/architecture-repository.module.mu src/renderer/src/modules/technology-library/technology-library.module.mu src/renderer/src/modules/project-explorer/project-explorer.module.mu src/renderer/src/modules/architecture-meta-models/architecture-meta-models.module.mu src/renderer/src/services/panels/panels.resources.mu src/renderer/src/services/settings/settings.resources.mu src/renderer/src/modules/diagram/diagram.resources.mu src/renderer/src/app.mu",
+    "dev": "npm run compile:mu && electron-vite dev",
+    "build": "npm run compile:mu && electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck:node": "tsc -p tsconfig.node.json --noEmit",
+    "typecheck:web": "tsc -p tsconfig.web.json --noEmit",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web"
+  },
+  "dependencies": {
+    "@visualisation-sub/mural": "file:../.."
+  },
+  "devDependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/tsconfig": "^2.0.0",
+    "@electron-toolkit/utils": "^4.0.0",
+    "electron": "^43.0.0",
+    "electron-vite": "^5.0.0",
+    "vite": "^7.3.6"
+  }
+}

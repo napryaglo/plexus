@@ -1,0 +1,15 @@
+# dependencies
+node_modules/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# electron-vite build output
+out/
+# packaged installers (when electron-builder/forge is wired)
+dist/
+release/
+
+# Generated from src/renderer/src/app.mu by `npm run compile:mu` (the mural
+# CLI) before Vite bundles it — a build artifact, not source.
+*.mu.js

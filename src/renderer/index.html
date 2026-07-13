@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Tight CSP for the renderer: no remote code, no remote origins. The icon
+         font (Material Symbols Outlined) is now self-hosted — a local @font-face
+         in src/fonts.css imported by the bootstrap, resolving from disk before
+         the shell mounts (no Google-CDN round-trips gating first paint). -->
+    <title>Plexus</title>
+
+    <style>
+        html, body { height: 100%; margin: 0; overflow: hidden;
+                     font-family: -apple-system, "Segoe UI", system-ui, sans-serif; }
+        #app { height: 100%; width: 100%; background: #fff;
+               overflow: hidden; cursor: default; }
+        #app svg { display: block; }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module" src="./src/main.js"></script>
+</body>
+</html>
