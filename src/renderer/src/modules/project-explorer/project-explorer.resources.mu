@@ -61,8 +61,11 @@ resources ProjectExplorerResources {
     }
 
     // The dialog body (DialogService supplies the surface, title, and padding).
+    // HorizontalAlignment = Stretch so the panel fills the dialog width — a bare
+    // StackPanel shrinks to its widest child and the content presenter pins it
+    // to one side (leaving Name/Location collapsed).
     DataTemplate [ DataType = NewProjectDialogModel ] {
-        StackPanel [ Orientation = Vertical ] {
+        StackPanel [ Orientation = Vertical, HorizontalAlignment = Stretch ] {
             TextBlock [ Style = @BodyLarge, Text = "Project type", Foreground = @OnSurface, Margin = (0,0,0,4) ]
             Border [ BorderBrush = @OutlineVariant, BorderThickness = (1,1,1,1), CornerRadius = 6,
                      Padding = (4,4,4,4), Margin = (0,0,0,14) ] {
@@ -101,7 +104,7 @@ resources ProjectExplorerResources {
     }
 
     DataTemplate [ DataType = OpenProjectDialogModel ] {
-        StackPanel [ Orientation = Vertical ] {
+        StackPanel [ Orientation = Vertical, HorizontalAlignment = Stretch ] {
             TextBlock [ Style = @BodyLarge, Text = "Recent", Foreground = @OnSurface, Margin = (0,0,0,4) ]
             ItemsControl [ ItemsSource = $Recents, ItemsPanel = @VerticalStackPanel ]
             TextBlock [ Style = @BodySmall, Text = $EmptyLabel, Foreground = @OnSurfaceVariant, Margin = (0,2,0,0) ]
