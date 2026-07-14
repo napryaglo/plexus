@@ -2,7 +2,7 @@
 //
 // It owns the active Project + its tree and orchestrates open/create/save, but
 // knows nothing about diagrams or file formats: it reads a folder's manifest
-// envelope (project.plexus.json → `type`), routes to the matching factory via
+// envelope (project.plexus → `type`), routes to the matching factory via
 // the framework's ProjectFactoryRegistry, and delegates. A module contributes a
 // project type by declaring a `.projectFactories:` entry whose Factory resolves
 // to an IProjectFactory (see the diagram module's DiagramProjectFactory).
@@ -12,6 +12,7 @@
 import {
     MetaData,
     Model,
+    ObservableCollection,
     RelayCommand,
     ServiceBase,
     ServiceKey,
@@ -53,6 +54,12 @@ export class ProjectExplorerService extends ServiceBase
 
     public static readonly ProjectKey = Model.RegisterProperty<Project | undefined>(
         ProjectExplorerService, 'Project', undefined, MetaData.None)
+    // The tree's roots — a one-item collection holding the active project's root
+    // node, so the recursive DataTemplate[ProjectNode] renders the whole
+    // hierarchy anchored at the project (the project name + nested children),
+    // not just the root's children. Empty until a project is open.
+    public static readonly RootsKey = Model.RegisterProperty<ObservableCollection<ProjectNode>>(
+        ProjectExplorerService, 'Roots', undefined as unknown as ObservableCollection<ProjectNode>, MetaData.None)
     public static readonly StatusKey = Model.RegisterProperty<string>(
         ProjectExplorerService, 'Status', 'No project open.', MetaData.None)
     public static readonly OpenProjectCommandKey = Model.RegisterProperty<ICommand>(
@@ -72,6 +79,7 @@ export class ProjectExplorerService extends ServiceBase
     constructor(provider: IServiceProvider)
     {
         super(provider)
+        this.set_property_value(ProjectExplorerService.RootsKey, new ObservableCollection<ProjectNode>())
         this.set_property_value(ProjectExplorerService.OpenProjectCommandKey, new RelayCommand(() => void this.openProject()))
         this.set_property_value(ProjectExplorerService.NewProjectCommandKey, new RelayCommand(() => void this.newProject()))
         this.set_property_value(ProjectExplorerService.NewDiagramCommandKey, new RelayCommand(() => void this.newDiagram()))
@@ -79,6 +87,7 @@ export class ProjectExplorerService extends ServiceBase
     }
 
     public get Project(): Project | undefined { return this.get_property_value(ProjectExplorerService.ProjectKey) }
+    public get Roots(): ObservableCollection<ProjectNode> { return this.get_property_value(ProjectExplorerService.RootsKey) }
     public get Status(): string { return this.get_property_value(ProjectExplorerService.StatusKey) }
     public get OpenProjectCommand(): ICommand { return this.get_property_value(ProjectExplorerService.OpenProjectCommandKey) }
     public get NewProjectCommand(): ICommand { return this.get_property_value(ProjectExplorerService.NewProjectCommandKey) }
@@ -273,6 +282,10 @@ export class ProjectExplorerService extends ServiceBase
         this.activeFactory = factory
         this.activeStorage = storage
         this.wireNode(project.Root)
+        // Rebuild the tree roots to the new project's root node so the hierarchy
+        // renders (the project name at top, children nested beneath).
+        this.Roots.Clear()
+        this.Roots.Add(project.Root)
         this.set_property_value(ProjectExplorerService.ProjectKey, project)
     }
 

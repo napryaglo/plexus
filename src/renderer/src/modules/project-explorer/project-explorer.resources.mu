@@ -39,7 +39,7 @@ resources ProjectExplorerResources {
                 TextBlock [ Style = @BodySmall, Text = $Status, Foreground = @OnSurfaceVariant,
                             TextWrapping = Wrap, Margin = (0,0,0,8) ]
 
-                ItemsControl [ ItemsSource = $Project.Root.Children, ItemsPanel = @VerticalStackPanel ]
+                ItemsControl [ ItemsSource = $Roots, ItemsPanel = @VerticalStackPanel ]
             }
         }
     }

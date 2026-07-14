@@ -16,7 +16,8 @@ import type { Project } from './project.js'
 // The manifest file at a project folder's root. Its `type` routes a folder to
 // the factory that owns it; the rest of the manifest is factory-specific (each
 // factory reads/writes its own extended shape). Only this envelope is generic.
-export const PROJECT_MANIFEST_FILENAME = 'project.plexus.json'
+// (JSON content, but the `.plexus` name alone identifies it — no `.json` tail.)
+export const PROJECT_MANIFEST_FILENAME = 'project.plexus'
 
 export interface ProjectManifestEnvelope
 {
