@@ -18,12 +18,25 @@
 import ToolBoxService from "./services/diagram-panel-services.js"
 import LayersService from "./services/diagram-panel-services.js"
 import OutlineService from "./services/diagram-panel-services.js"
+import DiagramProjectFactory from "./services/diagram-project-factory.js"
 
 module DiagramModule [ Name = "Diagram" ] {
     .services: {
         ToolBoxService
         LayersService
         OutlineService
+        DiagramProjectFactory
+    }
+
+    // The 'architecture' project type — the diagram module's contribution to the
+    // generic ProjectExplorerService. DiagramProjectFactory owns the .diagram
+    // format; the ProjectFactoryRegistry routes a folder whose manifest type is
+    // "architecture" to it.
+    .projectFactories: {
+        ProjectFactoryDefinition
+            [ Type    = "architecture",
+              Title   = "Architecture Project",
+              Factory = DiagramProjectFactory ]
     }
 
     // Settings this module contributes to the app's ApplicationSettings. Each is

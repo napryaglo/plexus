@@ -71,6 +71,10 @@ import DiagramResources from "./modules/diagram/diagram.resources.mu.js"
 import LayoutPipelineService from "./modules/diagram/layout/layout-pipeline-service.js"
 import LayoutInspectorResources from "./modules/diagram/layout/layout-inspector.resources.mu.js"
 
+// Project Explorer view — the generic project tree + command bar
+// (DataTemplate[ProjectExplorerService] + recursive DataTemplate[ProjectNode]).
+import ProjectExplorerResources from "./modules/project-explorer/project-explorer.resources.mu.js"
+
 
 // Settings: persistence store, the footer-gear launcher, and the settings-page
 // view resources. ApplicationSettings (framework, auto-provided by EditorShell)
@@ -151,6 +155,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
 
         // Layout pipeline builder view (DataTemplate[LayoutInspector]).
         merge LayoutInspectorResources
+
+        // Project Explorer tree + command bar (DataTemplate[ProjectExplorerService]).
+        merge ProjectExplorerResources
 
         // The app root — the framework's default EditorShell. All regions are
         // data-driven (services + the active document), so the app declares no

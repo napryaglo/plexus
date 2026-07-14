@@ -1,4 +1,4 @@
-import { MetaData, Model, ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
 
 // A project and its file tree — the generic, host-owned model a project
 // factory populates. `Project` and `ProjectNode` are Models so the explorer's
@@ -15,6 +15,11 @@ export class ProjectNode extends Model
     static readonly KindKey = Model.RegisterProperty<ProjectNodeKind>(ProjectNode, 'Kind', 'file', MetaData.None)
     static readonly ChildrenKey = Model.RegisterProperty<ObservableCollection<ProjectNode>>(
         ProjectNode, 'Children', undefined as unknown as ObservableCollection<ProjectNode>, MetaData.None)
+    // The action to run when this node is activated in the tree — set by the
+    // host (ProjectExplorerService) so the row can bind `Command = $OpenCommand`
+    // without threading the node through a CommandParameter.
+    static readonly OpenCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        ProjectNode, 'OpenCommand', undefined, MetaData.None)
 
     constructor(name: string, path: string, kind: ProjectNodeKind)
     {
@@ -29,6 +34,8 @@ export class ProjectNode extends Model
     public get Path(): string { return this.get_property_value(ProjectNode.PathKey) }
     public get Kind(): ProjectNodeKind { return this.get_property_value(ProjectNode.KindKey) }
     public get Children(): ObservableCollection<ProjectNode> { return this.get_property_value(ProjectNode.ChildrenKey) }
+    public get OpenCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.OpenCommandKey) }
+    public set OpenCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.OpenCommandKey, v) }
 }
 
 export class Project extends Model
