@@ -21,18 +21,41 @@ export interface FigureLike
     Top:  number
 }
 
+// One end of a connector. mural's ConnectorEndpoint satisfies this:
+// .Node points at the endpoint figure, and PortSide is a settable
+// cardinal ('N'|'S'|'E'|'W') that drives the diagram's own port
+// assignment. Typed as a bare string here (not mural's PortSide enum)
+// to keep the adapter runtime-decoupled and unit-testable — the enum's
+// values are those very strings, so the assignment is value-identical.
+export interface EndpointLike
+{
+    Node?:     unknown
+    PortSide?: string
+}
+
 // A diagram connector. mural's Connector satisfies this (Source/Target
 // are ConnectorEndpoint, whose .Node points at the endpoint figure).
 export interface ConnectorLike
 {
-    Source?: { Node?: unknown }
-    Target?: { Node?: unknown }
+    Source?: EndpointLike
+    Target?: EndpointLike
+}
+
+// A connector paired with the node ids its ends resolved to. Emitted by
+// extract so a later side/port pass can address the real connector
+// objects without re-deriving identity.
+export interface ConnectorEdge
+{
+    connector: ConnectorLike
+    from:      string
+    to:        string
 }
 
 export interface ExtractResult
 {
     graph: Graph
     index: Map<string, FigureLike>
+    connectorEdges: ConnectorEdge[]
 }
 
 // Builds a Fresco Graph from the diagram's figures and connectors.
@@ -49,6 +72,7 @@ export function extract(
     const graph = new Graph()
     const index = new Map<string, FigureLike>()
     const idOf = new Map<object, string>()
+    const connectorEdges: ConnectorEdge[] = []
 
     nodes.forEach((fig, i) => {
         if (fig.Id === undefined || fig.Id === '') fig.Id = idGen(i)
@@ -60,10 +84,41 @@ export function extract(
     for (const conn of connectors) {
         const from = conn.Source?.Node ? idOf.get(conn.Source.Node as object) : undefined
         const to   = conn.Target?.Node ? idOf.get(conn.Target.Node as object) : undefined
-        if (from !== undefined && to !== undefined) graph.AddEdge(from, to)
+        if (from !== undefined && to !== undefined) {
+            graph.AddEdge(from, to)
+            connectorEdges.push({ connector: conn, from, to })
+        }
     }
 
-    return { graph, index }
+    return { graph, index, connectorEdges }
+}
+
+// A cardinal side pair for an edge, keyed by node id. Fresco's EdgeSides
+// (with a Side enum) satisfies this — the values are the same 'N'|'S'|
+// 'E'|'W' strings the diagram's PortSide expects.
+export interface EdgeSideLike { source: string; target: string }
+
+// Writes a cardinal side onto each connector's source/target endpoint,
+// engaging the diagram's own port assignment (which places the concrete
+// point on the chosen side and fans parallel connectors into slots).
+//
+// `sidesByPair` is keyed `${from}|${to}`; connectors whose pair is
+// absent (e.g. an endpoint dropped by a transform) are left untouched.
+// Returns the number of connectors assigned.
+export function applySides(
+    connectorEdges: ConnectorEdge[],
+    sidesByPair: Map<string, EdgeSideLike>,
+): number
+{
+    let assigned = 0
+    for (const ce of connectorEdges) {
+        const sides = sidesByPair.get(`${ce.from}|${ce.to}`)
+        if (sides === undefined) continue
+        if (ce.connector.Source) ce.connector.Source.PortSide = sides.source
+        if (ce.connector.Target) ce.connector.Target.PortSide = sides.target
+        assigned++
+    }
+    return assigned
 }
 
 export interface NodeSize { width: number; height: number }

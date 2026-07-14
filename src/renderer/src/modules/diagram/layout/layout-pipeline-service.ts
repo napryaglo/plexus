@@ -7,20 +7,27 @@ import {
     ServiceKey,
     type ICommand,
     type IServiceProvider,
+    type Point,
 } from '@pragmatic-lab/mural/runtime'
 import {
     GetPipelineCatalog,
     BuildPipeline,
     LoadElementRepository,
+    CardinalSideAssigner,
     type PipelineConfiguration,
     type CatalogSlot,
+    type CatalogStrategy,
+    type Graph,
 } from '@pragmatic-lab/fresco'
 
 import {
     extract,
     computeOutcome,
+    applySides,
     type FigureLike,
     type ConnectorLike,
+    type ConnectorEdge,
+    type EdgeSideLike,
     type NodeSize,
     type PositionSet,
 } from './diagram-graph-adapter.js'
@@ -50,6 +57,19 @@ const SLOT_CONFIG_KEY: Record<string, string> = {
 function stageLabel(slotId: string): string
 {
     return slotId.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
+
+// A synthetic Port Assigner option, injected into that one combobox. It
+// is NOT a Fresco pipeline strategy — selecting it makes Run() assign a
+// cardinal PortSide to each connector and let the diagram's own port
+// assignment place the points. The className is a sentinel matched in
+// the stage onChange, never handed to BuildPipeline.
+const DIAGRAM_SIDES_CLASSNAME = 'DiagramSides'
+const DIAGRAM_SIDES_STRATEGY: CatalogStrategy = {
+    className:     DIAGRAM_SIDES_CLASSNAME,
+    name:          'Diagram Sides (native)',
+    algorithmName: 'Cardinal side selection applied to diagram connectors',
+    references:    [],
 }
 
 // Fallback node size when a figure has not been measured yet (RenderSize 0).
@@ -98,6 +118,11 @@ export class LayoutPipelineService extends ServiceBase
     public Config: PipelineConfiguration = structuredClone(DEFAULT_CONFIG)
     public PreviewPositions: PositionSet[] | undefined
 
+    // True when the Port Assigner combobox has "Diagram Sides (native)"
+    // selected — Run() then assigns connector PortSides instead of
+    // relying on a Fresco point-based port assigner.
+    private useDiagramSides = false
+
     private _presets: LayoutPresetsStore | undefined
 
     constructor(provider: IServiceProvider)
@@ -116,8 +141,25 @@ export class LayoutPipelineService extends ServiceBase
             if (slot.kind !== 'strategy-slot') continue
             const key = SLOT_CONFIG_KEY[slot.slotId]
             if (key === undefined) continue
-            stages.Add(new LayoutStageVM(stageLabel(slot.slotId), slot.strategies, (spec) => {
+
+            // The Port Assigner combobox gains a synthetic "Diagram Sides"
+            // option that routes to native connector-side assignment
+            // rather than a Fresco pipeline stage.
+            const isPortAssigner = slot.slotId === 'port-assigner'
+            const strategies = isPortAssigner
+                ? [...slot.strategies, DIAGRAM_SIDES_STRATEGY]
+                : slot.strategies
+
+            stages.Add(new LayoutStageVM(stageLabel(slot.slotId), strategies, (spec) => {
                 const layout = this.Config.layout as Record<string, unknown>
+                if (isPortAssigner && spec?.className === DIAGRAM_SIDES_CLASSNAME) {
+                    // Native side assignment — handled in Run(); keep the
+                    // Fresco port-assigner slot clear.
+                    this.useDiagramSides = true
+                    delete layout[key]
+                    return
+                }
+                if (isPortAssigner) this.useDiagramSides = false
                 if (spec === undefined) delete layout[key]
                 else layout[key] = spec
             }))
@@ -167,13 +209,15 @@ export class LayoutPipelineService extends ServiceBase
         if (figures.length === 0) { this.Status = 'Diagram has no nodes to lay out.'; return }
         const connectors = doc.Connectors.ToArray() as unknown as ConnectorLike[]
 
-        const { graph, index } = extract(figures, connectors)
+        const { graph, index, connectorEdges } = extract(figures, connectors)
 
         let outcome
+        let transformed: Graph
+        let positions: Map<string, Point>
         try {
             const { graphPipeline, layoutPipeline } = BuildPipeline(this.Config, LoadElementRepository())
-            const transformed = graphPipeline.Apply(graph)
-            const positions = layoutPipeline.Apply(transformed)
+            transformed = graphPipeline.Apply(graph)
+            positions = layoutPipeline.Apply(transformed)
             outcome = computeOutcome(index, transformed, positions, (f) => this.sizeOf(f))
         } catch (err) {
             this.Status = `Pipeline error: ${(err as Error).message}`
@@ -190,7 +234,29 @@ export class LayoutPipelineService extends ServiceBase
 
         this.applyPositions(index, plan.mutation.setPositions)
         this.PreviewPositions = undefined
-        this.Status = `Laid out ${plan.mutation.setPositions.length} nodes.`
+
+        let status = `Laid out ${plan.mutation.setPositions.length} nodes.`
+        if (this.useDiagramSides) {
+            const n = this.assignDiagramSides(connectorEdges, transformed, positions)
+            status += ` Assigned sides to ${n} connectors.`
+        }
+        this.Status = status
+    }
+
+    // Assign a cardinal PortSide to each connector from Fresco's
+    // CardinalSideAssigner, keyed by node-id pair so parallel connectors
+    // share a side (the diagram fans them into slots). Returns the count
+    // of connectors assigned.
+    private assignDiagramSides(
+        connectorEdges: ConnectorEdge[],
+        transformed: Graph,
+        positions: Map<string, Point>,
+    ): number
+    {
+        const sides = new CardinalSideAssigner().AssignSides(positions, transformed.edges)
+        const byPair = new Map<string, EdgeSideLike>()
+        for (const [edge, es] of sides) byPair.set(`${edge.From}|${edge.To}`, es)
+        return applySides(connectorEdges, byPair)
     }
 
     // Commit a staged preview (positions mode) and clear it.

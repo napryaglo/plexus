@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import { Graph } from '@pragmatic-lab/fresco'
 
-import { extract, computeOutcome } from '../diagram-graph-adapter.js'
+import { extract, computeOutcome, applySides } from '../diagram-graph-adapter.js'
 
 test('extract assigns stable ids to figures missing one and indexes them', () => {
     const a = { Id: undefined as string | undefined, Left: 0, Top: 0 }
@@ -54,6 +54,45 @@ test('computeOutcome reports nodes dropped by transforms', () => {
     const positions = new Map([['a', { X: 10, Y: 10 }]])
     const outcome = computeOutcome(index, transformed, positions, () => ({ width: 0, height: 0 }))
     expect(outcome.droppedNodeIds).toEqual(['b'])
+})
+
+test('extract returns each resolved connector paired with its node ids', () => {
+    const a = { Id: 'a', Left: 0, Top: 0 }
+    const b = { Id: 'b', Left: 0, Top: 0 }
+    const conn = { Source: { Node: a }, Target: { Node: b } }
+    const { connectorEdges } = extract([a, b], [conn])
+    expect(connectorEdges).toEqual([{ connector: conn, from: 'a', to: 'b' }])
+})
+
+test('extract omits unresolved connectors from connectorEdges', () => {
+    const a = { Id: 'a', Left: 0, Top: 0 }
+    const conn = { Source: { Node: a }, Target: { Node: undefined } }
+    const { connectorEdges } = extract([a], [conn])
+    expect(connectorEdges).toEqual([])
+})
+
+test('applySides writes source/target PortSide onto matching connectors', () => {
+    const a = { Id: 'a', Left: 0, Top: 0 }
+    const b = { Id: 'b', Left: 0, Top: 0 }
+    const conn = { Source: { Node: a } as { Node: unknown; PortSide?: string },
+                   Target: { Node: b } as { Node: unknown; PortSide?: string } }
+    const { connectorEdges } = extract([a, b], [conn])
+    const n = applySides(connectorEdges, new Map([['a|b', { source: 'S', target: 'N' }]]))
+    expect(n).toBe(1)
+    expect(conn.Source.PortSide).toBe('S')
+    expect(conn.Target.PortSide).toBe('N')
+})
+
+test('applySides leaves connectors without a matching pair untouched', () => {
+    const a = { Id: 'a', Left: 0, Top: 0 }
+    const b = { Id: 'b', Left: 0, Top: 0 }
+    const conn = { Source: { Node: a } as { Node: unknown; PortSide?: string },
+                   Target: { Node: b } as { Node: unknown; PortSide?: string } }
+    const { connectorEdges } = extract([a, b], [conn])
+    const n = applySides(connectorEdges, new Map([['x|y', { source: 'E', target: 'W' }]]))
+    expect(n).toBe(0)
+    expect(conn.Source.PortSide).toBeUndefined()
+    expect(conn.Target.PortSide).toBeUndefined()
 })
 
 test('computeOutcome skips positions for ids not in the index', () => {
