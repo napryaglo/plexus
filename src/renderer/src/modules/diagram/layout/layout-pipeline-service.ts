@@ -13,7 +13,6 @@ import {
     BuildPipeline,
     LoadElementRepository,
     type PipelineConfiguration,
-    type PipelineElementExtension,
     type CatalogSlot,
     type EdgeRouting,
     type Edge,
@@ -104,15 +103,8 @@ export class LayoutPipelineService extends ServiceBase
     public static readonly UsePreviewModeCommandKey = Model.RegisterProperty<ICommand>(
         LayoutPipelineService, 'UsePreviewModeCommand', undefined as unknown as ICommand, MetaData.None)
 
-    // Consumer-supplied Fresco pipeline elements — Plexus owns this list and
-    // can register custom stage implementations here; they surface in the
-    // catalog (below) and resolve in Run's BuildPipeline. Empty today: the
-    // native side router ships as a Fresco built-in, so nothing custom is
-    // needed yet. Declared before Catalog so field init order feeds it.
-    public readonly Extensions: PipelineElementExtension[] = []
-
     // Plain fields — used only from TS (not bound in markup).
-    public readonly Catalog: CatalogSlot[] = GetPipelineCatalog(this.Extensions)
+    public readonly Catalog: CatalogSlot[] = GetPipelineCatalog()
     public readonly ModeOptions: RunMode[] = ['positions', 'preview']
     public Config: PipelineConfiguration = structuredClone(DEFAULT_CONFIG)
     public PreviewPositions: PositionSet[] | undefined
@@ -214,7 +206,7 @@ export class LayoutPipelineService extends ServiceBase
         let outcome
         let lastRoutes: Map<Edge, EdgeRouting> | undefined
         try {
-            const { graphPipeline, layoutPipeline } = BuildPipeline(this.Config, LoadElementRepository(), this.Extensions)
+            const { graphPipeline, layoutPipeline } = BuildPipeline(this.Config, LoadElementRepository())
             const transformed = graphPipeline.Apply(graph)
             const positions = layoutPipeline.Apply(transformed)
             outcome = computeOutcome(index, transformed, positions, (f) => this.sizeOf(f))
