@@ -15,6 +15,7 @@ import {
     RelayCommand,
     ServiceBase,
     ServiceKey,
+    ServiceProvider,
     type ICommand,
     type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
@@ -259,7 +260,12 @@ export class ProjectExplorerService extends ServiceBase
     {
         const def = this.Provider.getRequired(ProjectFactoryRegistry.Key).GetByType(type)
         if (def?.Factory === undefined) return undefined
-        return this.Provider.get(def.Factory) as IProjectFactory | undefined
+        // `Factory` holds the service class (from `Factory = DiagramProjectFactory`
+        // in the .projectFactories block), but the module registers it under its
+        // static `.Key` (tokenFor). Normalize class → .Key so the lookup matches;
+        // otherwise get() misses and it looks like "no factory for this type".
+        const token = ServiceProvider.tokenFor(def.Factory as unknown as new (...args: never[]) => IProjectFactory)
+        return this.Provider.get(token) as IProjectFactory | undefined
     }
 
     private setActive(project: Project, factory: IProjectFactory, storage: IStorage): void
