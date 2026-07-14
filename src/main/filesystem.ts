@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain, type OpenDialogOptions, type SaveDialogOptions } from 'electron'
+import { BrowserWindow, dialog, ipcMain, shell, type OpenDialogOptions, type SaveDialogOptions } from 'electron'
 import { access, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import {
   FileSystemChannel,
@@ -6,6 +6,7 @@ import {
   type FileFilter,
   type OpenFileOptions,
   type OpenFileResult,
+  type OpenFolderOptions,
   type SaveFileOptions,
 } from '../shared/file-system-api.js'
 
@@ -42,6 +43,23 @@ export function registerFileSystemHandlers(): void {
       const path = result.filePaths[0]
       const content = await readFile(path, 'utf8')
       return { Path: path, Content: content }
+    },
+  )
+
+  ipcMain.handle(
+    FileSystemChannel.OpenFolder,
+    async (_e, options?: OpenFolderOptions): Promise<string | null> => {
+      const win = focusedWindow()
+      const dialogOptions: OpenDialogOptions = {
+        title: options?.Title,
+        defaultPath: options?.DefaultPath,
+        properties: ['openDirectory', 'createDirectory'],
+      }
+      const result = win
+        ? await dialog.showOpenDialog(win, dialogOptions)
+        : await dialog.showOpenDialog(dialogOptions)
+      if (result.canceled || result.filePaths.length === 0) return null
+      return result.filePaths[0]
     },
   )
 
@@ -95,4 +113,11 @@ export function registerFileSystemHandlers(): void {
       return entries.map((d) => ({ Name: d.name, IsDirectory: d.isDirectory() }))
     },
   )
+
+  ipcMain.handle(FileSystemChannel.OpenExternal, async (_e, path: string): Promise<void> => {
+    // openPath opens a file/folder with the OS default handler; the returned
+    // string is a non-empty error message on failure.
+    const error = await shell.openPath(path)
+    if (error) throw new Error(error)
+  })
 }

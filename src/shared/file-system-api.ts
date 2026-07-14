@@ -13,12 +13,14 @@
 export enum FileSystemChannel
 {
     OpenFile      = 'fs:open-file',
+    OpenFolder    = 'fs:open-folder',
     SaveFileAs    = 'fs:save-file-as',
     ReadText      = 'fs:read-text',
     WriteText     = 'fs:write-text',
     Exists        = 'fs:exists',
     Delete        = 'fs:delete',
     ListDirectory = 'fs:list-directory',
+    OpenExternal  = 'fs:open-external',
 }
 
 // A name/extensions pair for the native open/save dialog filter list.
@@ -33,6 +35,12 @@ export interface OpenFileOptions
 {
     Title?:   string;
     Filters?: readonly FileFilter[];
+}
+
+export interface OpenFolderOptions
+{
+    Title?:       string;
+    DefaultPath?: string;
 }
 
 export interface SaveFileOptions
@@ -63,10 +71,14 @@ export interface FileEntry
 export interface IFileSystemApi
 {
     openFile(options?: OpenFileOptions): Promise<OpenFileResult | null>;
+    // Native folder picker → the chosen directory's absolute path, or null on cancel.
+    openFolder(options?: OpenFolderOptions): Promise<string | null>;
     saveFileAs(content: string, options?: SaveFileOptions): Promise<string | null>;
     readText(path: string): Promise<string>;
     writeText(path: string, content: string): Promise<void>;
     exists(path: string): Promise<boolean>;
     delete(path: string): Promise<void>;
     listDirectory(path: string): Promise<readonly FileEntry[]>;
+    // Open a path with the OS default application (for non-diagram attachments).
+    openExternal(path: string): Promise<void>;
 }

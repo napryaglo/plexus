@@ -6,6 +6,7 @@ import {
   type IFileSystemApi,
   type OpenFileOptions,
   type OpenFileResult,
+  type OpenFolderOptions,
   type SaveFileOptions,
 } from '../shared/file-system-api.js'
 import { EnvironmentChannel, type EnvironmentInfo } from '../shared/environment-api.js'
@@ -19,6 +20,8 @@ import { SettingsChannel, type ISettingsBridge } from '../shared/settings-api.js
 const fs: IFileSystemApi = {
   openFile: (options?: OpenFileOptions): Promise<OpenFileResult | null> =>
     ipcRenderer.invoke(FileSystemChannel.OpenFile, options),
+  openFolder: (options?: OpenFolderOptions): Promise<string | null> =>
+    ipcRenderer.invoke(FileSystemChannel.OpenFolder, options),
   saveFileAs: (content: string, options?: SaveFileOptions): Promise<string | null> =>
     ipcRenderer.invoke(FileSystemChannel.SaveFileAs, content, options),
   readText: (path: string): Promise<string> =>
@@ -31,6 +34,8 @@ const fs: IFileSystemApi = {
     ipcRenderer.invoke(FileSystemChannel.Delete, path),
   listDirectory: (path: string): Promise<readonly FileEntry[]> =>
     ipcRenderer.invoke(FileSystemChannel.ListDirectory, path),
+  openExternal: (path: string): Promise<void> =>
+    ipcRenderer.invoke(FileSystemChannel.OpenExternal, path),
 }
 
 // Environment snapshot — read ONCE, synchronously, at preload load time. The

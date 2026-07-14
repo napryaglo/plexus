@@ -5,6 +5,7 @@ import type {
   IFileSystemApi,
   OpenFileOptions,
   OpenFileResult,
+  OpenFolderOptions,
   SaveFileOptions,
 } from '../../../../shared/file-system-api.js'
 
@@ -46,6 +47,13 @@ export class FileSystemService extends ServiceBase
         return this.api.openFile(options);
     }
 
+    // Native folder picker → the chosen directory's absolute path, or null if
+    // the user cancelled.
+    public OpenFolder(options?: OpenFolderOptions): Promise<string | null>
+    {
+        return this.api.openFolder(options);
+    }
+
     // Native save-as dialog → writes `content` to the chosen path and returns
     // it, or null if the user cancelled.
     public SaveFileAs(content: string, options?: SaveFileOptions): Promise<string | null>
@@ -76,5 +84,11 @@ export class FileSystemService extends ServiceBase
     public ListDirectory(path: string): Promise<readonly FileEntry[]>
     {
         return this.api.listDirectory(path);
+    }
+
+    // Open a path with the OS default application (non-diagram attachments).
+    public OpenExternal(path: string): Promise<void>
+    {
+        return this.api.openExternal(path);
     }
 }
