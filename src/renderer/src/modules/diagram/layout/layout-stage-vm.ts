@@ -23,6 +23,11 @@ export class LayoutStageVM extends Model
         LayoutStageVM, 'Selected', DEFAULT_OPTION, MetaData.None)
     static readonly ParamsKey = Model.RegisterProperty<ObservableCollection<Model>>(
         LayoutStageVM, 'Params', undefined as unknown as ObservableCollection<Model>, MetaData.None)
+    // Whether this stage's ComboBox is interactive. Set false to disable a
+    // stage made irrelevant by another stage's choice (e.g. the Port
+    // Assigner when the Edge Router does native diagram routing).
+    static readonly EnabledKey = Model.RegisterProperty<boolean>(
+        LayoutStageVM, 'Enabled', true, MetaData.None)
 
     private readonly byName = new Map<string, CatalogStrategy>()
     private selectedClassName: string | undefined
@@ -53,6 +58,8 @@ export class LayoutStageVM extends Model
     public get Selected(): string { return this.get_property_value(LayoutStageVM.SelectedKey) }
     public set Selected(v: string) { this.set_property_value(LayoutStageVM.SelectedKey, v) }
     public get Params(): ObservableCollection<Model> { return this.get_property_value(LayoutStageVM.ParamsKey) }
+    public get Enabled(): boolean { return this.get_property_value(LayoutStageVM.EnabledKey) }
+    public set Enabled(v: boolean) { this.set_property_value(LayoutStageVM.EnabledKey, v) }
 
     private onSelected(): void
     {

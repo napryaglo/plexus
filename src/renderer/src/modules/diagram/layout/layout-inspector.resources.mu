@@ -55,7 +55,7 @@ resources LayoutInspectorResources {
                 TextBlock [ Grid.Column = 0, Text = $Label, Style = @BodySmall, Width = 120,
                             Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (0,0,8,0) ]
                 ComboBox  [ Grid.Column = 1, ItemsSource = $Options, SelectedItem = $Selected,
-                            VerticalAlignment = Center ]
+                            IsEnabled = $Enabled, VerticalAlignment = Center ]
             }
             ItemsControl [ ItemsSource = $Params, ItemsPanel = @VerticalStackPanel ]
         }

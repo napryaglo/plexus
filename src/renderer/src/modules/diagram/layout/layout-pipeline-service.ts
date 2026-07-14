@@ -59,16 +59,17 @@ function stageLabel(slotId: string): string
     return slotId.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
-// A synthetic Port Assigner option, injected into that one combobox. It
-// is NOT a Fresco pipeline strategy — selecting it makes Run() assign a
-// cardinal PortSide to each connector and let the diagram's own port
-// assignment place the points. The className is a sentinel matched in
-// the stage onChange, never handed to BuildPipeline.
+// A synthetic Edge Router option, injected into that one combobox. It is
+// NOT a Fresco pipeline strategy — selecting it makes Run() assign a
+// cardinal PortSide to each connector and let the diagram route them
+// natively (the diagram does port assignment automatically, so the Port
+// Assigner stage is disabled while this is active). The className is a
+// sentinel matched in the stage onChange, never handed to BuildPipeline.
 const DIAGRAM_SIDES_CLASSNAME = 'DiagramSides'
 const DIAGRAM_SIDES_STRATEGY: CatalogStrategy = {
     className:     DIAGRAM_SIDES_CLASSNAME,
-    name:          'Diagram Sides (native)',
-    algorithmName: 'Cardinal side selection applied to diagram connectors',
+    name:          'Diagram (native)',
+    algorithmName: 'Native diagram routing with cardinal connector sides',
     references:    [],
 }
 
@@ -136,33 +137,43 @@ export class LayoutPipelineService extends ServiceBase
         // slot is excluded). Selecting a strategy writes its className into
         // Config.layout; "(default)" clears it (framework default applies).
         const stages = new ObservableCollection<LayoutStageVM>()
+        // Captured so the Edge Router's "Diagram (native)" choice can
+        // disable the Port Assigner stage (the diagram assigns ports
+        // itself, so a Fresco port assigner is moot).
+        let portAssignerStage: LayoutStageVM | undefined
         for (const slot of this.Catalog)
         {
             if (slot.kind !== 'strategy-slot') continue
             const key = SLOT_CONFIG_KEY[slot.slotId]
             if (key === undefined) continue
 
-            // The Port Assigner combobox gains a synthetic "Diagram Sides"
-            // option that routes to native connector-side assignment
+            // The Edge Router combobox gains a synthetic "Diagram (native)"
+            // option that hands routing + port assignment to the diagram
             // rather than a Fresco pipeline stage.
-            const isPortAssigner = slot.slotId === 'port-assigner'
-            const strategies = isPortAssigner
+            const isEdgeRouter = slot.slotId === 'edge-router'
+            const strategies = isEdgeRouter
                 ? [...slot.strategies, DIAGRAM_SIDES_STRATEGY]
                 : slot.strategies
 
-            stages.Add(new LayoutStageVM(stageLabel(slot.slotId), strategies, (spec) => {
+            const stage = new LayoutStageVM(stageLabel(slot.slotId), strategies, (spec) => {
                 const layout = this.Config.layout as Record<string, unknown>
-                if (isPortAssigner && spec?.className === DIAGRAM_SIDES_CLASSNAME) {
-                    // Native side assignment — handled in Run(); keep the
-                    // Fresco port-assigner slot clear.
+                if (isEdgeRouter && spec?.className === DIAGRAM_SIDES_CLASSNAME) {
+                    // Native routing — handled in Run(); keep the Fresco
+                    // edge-router slot clear and disable the Port Assigner.
                     this.useDiagramSides = true
                     delete layout[key]
+                    if (portAssignerStage !== undefined) portAssignerStage.Enabled = false
                     return
                 }
-                if (isPortAssigner) this.useDiagramSides = false
+                if (isEdgeRouter) {
+                    this.useDiagramSides = false
+                    if (portAssignerStage !== undefined) portAssignerStage.Enabled = true
+                }
                 if (spec === undefined) delete layout[key]
                 else layout[key] = spec
-            }))
+            })
+            stages.Add(stage)
+            if (slot.slotId === 'port-assigner') portAssignerStage = stage
         }
         this.set_property_value(LayoutPipelineService.StagesKey, stages)
 
