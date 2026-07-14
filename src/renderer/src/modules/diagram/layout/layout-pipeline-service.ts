@@ -7,17 +7,15 @@ import {
     ServiceKey,
     type ICommand,
     type IServiceProvider,
-    type Point,
 } from '@pragmatic-lab/mural/runtime'
 import {
     GetPipelineCatalog,
     BuildPipeline,
     LoadElementRepository,
-    CardinalSideAssigner,
     type PipelineConfiguration,
     type CatalogSlot,
-    type CatalogStrategy,
-    type Graph,
+    type EdgeRouting,
+    type Edge,
 } from '@pragmatic-lab/fresco'
 
 import {
@@ -59,19 +57,11 @@ function stageLabel(slotId: string): string
     return slotId.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
-// A synthetic Edge Router option, injected into that one combobox. It is
-// NOT a Fresco pipeline strategy — selecting it makes Run() assign a
-// cardinal PortSide to each connector and let the diagram route them
-// natively (the diagram does port assignment automatically, so the Port
-// Assigner stage is disabled while this is active). The className is a
-// sentinel matched in the stage onChange, never handed to BuildPipeline.
-const DIAGRAM_SIDES_CLASSNAME = 'DiagramSides'
-const DIAGRAM_SIDES_STRATEGY: CatalogStrategy = {
-    className:     DIAGRAM_SIDES_CLASSNAME,
-    name:          'Diagram (native)',
-    algorithmName: 'Native diagram routing with cardinal connector sides',
-    references:    [],
-}
+// Fresco's edge router that emits cardinal sides for the host diagram to
+// route natively (rather than Fresco polyline points). When it's the
+// selected edge router, the diagram owns port assignment, so the Port
+// Assigner stage is disabled and turned off in the config.
+const CARDINAL_SIDE_ROUTER = 'CardinalSideRouter'
 
 // Fallback node size when a figure has not been measured yet (RenderSize 0).
 const FALLBACK_SIZE: NodeSize = { width: 80, height: 40 }
@@ -119,11 +109,6 @@ export class LayoutPipelineService extends ServiceBase
     public Config: PipelineConfiguration = structuredClone(DEFAULT_CONFIG)
     public PreviewPositions: PositionSet[] | undefined
 
-    // True when the Port Assigner combobox has "Diagram Sides (native)"
-    // selected — Run() then assigns connector PortSides instead of
-    // relying on a Fresco point-based port assigner.
-    private useDiagramSides = false
-
     private _presets: LayoutPresetsStore | undefined
 
     constructor(provider: IServiceProvider)
@@ -137,9 +122,9 @@ export class LayoutPipelineService extends ServiceBase
         // slot is excluded). Selecting a strategy writes its className into
         // Config.layout; "(default)" clears it (framework default applies).
         const stages = new ObservableCollection<LayoutStageVM>()
-        // Captured so the Edge Router's "Diagram (native)" choice can
-        // disable the Port Assigner stage (the diagram assigns ports
-        // itself, so a Fresco port assigner is moot).
+        // Captured so selecting the native side router (CardinalSideRouter)
+        // in the Edge Router can disable + turn off the Port Assigner stage
+        // — under native routing the diagram assigns ports itself.
         let portAssignerStage: LayoutStageVM | undefined
         for (const slot of this.Catalog)
         {
@@ -147,30 +132,26 @@ export class LayoutPipelineService extends ServiceBase
             const key = SLOT_CONFIG_KEY[slot.slotId]
             if (key === undefined) continue
 
-            // The Edge Router combobox gains a synthetic "Diagram (native)"
-            // option that hands routing + port assignment to the diagram
-            // rather than a Fresco pipeline stage.
             const isEdgeRouter = slot.slotId === 'edge-router'
-            const strategies = isEdgeRouter
-                ? [...slot.strategies, DIAGRAM_SIDES_STRATEGY]
-                : slot.strategies
 
-            const stage = new LayoutStageVM(stageLabel(slot.slotId), strategies, (spec) => {
+            const stage = new LayoutStageVM(stageLabel(slot.slotId), slot.strategies, (spec) => {
                 const layout = this.Config.layout as Record<string, unknown>
-                if (isEdgeRouter && spec?.className === DIAGRAM_SIDES_CLASSNAME) {
-                    // Native routing — handled in Run(); keep the Fresco
-                    // edge-router slot clear and disable the Port Assigner.
-                    this.useDiagramSides = true
-                    delete layout[key]
-                    if (portAssignerStage !== undefined) portAssignerStage.Enabled = false
-                    return
-                }
-                if (isEdgeRouter) {
-                    this.useDiagramSides = false
-                    if (portAssignerStage !== undefined) portAssignerStage.Enabled = true
-                }
                 if (spec === undefined) delete layout[key]
                 else layout[key] = spec
+
+                if (isEdgeRouter && portAssignerStage !== undefined) {
+                    if (spec?.className === CARDINAL_SIDE_ROUTER) {
+                        // Native routing owns port assignment: skip Fresco's
+                        // port assigner and disable its combobox.
+                        layout.portAssigner = { off: true }
+                        portAssignerStage.Enabled = false
+                    } else {
+                        // Re-enable and restore the port assigner from its
+                        // own current selection.
+                        portAssignerStage.Enabled = true
+                        portAssignerStage.Reapply()
+                    }
+                }
             })
             stages.Add(stage)
             if (slot.slotId === 'port-assigner') portAssignerStage = stage
@@ -223,13 +204,13 @@ export class LayoutPipelineService extends ServiceBase
         const { graph, index, connectorEdges } = extract(figures, connectors)
 
         let outcome
-        let transformed: Graph
-        let positions: Map<string, Point>
+        let lastRoutes: Map<Edge, EdgeRouting> | undefined
         try {
             const { graphPipeline, layoutPipeline } = BuildPipeline(this.Config, LoadElementRepository())
-            transformed = graphPipeline.Apply(graph)
-            positions = layoutPipeline.Apply(transformed)
+            const transformed = graphPipeline.Apply(graph)
+            const positions = layoutPipeline.Apply(transformed)
             outcome = computeOutcome(index, transformed, positions, (f) => this.sizeOf(f))
+            lastRoutes = layoutPipeline.LastRoutes
         } catch (err) {
             this.Status = `Pipeline error: ${(err as Error).message}`
             return
@@ -247,26 +228,29 @@ export class LayoutPipelineService extends ServiceBase
         this.PreviewPositions = undefined
 
         let status = `Laid out ${plan.mutation.setPositions.length} nodes.`
-        if (this.useDiagramSides) {
-            const n = this.assignDiagramSides(connectorEdges, transformed, positions)
-            status += ` Assigned sides to ${n} connectors.`
-        }
+        const n = this.applyDiagramSides(connectorEdges, lastRoutes)
+        if (n > 0) status += ` Assigned sides to ${n} connectors.`
         this.Status = status
     }
 
-    // Assign a cardinal PortSide to each connector from Fresco's
-    // CardinalSideAssigner, keyed by node-id pair so parallel connectors
-    // share a side (the diagram fans them into slots). Returns the count
-    // of connectors assigned.
-    private assignDiagramSides(
+    // Apply any `sides` routing directives the edge router produced onto the
+    // connectors, keyed by node-id pair so parallel connectors share a side
+    // (the diagram fans them into slots). A point-based router yields no
+    // `sides` entries, so this is a no-op unless the native side router ran.
+    // Returns the count of connectors assigned.
+    private applyDiagramSides(
         connectorEdges: ConnectorEdge[],
-        transformed: Graph,
-        positions: Map<string, Point>,
+        lastRoutes: Map<Edge, EdgeRouting> | undefined,
     ): number
     {
-        const sides = new CardinalSideAssigner().AssignSides(positions, transformed.edges)
+        if (lastRoutes === undefined) return 0
         const byPair = new Map<string, EdgeSideLike>()
-        for (const [edge, es] of sides) byPair.set(`${edge.From}|${edge.To}`, es)
+        for (const [edge, routing] of lastRoutes) {
+            if (routing.kind === 'sides') {
+                byPair.set(`${edge.From}|${edge.To}`, { source: routing.source, target: routing.target })
+            }
+        }
+        if (byPair.size === 0) return 0
         return applySides(connectorEdges, byPair)
     }
 

@@ -61,6 +61,14 @@ export class LayoutStageVM extends Model
     public get Enabled(): boolean { return this.get_property_value(LayoutStageVM.EnabledKey) }
     public set Enabled(v: boolean) { this.set_property_value(LayoutStageVM.EnabledKey, v) }
 
+    // Re-emit the current selection into the pipeline config. Used when an
+    // external change (e.g. another stage being enabled) needs this stage's
+    // value re-applied without the user re-touching the ComboBox.
+    public Reapply(): void
+    {
+        this.onSelected()
+    }
+
     private onSelected(): void
     {
         const strat = this.byName.get(this.Selected)
