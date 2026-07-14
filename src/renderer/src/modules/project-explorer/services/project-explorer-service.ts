@@ -20,6 +20,7 @@ import {
 } from '@pragmatic-lab/mural/runtime'
 import {
     ContentHostService,
+    DialogService,
     ProjectFactoryRegistry,
     type DocumentsContentHostService,
     type IDocument,
@@ -32,6 +33,16 @@ import {
     type ProjectManifestEnvelope,
 } from '../../../services/projects/project-factory.js'
 import type { Project, ProjectNode } from '../../../services/projects/project.js'
+import {
+    NewProjectDialogModel,
+    ProjectTypeChoice,
+    type NewProjectResult,
+} from '../../../services/projects/new-project-dialog-model.js'
+import {
+    OpenProjectDialogModel,
+    type OpenProjectResult,
+} from '../../../services/projects/open-project-dialog-model.js'
+import { RecentProjectsService } from '../../../services/projects/recent-projects-service.js'
 import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'
 import { isLocalFileAccess, type IStorage } from '../../../services/storage/storage.js'
 
@@ -80,23 +91,47 @@ export class ProjectExplorerService extends ServiceBase
     {
         return this.Provider.getRequired(StorageProviderRegistry.Key)
     }
+    private get dialogs(): DialogService { return this.Provider.getRequired(DialogService.Key) }
+    private get recents(): RecentProjectsService { return this.Provider.getRequired(RecentProjectsService.Key) }
     private get host(): DocumentsContentHostService
     {
         return this.Provider.getRequired(ContentHostService.Key) as DocumentsContentHostService
     }
 
-    // Pick a folder → read its manifest envelope → build the project's storage
-    // for the backend the manifest names → route to the matching factory.
-    //
-    // The folder picker is local-only ("locate a project" is a deferred,
-    // backend-specific affordance), so the envelope is read through the default
-    // local storage; the manifest's `storage` field then selects the real
-    // backend the factory persists through.
+    // Open Project: present the recents-or-Browse dialog; open whatever folder it
+    // resolves to. (Locating a project is local-only — a deferred, backend-
+    // specific affordance — so Browse and recents both yield a local folder.)
     private async openProject(): Promise<void>
     {
-        const folder = await this.fs.OpenFolder({ Title: 'Open Project Folder' })
-        if (folder === null) return
+        const recents = await this.recents.List()
+        const vm = new OpenProjectDialogModel(recents, this.fs, (r) => this.dialogs.Close(r))
+        const result = (await this.dialogs.Show({ Title: 'Open Project', Content: vm, Width: 480 })) as OpenProjectResult | undefined
+        if (result === undefined) return
+        await this.openProjectAt(result.location)
+    }
 
+    // New Project: present the full type-picker dialog; create the project in the
+    // chosen folder on the default (local) backend.
+    private async newProject(): Promise<void>
+    {
+        const choices = this.typeChoices()
+        if (choices.length === 0) { this.Status = 'No project factory registered.'; return }
+
+        const vm = new NewProjectDialogModel(
+            choices,
+            this.fs,
+            (r) => this.validateNewProject(r),
+            (r) => this.dialogs.Close(r),
+        )
+        const result = (await this.dialogs.Show({ Title: 'New Project', Content: vm, Width: 520 })) as NewProjectResult | undefined
+        if (result === undefined) return
+        await this.createProjectAt(result.type, result.name, result.location)
+    }
+
+    // Read a folder's manifest envelope → build the project's storage for the
+    // backend it names → route to the matching factory → activate + record.
+    private async openProjectAt(folder: string): Promise<void>
+    {
         const bootstrap = this.storageRegistry.Create(StorageProviderRegistry.DefaultBackendId, folder)
 
         let envelope: ProjectManifestEnvelope
@@ -124,32 +159,45 @@ export class ProjectExplorerService extends ServiceBase
         try {
             const project = await factory.openProject(storage)
             this.setActive(project, factory, storage)
+            await this.recents.Add({ name: project.Name, path: folder, type: envelope.type, openedAt: Date.now() })
             this.Status = `Opened ${project.Name}.`
         } catch (e) {
             this.Status = `Open failed: ${(e as Error).message}`
         }
     }
 
-    // Pick a folder → create a project of the first registered type on the
-    // default (local) backend.
-    private async newProject(): Promise<void>
+    // Create a project of `type` named `name` in `folder`, activate + record it.
+    private async createProjectAt(type: string, name: string, folder: string): Promise<void>
     {
-        const folder = await this.fs.OpenFolder({ Title: 'Choose a folder for the new project' })
-        if (folder === null) return
-
-        const registry = this.Provider.getRequired(ProjectFactoryRegistry.Key)
-        const def = registry.Definitions.ToArray()[0]
-        const factory = def?.Factory !== undefined ? (this.Provider.get(def.Factory) as IProjectFactory | undefined) : undefined
-        if (def === undefined || factory === undefined) { this.Status = 'No project factory registered.'; return }
+        const factory = this.resolveFactory(type)
+        if (factory === undefined) { this.Status = `No factory for project type "${type}".`; return }
 
         const storage = this.storageRegistry.Create(StorageProviderRegistry.DefaultBackendId, folder)
         try {
-            const project = await factory.createProject(storage, basename(folder))
+            const project = await factory.createProject(storage, name)
             this.setActive(project, factory, storage)
+            await this.recents.Add({ name: project.Name, path: folder, type, openedAt: Date.now() })
             this.Status = `Created ${project.Name}.`
         } catch (e) {
             this.Status = `Create failed: ${(e as Error).message}`
         }
+    }
+
+    // One selectable choice per registered project-type factory (Title +
+    // Description straight from the ProjectFactoryDefinition).
+    private typeChoices(): ProjectTypeChoice[]
+    {
+        return this.Provider.getRequired(ProjectFactoryRegistry.Key)
+            .Definitions.ToArray()
+            .map((d) => new ProjectTypeChoice(d.Type, d.Title, d.Description))
+    }
+
+    // New Project validation: refuse a folder that already holds a project.
+    private async validateNewProject(result: NewProjectResult): Promise<string | null>
+    {
+        const storage = this.storageRegistry.Create(StorageProviderRegistry.DefaultBackendId, result.location)
+        if (await storage.Exists(PROJECT_MANIFEST_FILENAME)) return 'Folder already contains a project.'
+        return null
     }
 
     // Create a new empty diagram file in the project root and open it.

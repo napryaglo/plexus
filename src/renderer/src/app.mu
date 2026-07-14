@@ -60,6 +60,10 @@ import EnvironmentService from "./services/environment/environment-service.js"
 // a project's storage through this; remote backends (cloud/REST) register here.
 import StorageProviderRegistry from "./services/storage/storage-provider-registry.js"
 
+// Recent-projects MRU — persists opened/created projects to a JSON file under
+// userData (via FileSystemService), surfaced by the Open Project dialog.
+import RecentProjectsService from "./services/projects/recent-projects-service.js"
+
 // Capability content services + their side-pane templates.
 import PanelsResources from "./services/panels/panels.resources.mu.js"
 
@@ -105,6 +109,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // build a project's rooted IStorage. Root singleton so every consumer
         // shares the same registration set.
         StorageProviderRegistry
+        // Recent-projects MRU (persisted under userData) — the Open Project
+        // dialog lists it; open/create push to it.
+        RecentProjectsService
         // Persistence backend for ApplicationSettings, bound to the framework's
         // SettingsStoreKey (a different token than the impl class itself).
         ElectronSettingsStore -> SettingsStoreKey

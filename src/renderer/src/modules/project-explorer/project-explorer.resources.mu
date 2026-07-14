@@ -8,6 +8,10 @@
 
 import ProjectExplorerService from "./services/project-explorer-service.js"
 import ProjectNode from "../../services/projects/project.js"
+import NewProjectDialogModel from "../../services/projects/new-project-dialog-model.js"
+import ProjectTypeChoice from "../../services/projects/new-project-dialog-model.js"
+import OpenProjectDialogModel from "../../services/projects/open-project-dialog-model.js"
+import RecentProjectItem from "../../services/projects/open-project-dialog-model.js"
 
 resources ProjectExplorerResources {
 
@@ -36,6 +40,75 @@ resources ProjectExplorerResources {
                             TextWrapping = Wrap, Margin = (0,0,0,8) ]
 
                 ItemsControl [ ItemsSource = $Project.Root.Children, ItemsPanel = @VerticalStackPanel ]
+            }
+        }
+    }
+
+    // ── New Project dialog ───────────────────────────────────────────────
+    // One project-type choice: a full row (always shown, even for a single
+    // factory). The leading marker (● / ○) is the VM-toggled selection glyph.
+    DataTemplate [ DataType = ProjectTypeChoice ] {
+        Button [ Variant = Text, Command = $SelectCommand, HorizontalAlignment = Stretch, Margin = (0,1,0,1) ] {
+            DockPanel [ LastChildFill = true ] {
+                TextBlock [ DockPanel.Dock = Left, Text = $Marker, Foreground = @Primary,
+                            Margin = (0,0,10,0), VerticalAlignment = Top ]
+                StackPanel [ Orientation = Vertical ] {
+                    TextBlock [ Style = @BodyLarge, Text = $Title, Foreground = @OnSurface ]
+                    TextBlock [ Style = @BodySmall, Text = $Description, Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
+                }
+            }
+        }
+    }
+
+    // The dialog body (DialogService supplies the surface, title, and padding).
+    DataTemplate [ DataType = NewProjectDialogModel ] {
+        StackPanel [ Orientation = Vertical ] {
+            TextBlock [ Style = @BodyLarge, Text = "Project type", Foreground = @OnSurface, Margin = (0,0,0,4) ]
+            Border [ BorderBrush = @OutlineVariant, BorderThickness = (1,1,1,1), CornerRadius = 6,
+                     Padding = (4,4,4,4), Margin = (0,0,0,14) ] {
+                ItemsControl [ ItemsSource = $Types, ItemsPanel = @VerticalStackPanel ]
+            }
+
+            TextBlock [ Style = @BodyLarge, Text = "Name", Foreground = @OnSurface ]
+            TextBox [ Text = $Name, Margin = (0,4,0,14) ]
+
+            TextBlock [ Style = @BodyLarge, Text = "Location", Foreground = @OnSurface ]
+            DockPanel [ LastChildFill = true, Margin = (0,4,0,8) ] {
+                Button [ DockPanel.Dock = Right, Variant = Outlined, Command = $BrowseCommand, Margin = (8,0,0,0) ] {
+                    TextBlock [ Text = "Browse…" ]
+                }
+                TextBox [ Text = $Location ]
+            }
+
+            TextBlock [ Style = @BodySmall, Text = $Error, Foreground = @Error, TextWrapping = Wrap, Margin = (0,0,0,10) ]
+
+            StackPanel [ Orientation = Horizontal, HorizontalAlignment = Right ] {
+                Button [ Variant = Text, Command = $CancelCommand, Margin = (0,0,8,0) ] { TextBlock [ Text = "Cancel" ] }
+                Button [ Variant = Filled, Command = $ConfirmCommand, IsEnabled = $CanConfirm ] { TextBlock [ Text = "Create" ] }
+            }
+        }
+    }
+
+    // ── Open Project dialog ──────────────────────────────────────────────
+    // One recent-projects row: click to open (OpenCommand closes with its path).
+    DataTemplate [ DataType = RecentProjectItem ] {
+        Button [ Variant = Text, Command = $OpenCommand, HorizontalAlignment = Stretch, Margin = (0,1,0,1) ] {
+            StackPanel [ Orientation = Vertical ] {
+                TextBlock [ Style = @BodyLarge, Text = $Name, Foreground = @OnSurface ]
+                TextBlock [ Style = @BodySmall, Text = $Path, Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
+            }
+        }
+    }
+
+    DataTemplate [ DataType = OpenProjectDialogModel ] {
+        StackPanel [ Orientation = Vertical ] {
+            TextBlock [ Style = @BodyLarge, Text = "Recent", Foreground = @OnSurface, Margin = (0,0,0,4) ]
+            ItemsControl [ ItemsSource = $Recents, ItemsPanel = @VerticalStackPanel ]
+            TextBlock [ Style = @BodySmall, Text = $EmptyLabel, Foreground = @OnSurfaceVariant, Margin = (0,2,0,0) ]
+
+            StackPanel [ Orientation = Horizontal, HorizontalAlignment = Right, Margin = (0,14,0,0) ] {
+                Button [ Variant = Outlined, Command = $BrowseCommand, Margin = (0,0,8,0) ] { TextBlock [ Text = "Browse…" ] }
+                Button [ Variant = Text, Command = $CancelCommand ] { TextBlock [ Text = "Cancel" ] }
             }
         }
     }
