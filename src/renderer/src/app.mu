@@ -55,6 +55,11 @@ import FileSystemService from "./services/file-system/file-system-service.js"
 // Static host environment (dirs, platform, versions, flags). No view resources.
 import EnvironmentService from "./services/environment/environment-service.js"
 
+// Storage-provider seam: maps a backend id → a rooted IStorage factory (seeded
+// with the local-FS backend over FileSystemService). The Project Explorer builds
+// a project's storage through this; remote backends (cloud/REST) register here.
+import StorageProviderRegistry from "./services/storage/storage-provider-registry.js"
+
 // Capability content services + their side-pane templates.
 import PanelsResources from "./services/panels/panels.resources.mu.js"
 
@@ -96,6 +101,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
     .services: {
         FileSystemService
         EnvironmentService
+        // Storage backends, keyed by id; the Project Explorer resolves this to
+        // build a project's rooted IStorage. Root singleton so every consumer
+        // shares the same registration set.
+        StorageProviderRegistry
         // Persistence backend for ApplicationSettings, bound to the framework's
         // SettingsStoreKey (a different token than the impl class itself).
         ElectronSettingsStore -> SettingsStoreKey

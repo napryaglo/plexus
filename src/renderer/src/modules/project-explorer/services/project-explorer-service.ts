@@ -32,6 +32,8 @@ import {
     type ProjectManifestEnvelope,
 } from '../../../services/projects/project-factory.js'
 import type { Project, ProjectNode } from '../../../services/projects/project.js'
+import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'
+import { isLocalFileAccess, type IStorage } from '../../../services/storage/storage.js'
 
 export class ProjectExplorerService extends ServiceBase
 {
@@ -50,9 +52,10 @@ export class ProjectExplorerService extends ServiceBase
     public static readonly SaveActiveCommandKey = Model.RegisterProperty<ICommand>(
         ProjectExplorerService, 'SaveActiveCommand', undefined as unknown as ICommand, MetaData.None)
 
-    // The factory backing the active project — captured at open/create so file
-    // open + save delegate to the same type.
+    // The factory + storage backing the active project — captured at open/create
+    // so file open + save delegate to the same type through the same backend.
     private activeFactory: IProjectFactory | undefined
+    private activeStorage: IStorage | undefined
 
     constructor(provider: IServiceProvider)
     {
@@ -73,20 +76,32 @@ export class ProjectExplorerService extends ServiceBase
     private set Status(v: string) { this.set_property_value(ProjectExplorerService.StatusKey, v) }
 
     private get fs(): FileSystemService { return this.Provider.getRequired(FileSystemService.Key) }
+    private get storageRegistry(): StorageProviderRegistry
+    {
+        return this.Provider.getRequired(StorageProviderRegistry.Key)
+    }
     private get host(): DocumentsContentHostService
     {
         return this.Provider.getRequired(ContentHostService.Key) as DocumentsContentHostService
     }
 
-    // Pick a folder → read its manifest envelope → route to the matching factory.
+    // Pick a folder → read its manifest envelope → build the project's storage
+    // for the backend the manifest names → route to the matching factory.
+    //
+    // The folder picker is local-only ("locate a project" is a deferred,
+    // backend-specific affordance), so the envelope is read through the default
+    // local storage; the manifest's `storage` field then selects the real
+    // backend the factory persists through.
     private async openProject(): Promise<void>
     {
         const folder = await this.fs.OpenFolder({ Title: 'Open Project Folder' })
         if (folder === null) return
 
+        const bootstrap = this.storageRegistry.Create(StorageProviderRegistry.DefaultBackendId, folder)
+
         let envelope: ProjectManifestEnvelope
         try {
-            envelope = JSON.parse(await this.fs.ReadText(join(folder, PROJECT_MANIFEST_FILENAME))) as ProjectManifestEnvelope
+            envelope = JSON.parse(await bootstrap.ReadText(PROJECT_MANIFEST_FILENAME)) as ProjectManifestEnvelope
         } catch {
             this.Status = `No ${PROJECT_MANIFEST_FILENAME} in that folder.`
             return
@@ -95,16 +110,28 @@ export class ProjectExplorerService extends ServiceBase
         const factory = this.resolveFactory(envelope.type)
         if (factory === undefined) { this.Status = `No factory for project type "${envelope.type}".`; return }
 
+        let storage: IStorage
         try {
-            const project = await factory.openProject(folder)
-            this.setActive(project, factory)
+            const backendId = envelope.storage ?? StorageProviderRegistry.DefaultBackendId
+            storage = backendId === StorageProviderRegistry.DefaultBackendId
+                ? bootstrap
+                : this.storageRegistry.Create(backendId, folder)
+        } catch (e) {
+            this.Status = (e as Error).message   // unknown storage backend
+            return
+        }
+
+        try {
+            const project = await factory.openProject(storage)
+            this.setActive(project, factory, storage)
             this.Status = `Opened ${project.Name}.`
         } catch (e) {
             this.Status = `Open failed: ${(e as Error).message}`
         }
     }
 
-    // Pick a folder → create a project of the first registered type.
+    // Pick a folder → create a project of the first registered type on the
+    // default (local) backend.
     private async newProject(): Promise<void>
     {
         const folder = await this.fs.OpenFolder({ Title: 'Choose a folder for the new project' })
@@ -115,9 +142,10 @@ export class ProjectExplorerService extends ServiceBase
         const factory = def?.Factory !== undefined ? (this.Provider.get(def.Factory) as IProjectFactory | undefined) : undefined
         if (def === undefined || factory === undefined) { this.Status = 'No project factory registered.'; return }
 
+        const storage = this.storageRegistry.Create(StorageProviderRegistry.DefaultBackendId, folder)
         try {
-            const project = await factory.createProject(folder, basename(folder))
-            this.setActive(project, factory)
+            const project = await factory.createProject(storage, basename(folder))
+            this.setActive(project, factory, storage)
             this.Status = `Created ${project.Name}.`
         } catch (e) {
             this.Status = `Create failed: ${(e as Error).message}`
@@ -128,13 +156,15 @@ export class ProjectExplorerService extends ServiceBase
     private async newDiagram(): Promise<void>
     {
         const project = this.Project
-        if (project === undefined || this.activeFactory === undefined) { this.Status = 'Open a project first.'; return }
+        if (project === undefined || this.activeFactory === undefined || this.activeStorage === undefined) {
+            this.Status = 'Open a project first.'; return
+        }
         try {
-            const path = await this.activeFactory.newFile(project, 'diagram', `diagram-${project.Root.Children.Count + 1}`)
+            const path = await this.activeFactory.newFile(this.activeStorage, 'diagram', `diagram-${project.Root.Children.Count + 1}`)
             // Refresh the tree so the new file appears, then open it.
-            const refreshed = await this.activeFactory.openProject(project.RootPath)
-            this.setActive(refreshed, this.activeFactory)
-            const doc = await this.activeFactory.openFile(refreshed, path)
+            const refreshed = await this.activeFactory.openProject(this.activeStorage)
+            this.setActive(refreshed, this.activeFactory, this.activeStorage)
+            const doc = await this.activeFactory.openFile(this.activeStorage, path)
             this.host.Open(doc)
             this.Status = `New diagram at ${basename(path)}.`
         } catch (e) {
@@ -142,17 +172,22 @@ export class ProjectExplorerService extends ServiceBase
         }
     }
 
-    // Activate a tree node: open a diagram in a tab, an other file via the OS.
+    // Activate a tree node: open a diagram in a tab; open another file in the OS
+    // default app when the backend supports local access (isLocalFileAccess).
     private async openNode(node: ProjectNode | undefined): Promise<void>
     {
-        if (node === undefined || this.Project === undefined || this.activeFactory === undefined) return
+        if (node === undefined || this.Project === undefined || this.activeFactory === undefined || this.activeStorage === undefined) return
         try {
             if (node.Kind === 'diagram') {
-                const doc = await this.activeFactory.openFile(this.Project, node.Path)
+                const doc = await this.activeFactory.openFile(this.activeStorage, node.Path)
                 this.host.Open(doc)
                 this.Status = `Opened ${node.Name}.`
             } else if (node.Kind === 'file') {
-                await this.fs.OpenExternal(node.Path)
+                if (isLocalFileAccess(this.activeStorage)) {
+                    await this.activeStorage.OpenExternal(node.Path)
+                } else {
+                    this.Status = `Can't open ${node.Name} — this project's storage has no OS access.`
+                }
             }
         } catch (e) {
             this.Status = `Open failed: ${(e as Error).message}`
@@ -179,9 +214,10 @@ export class ProjectExplorerService extends ServiceBase
         return this.Provider.get(def.Factory) as IProjectFactory | undefined
     }
 
-    private setActive(project: Project, factory: IProjectFactory): void
+    private setActive(project: Project, factory: IProjectFactory, storage: IStorage): void
     {
         this.activeFactory = factory
+        this.activeStorage = storage
         this.wireNode(project.Root)
         this.set_property_value(ProjectExplorerService.ProjectKey, project)
     }
@@ -193,12 +229,6 @@ export class ProjectExplorerService extends ServiceBase
         node.OpenCommand = new RelayCommand(() => void this.openNode(node))
         for (const child of node.Children.ToArray()) this.wireNode(child)
     }
-}
-
-function join(dir: string, name: string): string
-{
-    const sep = dir.includes('\\') && !dir.includes('/') ? '\\' : '/'
-    return dir.endsWith(sep) ? dir + name : dir + sep + name
 }
 
 function basename(p: string): string

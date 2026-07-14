@@ -1,15 +1,18 @@
 import type { DiagramStorage } from '@pragmatic-lab/mural/framework'
-import type { FileSystemService } from '../../../services/file-system/file-system-service.js'
+import type { IStorage } from '../../../services/storage/storage.js'
 
 // Backs a single `.diagram` file through mural's DiagramStorage seam, so a
 // DiagramDocument's native Save() / Load() persist the full scene (nodes,
-// connectors, shape text) as JSON to disk — no bespoke serializer needed.
+// connectors, shape text) as JSON — no bespoke serializer needed.
 //
-// DiagramStorage is a synchronous key/value contract, but file I/O is async,
+// It writes through an IStorage at a project-relative Path, so the diagram's
+// backend (local FS today, cloud/REST later) is transparent to the document.
+//
+// DiagramStorage is a synchronous key/value contract, but storage I/O is async,
 // so this mirrors the settings-store pattern: reads are served from an
-// in-memory snapshot (seeded from the file when the document is opened), and
-// SetItem caches synchronously while firing the disk write in the background.
-// Await WhenWritten() after Save() to be sure the bytes hit disk.
+// in-memory snapshot (seeded from storage when the document is opened), and
+// SetItem caches synchronously while firing the write in the background. Await
+// WhenWritten() after Save() to be sure the bytes are persisted.
 //
 // A file holds exactly one diagram, so the storage KEY is ignored — there is a
 // single slot. (mural writes/reads under one fixed internal key.)
@@ -20,7 +23,7 @@ export class FileDiagramStorage implements DiagramStorage
 
     constructor(
         public readonly Path: string,
-        private readonly fs: FileSystemService,
+        private readonly storage: IStorage,
         seed: string | null,
     )
     {
@@ -35,7 +38,7 @@ export class FileDiagramStorage implements DiagramStorage
     public SetItem(_key: string, value: string): void
     {
         this.snapshot = value
-        this.pending = this.fs.WriteText(this.Path, value)
+        this.pending = this.storage.WriteText(this.Path, value)
     }
 
     // Resolves when the most recent SetItem's disk write has completed.
