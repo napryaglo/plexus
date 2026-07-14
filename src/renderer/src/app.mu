@@ -136,6 +136,14 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // the root-scoped launcher reaches the same instance the shell uses
         // (otherwise EditorShell registers it shell-scoped, unreachable from root).
         DocumentsContentHostService -> ContentHostService
+        // Project-type registry (module .projectFactories → factories). Same
+        // root-scope reason as the content host: the generic ProjectExplorerService
+        // is a module (root-scoped) service, so it must reach the registry from
+        // root. EditorShell otherwise registers it shell-scoped — unreachable from
+        // root — which silently breaks New/Open Project (getRequired throws before
+        // any dialog shows). Registering here makes EditorShell's `has()` guard
+        // skip its shell registration and share this one.
+        ProjectFactoryRegistry
         ApplicationSettings
     }
 
