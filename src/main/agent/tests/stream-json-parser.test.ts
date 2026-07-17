@@ -1,8 +1,8 @@
 import { test, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { StreamJsonParser } from './stream-json-parser.js'
-import { AgentEventKind, type AgentEvent, type SessionStartedEvent } from '../../shared/agent-api.js'
+import { StreamJsonParser } from '../stream-json-parser.js'
+import { AgentEventKind, type AgentEvent, type SessionStartedEvent } from '../../../shared/agent-api.js'
 
 function parseFixture(name: string): AgentEvent[] {
     const text = readFileSync(join(__dirname, 'fixtures', name), 'utf8')

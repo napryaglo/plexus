@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { AgentEventKind } from '../../../../../shared/agent-api.js'
-import { TranscriptReducer, UserMessage, AssistantMessage, ToolActivity } from './transcript.js'
+import { AgentEventKind } from '../../../../../../shared/agent-api.js'
+import { TranscriptReducer, UserMessage, AssistantMessage, ToolActivity } from '../transcript.js'
 
 function items(r: TranscriptReducer) { return Array.from(r.Transcript) }
 

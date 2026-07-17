@@ -1,9 +1,9 @@
 import { test, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ClaudeCliProvider } from './claude-cli-provider.js'
-import type { ChildLike, SpawnFn } from './ai-provider.js'
-import { AgentEventKind, type AgentEvent } from '../../shared/agent-api.js'
+import { ClaudeCliProvider } from '../claude-cli-provider.js'
+import type { ChildLike, SpawnFn } from '../ai-provider.js'
+import { AgentEventKind, type AgentEvent } from '../../../shared/agent-api.js'
 
 // A fake child that lets the test drive stdout/error and observe stdin/kill.
 function fakeChild() {

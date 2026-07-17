@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { AgentChannel, AgentEventKind } from './agent-api.js'
+import { AgentChannel, AgentEventKind } from '../agent-api.js'
 
 test('channel ids are namespaced under agent:', () => {
   expect(AgentChannel.StartSession).toBe('agent:start-session')

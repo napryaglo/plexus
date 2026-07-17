@@ -1,8 +1,8 @@
 import { test, expect } from 'vitest'
-import { AgentSession } from './agent-session.js'
-import { AiProviderService } from './ai-provider-service.js'
-import type { AiProviderSession, IAiProvider } from './ai-provider.js'
-import { AgentEventKind, type AgentEvent } from '../../shared/agent-api.js'
+import { AgentSession } from '../agent-session.js'
+import { AiProviderService } from '../ai-provider-service.js'
+import type { AiProviderSession, IAiProvider } from '../ai-provider.js'
+import { AgentEventKind, type AgentEvent } from '../../../shared/agent-api.js'
 
 // A provider that records each started session so the test can drive events and
 // observe routing.
