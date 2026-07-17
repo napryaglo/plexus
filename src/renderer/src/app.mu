@@ -38,6 +38,7 @@ import ArchitectureRepositoryModule from "./modules/architecture-repository/arch
 import TechnologyLibraryModule from "./modules/technology-library/technology-library.module.mu.js"
 import ProjectExplorerModule from "./modules/project-explorer/project-explorer.module.mu.js"
 import ArchitectureMetaModelsModule from "./modules/architecture-meta-models/architecture-meta-models.module.mu.js"
+import AgentChatModule from "./modules/agent-chat/agent-chat.module.mu.js"
 
 // Shared icon dictionary — one Geometry per capability, merged into the app's
 // Resources (via `merge` below) so each module's `Icon = @<Key>` resolves.
@@ -83,6 +84,9 @@ import LayoutInspectorResources from "./modules/diagram/layout/layout-inspector.
 // Project Explorer view — the generic project tree + command bar
 // (DataTemplate[ProjectExplorerService] + recursive DataTemplate[ProjectNode]).
 import ProjectExplorerResources from "./modules/project-explorer/project-explorer.resources.mu.js"
+
+// Agent chat panel (DataTemplate[AgentService] + transcript item templates).
+import AgentChatResources from "./modules/agent-chat/agent-chat.resources.mu.js"
 
 
 // Settings: persistence store, the footer-gear launcher, and the settings-page
@@ -153,6 +157,7 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         TechnologyLibraryModule
         ProjectExplorerModule
         ArchitectureMetaModelsModule
+        AgentChatModule
     }
 
     resources: {
@@ -182,6 +187,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
 
         // Project Explorer tree + command bar (DataTemplate[ProjectExplorerService]).
         merge ProjectExplorerResources
+
+        // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
+        merge AgentChatResources
 
         // The app root — the framework's default EditorShell. All regions are
         // data-driven (services + the active document), so the app declares no
