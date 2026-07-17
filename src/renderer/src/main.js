@@ -16,6 +16,7 @@ import { ContentHostService, InspectorService } from '@pragmatic-lab/mural/frame
 import { DiagramWorkspaceService } from './modules/diagram/services/diagram-workspace-service.js'
 import { attachAutoOpenInspector } from './modules/diagram/behaviors/auto-open-inspector-behavior.js'
 import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'
+import { attachTabSwitchDiagnostics } from './dev/tab-switch-diagnostics.js'
 
 // Surface any uncaught error prominently (a swallowed mount throw shows as a
 // blank white window otherwise).
@@ -26,7 +27,10 @@ window.addEventListener('unhandledrejection', (e) => console.error('[plexus] unh
 // returns fallback widths until the @font-face resolves.
 await document.fonts.load('24px "Material Symbols Outlined"')
 try {
-    app.initialize(new HtmlTarget(document.getElementById('app')))
+    const renderTarget = new HtmlTarget(document.getElementById('app'))
+    app.initialize(renderTarget)
+    // TEMPORARY: tab→canvas swap diagnostic (remove once root-caused).
+    attachTabSwitchDiagnostics(app, renderTarget)
     // Contribute the right-aligned status-bar colour-scheme picker (a service-
     // bound shell control) before opening the first document, so the toolbar
     // service surfaces it on the document-open rebuild.
