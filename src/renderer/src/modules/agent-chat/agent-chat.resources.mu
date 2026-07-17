@@ -12,6 +12,18 @@ import ToolActivity from "./services/transcript.js"
 resources AgentChatResources {
     DataTemplate [ DataType = AgentService ] {
         DockPanel [ LastChildFill = true, Margin = (12,12,12,12) ] {
+            resources: {
+                // Enter-to-send. The single-line TextBox leaves Return unhandled,
+                // so KeyDown bubbles to the input-row DockPanel (a descendant this
+                // implicit style matches). The EventTrigger invokes SubmitCommand,
+                // which sends only on Return and clears $Draft. A Style is the only
+                // place `on <Event>` is allowed; DockPanel has no default style to
+                // clobber and its local Dock/Margin attrs win over the (setter-less)
+                // style.
+                Style [ TargetType = DockPanel ] {
+                    on KeyDown { InvokeCommand [ Command = $SubmitCommand ] }
+                }
+            }
             // Input row pinned to the bottom.
             DockPanel [ DockPanel.Dock = Bottom, LastChildFill = true, Margin = (0,8,0,0) ] {
                 Button  [ DockPanel.Dock = Right, Variant = Filled, Command = $SendCommand, Margin = (8,0,0,0) ] {

@@ -4,6 +4,7 @@
 // and a coarse status for the chat DataTemplate to bind. Module-local: named by
 // the agent-chat module's Capability ServiceKey.
 import {
+    Key,
     MetaData,
     Model,
     ObservableCollection,
@@ -29,6 +30,10 @@ export class AgentService extends ServiceBase
         AgentService, 'Status', 'idle', MetaData.None)
     public static readonly SendCommandKey = Model.RegisterProperty<ICommand>(
         AgentService, 'SendCommand', undefined as unknown as ICommand, MetaData.None)
+    // Bound to a KeyDown EventTrigger on the input row; fires the turn only when
+    // the pressed key is Return (the trigger fires for every bubbled keystroke).
+    public static readonly SubmitCommandKey = Model.RegisterProperty<ICommand>(
+        AgentService, 'SubmitCommand', undefined as unknown as ICommand, MetaData.None)
 
     private readonly reducer = new TranscriptReducer()
     private readonly agent: IAgentApi
@@ -50,6 +55,11 @@ export class AgentService extends ServiceBase
 
         this.set_property_value(AgentService.TranscriptKey, this.reducer.Transcript)
         this.set_property_value(AgentService.SendCommandKey, new RelayCommand(() => this.send()))
+        // Receives the KeyDown's KeyEventArgs; sends only on Return so plain typing
+        // in the input doesn't post a turn.
+        this.set_property_value(AgentService.SubmitCommandKey, new RelayCommand((arg) => {
+            if ((arg as { Key?: unknown } | undefined)?.Key === Key.Return) this.send()
+        }))
 
         // Fold every pushed agent event into the transcript.
         this.agent.onEvent((event) => this.reducer.apply(event))
@@ -60,6 +70,7 @@ export class AgentService extends ServiceBase
     public set Draft(value: string) { this.set_property_value(AgentService.DraftKey, value) }
     public get Status(): string { return this.get_property_value(AgentService.StatusKey) }
     public get SendCommand(): ICommand { return this.get_property_value(AgentService.SendCommandKey) }
+    public get SubmitCommand(): ICommand { return this.get_property_value(AgentService.SubmitCommandKey) }
 
     private send(): void
     {
