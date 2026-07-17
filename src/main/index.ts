@@ -4,6 +4,16 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerFileSystemHandlers } from './filesystem.js'
 import { registerEnvironmentHandlers } from './environment.js'
 import { registerSettingsHandlers } from './settings.js'
+import { registerAgentHandlers } from './agent.js'
+
+// Dev only: disable the renderer's HTTP cache. mural is served LIVE by Vite as
+// a pre-bundle-excluded dep (see electron.vite.config.ts), but Chromium caches
+// those dep modules by their immutable `?v=<hash>` URL — and that hash is tied
+// to the OTHER optimized deps, so it stays constant across restarts. The net
+// effect is a rebuilt framework dist getting silently masked by stale cached
+// modules. Turning the HTTP cache off makes every reload re-fetch the live dist.
+// Must run before app 'ready' — hence module top-level, not inside whenReady.
+if (is.dev) app.commandLine.appendSwitch('disable-http-cache')
 
 // Main process — owns the window and (later) the native capabilities Plexus
 // reaches for as a desktop app: file open/save for diagram documents, the
@@ -53,6 +63,9 @@ app.whenReady().then(() => {
   // Settings persistence (userData/settings.json), backing the framework's
   // ApplicationSettings via the renderer's ElectronSettingsStore.
   registerSettingsHandlers()
+  // Agent runtime — owns the claude CLI child + session, exposed to the renderer
+  // as command handlers plus a pushed event stream (AgentChannel.Event).
+  registerAgentHandlers()
 
   createWindow()
 
