@@ -11,6 +11,7 @@ import {
 } from '../shared/file-system-api.js'
 import { EnvironmentChannel, type EnvironmentInfo } from '../shared/environment-api.js'
 import { SettingsChannel, type ISettingsBridge } from '../shared/settings-api.js'
+import { AgentChannel, type AgentEvent, type IAgentApi } from '../shared/agent-api.js'
 
 // Preload — the ONLY place renderer and main meet, across the context bridge.
 // Exposes Plexus's native surface as a small typed `api`. The renderer wraps
@@ -58,7 +59,25 @@ const settings: ISettingsBridge = {
   },
 }
 
-const api = { fs, environment, settings }
+// Agent runtime bridge. Commands are ipcRenderer.invoke round-trips; onEvent
+// subscribes to the pushed AgentChannel.Event stream and returns an unsubscribe.
+// sendTurn forwards the working directory + text (matching the SendTurn handler).
+const agent: IAgentApi = {
+  startSession: (workingDirectory: string): Promise<void> =>
+    ipcRenderer.invoke(AgentChannel.StartSession, workingDirectory),
+  sendTurn: (workingDirectory: string, text: string): Promise<void> =>
+    ipcRenderer.invoke(AgentChannel.SendTurn, workingDirectory, text),
+  abort: (): Promise<void> => ipcRenderer.invoke(AgentChannel.Abort),
+  onEvent: (handler: (event: AgentEvent) => void): (() => void) => {
+    const listener = (_e: unknown, event: AgentEvent): void => handler(event)
+    ipcRenderer.on(AgentChannel.Event, listener)
+    return () => {
+      ipcRenderer.removeListener(AgentChannel.Event, listener)
+    }
+  },
+}
+
+const api = { fs, environment, settings, agent }
 
 if (process.contextIsolated) {
   try {
