@@ -26,8 +26,8 @@ resources AgentChatResources {
             }
             // Input row pinned to the bottom.
             DockPanel [ DockPanel.Dock = Bottom, LastChildFill = true, Margin = (0,8,0,0) ] {
-                Button  [ DockPanel.Dock = Right, Variant = Filled, Command = $SendCommand, Margin = (8,0,0,0) ] {
-                    TextBlock [ Text = "Send" ]
+                PanelButton [ DockPanel.Dock = Right, Command = $SendCommand, Margin = (8,0,0,0) ] {
+                    Shape [ Geometry = @ArrowUpward, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
                 }
                 TextBox [ Text = $Draft ]
             }

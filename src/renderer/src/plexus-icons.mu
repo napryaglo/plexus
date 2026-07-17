@@ -21,4 +21,13 @@ resources PlexusIcons {
 
     // Activity-bar footer action (VSCode-style settings gear).
     include "icons/settings.svg"                 as Settings
+
+    // Send affordance for the agent-chat input (up-arrow, Material arrow_upward).
+    include "icons/arrow-upward.svg"             as ArrowUpward
+
+    // Project Explorer command-bar glyphs (Open / New / New Diagram / Save).
+    include "icons/folder.svg"                   as Folder
+    include "icons/new-folder.svg"               as NewFolder
+    include "icons/note-add.svg"                 as NoteAdd
+    include "icons/save.svg"                      as Save
 }

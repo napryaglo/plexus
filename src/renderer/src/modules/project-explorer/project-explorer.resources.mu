@@ -30,10 +30,18 @@ resources ProjectExplorerResources {
             StackPanel [ Orientation = Vertical, Margin = (8,8,8,8) ] {
 
                 StackPanel [ Orientation = Horizontal, Margin = (0,0,0,8) ] {
-                    Button [ Content = "Open",        Margin = (0,0,4,0), Command = $OpenProjectCommand ]
-                    Button [ Content = "New",         Margin = (0,0,4,0), Command = $NewProjectCommand ]
-                    Button [ Content = "New Diagram", Margin = (0,0,4,0), Command = $NewDiagramCommand ]
-                    Button [ Content = "Save",                            Command = $SaveActiveCommand ]
+                    PanelButton [ Margin = (0,0,4,0), Command = $OpenProjectCommand ] {
+                        Shape [ Geometry = @Folder, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                    }
+                    PanelButton [ Margin = (0,0,4,0), Command = $NewProjectCommand ] {
+                        Shape [ Geometry = @NewFolder, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                    }
+                    PanelButton [ Margin = (0,0,4,0), Command = $NewDiagramCommand ] {
+                        Shape [ Geometry = @NoteAdd, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                    }
+                    PanelButton [ Command = $SaveActiveCommand ] {
+                        Shape [ Geometry = @Save, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                    }
                 }
 
                 TextBlock [ Style = @BodySmall, Text = $Status, Foreground = @OnSurfaceVariant,
