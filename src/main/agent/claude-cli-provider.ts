@@ -17,8 +17,12 @@ const CLI_ARGS = [
     '--permission-mode', 'acceptEdits', // auto-approve edits; cwd bounds blast radius
 ]
 
+// shell:true is required on Windows, where `claude` is a `.cmd` shim that Node
+// (≥20) refuses to spawn directly. Args are a fixed flag list and the user's
+// text goes over stdin (never interpolated into the command line), so there is
+// no shell-injection surface.
 const defaultSpawn: SpawnFn = (command, args, options) =>
-    nodeSpawn(command, args, { cwd: options.cwd, stdio: ['pipe', 'pipe', 'pipe'] }) as unknown as ChildLike
+    nodeSpawn(command, args, { cwd: options.cwd, stdio: ['pipe', 'pipe', 'pipe'], shell: true }) as unknown as ChildLike
 
 export class ClaudeCliProvider implements IAiProvider
 {
