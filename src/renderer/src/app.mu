@@ -88,6 +88,12 @@ import ProjectExplorerResources from "./modules/project-explorer/project-explore
 // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
 import AgentChatResources from "./modules/agent-chat/agent-chat.resources.mu.js"
 
+// Code editor: opens files as Monaco-backed CodeDocuments (a DomHost carries
+// Monaco's DOM into the SVG surface via <foreignObject>). CodeEditorService
+// opens/dedupes tabs; CodeEditorResources carries DataTemplate[CodeDocument].
+import CodeEditorService from "./modules/code-editor/code-editor-service.js"
+import CodeEditorResources from "./modules/code-editor/code-editor.resources.mu.js"
+
 
 // Settings: persistence store, the footer-gear launcher, and the settings-page
 // view resources. ApplicationSettings (framework, auto-provided by EditorShell)
@@ -149,6 +155,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // skip its shell registration and share this one.
         ProjectFactoryRegistry
         ApplicationSettings
+        // Code editor: opens files as Monaco-backed document tabs. Resolves the
+        // content host + FileSystemService lazily, so registration order is free.
+        CodeEditorService
     }
 
     .modules: {
@@ -190,6 +199,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
 
         // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
         merge AgentChatResources
+
+        // Code editor (DataTemplate[CodeDocument] declares a CodeEditor — a
+        // DomHost subclass hosting Monaco, self-bound to the document's Content).
+        merge CodeEditorResources
 
         // The app root — the framework's default EditorShell. All regions are
         // data-driven (services + the active document), so the app declares no

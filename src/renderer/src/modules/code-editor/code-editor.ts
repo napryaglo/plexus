@@ -1,0 +1,125 @@
+import * as monaco from 'monaco-editor'
+import './monaco-env.js'
+import { DomHost } from '@pragmatic-lab/mural/basic'
+import { DataContextBinding, Model, MetaData, Size, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+
+// A DomHost that hosts a Monaco editor. It IS the foreign control — overriding
+// DomHost.CreateHostElement to build Monaco inside the slot-filling host
+// element. It is a pure VIEW: the document (its DataContext) owns the text and
+// save/dirty, exactly as a Diagram binds a DiagramDocument's Nodes. The editor
+// is declared directly in DataTemplate[CodeDocument] and configured by property
+// bindings:
+//
+//     CodeEditor [ Text = $Content, Language = $Language ]
+//
+// Text is BindsTwoWayByDefault, so a user's edits flow back into the document's
+// Content DP without an explicit binding mode. Monaco ↔ Text stays in sync
+// through an `updating` guard that suppresses the echo in whichever direction
+// isn't the origin of a given change.
+export class CodeEditor extends DomHost
+{
+    // The editor's text, TwoWay by default: the document binds $Content here and
+    // receives edits back through the same binding.
+    public static readonly TextKey = Model.RegisterProperty<string>(
+        CodeEditor, 'Text', '', MetaData.BindsTwoWayByDefault)
+
+    // Monaco language id (e.g. 'typescript'). The document derives it from the
+    // file extension and binds $Language.
+    public static readonly LanguageKey = Model.RegisterProperty<string>(
+        CodeEditor, 'Language', 'plaintext', MetaData.None)
+
+    private editor: monaco.editor.IStandaloneCodeEditor | undefined
+    // True while WE push a change across the Monaco↔DP boundary, so the
+    // resulting echo on the other side is ignored (no feedback loop).
+    private updating = false
+
+    // The editor is declared bare in DataTemplate[CodeDocument] and binds itself
+    // to its DataContext (the document) here. This is exactly what markup
+    // `Text = $Content, Language = $Language` would emit — relocated into the
+    // control because the .mu compiler can't resolve an app-local control's DP
+    // metadata to bind its properties in markup (only framework controls). Text
+    // is BindsTwoWayByDefault, so edits flow back to the document's Content.
+    constructor()
+    {
+        super()
+        // `as unknown as T`: set_property_value accepts a Binding at runtime
+        // (Model special-cases `value instanceof Binding`); the cast satisfies
+        // its typed signature — the same idiom mural uses (inspector-stack.ts).
+        this.set_property_value(
+            CodeEditor.TextKey, DataContextBinding(this, 'Content') as unknown as string)
+        this.set_property_value(
+            CodeEditor.LanguageKey, DataContextBinding(this, 'Language') as unknown as string)
+    }
+
+    public get Text(): string { return this.get_property_value(CodeEditor.TextKey) }
+    public set Text(v: string) { this.set_property_value(CodeEditor.TextKey, v) }
+
+    public get Language(): string { return this.get_property_value(CodeEditor.LanguageKey) }
+    public set Language(v: string) { this.set_property_value(CodeEditor.LanguageKey, v) }
+
+    // Build the host element (DomHost's sized container) and mount Monaco into
+    // it, seeded from the current Text/Language. Runs once, lazily, from
+    // HostElement — which MeasureOverride pokes the first time this control is
+    // measured in the tree, so the editor materialises as soon as it has a slot.
+    protected override CreateHostElement(document: Document): HTMLElement
+    {
+        const el = super.CreateHostElement(document)
+        this.editor = monaco.editor.create(el, {
+            value:           this.Text,
+            language:        this.Language,
+            automaticLayout: true,
+            minimap:         { enabled: false },
+        })
+        // Monaco → DP: push user edits into Text (ignored when WE set the value).
+        this.editor.onDidChangeModelContent(() =>
+        {
+            if (this.updating) return
+            this.updating = true
+            this.Text = this.editor?.getValue() ?? ''
+            this.updating = false
+        })
+        return el
+    }
+
+    // Self-materialise: touching HostElement the first time we're measured in
+    // the tree runs CreateHostElement, so no external code has to poke us to
+    // mount. (Base DomHost stays lazy — an empty host has nothing to show.)
+    protected override MeasureOverride(available: Size): Size
+    {
+        void this.HostElement
+        return super.MeasureOverride(available)
+    }
+
+    protected override OnPropertyChanged(
+        descriptor: PropertyDescriptor,
+        oldValue: unknown,
+        newValue: unknown,
+    ): void
+    {
+        super.OnPropertyChanged(descriptor, oldValue, newValue)
+        if (this.editor === undefined) return
+        // DP → Monaco: reflect an external Text change (initial load, a
+        // programmatic set) into the buffer, unless Monaco itself was the origin.
+        if (descriptor.Name === 'Text' && !this.updating)
+        {
+            const next = newValue as string
+            if (this.editor.getValue() !== next)
+            {
+                this.updating = true
+                this.editor.setValue(next)
+                this.updating = false
+            }
+        }
+        else if (descriptor.Name === 'Language')
+        {
+            const model = this.editor.getModel()
+            if (model !== null) monaco.editor.setModelLanguage(model, newValue as string)
+        }
+    }
+
+    public dispose(): void
+    {
+        this.editor?.dispose()
+        this.editor = undefined
+    }
+}

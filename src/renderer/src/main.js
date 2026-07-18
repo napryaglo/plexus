@@ -17,6 +17,8 @@ import { DiagramWorkspaceService } from './modules/diagram/services/diagram-work
 import { attachAutoOpenInspector } from './modules/diagram/behaviors/auto-open-inspector-behavior.js'
 import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'
 import { attachTabSwitchDiagnostics } from './dev/tab-switch-diagnostics.js'
+import { CodeEditorService } from './modules/code-editor/code-editor-service.js'
+import { EnvironmentService } from './services/environment/environment-service.js'
 
 // Surface any uncaught error prominently (a swallowed mount throw shows as a
 // blank white window otherwise).
@@ -43,6 +45,18 @@ try {
     const host = app.Services.get(ContentHostService.Key)
     const workspace = app.Services.get(DiagramWorkspaceService.Key)
     if (host !== undefined && workspace !== undefined) host.Open(workspace.Document)
+
+    // Open a scratch file in the app's storage folder as a Monaco-backed code
+    // document (DomHost + Monaco through a document tab). Opened after the
+    // diagram so the editor tab is the active one on launch. The file need not
+    // exist — the editor opens empty and Save() creates it under userData.
+    const codeEditor = app.Services.get(CodeEditorService.Key)
+    const env = app.Services.get(EnvironmentService.Key)
+    if (codeEditor !== undefined && env !== undefined)
+    {
+        const sep = env.PathSeparator ?? '/'
+        codeEditor.OpenFile(`${env.UserDataDirectory}${sep}scratch.md`)
+    }
 
     // Auto-open the Format Shape inspector the first time a shape is selected.
     // Watches the document's ActiveView (published when the canvas mounts), so it
