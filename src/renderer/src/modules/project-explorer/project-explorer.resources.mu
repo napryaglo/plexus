@@ -1,19 +1,46 @@
 // project-explorer.resources.mu — the Project Explorer's left-panel view.
 //
 // Renders the generic ProjectExplorerService: a small command bar (Open / New
-// project, New Diagram, Save), a status line, and the project file tree. The
-// tree is a recursive DataTemplate[ProjectNode] — each node shows a row bound
-// to its OpenCommand and an ItemsControl over its Children, which resolve back
-// to this same template by DataType, giving arbitrary-depth folders.
+// project, Save), a status line, and the OPEN PROJECTS — each an OpenProject
+// root (a header row carrying a right-click context menu of project-specific
+// actions: New File / Publish / Close) over its file tree. A node's row binds
+// its OpenCommand; the recursive DataTemplate[ProjectNode] gives arbitrary-depth
+// folders.
 
 import ProjectExplorerService from "./services/project-explorer-service.js"
 import ProjectNode from "../../services/projects/project.js"
+import OpenProject from "../../services/projects/open-project.js"
 import NewProjectDialogModel from "../../services/projects/new-project-dialog-model.js"
 import ProjectTypeChoice from "../../services/projects/new-project-dialog-model.js"
 import OpenProjectDialogModel from "../../services/projects/open-project-dialog-model.js"
 import RecentProjectItem from "../../services/projects/open-project-dialog-model.js"
 
 resources ProjectExplorerResources {
+
+    // The project-specific actions — a shared context menu opened on a project's
+    // header row. Its Command bindings resolve against that row's OpenProject.
+    ContextMenu x:key="ProjectContextMenu" {
+        MenuItem
+            [ Header = "New File",
+              Command = $NewFileCommand,
+              Icon = Shape [ Geometry = @NoteAdd, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuItem
+            [ Header = "Publish",
+              Command = $PublishCommand,
+              Icon = Shape [ Geometry = @Publish, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuSeparator
+        MenuItem [ Header = "Close Project", Command = $CloseCommand ]
+    }
+
+    // One open project: a header row (name + context menu) over its file tree.
+    DataTemplate [ DataType = OpenProject ] {
+        StackPanel [ Orientation = Vertical, Margin = (0,0,0,6) ] {
+            Button [ Content = $Name, Variant = Text, HorizontalAlignment = Stretch, Margin = (0,2,0,2),
+                     ContextMenuService.ContextMenu = @ProjectContextMenu ]
+            ItemsControl [ ItemsSource = $Root.Children, ItemsPanel = @VerticalStackPanel,
+                           Margin = (12,0,0,0) ]
+        }
+    }
 
     // One tree node: its row + (recursively) its children, indented.
     DataTemplate [ DataType = ProjectNode ] {
@@ -36,21 +63,15 @@ resources ProjectExplorerResources {
                     PanelButton [ Margin = (0,0,4,0), Command = $NewProjectCommand ] {
                         Shape [ Geometry = @NewFolder, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
                     }
-                    PanelButton [ Margin = (0,0,4,0), Command = $NewFileCommand ] {
-                        Shape [ Geometry = @NoteAdd, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
-                    }
-                    PanelButton [ Margin = (0,0,4,0), Command = $SaveActiveCommand ] {
+                    PanelButton [ Command = $SaveActiveCommand ] {
                         Shape [ Geometry = @Save, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
-                    }
-                    PanelButton [ Command = $PublishCommand ] {
-                        Shape [ Geometry = @Publish, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
                     }
                 }
 
                 TextBlock [ Style = @BodySmall, Text = $Status, Foreground = @OnSurfaceVariant,
                             TextWrapping = Wrap, Margin = (0,0,0,8) ]
 
-                ItemsControl [ ItemsSource = $Roots, ItemsPanel = @VerticalStackPanel ]
+                ItemsControl [ ItemsSource = $OpenProjects, ItemsPanel = @VerticalStackPanel ]
             }
         }
     }
