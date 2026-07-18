@@ -4,9 +4,11 @@ import { MetaData, Model, ObservableCollection, type ICommand } from '@pragmatic
 // factory populates. `Project` and `ProjectNode` are Models so the explorer's
 // TreeView binds them directly (Name/Kind per item, Children for expansion).
 
-// What a tree node represents. 'diagram' is a file the active factory can open
-// in-app; 'file' is any other attachment (opened via the OS); 'folder' groups.
-export type ProjectNodeKind = 'folder' | 'diagram' | 'file'
+// What a tree node represents. 'diagram' and 'todl' are files the active factory
+// opens in-app (each is a factory format kind — the explorer routes any node
+// whose kind matches a declared format to openFile); 'file' is any other
+// attachment (opened via the OS); 'folder' groups.
+export type ProjectNodeKind = 'folder' | 'diagram' | 'todl' | 'file'
 
 export class ProjectNode extends Model
 {

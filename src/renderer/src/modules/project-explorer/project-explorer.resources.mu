@@ -36,11 +36,14 @@ resources ProjectExplorerResources {
                     PanelButton [ Margin = (0,0,4,0), Command = $NewProjectCommand ] {
                         Shape [ Geometry = @NewFolder, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
                     }
-                    PanelButton [ Margin = (0,0,4,0), Command = $NewDiagramCommand ] {
+                    PanelButton [ Margin = (0,0,4,0), Command = $NewFileCommand ] {
                         Shape [ Geometry = @NoteAdd, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
                     }
-                    PanelButton [ Command = $SaveActiveCommand ] {
+                    PanelButton [ Margin = (0,0,4,0), Command = $SaveActiveCommand ] {
                         Shape [ Geometry = @Save, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                    }
+                    PanelButton [ Command = $PublishCommand ] {
+                        Shape [ Geometry = @Publish, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
                     }
                 }
 

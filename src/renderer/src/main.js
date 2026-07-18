@@ -19,6 +19,11 @@ import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'
 import { attachTabSwitchDiagnostics } from './dev/tab-switch-diagnostics.js'
 import { CodeEditorService } from './modules/code-editor/code-editor-service.js'
 import { EnvironmentService } from './services/environment/environment-service.js'
+import { registerTodlLanguage } from './modules/meta-model/todl-language.js'
+
+// Register the 'todl' Monaco language once, before any editor mounts, so .todl
+// documents get syntax colouring. (Diagnostics/squiggles are independent of it.)
+registerTodlLanguage()
 
 // Surface any uncaught error prominently (a swallowed mount throw shows as a
 // blank white window otherwise).

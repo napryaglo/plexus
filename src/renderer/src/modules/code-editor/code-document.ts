@@ -1,6 +1,7 @@
-import { Model, MetaData, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { Model, MetaData, ObservableCollection, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
 import type { IDocument } from '@pragmatic-lab/mural/framework'
-import type { FileSystemService } from '../../services/file-system/file-system-service.js'
+import type { ICodeFile } from './code-file.js'
+import type { EditorDiagnostic } from './editor-diagnostic.js'
 
 function fileName(path: string): string
 {
@@ -9,11 +10,11 @@ function fileName(path: string): string
 }
 
 // Minimal file-extension → Monaco language id. Unknown extensions fall back to
-// plaintext.
+// plaintext. `todl` maps to the meta-model module's registered language.
 const LANGUAGE_BY_EXT: Record<string, string> = {
     ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript',
     json: 'json', md: 'markdown', css: 'css', html: 'html', xml: 'xml',
-    py: 'python', yaml: 'yaml', yml: 'yaml',
+    py: 'python', yaml: 'yaml', yml: 'yaml', todl: 'todl',
 }
 
 function languageForPath(path: string): string
@@ -26,12 +27,15 @@ function languageForPath(path: string): string
 // the shell's content host alongside diagrams and settings. It is the VM: it
 // OWNS the text (Content) and the load/save/dirty lifecycle — exactly as a
 // DiagramDocument owns its Nodes. The view is a CodeEditor declared in
-// DataTemplate[CodeDocument] that binds $Content (TwoWay) and $Language; the
-// document never touches the editor.
+// DataTemplate[CodeDocument] that binds $Content (TwoWay), $Language, and
+// $Diagnostics; the document never touches the editor.
 //
-// Id / Title / IsDirty / Content / Language are DP-backed: the tab strip binds
-// Id / Title, the editor binds Content / Language, and bindings resolve through
-// the property system. Id is the file path, so re-opening dedupes to one tab.
+// Persistence flows through an injected ICodeFile, so the document is agnostic
+// to whether its bytes live on the raw file system (FileSystemCodeFile) or in a
+// project's rooted IStorage (StorageCodeFile). Id / Title / IsDirty / Content /
+// Language / Diagnostics are DP-backed: the tab strip binds Id / Title, the
+// editor binds Content / Language / Diagnostics. Id is the file's identity, so
+// re-opening dedupes to one tab.
 export class CodeDocument extends Model implements IDocument
 {
     public static readonly IdKey = Model.RegisterProperty<string>(
@@ -44,7 +48,7 @@ export class CodeDocument extends Model implements IDocument
         CodeDocument, 'IsDirty', false, MetaData.None)
 
     // The text — the source of truth. The editor two-way binds this, so its
-    // edits land here; Save() persists it and load() seeds it from disk.
+    // edits land here; Save() persists it and load() seeds it from the file.
     public static readonly ContentKey = Model.RegisterProperty<string>(
         CodeDocument, 'Content', '', MetaData.None)
 
@@ -52,19 +56,26 @@ export class CodeDocument extends Model implements IDocument
     public static readonly LanguageKey = Model.RegisterProperty<string>(
         CodeDocument, 'Language', 'plaintext', MetaData.None)
 
-    private readonly path: string
-    private readonly fs: FileSystemService
-    // Last value written to / read from disk. IsDirty = Content !== this.
+    // Diagnostics against the current text — a generic channel a validation
+    // producer (e.g. the meta-model validator) fills; the editor binds it and
+    // renders the entries as Monaco markers. Empty ⇒ no squiggles. Nothing in
+    // the generic code path writes here; a producer replaces the collection's
+    // contents on each pass.
+    public static readonly DiagnosticsKey = Model.RegisterProperty<ObservableCollection<EditorDiagnostic>>(
+        CodeDocument, 'Diagnostics', undefined as unknown as ObservableCollection<EditorDiagnostic>, MetaData.None)
+
+    private readonly file: ICodeFile
+    // Last value written to / read from the file. IsDirty = Content !== this.
     private savedContent = ''
 
-    constructor(path: string, fs: FileSystemService)
+    constructor(file: ICodeFile)
     {
         super()
-        this.path = path
-        this.fs = fs
-        this.set_property_value(CodeDocument.IdKey, path)
-        this.set_property_value(CodeDocument.TitleKey, fileName(path))
-        this.set_property_value(CodeDocument.LanguageKey, languageForPath(path))
+        this.file = file
+        this.set_property_value(CodeDocument.IdKey, file.id)
+        this.set_property_value(CodeDocument.TitleKey, fileName(file.id))
+        this.set_property_value(CodeDocument.LanguageKey, languageForPath(file.id))
+        this.set_property_value(CodeDocument.DiagnosticsKey, new ObservableCollection<EditorDiagnostic>())
         void this.load()
     }
 
@@ -79,20 +90,22 @@ export class CodeDocument extends Model implements IDocument
 
     public get Language(): string { return this.get_property_value(CodeDocument.LanguageKey) }
 
+    public get Diagnostics(): ObservableCollection<EditorDiagnostic> { return this.get_property_value(CodeDocument.DiagnosticsKey) }
+
     public async Save(): Promise<void>
     {
         const text = this.Content
-        await this.fs.WriteText(this.path, text)
+        await this.file.write(text)
         this.savedContent = text
         this.set_property_value(CodeDocument.IsDirtyKey, false)
     }
 
-    // Seed Content from disk (empty on miss / error). The write goes through the
-    // DP so a bound editor picks it up; savedContent is set so this initial fill
-    // reads as clean, not a user edit.
+    // Seed Content from the file (empty on miss / error). The write goes through
+    // the DP so a bound editor picks it up; savedContent is set so this initial
+    // fill reads as clean, not a user edit.
     private async load(): Promise<void>
     {
-        const text = await this.fs.ReadText(this.path).catch(() => '')
+        const text = await this.file.read().catch(() => '')
         this.savedContent = text
         this.set_property_value(CodeDocument.ContentKey, text)
         this.set_property_value(CodeDocument.IsDirtyKey, false)
@@ -106,7 +119,7 @@ export class CodeDocument extends Model implements IDocument
     {
         super.OnPropertyChanged(descriptor, oldValue, newValue)
         // Any Content change (a user edit arriving through the two-way binding)
-        // updates dirty by comparing against what's on disk.
+        // updates dirty by comparing against what's on the file.
         if (descriptor.Name === 'Content')
         {
             this.set_property_value(

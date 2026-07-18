@@ -3,6 +3,7 @@ import { ContentHostService } from '@pragmatic-lab/mural/framework'
 import type { DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
 import { FileSystemService } from '../../services/file-system/file-system-service.js'
 import { CodeDocument } from './code-document.js'
+import { FileSystemCodeFile } from './code-file.js'
 
 // Opens files as Monaco-backed code documents in the shell's content host.
 // Dedupes by path so re-opening a file re-activates its existing tab rather than
@@ -31,7 +32,7 @@ export class CodeEditorService extends ServiceBase
         let doc = this.open.get(path)
         if (doc === undefined)
         {
-            doc = new CodeDocument(path, this.fs)
+            doc = new CodeDocument(new FileSystemCodeFile(this.fs, path))
             this.open.set(path, doc)
         }
         this.host.Open(doc)

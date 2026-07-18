@@ -1,0 +1,31 @@
+// meta-model.module.mu — the Meta-model module.
+//
+// A ShellModule that contributes the "meta-model" PROJECT TYPE (not a nav
+// capability). A user creates a Meta-model project from New Project, authors
+// .todl definitions inside it (validated live by MetaModelValidationService),
+// and publishes the compiled model + sources into the meta-models storage
+// backend. A pure contributor — services + a project factory, no Capability —
+// so it declares no rail entry; the project type is reached via New Project.
+//
+// Mirrors the diagram module's contribution shape (see diagram.module.mu):
+// `.services:` registers the factory + validator, and `.projectFactories:`
+// routes a folder whose manifest type is "meta-model" to the factory via the
+// ProjectFactoryRegistry.
+
+import MetaModelProjectFactory from "./services/meta-model-project-factory.js"
+import MetaModelValidationService from "./services/meta-model-validation-service.js"
+
+module MetaModelModule [ Name = "Meta-model" ] {
+    .services: {
+        MetaModelProjectFactory
+        MetaModelValidationService
+    }
+
+    .projectFactories: {
+        ProjectFactoryDefinition
+            [ Type        = "meta-model",
+              Title       = "Meta-model Project",
+              Description = "Author and validate TODL meta-model definitions.",
+              Factory     = MetaModelProjectFactory ]
+    }
+}

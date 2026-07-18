@@ -31,6 +31,7 @@ import {
 import { FileSystemService } from '../../../services/file-system/file-system-service.js'
 import {
     PROJECT_MANIFEST_FILENAME,
+    isPublishable,
     type IProjectFactory,
     type ProjectManifestEnvelope,
 } from '../../../services/projects/project-factory.js'
@@ -66,10 +67,12 @@ export class ProjectExplorerService extends ServiceBase
         ProjectExplorerService, 'OpenProjectCommand', undefined as unknown as ICommand, MetaData.None)
     public static readonly NewProjectCommandKey = Model.RegisterProperty<ICommand>(
         ProjectExplorerService, 'NewProjectCommand', undefined as unknown as ICommand, MetaData.None)
-    public static readonly NewDiagramCommandKey = Model.RegisterProperty<ICommand>(
-        ProjectExplorerService, 'NewDiagramCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly NewFileCommandKey = Model.RegisterProperty<ICommand>(
+        ProjectExplorerService, 'NewFileCommand', undefined as unknown as ICommand, MetaData.None)
     public static readonly SaveActiveCommandKey = Model.RegisterProperty<ICommand>(
         ProjectExplorerService, 'SaveActiveCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly PublishCommandKey = Model.RegisterProperty<ICommand>(
+        ProjectExplorerService, 'PublishCommand', undefined as unknown as ICommand, MetaData.None)
 
     // The factory + storage backing the active project — captured at open/create
     // so file open + save delegate to the same type through the same backend.
@@ -82,8 +85,9 @@ export class ProjectExplorerService extends ServiceBase
         this.set_property_value(ProjectExplorerService.RootsKey, new ObservableCollection<ProjectNode>())
         this.set_property_value(ProjectExplorerService.OpenProjectCommandKey, new RelayCommand(() => void this.openProject()))
         this.set_property_value(ProjectExplorerService.NewProjectCommandKey, new RelayCommand(() => void this.newProject()))
-        this.set_property_value(ProjectExplorerService.NewDiagramCommandKey, new RelayCommand(() => void this.newDiagram()))
+        this.set_property_value(ProjectExplorerService.NewFileCommandKey, new RelayCommand(() => void this.newFile()))
         this.set_property_value(ProjectExplorerService.SaveActiveCommandKey, new RelayCommand(() => void this.saveActive()))
+        this.set_property_value(ProjectExplorerService.PublishCommandKey, new RelayCommand(() => void this.publish()))
     }
 
     public get Project(): Project | undefined { return this.get_property_value(ProjectExplorerService.ProjectKey) }
@@ -91,8 +95,9 @@ export class ProjectExplorerService extends ServiceBase
     public get Status(): string { return this.get_property_value(ProjectExplorerService.StatusKey) }
     public get OpenProjectCommand(): ICommand { return this.get_property_value(ProjectExplorerService.OpenProjectCommandKey) }
     public get NewProjectCommand(): ICommand { return this.get_property_value(ProjectExplorerService.NewProjectCommandKey) }
-    public get NewDiagramCommand(): ICommand { return this.get_property_value(ProjectExplorerService.NewDiagramCommandKey) }
+    public get NewFileCommand(): ICommand { return this.get_property_value(ProjectExplorerService.NewFileCommandKey) }
     public get SaveActiveCommand(): ICommand { return this.get_property_value(ProjectExplorerService.SaveActiveCommandKey) }
+    public get PublishCommand(): ICommand { return this.get_property_value(ProjectExplorerService.PublishCommandKey) }
 
     private set Status(v: string) { this.set_property_value(ProjectExplorerService.StatusKey, v) }
 
@@ -210,33 +215,37 @@ export class ProjectExplorerService extends ServiceBase
         return null
     }
 
-    // Create a new empty diagram file in the project root and open it.
-    private async newDiagram(): Promise<void>
+    // Create a new empty file of the active factory's primary format and open it.
+    private async newFile(): Promise<void>
     {
         const project = this.Project
         if (project === undefined || this.activeFactory === undefined || this.activeStorage === undefined) {
             this.Status = 'Open a project first.'; return
         }
+        const format = this.activeFactory.formats[0]
+        if (format === undefined) { this.Status = 'This project type has no file format.'; return }
         try {
-            const path = await this.activeFactory.newFile(this.activeStorage, 'diagram', `diagram-${project.Root.Children.Count + 1}`)
+            const path = await this.activeFactory.newFile(this.activeStorage, format.kind, `${format.kind}-${project.Root.Children.Count + 1}`)
             // Refresh the tree so the new file appears, then open it.
             const refreshed = await this.activeFactory.openProject(this.activeStorage)
             this.setActive(refreshed, this.activeFactory, this.activeStorage)
             const doc = await this.activeFactory.openFile(this.activeStorage, path)
             this.host.Open(doc)
-            this.Status = `New diagram at ${basename(path)}.`
+            this.Status = `New ${format.displayName} at ${basename(path)}.`
         } catch (e) {
-            this.Status = `New diagram failed: ${(e as Error).message}`
+            this.Status = `New file failed: ${(e as Error).message}`
         }
     }
 
-    // Activate a tree node: open a diagram in a tab; open another file in the OS
-    // default app when the backend supports local access (isLocalFileAccess).
+    // Activate a tree node: open a factory-format file in a tab (any node whose
+    // kind matches a declared format), or open another file in the OS default
+    // app when the backend supports local access (isLocalFileAccess).
     private async openNode(node: ProjectNode | undefined): Promise<void>
     {
         if (node === undefined || this.Project === undefined || this.activeFactory === undefined || this.activeStorage === undefined) return
         try {
-            if (node.Kind === 'diagram') {
+            const openable = this.activeFactory.formats.some((f) => f.kind === node.Kind)
+            if (openable) {
                 const doc = await this.activeFactory.openFile(this.activeStorage, node.Path)
                 this.host.Open(doc)
                 this.Status = `Opened ${node.Name}.`
@@ -249,6 +258,24 @@ export class ProjectExplorerService extends ServiceBase
             }
         } catch (e) {
             this.Status = `Open failed: ${(e as Error).message}`
+        }
+    }
+
+    // Publish the active project through its factory, when the factory supports
+    // it (feature-tested — the generic host stays ignorant of what publishing
+    // means). Surfaces the factory's PublishResult message as the status.
+    private async publish(): Promise<void>
+    {
+        const project = this.Project
+        if (project === undefined || this.activeFactory === undefined || this.activeStorage === undefined) {
+            this.Status = 'Open a project first.'; return
+        }
+        if (!isPublishable(this.activeFactory)) { this.Status = "This project type can't be published."; return }
+        try {
+            const result = await this.activeFactory.publish(project, this.activeStorage, this.Provider)
+            this.Status = result.message
+        } catch (e) {
+            this.Status = `Publish failed: ${(e as Error).message}`
         }
     }
 

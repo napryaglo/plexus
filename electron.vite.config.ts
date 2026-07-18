@@ -28,6 +28,14 @@ export default defineConfig({
           find: /^opentype\.js$/,
           replacement: fileURLToPath(new URL('./src/renderer/opentype-shim.mjs', import.meta.url)),
         },
+        // @pragmatic-lab/todl exposes only a ROOT ('.') export, whose nested
+        // import.default → dist/index.js trips Vite's resolvePackageEntry (as
+        // it does for mural's root — hence subpath imports everywhere else).
+        // Redirect the bare specifier straight to the built entry.
+        {
+          find: /^@pragmatic-lab\/todl$/,
+          replacement: fileURLToPath(new URL('./node_modules/@pragmatic-lab/todl/dist/index.js', import.meta.url)),
+        },
       ],
     },
     // mural is a `file:../..` linked package under active development. Vite's
