@@ -1,4 +1,5 @@
 import type { IDocument } from '@pragmatic-lab/mural/framework'
+import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import type { IStorage } from '../storage/storage.js'
 import type { Project } from './project.js'
 
@@ -57,4 +58,26 @@ export interface IProjectFactory
     openFile(storage: IStorage, path: string): Promise<IDocument>
     saveFile(document: IDocument): Promise<void>
     newFile(storage: IStorage, format: string, name: string): Promise<string>
+}
+
+// The outcome of a publish — surfaced verbatim by the explorer as its status.
+export interface PublishResult
+{
+    ok:      boolean
+    message: string
+}
+
+// Optional capability a factory MAY also implement: producing a shareable
+// artifact from the project. The explorer feature-tests with isPublishable
+// before offering its Publish command — the same pattern as ILocalFileAccess.
+// `provider` is passed so publish can resolve a destination backend / services.
+export interface IPublishableProjectFactory
+{
+    publish(project: Project, storage: IStorage, provider: IServiceProvider): Promise<PublishResult>
+}
+
+// Type guard: does this factory support publishing?
+export function isPublishable(factory: IProjectFactory): factory is IProjectFactory & IPublishableProjectFactory
+{
+    return typeof (factory as Partial<IPublishableProjectFactory>).publish === 'function'
 }
