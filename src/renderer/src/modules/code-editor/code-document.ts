@@ -1,6 +1,7 @@
-import { Model, MetaData, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { Model, MetaData, ObservableCollection, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
 import type { IDocument } from '@pragmatic-lab/mural/framework'
 import type { FileSystemService } from '../../services/file-system/file-system-service.js'
+import type { EditorDiagnostic } from './editor-diagnostic.js'
 
 function fileName(path: string): string
 {
@@ -52,6 +53,14 @@ export class CodeDocument extends Model implements IDocument
     public static readonly LanguageKey = Model.RegisterProperty<string>(
         CodeDocument, 'Language', 'plaintext', MetaData.None)
 
+    // Diagnostics against the current text — a generic channel a validation
+    // producer (e.g. the meta-model validator) fills; the editor binds it and
+    // renders the entries as Monaco markers. Empty ⇒ no squiggles. Nothing in
+    // the generic code path writes here; a producer replaces the collection's
+    // contents on each pass.
+    public static readonly DiagnosticsKey = Model.RegisterProperty<ObservableCollection<EditorDiagnostic>>(
+        CodeDocument, 'Diagnostics', undefined as unknown as ObservableCollection<EditorDiagnostic>, MetaData.None)
+
     private readonly path: string
     private readonly fs: FileSystemService
     // Last value written to / read from disk. IsDirty = Content !== this.
@@ -65,6 +74,7 @@ export class CodeDocument extends Model implements IDocument
         this.set_property_value(CodeDocument.IdKey, path)
         this.set_property_value(CodeDocument.TitleKey, fileName(path))
         this.set_property_value(CodeDocument.LanguageKey, languageForPath(path))
+        this.set_property_value(CodeDocument.DiagnosticsKey, new ObservableCollection<EditorDiagnostic>())
         void this.load()
     }
 
@@ -78,6 +88,8 @@ export class CodeDocument extends Model implements IDocument
     public set Content(v: string) { this.set_property_value(CodeDocument.ContentKey, v) }
 
     public get Language(): string { return this.get_property_value(CodeDocument.LanguageKey) }
+
+    public get Diagnostics(): ObservableCollection<EditorDiagnostic> { return this.get_property_value(CodeDocument.DiagnosticsKey) }
 
     public async Save(): Promise<void>
     {
