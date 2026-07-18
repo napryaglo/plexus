@@ -16,6 +16,7 @@ import { CodeDocument } from '../../code-editor/code-document.js'
 import { StorageCodeFile } from '../../code-editor/code-file.js'
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
 import { collectTodlSources, extname, joinRel } from './todl-sources.js'
+import { MetaModelValidationService } from './meta-model-validation-service.js'
 
 // The 'meta-model' project type's factory — the meta-model module's contribution
 // to the generic ProjectExplorerService (declared via `.projectFactories:` and
@@ -54,13 +55,23 @@ export class MetaModelProjectFactory extends ServiceBase implements IProjectFact
             id: slugify(name), modelVersion: '0.1.0',
         }
         await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
+        this.attachValidation(storage)
         return this.buildProject(storage, manifest)
     }
 
     public async openProject(storage: IStorage): Promise<Project>
     {
         const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as MetaModelManifest
+        this.attachValidation(storage)
         return this.buildProject(storage, manifest)
+    }
+
+    // Bind the whole-project validator to this project's storage so open .todl
+    // documents get live squiggles. Optional (`get`, not `getRequired`) — absent
+    // in unit tests, where the factory has no real service graph.
+    private attachValidation(storage: IStorage): void
+    {
+        this.Provider.get(MetaModelValidationService.Key)?.SetProject(storage)
     }
 
     public async saveProject(project: Project, storage: IStorage): Promise<void>
