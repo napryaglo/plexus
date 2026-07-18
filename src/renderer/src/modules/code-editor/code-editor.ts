@@ -1,7 +1,11 @@
 import * as monaco from 'monaco-editor'
 import './monaco-env.js'
 import { DomHost } from '@pragmatic-lab/mural/basic'
-import { DataContextBinding, Model, MetaData, Size, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { Color, DataContextBinding, Model, MetaData, Size, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { SolidColorBrush } from '@pragmatic-lab/mural/visual-engine'
+
+// The Monaco theme name this control defines from mural's resolved tokens.
+const MURAL_THEME = 'mural'
 
 // A DomHost that hosts a Monaco editor. It IS the foreign control — overriding
 // DomHost.CreateHostElement to build Monaco inside the slot-filling host
@@ -64,9 +68,14 @@ export class CodeEditor extends DomHost
     protected override CreateHostElement(document: Document): HTMLElement
     {
         const el = super.CreateHostElement(document)
+        // Build Monaco's theme from mural's live tokens BEFORE create so the
+        // editor never flashes its default palette. We're in the tree by now
+        // (MeasureOverride poked us), so TryFindResource resolves app resources.
+        const theme = this.defineMuralTheme()
         this.editor = monaco.editor.create(el, {
             value:           this.Text,
             language:        this.Language,
+            theme,
             automaticLayout: true,
             minimap:         { enabled: false },
         })
@@ -121,5 +130,59 @@ export class CodeEditor extends DomHost
     {
         this.editor?.dispose()
         this.editor = undefined
+    }
+
+    // Resolve a mural color token (@Surface, @OnSurface, …) off this control's
+    // resource scope. Returns the token's Color, or undefined if unresolved /
+    // not a solid brush (the theme then falls back to the Monaco base).
+    private themeColor(token: string): Color | undefined
+    {
+        const brush = this.TryFindResource(token)
+        return brush instanceof SolidColorBrush ? brush.Color : undefined
+    }
+
+    // Define the 'mural' Monaco theme from the resolved surface tokens — chrome
+    // only (background, gutter, line numbers, cursor, selection, line highlight,
+    // widget borders); syntax token colors stay the Monaco base's, which is
+    // tuned for legibility. Base (vs / vs-dark) is chosen from Surface luminance
+    // so a light or dark mural scheme both read correctly. Resolved once at
+    // mount — a runtime theme switch won't live-update the editor.
+    private defineMuralTheme(): string
+    {
+        const surface        = this.themeColor('Surface')
+        const onSurface      = this.themeColor('OnSurface')
+        const onSurfaceVar   = this.themeColor('OnSurfaceVariant')
+        const primary        = this.themeColor('Primary')
+        const outlineVariant = this.themeColor('OutlineVariant')
+        const container      = this.themeColor('SurfaceContainer')
+        const containerHigh  = this.themeColor('SurfaceContainerHighest')
+
+        const colors: Record<string, string> = {}
+        const set = (key: string, c: Color | undefined): void => { if (c !== undefined) colors[key] = c.ToHex() }
+        set('editor.background',                surface)
+        set('editor.foreground',                onSurface)
+        set('editorGutter.background',          surface)
+        set('editorLineNumber.foreground',      onSurfaceVar)
+        set('editorLineNumber.activeForeground', onSurface)
+        set('editorCursor.foreground',          primary)
+        // Selection is a translucent Primary wash so the text under it stays readable.
+        if (primary !== undefined) colors['editor.selectionBackground'] = primary.WithAlpha(0x4d).ToHex()
+        set('editor.lineHighlightBackground',   containerHigh)
+        set('editorIndentGuide.background',     outlineVariant)
+        set('editorWidget.background',          container)
+        set('editorWidget.border',              outlineVariant)
+        set('editorHoverWidget.background',     container)
+        set('editorHoverWidget.border',         outlineVariant)
+
+        // Relative luminance (Rec. 601) of Surface decides light vs dark base.
+        const dark = surface === undefined
+            || (0.299 * surface.R + 0.587 * surface.G + 0.114 * surface.B) < 128
+        monaco.editor.defineTheme(MURAL_THEME, {
+            base:    dark ? 'vs-dark' : 'vs',
+            inherit: true,
+            rules:   [],
+            colors,
+        })
+        return MURAL_THEME
     }
 }
