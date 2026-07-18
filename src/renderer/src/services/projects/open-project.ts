@@ -22,7 +22,7 @@ export class OpenProject extends Model
     static readonly CloseCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'CloseCommand', undefined, MetaData.None)
 
-    private readonly project: Project
+    private project: Project
     private readonly factory: IProjectFactory
     private readonly storage: IStorage
 
@@ -32,6 +32,16 @@ export class OpenProject extends Model
         this.project = project
         this.factory = factory
         this.storage = storage
+        this.set_property_value(OpenProject.NameKey, project.Name)
+        this.set_property_value(OpenProject.RootKey, project.Root)
+    }
+
+    // Adopt a freshly-scanned Project (same factory/storage) — after a New File
+    // rebuilds the tree. Updates the Name/Root DPs so the bound view refreshes;
+    // the caller re-wires the new nodes' OpenCommands.
+    public Adopt(project: Project): void
+    {
+        this.project = project
         this.set_property_value(OpenProject.NameKey, project.Name)
         this.set_property_value(OpenProject.RootKey, project.Root)
     }
