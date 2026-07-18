@@ -11,6 +11,7 @@ import ProjectExplorerService from "./services/project-explorer-service.js"
 import OpenProject from "../../services/projects/open-project.js"
 import ProjectNode from "../../services/projects/project.js"
 import KindToGeometry from "../../services/projects/project-node-icon.js"
+import ExpandedToChevron from "../../services/projects/project-node-icon.js"
 import NewProjectDialogModel from "../../services/projects/new-project-dialog-model.js"
 import ProjectTypeChoice from "../../services/projects/new-project-dialog-model.js"
 import OpenProjectDialogModel from "../../services/projects/open-project-dialog-model.js"
@@ -53,12 +54,23 @@ resources ProjectExplorerResources {
     // re-scans Root, and the ItemsSource binding re-projects automatically.
     DataTemplate [ DataType = OpenProject ] {
         StackPanel [ Orientation = Vertical, Margin = (0,0,0,6) ] {
-            Button [ Variant = Text, HorizontalAlignment = Stretch, Margin = (0,2,0,2),
+            // Collapsible project header: a chevron toggle + the name — no button
+            // chrome on the row. The transparent Border makes the whole header a
+            // right-click target for the project context menu; the chevron folds
+            // the tree via IsExpanded (glyph + tree Visibility both bind to it).
+            Border [ Background = #00000000, HorizontalAlignment = Stretch, Margin = (0,2,0,2),
                      ContextMenuService.ContextMenu = @ProjectContextMenu ] {
-                TextBlock [ Style = @LabelLarge, Text = $Name, Foreground = @OnSurfaceVariant ]
+                DockPanel [ LastChildFill = true ] {
+                    PanelButton [ DockPanel.Dock = Left, Command = $ToggleExpandedCommand, Margin = (0,0,4,0) ] {
+                        Shape [ Geometry = $IsExpanded << ExpandedToChevron, Fill = @OnSurfaceVariant,
+                                Width = 12, Height = 12, VerticalAlignment = Center ]
+                    }
+                    TextBlock [ Style = @LabelLarge, Text = $Name, Foreground = @OnSurfaceVariant,
+                                VerticalAlignment = Center ]
+                }
             }
-            TreeView [ Indent = 14, ItemsSource = $Root.Children,
-                       ItemTemplate = @ProjectNodeTemplate, SelectedDataItem = $SelectedNode ]
+            TreeView [ Indent = 14, ItemsSource = $Root.Children, ItemTemplate = @ProjectNodeTemplate,
+                       SelectedDataItem = $SelectedNode, Visibility = $IsExpanded << ToVisibility ]
         }
     }
 

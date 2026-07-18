@@ -1,9 +1,11 @@
-// project-node-icon.ts — maps a ProjectNode's Kind to its leading glyph.
+// project-node-icon.ts — the project explorer's small glyph converters.
 //
-// The project tree renders declaratively now (a HierarchicalDataTemplate over
-// ProjectNode.Children — see project-explorer.resources.mu). The per-kind icon
-// is the one data-driven bit a template can't express as a static resource, so
-// it flows through this value converter: `Geometry = $Kind << KindToGeometry`.
+// The project tree renders declaratively (a HierarchicalDataTemplate over
+// ProjectNode.Children — see project-explorer.resources.mu). Two bits are
+// data-driven glyphs a template can't express as a static resource, so each
+// flows through a value converter: the per-kind node icon (`$Kind <<
+// KindToGeometry`) and the project header's expand/collapse chevron
+// (`$IsExpanded << ExpandedToChevron`).
 import { Application, type ValueConverter } from '@pragmatic-lab/mural/runtime'
 
 import type { ProjectNodeKind } from './project.js'
@@ -29,4 +31,12 @@ export function iconKeyForKind(kind: ProjectNodeKind): string
 export const KindToGeometry: ValueConverter = {
     convert: (kind: unknown) =>
         Application.current?.Resources.Resolve(iconKeyForKind(kind as ProjectNodeKind)),
+}
+
+// Maps a project header's IsExpanded flag to its twisty glyph — down when
+// expanded, right when collapsed — using the theme's shared Chevron* geometries
+// (the same ones the TreeView rows paint).
+export const ExpandedToChevron: ValueConverter = {
+    convert: (expanded: unknown) =>
+        Application.current?.Resources.Resolve(expanded ? 'ChevronDown' : 'ChevronRight'),
 }
