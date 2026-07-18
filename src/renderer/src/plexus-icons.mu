@@ -17,7 +17,7 @@ resources PlexusIcons {
     include "icons/architecture-repository.svg"  as ArchitectureRepository
     include "icons/technology-library.svg"       as TechnologyLibrary
     include "icons/project-explorer.svg"         as ProjectExplorer
-    include "icons/architecture-meta-models.svg" as ArchitectureMetaModels
+    include "icons/ontologies.svg"               as Ontologies
 
     // Activity-bar footer action (VSCode-style settings gear).
     include "icons/settings.svg"                 as Settings
