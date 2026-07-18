@@ -1,9 +1,8 @@
-import { MetaData, Model, type ICommand, type Visual } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, type ICommand, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
 
 import type { IProjectFactory } from './project-factory.js'
 import type { IStorage } from '../storage/storage.js'
-import type { Project, ProjectNode } from './project.js'
-import { mountProjectTree } from './project-tree.js'
+import { ProjectNode, type Project } from './project.js'
 
 // One open project in the explorer — the VM the tree renders as a collapsible
 // root. It bundles the project's model (Name + file tree) with the factory and
@@ -22,11 +21,17 @@ export class OpenProject extends Model
         OpenProject, 'PublishCommand', undefined, MetaData.None)
     static readonly CloseCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'CloseCommand', undefined, MetaData.None)
+    // The tree's selected node — two-way target of the TreeView's
+    // SelectedDataItem. Selecting a row pushes the ProjectNode here; the
+    // OnPropertyChanged hook activates it (a leaf opens, a folder no-ops via its
+    // OpenCommand). Lets the whole tree stay declarative (ItemsSource +
+    // HierarchicalDataTemplate) with no view-tree wiring.
+    static readonly SelectedNodeKey = Model.RegisterProperty<ProjectNode | undefined>(
+        OpenProject, 'SelectedNode', undefined, MetaData.None)
 
     private project: Project
     private readonly factory: IProjectFactory
     private readonly storage: IStorage
-    private disposeTree: (() => void) | undefined
 
     constructor(project: Project, factory: IProjectFactory, storage: IStorage)
     {
@@ -38,13 +43,15 @@ export class OpenProject extends Model
         this.set_property_value(OpenProject.RootKey, project.Root)
     }
 
-    // Called by the ContentPresenter when this project's DataTemplate mounts —
-    // wire the file-tree TreeView (populate + open-on-select + Root-swap
-    // refresh). Re-mounting disposes the previous wiring first.
-    public OnViewMounted(view: Visual): void
+    // Activate the node the tree just selected — run its OpenCommand (wired by
+    // ProjectExplorerService.wireNodes: a leaf opens its file, a folder no-ops).
+    protected override OnPropertyChanged(descriptor: PropertyDescriptor, oldValue: unknown, newValue: unknown): void
     {
-        this.disposeTree?.()
-        this.disposeTree = mountProjectTree(view, this)
+        super.OnPropertyChanged(descriptor, oldValue, newValue)
+        if (descriptor.Name === 'SelectedNode' && newValue instanceof ProjectNode)
+        {
+            newValue.OpenCommand?.Execute(undefined)
+        }
     }
 
     // Adopt a freshly-scanned Project (same factory/storage) — after a New File
@@ -68,6 +75,9 @@ export class OpenProject extends Model
 
     public get CloseCommand(): ICommand | undefined { return this.get_property_value(OpenProject.CloseCommandKey) }
     public set CloseCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.CloseCommandKey, v) }
+
+    public get SelectedNode(): ProjectNode | undefined { return this.get_property_value(OpenProject.SelectedNodeKey) }
+    public set SelectedNode(v: ProjectNode | undefined) { this.set_property_value(OpenProject.SelectedNodeKey, v) }
 
     // The backing project model, factory, and storage (read-only to the explorer).
     public get Project(): Project { return this.project }

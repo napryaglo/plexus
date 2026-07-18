@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 
-import { iconKeyForKind } from '../project-tree.js'
+import { iconKeyForKind } from '../project-node-icon.js'
 
 // The leading glyph key each ProjectNodeKind maps to (resource keys registered
 // in plexus-icons.mu). 'folder' reuses the command-bar @Folder; the file kinds

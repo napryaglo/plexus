@@ -9,6 +9,8 @@
 
 import ProjectExplorerService from "./services/project-explorer-service.js"
 import OpenProject from "../../services/projects/open-project.js"
+import ProjectNode from "../../services/projects/project.js"
+import KindToGeometry from "../../services/projects/project-node-icon.js"
 import NewProjectDialogModel from "../../services/projects/new-project-dialog-model.js"
 import ProjectTypeChoice from "../../services/projects/new-project-dialog-model.js"
 import OpenProjectDialogModel from "../../services/projects/open-project-dialog-model.js"
@@ -31,19 +33,32 @@ resources ProjectExplorerResources {
         MenuItem [ Header = "Close Project", Command = $CloseCommand ]
     }
 
-    // One open project: a VSCode-style header row (bold, uppercase name +
-    // right-click context menu) over the project's file tree. `x:root` owns the
-    // NameScope so `x:name="tree"` registers and OpenProject.OnViewMounted can
-    // FindName the TreeView to populate it (see project-tree.ts). The tree
-    // itself — chevrons, indent guides, full-row hover, selection, and per-kind
-    // leading icons — is the framework's default TreeView chrome.
+    // One tree row: a per-kind leading icon (Kind → geometry via KindToGeometry)
+    // and the node's name. `itemsselector = Children` recurses the template down
+    // the tree; the framework's default TreeView chrome supplies the chevrons,
+    // indent guides, full-row hover, and selection.
+    HierarchicalDataTemplate x:key="ProjectNodeTemplate"
+        [ DataType = ProjectNode, itemsselector = Children ] {
+        StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
+            Shape [ Geometry = $Kind << KindToGeometry, Fill = @OnSurfaceVariant,
+                    Width = 16, Height = 16, Margin = (0,0,6,0), VerticalAlignment = Center ]
+            TextBlock [ Text = $Name, Style = @BodyMedium, VerticalAlignment = Center ]
+        }
+    }
+
+    // One open project: a header row (name + right-click context menu) over its
+    // file tree. The tree binds declaratively — ItemsSource walks the project's
+    // node tree, ItemTemplate renders each node, and SelectedDataItem pushes the
+    // clicked node to OpenProject.SelectedNode (which opens it). A New File
+    // re-scans Root, and the ItemsSource binding re-projects automatically.
     DataTemplate [ DataType = OpenProject ] {
-        StackPanel x:root [ Orientation = Vertical, Margin = (0,0,0,6) ] {
+        StackPanel [ Orientation = Vertical, Margin = (0,0,0,6) ] {
             Button [ Variant = Text, HorizontalAlignment = Stretch, Margin = (0,2,0,2),
                      ContextMenuService.ContextMenu = @ProjectContextMenu ] {
                 TextBlock [ Style = @LabelLarge, Text = $Name, Foreground = @OnSurfaceVariant ]
             }
-            TreeView x:name="tree" [ Indent = 14 ]
+            TreeView [ Indent = 14, ItemsSource = $Root.Children,
+                       ItemTemplate = @ProjectNodeTemplate, SelectedDataItem = $SelectedNode ]
         }
     }
 
