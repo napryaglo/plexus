@@ -1,11 +1,16 @@
 import * as monaco from 'monaco-editor'
 import './monaco-env.js'
 import { DomHost } from '@pragmatic-lab/mural/basic'
-import { Color, DataContextBinding, Model, MetaData, Size, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { Color, DataContextBinding, Model, MetaData, ObservableCollection, Size, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
 import { SolidColorBrush } from '@pragmatic-lab/mural/visual-engine'
+import { toMarkers, type EditorDiagnostic } from './editor-diagnostic.js'
 
 // The Monaco theme name this control defines from mural's resolved tokens.
 const MURAL_THEME = 'mural'
+
+// Owner id for the markers this control sets — namespaces our diagnostics so
+// setModelMarkers replaces only ours, never another provider's.
+const MARKER_OWNER = 'meta-model'
 
 // A DomHost that hosts a Monaco editor. It IS the foreign control — overriding
 // DomHost.CreateHostElement to build Monaco inside the slot-filling host
@@ -32,10 +37,19 @@ export class CodeEditor extends DomHost
     public static readonly LanguageKey = Model.RegisterProperty<string>(
         CodeEditor, 'Language', 'plaintext', MetaData.None)
 
+    // Diagnostics against the text — the document binds its Diagnostics channel
+    // here; we render them as Monaco markers. It is one ObservableCollection
+    // instance whose CONTENTS change (Clear/Add) rather than being replaced, so
+    // we subscribe to the collection, not just the DP.
+    public static readonly DiagnosticsKey = Model.RegisterProperty<ObservableCollection<EditorDiagnostic>>(
+        CodeEditor, 'Diagnostics', undefined as unknown as ObservableCollection<EditorDiagnostic>, MetaData.None)
+
     private editor: monaco.editor.IStandaloneCodeEditor | undefined
     // True while WE push a change across the Monaco↔DP boundary, so the
     // resulting echo on the other side is ignored (no feedback loop).
     private updating = false
+    // Unsubscribe from the currently-bound Diagnostics collection.
+    private diagUnsub: (() => void) | undefined
 
     // The editor is declared bare in DataTemplate[CodeDocument] and binds itself
     // to its DataContext (the document) here. This is exactly what markup
@@ -53,6 +67,9 @@ export class CodeEditor extends DomHost
             CodeEditor.TextKey, DataContextBinding(this, 'Content') as unknown as string)
         this.set_property_value(
             CodeEditor.LanguageKey, DataContextBinding(this, 'Language') as unknown as string)
+        this.set_property_value(
+            CodeEditor.DiagnosticsKey,
+            DataContextBinding(this, 'Diagnostics') as unknown as ObservableCollection<EditorDiagnostic>)
     }
 
     public get Text(): string { return this.get_property_value(CodeEditor.TextKey) }
@@ -60,6 +77,11 @@ export class CodeEditor extends DomHost
 
     public get Language(): string { return this.get_property_value(CodeEditor.LanguageKey) }
     public set Language(v: string) { this.set_property_value(CodeEditor.LanguageKey, v) }
+
+    public get Diagnostics(): ObservableCollection<EditorDiagnostic> | undefined
+    {
+        return this.get_property_value(CodeEditor.DiagnosticsKey)
+    }
 
     // Build the host element (DomHost's sized container) and mount Monaco into
     // it, seeded from the current Text/Language. Runs once, lazily, from
@@ -87,7 +109,27 @@ export class CodeEditor extends DomHost
             this.Text = this.editor?.getValue() ?? ''
             this.updating = false
         })
+        // Catch up on diagnostics bound before the editor existed (the binding may
+        // resolve before mount), and reflect any already-present ones.
+        this.bindDiagnostics(this.Diagnostics)
         return el
+    }
+
+    // (Re)subscribe to a bound Diagnostics collection and render it. The document
+    // mutates one collection instance in place (Clear/Add), so we listen to the
+    // collection's changes; applyMarkers no-ops until the editor exists.
+    private bindDiagnostics(collection: ObservableCollection<EditorDiagnostic> | undefined): void
+    {
+        this.diagUnsub?.()
+        this.diagUnsub = collection?.Subscribe(() => this.applyMarkers())
+        this.applyMarkers()
+    }
+
+    private applyMarkers(): void
+    {
+        const model = this.editor?.getModel()
+        if (model === null || model === undefined) return
+        monaco.editor.setModelMarkers(model, MARKER_OWNER, toMarkers(this.Diagnostics?.ToArray() ?? []))
     }
 
     // Self-materialise: touching HostElement the first time we're measured in
@@ -106,6 +148,13 @@ export class CodeEditor extends DomHost
     ): void
     {
         super.OnPropertyChanged(descriptor, oldValue, newValue)
+        // Rebind diagnostics even before the editor mounts (subscription is cheap;
+        // applyMarkers no-ops until there's a model to mark).
+        if (descriptor.Name === 'Diagnostics')
+        {
+            this.bindDiagnostics(newValue as ObservableCollection<EditorDiagnostic> | undefined)
+            return
+        }
         if (this.editor === undefined) return
         // DP → Monaco: reflect an external Text change (initial load, a
         // programmatic set) into the buffer, unless Monaco itself was the origin.
@@ -128,6 +177,8 @@ export class CodeEditor extends DomHost
 
     public dispose(): void
     {
+        this.diagUnsub?.()
+        this.diagUnsub = undefined
         this.editor?.dispose()
         this.editor = undefined
     }
