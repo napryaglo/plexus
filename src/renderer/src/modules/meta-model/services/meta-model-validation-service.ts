@@ -93,10 +93,11 @@ export class MetaModelValidationService extends ServiceBase
 {
     public static readonly Key = new ServiceKey<MetaModelValidationService>('MetaModelValidationService')
 
-    private storage: IStorage | undefined
     private hostUnsub: (() => void) | undefined
-    // Each tracked (open, .todl) document → the thunk that unhooks its listener.
-    private readonly hooked = new Map<CodeDocument, () => void>()
+    // Each tracked (open, .todl) document → its project storage + the thunk that
+    // unhooks its Content listener. Keyed by document so several projects' docs
+    // coexist and validate independently.
+    private readonly tracked = new Map<CodeDocument, { storage: IStorage; unhook: () => void }>()
     private timer: ReturnType<typeof setTimeout> | undefined
 
     constructor(provider: IServiceProvider) { super(provider) }
@@ -106,51 +107,44 @@ export class MetaModelValidationService extends ServiceBase
         return this.Provider.getRequired(ContentHostService.Key) as DocumentsContentHostService
     }
 
-    // Bind validation to a project's storage (called by the factory on open /
-    // create). Subscribes to the open-set on first bind and schedules a pass.
-    public SetProject(storage: IStorage): void
+    // Track a `.todl` document + the project storage it belongs to (called by the
+    // factory when it opens the file). Hooks the document's Content and schedules
+    // a validation pass; the open-set subscription untracks it when it closes.
+    public AttachDocument(doc: CodeDocument, storage: IStorage): void
     {
-        this.storage = storage
+        if (this.tracked.has(doc)) return
         this.subscribeToHost()
+        const listener = (): void => this.scheduleRevalidate()
+        doc.AddPropertyChangedListener(CodeDocument.ContentKey, listener)
+        this.tracked.set(doc, { storage, unhook: () => doc.RemovePropertyChangedListener(CodeDocument.ContentKey, listener) })
         this.scheduleRevalidate()
     }
 
-    // Stop watching and clear pending work — call when the project closes.
+    // Stop watching and clear pending work.
     public Dispose(): void
     {
         if (this.timer !== undefined) { clearTimeout(this.timer); this.timer = undefined }
         this.hostUnsub?.()
         this.hostUnsub = undefined
-        for (const unhook of this.hooked.values()) unhook()
-        this.hooked.clear()
-        this.storage = undefined
+        for (const t of this.tracked.values()) t.unhook()
+        this.tracked.clear()
     }
 
+    // Watch the open-set only to UNTRACK closed documents (docs are attached
+    // explicitly by the factory, so no 'inserted' handling is needed).
     private subscribeToHost(): void
     {
         if (this.hostUnsub !== undefined) return
-        const docs = this.host.OpenDocuments
-        for (const d of docs) this.track(d)
-        this.hostUnsub = docs.Subscribe((change) => {
-            if (change.kind === 'inserted') for (const d of change.items) this.track(d)
-            else if (change.kind === 'removed') for (const d of change.items) this.untrack(d)
-            else if (change.kind === 'cleared') { for (const u of this.hooked.values()) u(); this.hooked.clear() }
+        this.hostUnsub = this.host.OpenDocuments.Subscribe((change) => {
+            if (change.kind === 'removed') for (const d of change.items) this.untrack(d)
+            else if (change.kind === 'cleared') { for (const t of this.tracked.values()) t.unhook(); this.tracked.clear() }
         })
-    }
-
-    private track(doc: IDocument): void
-    {
-        if (!(doc instanceof CodeDocument) || doc.Language !== 'todl' || this.hooked.has(doc)) return
-        const listener = (): void => this.scheduleRevalidate()
-        doc.AddPropertyChangedListener(CodeDocument.ContentKey, listener)
-        this.hooked.set(doc, () => doc.RemovePropertyChangedListener(CodeDocument.ContentKey, listener))
-        this.scheduleRevalidate()
     }
 
     private untrack(doc: IDocument): void
     {
-        const unhook = this.hooked.get(doc as CodeDocument)
-        if (unhook !== undefined) { unhook(); this.hooked.delete(doc as CodeDocument) }
+        const t = this.tracked.get(doc as CodeDocument)
+        if (t !== undefined) { t.unhook(); this.tracked.delete(doc as CodeDocument) }
     }
 
     private scheduleRevalidate(): void
@@ -159,18 +153,27 @@ export class MetaModelValidationService extends ServiceBase
         this.timer = setTimeout(() => { this.timer = undefined; void this.Revalidate() }, DEBOUNCE_MS)
     }
 
-    // Run one whole-project validation pass and distribute diagnostics to the
-    // open `.todl` documents. Public + awaitable so it's directly testable.
+    // Validate each open project independently and distribute diagnostics to its
+    // documents. Tracked docs are grouped by their project storage; each group is
+    // checked over that project's file set (on-disk sources overlaid with the
+    // group's live buffers). Public + awaitable so it's directly testable.
     public async Revalidate(): Promise<void>
     {
-        if (this.storage === undefined) return
-        const stored = await collectTodlSources(this.storage)
-        const open = [...this.hooked.keys()].map((d) => ({ id: d.Id, text: d.Content }))
-        const byUri = validateSources(overlaySources(stored, open))
-        for (const doc of this.hooked.keys()) {
-            const target = doc.Diagnostics
-            target.Clear()
-            for (const dg of byUri.get(doc.Id) ?? []) target.Add(dg)
+        const byStorage = new Map<IStorage, CodeDocument[]>()
+        for (const [doc, { storage }] of this.tracked) {
+            const list = byStorage.get(storage)
+            if (list === undefined) byStorage.set(storage, [doc])
+            else list.push(doc)
+        }
+        for (const [storage, docs] of byStorage) {
+            const stored = await collectTodlSources(storage)
+            const open = docs.map((d) => ({ id: d.Id, text: d.Content }))
+            const byUri = validateSources(overlaySources(stored, open))
+            for (const doc of docs) {
+                const target = doc.Diagnostics
+                target.Clear()
+                for (const dg of byUri.get(doc.Id) ?? []) target.Add(dg)
+            }
         }
     }
 }

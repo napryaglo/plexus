@@ -51,34 +51,35 @@ test('overlaySources prefers open buffers and adds open-only files', () => {
 
 // ── service integration (real content host, diagnostics distributed to docs) ──
 
-function env(): { service: MetaModelValidationService; host: DocumentsContentHostService; storage: FakeStorage }
+function env(): { service: MetaModelValidationService; host: DocumentsContentHostService }
 {
     const provider = new ServiceProvider()
     const host = new DocumentsContentHostService(provider)
     provider.registerInstance(ContentHostService.Key, host)
-    const service = new MetaModelValidationService(provider)
-    return { service, host, storage: new FakeStorage() }
+    return { service: new MetaModelValidationService(provider), host }
 }
 
-test('Revalidate distributes diagnostics to open .todl docs and clears on fix', async () => {
-    const { service, host, storage } = env()
-    await storage.WriteText('a.todl', BAD)
-    await storage.WriteText('b.todl', CONCEPTS)
+test('validates two projects independently and distributes to each doc; clears on fix', async () => {
+    const { service, host } = env()
+    // Two separate projects (storages), each with one open .todl document.
+    const sA = new FakeStorage('A'); await sA.WriteText('a.todl', BAD)
+    const sB = new FakeStorage('B'); await sB.WriteText('b.todl', CONCEPTS)
 
-    const a = new CodeDocument(new StorageCodeFile(storage, 'a.todl'))
-    const b = new CodeDocument(new StorageCodeFile(storage, 'b.todl'))
+    const a = new CodeDocument(new StorageCodeFile(sA, 'a.todl'))
+    const b = new CodeDocument(new StorageCodeFile(sB, 'b.todl'))
     a.Content = BAD              // seed the live buffers deterministically
     b.Content = CONCEPTS
     host.Open(a)
     host.Open(b)
 
-    service.SetProject(storage)
+    service.AttachDocument(a, sA)
+    service.AttachDocument(b, sB)
     await service.Revalidate()
 
-    expect(a.Diagnostics.Count).toBe(1)
-    expect(b.Diagnostics.Count).toBe(0)
+    expect(a.Diagnostics.Count).toBe(1)   // project A's error localizes to A's doc
+    expect(b.Diagnostics.Count).toBe(0)   // project B is clean
 
-    a.Content = 'namespace d { concept task { label : string; } }'   // fix — distinct concept, no clash with b
+    a.Content = 'namespace d { concept task { label : string; } }'   // fix project A
     await service.Revalidate()
     expect(a.Diagnostics.Count).toBe(0)
 
