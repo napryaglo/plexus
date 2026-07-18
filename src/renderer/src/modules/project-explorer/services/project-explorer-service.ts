@@ -1,14 +1,20 @@
 // project-explorer-service.ts — the GENERIC project host for the left panel.
 //
-// It owns the active Project + its tree and orchestrates open/create/save, but
+// It owns the set of OPEN projects + orchestrates open/create/close/save, but
 // knows nothing about diagrams or file formats: it reads a folder's manifest
-// envelope (project.plexus → `type`), routes to the matching factory via
-// the framework's ProjectFactoryRegistry, and delegates. A module contributes a
+// envelope (project.plexus → `type`), routes to the matching factory via the
+// framework's ProjectFactoryRegistry, and delegates. A module contributes a
 // project type by declaring a `.projectFactories:` entry whose Factory resolves
 // to an IProjectFactory (see the diagram module's DiagramProjectFactory).
 //
+// Several projects can be open at once: each is an OpenProject (its own factory
+// + storage + tree + per-project commands), rendered as a tree root. Uniform
+// actions (Open / New / Save) live on the command bar; project-specific actions
+// (New File / Publish / Close) live on each project's context menu. The open set
+// is persisted (OpenProjectsStore) and restored at launch.
+//
 // Rendered by DataTemplate[DataType=ProjectExplorerService] (project-explorer.
-// resources.mu), a tree + a small command bar.
+// resources.mu): a command bar + a tree of DataTemplate[OpenProject] roots.
 import {
     MetaData,
     Model,
@@ -36,6 +42,8 @@ import {
     type ProjectManifestEnvelope,
 } from '../../../services/projects/project-factory.js'
 import type { Project, ProjectNode } from '../../../services/projects/project.js'
+import { OpenProject } from '../../../services/projects/open-project.js'
+import { OpenProjectsStore } from '../../../services/projects/open-projects-store.js'
 import {
     NewProjectDialogModel,
     ProjectTypeChoice,
@@ -53,61 +61,45 @@ export class ProjectExplorerService extends ServiceBase
 {
     public static readonly Key = new ServiceKey<ProjectExplorerService>('ProjectExplorerService')
 
-    public static readonly ProjectKey = Model.RegisterProperty<Project | undefined>(
-        ProjectExplorerService, 'Project', undefined, MetaData.None)
-    // The tree's roots — a one-item collection holding the active project's root
-    // node, so the recursive DataTemplate[ProjectNode] renders the whole
-    // hierarchy anchored at the project (the project name + nested children),
-    // not just the root's children. Empty until a project is open.
-    public static readonly RootsKey = Model.RegisterProperty<ObservableCollection<ProjectNode>>(
-        ProjectExplorerService, 'Roots', undefined as unknown as ObservableCollection<ProjectNode>, MetaData.None)
+    // The open projects — the tree's roots (each a collapsible DataTemplate
+    // [OpenProject]). Empty until a project is opened or the session restores.
+    public static readonly OpenProjectsKey = Model.RegisterProperty<ObservableCollection<OpenProject>>(
+        ProjectExplorerService, 'OpenProjects', undefined as unknown as ObservableCollection<OpenProject>, MetaData.None)
     public static readonly StatusKey = Model.RegisterProperty<string>(
         ProjectExplorerService, 'Status', 'No project open.', MetaData.None)
     public static readonly OpenProjectCommandKey = Model.RegisterProperty<ICommand>(
         ProjectExplorerService, 'OpenProjectCommand', undefined as unknown as ICommand, MetaData.None)
     public static readonly NewProjectCommandKey = Model.RegisterProperty<ICommand>(
         ProjectExplorerService, 'NewProjectCommand', undefined as unknown as ICommand, MetaData.None)
-    public static readonly NewFileCommandKey = Model.RegisterProperty<ICommand>(
-        ProjectExplorerService, 'NewFileCommand', undefined as unknown as ICommand, MetaData.None)
     public static readonly SaveActiveCommandKey = Model.RegisterProperty<ICommand>(
         ProjectExplorerService, 'SaveActiveCommand', undefined as unknown as ICommand, MetaData.None)
-    public static readonly PublishCommandKey = Model.RegisterProperty<ICommand>(
-        ProjectExplorerService, 'PublishCommand', undefined as unknown as ICommand, MetaData.None)
 
-    // The factory + storage backing the active project — captured at open/create
-    // so file open + save delegate to the same type through the same backend.
-    private activeFactory: IProjectFactory | undefined
-    private activeStorage: IStorage | undefined
+    // Which open project each open document belongs to — for save-routing (the
+    // active doc saves through its own factory) and close-cleanup.
+    private readonly docOwners = new Map<IDocument, OpenProject>()
 
     constructor(provider: IServiceProvider)
     {
         super(provider)
-        this.set_property_value(ProjectExplorerService.RootsKey, new ObservableCollection<ProjectNode>())
+        this.set_property_value(ProjectExplorerService.OpenProjectsKey, new ObservableCollection<OpenProject>())
         this.set_property_value(ProjectExplorerService.OpenProjectCommandKey, new RelayCommand(() => void this.openProject()))
         this.set_property_value(ProjectExplorerService.NewProjectCommandKey, new RelayCommand(() => void this.newProject()))
-        this.set_property_value(ProjectExplorerService.NewFileCommandKey, new RelayCommand(() => void this.newFile()))
         this.set_property_value(ProjectExplorerService.SaveActiveCommandKey, new RelayCommand(() => void this.saveActive()))
-        this.set_property_value(ProjectExplorerService.PublishCommandKey, new RelayCommand(() => void this.publish()))
     }
 
-    public get Project(): Project | undefined { return this.get_property_value(ProjectExplorerService.ProjectKey) }
-    public get Roots(): ObservableCollection<ProjectNode> { return this.get_property_value(ProjectExplorerService.RootsKey) }
+    public get OpenProjects(): ObservableCollection<OpenProject> { return this.get_property_value(ProjectExplorerService.OpenProjectsKey) }
     public get Status(): string { return this.get_property_value(ProjectExplorerService.StatusKey) }
     public get OpenProjectCommand(): ICommand { return this.get_property_value(ProjectExplorerService.OpenProjectCommandKey) }
     public get NewProjectCommand(): ICommand { return this.get_property_value(ProjectExplorerService.NewProjectCommandKey) }
-    public get NewFileCommand(): ICommand { return this.get_property_value(ProjectExplorerService.NewFileCommandKey) }
     public get SaveActiveCommand(): ICommand { return this.get_property_value(ProjectExplorerService.SaveActiveCommandKey) }
-    public get PublishCommand(): ICommand { return this.get_property_value(ProjectExplorerService.PublishCommandKey) }
 
     private set Status(v: string) { this.set_property_value(ProjectExplorerService.StatusKey, v) }
 
     private get fs(): FileSystemService { return this.Provider.getRequired(FileSystemService.Key) }
-    private get storageRegistry(): StorageProviderRegistry
-    {
-        return this.Provider.getRequired(StorageProviderRegistry.Key)
-    }
+    private get storageRegistry(): StorageProviderRegistry { return this.Provider.getRequired(StorageProviderRegistry.Key) }
     private get dialogs(): DialogService { return this.Provider.getRequired(DialogService.Key) }
     private get recents(): RecentProjectsService { return this.Provider.getRequired(RecentProjectsService.Key) }
+    private get openStore(): OpenProjectsStore { return this.Provider.getRequired(OpenProjectsStore.Key) }
     private get host(): DocumentsContentHostService
     {
         return this.Provider.getRequired(ContentHostService.Key) as DocumentsContentHostService
@@ -144,9 +136,13 @@ export class ProjectExplorerService extends ServiceBase
     }
 
     // Read a folder's manifest envelope → build the project's storage for the
-    // backend it names → route to the matching factory → activate + record.
+    // backend it names → route to the matching factory → add it to the open set.
+    // A no-op (with a status) if the folder is already open.
     private async openProjectAt(folder: string): Promise<void>
     {
+        const already = this.findByFolder(folder)
+        if (already !== undefined) { this.Status = `${already.Name} is already open.`; return }
+
         const bootstrap = this.storageRegistry.Create(StorageProviderRegistry.DefaultBackendId, folder)
 
         let envelope: ProjectManifestEnvelope
@@ -173,15 +169,15 @@ export class ProjectExplorerService extends ServiceBase
 
         try {
             const project = await factory.openProject(storage)
-            this.setActive(project, factory, storage)
-            await this.recents.Add({ name: project.Name, path: folder, type: envelope.type, openedAt: Date.now() })
-            this.Status = `Opened ${project.Name}.`
+            const op = await this.addOpenProject(project, factory, storage)
+            await this.recents.Add({ name: op.Name, path: folder, type: envelope.type, openedAt: Date.now() })
+            this.Status = `Opened ${op.Name}.`
         } catch (e) {
             this.Status = `Open failed: ${(e as Error).message}`
         }
     }
 
-    // Create a project of `type` named `name` in `folder`, activate + record it.
+    // Create a project of `type` named `name` in `folder`, add + record it.
     private async createProjectAt(type: string, name: string, folder: string): Promise<void>
     {
         const factory = this.resolveFactory(type)
@@ -190,11 +186,133 @@ export class ProjectExplorerService extends ServiceBase
         const storage = this.storageRegistry.Create(StorageProviderRegistry.DefaultBackendId, folder)
         try {
             const project = await factory.createProject(storage, name)
-            this.setActive(project, factory, storage)
-            await this.recents.Add({ name: project.Name, path: folder, type, openedAt: Date.now() })
-            this.Status = `Created ${project.Name}.`
+            const op = await this.addOpenProject(project, factory, storage)
+            await this.recents.Add({ name: op.Name, path: folder, type, openedAt: Date.now() })
+            this.Status = `Created ${op.Name}.`
         } catch (e) {
             this.Status = `Create failed: ${(e as Error).message}`
+        }
+    }
+
+    // Reopen the previous session's projects. Skips (and prunes) folders whose
+    // project manifest is gone; already-open folders dedupe.
+    public async RestoreSession(): Promise<void>
+    {
+        for (const folder of await this.openStore.List()) {
+            let hasManifest = false
+            try {
+                const storage = this.storageRegistry.Create(StorageProviderRegistry.DefaultBackendId, folder)
+                hasManifest = await storage.Exists(PROJECT_MANIFEST_FILENAME)
+            } catch { hasManifest = false }
+            if (hasManifest) await this.openProjectAt(folder)
+            else await this.openStore.Remove(folder)
+        }
+    }
+
+    // Wrap a project as an OpenProject, wire its per-project commands + node
+    // open-commands, add it to the tree, and persist the folder. Deduped by
+    // folder — a project already open is returned as-is (no duplicate, no
+    // re-persist), so every entry point stays idempotent.
+    private async addOpenProject(project: Project, factory: IProjectFactory, storage: IStorage): Promise<OpenProject>
+    {
+        const existing = this.findByFolder(project.RootPath)
+        if (existing !== undefined) return existing
+
+        const op = new OpenProject(project, factory, storage)
+        this.wireProjectCommands(op)
+        this.wireNodes(op.Root, op)
+        this.OpenProjects.Add(op)
+        await this.openStore.Add(op.Folder)
+        return op
+    }
+
+    private wireProjectCommands(op: OpenProject): void
+    {
+        op.NewFileCommand = new RelayCommand(() => void this.newFileIn(op))
+        op.PublishCommand = new RelayCommand(() => void this.publishProject(op), () => isPublishable(op.Factory))
+        op.CloseCommand = new RelayCommand(() => void this.closeProject(op))
+    }
+
+    // Create a new file of the project's primary format and open it.
+    private async newFileIn(op: OpenProject): Promise<void>
+    {
+        const format = op.Factory.formats[0]
+        if (format === undefined) { this.Status = 'This project type has no file format.'; return }
+        try {
+            const path = await op.Factory.newFile(op.Storage, format.kind, `${format.kind}-${op.Root.Children.Count + 1}`)
+            // Refresh the project's tree so the new file appears, then open it.
+            op.Adopt(await op.Factory.openProject(op.Storage))
+            this.wireNodes(op.Root, op)
+            await this.openDocument(op, path)
+            this.Status = `New ${format.displayName} at ${basename(path)}.`
+        } catch (e) {
+            this.Status = `New file failed: ${(e as Error).message}`
+        }
+    }
+
+    // Publish the project through its factory (the menu item is disabled for
+    // non-publishable types, but guard anyway). Surfaces the result message.
+    private async publishProject(op: OpenProject): Promise<void>
+    {
+        if (!isPublishable(op.Factory)) { this.Status = "This project type can't be published."; return }
+        try {
+            const result = await op.Factory.publish(op.Project, op.Storage, this.Provider)
+            this.Status = result.message
+        } catch (e) {
+            this.Status = `Publish failed: ${(e as Error).message}`
+        }
+    }
+
+    // Close a project: close its open tabs, drop it from the tree, and forget it
+    // from the persisted open set.
+    private async closeProject(op: OpenProject): Promise<void>
+    {
+        for (const [doc, owner] of [...this.docOwners]) {
+            if (owner === op) { this.host.Close(doc); this.docOwners.delete(doc) }
+        }
+        this.OpenProjects.Remove(op)
+        await this.openStore.Remove(op.Folder)
+        this.Status = `Closed ${op.Name}.`
+    }
+
+    // Activate a tree node: open a factory-format file in a tab (any node whose
+    // kind matches a declared format of its OWNING project), or open another file
+    // in the OS default app when the backend supports local access.
+    private async openNode(node: ProjectNode, op: OpenProject): Promise<void>
+    {
+        try {
+            const openable = op.Factory.formats.some((f) => f.kind === node.Kind)
+            if (openable) {
+                await this.openDocument(op, node.Path)
+                this.Status = `Opened ${node.Name}.`
+            } else if (node.Kind === 'file') {
+                if (isLocalFileAccess(op.Storage)) await op.Storage.OpenExternal(node.Path)
+                else this.Status = `Can't open ${node.Name} — this project's storage has no OS access.`
+            }
+        } catch (e) {
+            this.Status = `Open failed: ${(e as Error).message}`
+        }
+    }
+
+    // Open a project file as a document tab and record its owning project.
+    private async openDocument(op: OpenProject, path: string): Promise<void>
+    {
+        const doc = await op.Factory.openFile(op.Storage, path)
+        this.docOwners.set(doc, op)
+        this.host.Open(doc)
+    }
+
+    // Save the active document through ITS project's factory.
+    private async saveActive(): Promise<void>
+    {
+        const doc: IDocument | undefined = this.host.ActiveDocument
+        const op = doc === undefined ? undefined : this.docOwners.get(doc)
+        if (doc === undefined || op === undefined) { this.Status = 'Nothing to save.'; return }
+        try {
+            await op.Factory.saveFile(doc)
+            this.Status = `Saved ${doc.Title}.`
+        } catch (e) {
+            this.Status = `Save failed: ${(e as Error).message}`
         }
     }
 
@@ -215,113 +333,29 @@ export class ProjectExplorerService extends ServiceBase
         return null
     }
 
-    // Create a new empty file of the active factory's primary format and open it.
-    private async newFile(): Promise<void>
-    {
-        const project = this.Project
-        if (project === undefined || this.activeFactory === undefined || this.activeStorage === undefined) {
-            this.Status = 'Open a project first.'; return
-        }
-        const format = this.activeFactory.formats[0]
-        if (format === undefined) { this.Status = 'This project type has no file format.'; return }
-        try {
-            const path = await this.activeFactory.newFile(this.activeStorage, format.kind, `${format.kind}-${project.Root.Children.Count + 1}`)
-            // Refresh the tree so the new file appears, then open it.
-            const refreshed = await this.activeFactory.openProject(this.activeStorage)
-            this.setActive(refreshed, this.activeFactory, this.activeStorage)
-            const doc = await this.activeFactory.openFile(this.activeStorage, path)
-            this.host.Open(doc)
-            this.Status = `New ${format.displayName} at ${basename(path)}.`
-        } catch (e) {
-            this.Status = `New file failed: ${(e as Error).message}`
-        }
-    }
-
-    // Activate a tree node: open a factory-format file in a tab (any node whose
-    // kind matches a declared format), or open another file in the OS default
-    // app when the backend supports local access (isLocalFileAccess).
-    private async openNode(node: ProjectNode | undefined): Promise<void>
-    {
-        if (node === undefined || this.Project === undefined || this.activeFactory === undefined || this.activeStorage === undefined) return
-        try {
-            const openable = this.activeFactory.formats.some((f) => f.kind === node.Kind)
-            if (openable) {
-                const doc = await this.activeFactory.openFile(this.activeStorage, node.Path)
-                this.host.Open(doc)
-                this.Status = `Opened ${node.Name}.`
-            } else if (node.Kind === 'file') {
-                if (isLocalFileAccess(this.activeStorage)) {
-                    await this.activeStorage.OpenExternal(node.Path)
-                } else {
-                    this.Status = `Can't open ${node.Name} — this project's storage has no OS access.`
-                }
-            }
-        } catch (e) {
-            this.Status = `Open failed: ${(e as Error).message}`
-        }
-    }
-
-    // Publish the active project through its factory, when the factory supports
-    // it (feature-tested — the generic host stays ignorant of what publishing
-    // means). Surfaces the factory's PublishResult message as the status.
-    private async publish(): Promise<void>
-    {
-        const project = this.Project
-        if (project === undefined || this.activeFactory === undefined || this.activeStorage === undefined) {
-            this.Status = 'Open a project first.'; return
-        }
-        if (!isPublishable(this.activeFactory)) { this.Status = "This project type can't be published."; return }
-        try {
-            const result = await this.activeFactory.publish(project, this.activeStorage, this.Provider)
-            this.Status = result.message
-        } catch (e) {
-            this.Status = `Publish failed: ${(e as Error).message}`
-        }
-    }
-
-    // Save the active document through the active project's factory.
-    private async saveActive(): Promise<void>
-    {
-        const doc: IDocument | undefined = this.host.ActiveDocument
-        if (doc === undefined || this.activeFactory === undefined) { this.Status = 'Nothing to save.'; return }
-        try {
-            await this.activeFactory.saveFile(doc)
-            this.Status = `Saved ${doc.Title}.`
-        } catch (e) {
-            this.Status = `Save failed: ${(e as Error).message}`
-        }
-    }
-
     private resolveFactory(type: string): IProjectFactory | undefined
     {
         const def = this.Provider.getRequired(ProjectFactoryRegistry.Key).GetByType(type)
         if (def?.Factory === undefined) return undefined
         // `Factory` holds the service class (from `Factory = DiagramProjectFactory`
         // in the .projectFactories block), but the module registers it under its
-        // static `.Key` (tokenFor). Normalize class → .Key so the lookup matches;
-        // otherwise get() misses and it looks like "no factory for this type".
+        // static `.Key` (tokenFor). Normalize class → .Key so the lookup matches.
         const token = ServiceProvider.tokenFor(def.Factory as unknown as new (...args: never[]) => IProjectFactory)
         return this.Provider.get(token) as IProjectFactory | undefined
     }
 
-    private setActive(project: Project, factory: IProjectFactory, storage: IStorage): void
+    private findByFolder(folder: string): OpenProject | undefined
     {
-        this.activeFactory = factory
-        this.activeStorage = storage
-        this.wireNode(project.Root)
-        // Rebuild the tree roots to the new project's root node so the hierarchy
-        // renders (the project name at top, children nested beneath).
-        this.Roots.Clear()
-        this.Roots.Add(project.Root)
-        this.set_property_value(ProjectExplorerService.ProjectKey, project)
+        return this.OpenProjects.ToArray().find((o) => o.Folder === folder)
     }
 
-    // Give every tree node an OpenCommand closing over it, so a row binds
-    // `Command = $OpenCommand` (folders get one too — a no-op activation).
-    private wireNode(node: ProjectNode): void
+    // Give every node in a project's tree an OpenCommand closing over it + its
+    // owning project, so a row binds `Command = $OpenCommand` and routes file-open
+    // through the right factory/storage (folders get a no-op activation).
+    private wireNodes(node: ProjectNode, op: OpenProject): void
     {
-        node.OpenCommand = new RelayCommand(() => void this.openNode(node))
-        for (const child of node.Children.ToArray()) this.wireNode(child)
+        node.OpenCommand = new RelayCommand(() => void this.openNode(node, op))
+        for (const child of node.Children.ToArray()) this.wireNodes(child, op)
     }
 }
 

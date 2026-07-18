@@ -55,23 +55,13 @@ export class MetaModelProjectFactory extends ServiceBase implements IProjectFact
             id: slugify(name), modelVersion: '0.1.0',
         }
         await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
-        this.attachValidation(storage)
         return this.buildProject(storage, manifest)
     }
 
     public async openProject(storage: IStorage): Promise<Project>
     {
         const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as MetaModelManifest
-        this.attachValidation(storage)
         return this.buildProject(storage, manifest)
-    }
-
-    // Bind the whole-project validator to this project's storage so open .todl
-    // documents get live squiggles. Optional (`get`, not `getRequired`) — absent
-    // in unit tests, where the factory has no real service graph.
-    private attachValidation(storage: IStorage): void
-    {
-        this.Provider.get(MetaModelValidationService.Key)?.SetProject(storage)
     }
 
     public async saveProject(project: Project, storage: IStorage): Promise<void>
@@ -88,7 +78,12 @@ export class MetaModelProjectFactory extends ServiceBase implements IProjectFact
         // A .todl file is a CodeDocument over the project storage; its language
         // resolves to 'todl' from the extension. The project-relative path is the
         // document's Id — what whole-project validation keys diagnostics by.
-        return new CodeDocument(new StorageCodeFile(storage, path))
+        const doc = new CodeDocument(new StorageCodeFile(storage, path))
+        // Register the document + its project storage with the validator so it
+        // gets live squiggles, validated within its own project's file set.
+        // Optional (`get`, not `getRequired`) — absent in unit tests.
+        this.Provider.get(MetaModelValidationService.Key)?.AttachDocument(doc, storage)
+        return doc
     }
 
     public async saveFile(document: IDocument): Promise<void>

@@ -66,6 +66,10 @@ import StorageProviderRegistry from "./services/storage/storage-provider-registr
 // userData (via FileSystemService), surfaced by the Open Project dialog.
 import RecentProjectsService from "./services/projects/recent-projects-service.js"
 
+// Open-projects set — persists which projects are open to a JSON file under
+// userData, so the workspace restores on launch (ProjectExplorer.RestoreSession).
+import OpenProjectsStore from "./services/projects/open-projects-store.js"
+
 // Capability content services + their side-pane templates.
 import PanelsResources from "./services/panels/panels.resources.mu.js"
 
@@ -123,6 +127,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // Recent-projects MRU (persisted under userData) — the Open Project
         // dialog lists it; open/create push to it.
         RecentProjectsService
+        // Open-projects set (persisted under userData) — the explorer updates it
+        // on open/close and restores it at launch.
+        OpenProjectsStore
         // Persistence backend for ApplicationSettings, bound to the framework's
         // SettingsStoreKey (a different token than the impl class itself).
         ElectronSettingsStore -> SettingsStoreKey

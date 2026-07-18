@@ -19,6 +19,7 @@ import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'
 import { attachTabSwitchDiagnostics } from './dev/tab-switch-diagnostics.js'
 import { CodeEditorService } from './modules/code-editor/code-editor-service.js'
 import { EnvironmentService } from './services/environment/environment-service.js'
+import { ProjectExplorerService } from './modules/project-explorer/services/project-explorer-service.js'
 import { registerTodlLanguage } from './modules/meta-model/todl-language.js'
 
 // Register the 'todl' Monaco language once, before any editor mounts, so .todl
@@ -62,6 +63,11 @@ try {
         const sep = env.PathSeparator ?? '/'
         codeEditor.OpenFile(`${env.UserDataDirectory}${sep}scratch.md`)
     }
+
+    // Restore the previous session's open projects into the explorer (skips
+    // folders whose project manifest is gone). Fire-and-forget after mount.
+    const explorer = app.Services.get(ProjectExplorerService.Key)
+    if (explorer !== undefined) void explorer.RestoreSession()
 
     // Auto-open the Format Shape inspector the first time a shape is selected.
     // Watches the document's ActiveView (published when the canvas mounts), so it
