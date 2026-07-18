@@ -1,6 +1,6 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import type { IDocument } from '@pragmatic-lab/mural/framework'
-import { check, toJSON, Severity, type SourceFile } from '@pragmatic-lab/todl'
+import { check, toJSON, Severity } from '@pragmatic-lab/todl'
 
 import {
     PROJECT_MANIFEST_FILENAME,
@@ -15,6 +15,7 @@ import type { IStorage } from '../../../services/storage/storage.js'
 import { CodeDocument } from '../../code-editor/code-document.js'
 import { StorageCodeFile } from '../../code-editor/code-file.js'
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
+import { collectTodlSources, extname, joinRel } from './todl-sources.js'
 
 // The 'meta-model' project type's factory — the meta-model module's contribution
 // to the generic ProjectExplorerService (declared via `.projectFactories:` and
@@ -138,44 +139,16 @@ export class MetaModelProjectFactory extends ServiceBase implements IProjectFact
     }
 }
 
-// Recursively collect every `.todl` file in the project as a TODL SourceFile
-// (uri = project-relative POSIX path). This is what check() and publish consume.
-export async function collectTodlSources(storage: IStorage): Promise<SourceFile[]>
-{
-    const out: SourceFile[] = []
-    async function walk(dir: string): Promise<void>
-    {
-        for (const e of await storage.List(dir)) {
-            const path = joinRel(dir, e.Name)
-            if (e.IsDirectory) await walk(path)
-            else if (extname(e.Name) === '.todl') out.push({ uri: path, text: await storage.ReadText(path) })
-        }
-    }
-    await walk('')
-    return out
-}
-
 // ── helpers ──
 function slugify(name: string): string
 {
     return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'meta-model'
 }
 
-function joinRel(dir: string, name: string): string
-{
-    return dir === '' ? name : dir + '/' + name
-}
-
 function basename(p: string): string
 {
     const parts = p.split(/[\\/]/)
     return parts[parts.length - 1] || p
-}
-
-function extname(name: string): string
-{
-    const i = name.lastIndexOf('.')
-    return i > 0 ? name.slice(i).toLowerCase() : ''
 }
 
 function ensureExtension(name: string, ext: string): string
