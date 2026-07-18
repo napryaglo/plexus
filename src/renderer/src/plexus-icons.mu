@@ -31,4 +31,10 @@ resources PlexusIcons {
     include "icons/note-add.svg"                 as NoteAdd
     include "icons/save.svg"                      as Save
     include "icons/publish.svg"                  as Publish
+
+    // Project-tree leading glyphs, one per ProjectNodeKind (folder reuses
+    // @Folder above). Painted as a Shape/Fill by the tree row's leading slot.
+    include "icons/diagram.svg"                  as Diagram
+    include "icons/todl.svg"                     as Todl
+    include "icons/file.svg"                     as File
 }

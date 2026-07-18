@@ -1,8 +1,9 @@
-import { MetaData, Model, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, type ICommand, type Visual } from '@pragmatic-lab/mural/runtime'
 
 import type { IProjectFactory } from './project-factory.js'
 import type { IStorage } from '../storage/storage.js'
 import type { Project, ProjectNode } from './project.js'
+import { mountProjectTree } from './project-tree.js'
 
 // One open project in the explorer — the VM the tree renders as a collapsible
 // root. It bundles the project's model (Name + file tree) with the factory and
@@ -25,6 +26,7 @@ export class OpenProject extends Model
     private project: Project
     private readonly factory: IProjectFactory
     private readonly storage: IStorage
+    private disposeTree: (() => void) | undefined
 
     constructor(project: Project, factory: IProjectFactory, storage: IStorage)
     {
@@ -34,6 +36,15 @@ export class OpenProject extends Model
         this.storage = storage
         this.set_property_value(OpenProject.NameKey, project.Name)
         this.set_property_value(OpenProject.RootKey, project.Root)
+    }
+
+    // Called by the ContentPresenter when this project's DataTemplate mounts —
+    // wire the file-tree TreeView (populate + open-on-select + Root-swap
+    // refresh). Re-mounting disposes the previous wiring first.
+    public OnViewMounted(view: Visual): void
+    {
+        this.disposeTree?.()
+        this.disposeTree = mountProjectTree(view, this)
     }
 
     // Adopt a freshly-scanned Project (same factory/storage) — after a New File

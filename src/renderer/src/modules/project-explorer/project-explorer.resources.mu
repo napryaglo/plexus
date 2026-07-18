@@ -8,7 +8,6 @@
 // folders.
 
 import ProjectExplorerService from "./services/project-explorer-service.js"
-import ProjectNode from "../../services/projects/project.js"
 import OpenProject from "../../services/projects/open-project.js"
 import NewProjectDialogModel from "../../services/projects/new-project-dialog-model.js"
 import ProjectTypeChoice from "../../services/projects/new-project-dialog-model.js"
@@ -32,23 +31,19 @@ resources ProjectExplorerResources {
         MenuItem [ Header = "Close Project", Command = $CloseCommand ]
     }
 
-    // One open project: a header row (name + context menu) over its file tree.
+    // One open project: a VSCode-style header row (bold, uppercase name +
+    // right-click context menu) over the project's file tree. `x:root` owns the
+    // NameScope so `x:name="tree"` registers and OpenProject.OnViewMounted can
+    // FindName the TreeView to populate it (see project-tree.ts). The tree
+    // itself — chevrons, indent guides, full-row hover, selection, and per-kind
+    // leading icons — is the framework's default TreeView chrome.
     DataTemplate [ DataType = OpenProject ] {
-        StackPanel [ Orientation = Vertical, Margin = (0,0,0,6) ] {
-            Button [ Content = $Name, Variant = Text, HorizontalAlignment = Stretch, Margin = (0,2,0,2),
-                     ContextMenuService.ContextMenu = @ProjectContextMenu ]
-            ItemsControl [ ItemsSource = $Root.Children, ItemsPanel = @VerticalStackPanel,
-                           Margin = (12,0,0,0) ]
-        }
-    }
-
-    // One tree node: its row + (recursively) its children, indented.
-    DataTemplate [ DataType = ProjectNode ] {
-        StackPanel [ Orientation = Vertical ] {
-            Button [ Content = $Name, Command = $OpenCommand,
-                     HorizontalAlignment = Left, Margin = (0,1,0,1) ]
-            ItemsControl [ ItemsSource = $Children, ItemsPanel = @VerticalStackPanel,
-                           Margin = (12,0,0,0) ]
+        StackPanel x:root [ Orientation = Vertical, Margin = (0,0,0,6) ] {
+            Button [ Variant = Text, HorizontalAlignment = Stretch, Margin = (0,2,0,2),
+                     ContextMenuService.ContextMenu = @ProjectContextMenu ] {
+                TextBlock [ Style = @LabelLarge, Text = $Name, Foreground = @OnSurfaceVariant ]
+            }
+            TreeView x:name="tree" [ Indent = 14 ]
         }
     }
 
