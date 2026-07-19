@@ -9,7 +9,7 @@ import {
     type ProjectManifestEnvelope,
 } from '../../../services/projects/project-factory.js'
 import { Project, ProjectNode, type ProjectNodeKind } from '../../../services/projects/project.js'
-import type { IStorage } from '../../../services/storage/storage.js'
+import { compareStorageEntries, type IStorage } from '../../../services/storage/storage.js'
 import { FileDiagramStorage } from '../persistence/file-diagram-storage.js'
 
 // The 'architecture' project type's factory — the diagram module's contribution
@@ -109,7 +109,7 @@ export class DiagramProjectFactory extends ServiceBase implements IProjectFactor
     // paths are project-relative (POSIX `/`); the root node's path is ''.
     private async populate(storage: IStorage, node: ProjectNode): Promise<void>
     {
-        const entries = await storage.List(node.Path)
+        const entries = [...await storage.List(node.Path)].sort(compareStorageEntries)
         for (const e of entries) {
             if (node.Path === '' && e.Name === PROJECT_MANIFEST_FILENAME) continue
             const childPath = joinRel(node.Path, e.Name)

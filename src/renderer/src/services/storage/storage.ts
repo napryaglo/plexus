@@ -20,6 +20,17 @@ export interface StorageEntry
     IsDirectory: boolean
 }
 
+// Explorer-tree ordering for a directory listing: folders before files, each
+// group alphabetical (case-insensitive, then case-sensitive to stay stable).
+// A `List` result is unordered/backend-dependent, so tree builders sort through
+// this to present a consistent VSCode-style ordering.
+export function compareStorageEntries(a: StorageEntry, b: StorageEntry): number
+{
+    if (a.IsDirectory !== b.IsDirectory) return a.IsDirectory ? -1 : 1
+    const ci = a.Name.toLowerCase().localeCompare(b.Name.toLowerCase())
+    return ci !== 0 ? ci : a.Name.localeCompare(b.Name)
+}
+
 // The universal storage contract. Every backend must satisfy this. All paths
 // are project-relative; `Root` is an opaque, human-readable descriptor of where
 // the storage is rooted (an absolute OS folder locally, a container id/URL
