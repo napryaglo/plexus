@@ -1,4 +1,4 @@
-import { MetaData, Model, RelayCommand, type ICommand, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, type ICommand, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
 
 import type { IProjectFactory } from './project-factory.js'
 import type { IStorage } from '../storage/storage.js'
@@ -28,13 +28,11 @@ export class OpenProject extends Model
     // HierarchicalDataTemplate) with no view-tree wiring.
     static readonly SelectedNodeKey = Model.RegisterProperty<ProjectNode | undefined>(
         OpenProject, 'SelectedNode', undefined, MetaData.None)
-    // Whether the project's file tree is shown — toggled by the header chevron.
-    // Pure view state, owned here; the header binds the chevron glyph and the
-    // tree's Visibility to it.
+    // Whether the project's file tree is shown. Pure view state, owned here and
+    // two-way bound to the header chevron's ToggleButton.IsChecked; the chevron
+    // glyph and the tree's Visibility both bind to it.
     static readonly IsExpandedKey = Model.RegisterProperty<boolean>(
         OpenProject, 'IsExpanded', true, MetaData.None)
-    static readonly ToggleExpandedCommandKey = Model.RegisterProperty<ICommand | undefined>(
-        OpenProject, 'ToggleExpandedCommand', undefined, MetaData.None)
 
     private project: Project
     private readonly factory: IProjectFactory
@@ -48,9 +46,6 @@ export class OpenProject extends Model
         this.storage = storage
         this.set_property_value(OpenProject.NameKey, project.Name)
         this.set_property_value(OpenProject.RootKey, project.Root)
-        this.set_property_value(
-            OpenProject.ToggleExpandedCommandKey,
-            new RelayCommand(() => { this.IsExpanded = !this.IsExpanded }))
     }
 
     // Activate the node the tree just selected — run its OpenCommand (wired by
@@ -91,8 +86,6 @@ export class OpenProject extends Model
 
     public get IsExpanded(): boolean { return this.get_property_value(OpenProject.IsExpandedKey) }
     public set IsExpanded(v: boolean) { this.set_property_value(OpenProject.IsExpandedKey, v) }
-
-    public get ToggleExpandedCommand(): ICommand | undefined { return this.get_property_value(OpenProject.ToggleExpandedCommandKey) }
 
     // The backing project model, factory, and storage (read-only to the explorer).
     public get Project(): Project { return this.project }
