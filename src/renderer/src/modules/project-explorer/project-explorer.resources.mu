@@ -113,7 +113,7 @@ resources ProjectExplorerResources {
     // One project-type choice: a full row (always shown, even for a single
     // factory). The leading marker (● / ○) is the VM-toggled selection glyph.
     DataTemplate [ DataType = ProjectTypeChoice ] {
-        Button [ Variant = Text, Command = $SelectCommand, HorizontalAlignment = Stretch, Margin = (0,1,0,1) ] {
+        Button [ Template = @ListRowButton, Command = $SelectCommand, HorizontalAlignment = Stretch, Margin = (0,1,0,1) ] {
             DockPanel [ LastChildFill = true ] {
                 TextBlock [ DockPanel.Dock = Left, Text = $Marker, Foreground = @Primary,
                             Margin = (0,0,10,0), VerticalAlignment = Top ]
@@ -158,9 +158,21 @@ resources ProjectExplorerResources {
     }
 
     // ── Open Project dialog ──────────────────────────────────────────────
+    // Left-aligned clickable list row. The M3 Text-button template centers its
+    // content and pads it, so a row reads as indented by however much shorter it
+    // is than the widest one. This template stretches the content full-width and
+    // left-aligns it, keeping a subtle hover/press state layer for the click.
+    Template x:key="ListRowButton" [ TargetType = Button ] {
+        Border x:name="PART_Row" [ Background = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (8,6,8,6) ] {
+            ContentPresenter [ HorizontalAlignment = Stretch, VerticalAlignment = Center ]
+        }
+        when ( IsMouseOver ) { PART_Row.Background = @StateHoverOverlay; }
+        when ( IsPressed ) { PART_Row.Background = @StatePressOverlay; }
+    }
+
     // One recent-projects row: click to open (OpenCommand closes with its path).
     DataTemplate [ DataType = RecentProjectItem ] {
-        Button [ Variant = Text, Command = $OpenCommand, HorizontalAlignment = Stretch, Margin = (0,1,0,1) ] {
+        Button [ Template = @ListRowButton, Command = $OpenCommand, HorizontalAlignment = Stretch, Margin = (0,1,0,1) ] {
             StackPanel [ Orientation = Vertical ] {
                 TextBlock [ Style = @BodyLarge, Text = $Name, Foreground = @OnSurface ]
                 TextBlock [ Style = @BodySmall, Text = $Path, Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
