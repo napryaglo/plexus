@@ -3,6 +3,7 @@ import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import type {
   FileEntry,
   IFileSystemApi,
+  ImportedFile,
   OpenFileOptions,
   OpenFileResult,
   OpenFolderOptions,
@@ -47,6 +48,13 @@ export class FileSystemService extends ServiceBase
         return this.api.openFile(options);
     }
 
+    // Native multi-select open dialog → each picked file's path + raw bytes, or
+    // null if the user cancelled. Binary-safe, for importing existing files.
+    public OpenFiles(options?: OpenFileOptions): Promise<ImportedFile[] | null>
+    {
+        return this.api.openFiles(options);
+    }
+
     // Native folder picker → the chosen directory's absolute path, or null if
     // the user cancelled.
     public OpenFolder(options?: OpenFolderOptions): Promise<string | null>
@@ -71,6 +79,12 @@ export class FileSystemService extends ServiceBase
         return this.api.writeText(path, content);
     }
 
+    // Write raw bytes to a path — the binary-safe counterpart of WriteText.
+    public WriteBytes(path: string, bytes: Uint8Array): Promise<void>
+    {
+        return this.api.writeBytes(path, bytes);
+    }
+
     public Exists(path: string): Promise<boolean>
     {
         return this.api.exists(path);
@@ -79,6 +93,18 @@ export class FileSystemService extends ServiceBase
     public Delete(path: string): Promise<void>
     {
         return this.api.delete(path);
+    }
+
+    // Create a directory (and any missing parents) at the given path.
+    public CreateDirectory(path: string): Promise<void>
+    {
+        return this.api.createDirectory(path);
+    }
+
+    // Rename/move a file or directory (with contents) to a new path.
+    public Rename(from: string, to: string): Promise<void>
+    {
+        return this.api.rename(from, to);
     }
 
     public ListDirectory(path: string): Promise<readonly FileEntry[]>

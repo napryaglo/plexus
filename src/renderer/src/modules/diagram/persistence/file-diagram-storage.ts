@@ -21,8 +21,11 @@ export class FileDiagramStorage implements DiagramStorage
     private snapshot: string | null
     private pending: Promise<void> = Promise.resolve()
 
+    // Path is mutable so an in-place rename can re-point the open document at
+    // its new project-relative location without reloading the scene (subsequent
+    // Save() writes go to the new path).
     constructor(
-        public readonly Path: string,
+        public Path: string,
         private readonly storage: IStorage,
         seed: string | null,
     )

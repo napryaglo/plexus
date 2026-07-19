@@ -16,6 +16,7 @@
 // Rendered by DataTemplate[DataType=ProjectExplorerService] (project-explorer.
 // resources.mu): a command bar + a tree of DataTemplate[OpenProject] roots.
 import {
+    Key,
     MetaData,
     Model,
     ObservableCollection,
@@ -25,6 +26,7 @@ import {
     ServiceProvider,
     type ICommand,
     type IServiceProvider,
+    type KeyEventArgs,
 } from '@pragmatic-lab/mural/runtime'
 import {
     ContentHostService,
@@ -38,9 +40,12 @@ import { FileSystemService } from '../../../services/file-system/file-system-ser
 import {
     PROJECT_MANIFEST_FILENAME,
     isPublishable,
+    isRelocatable,
     type IProjectFactory,
+    type ProjectFileFormat,
     type ProjectManifestEnvelope,
 } from '../../../services/projects/project-factory.js'
+import type { FileFilter } from '../../../../../shared/file-system-api.js'
 import type { Project, ProjectNode } from '../../../services/projects/project.js'
 import { OpenProject } from '../../../services/projects/open-project.js'
 import { OpenProjectsStore } from '../../../services/projects/open-projects-store.js'
@@ -77,6 +82,10 @@ export class ProjectExplorerService extends ServiceBase
     // Which open project each open document belongs to — for save-routing (the
     // active doc saves through its own factory) and close-cleanup.
     private readonly docOwners = new Map<IDocument, OpenProject>()
+    // Each open document's project-relative path — so an in-place rename can
+    // re-point the tab (via the factory's relocateOpenFile) instead of leaving
+    // it stale.
+    private readonly docPaths = new Map<IDocument, string>()
 
     constructor(provider: IServiceProvider)
     {
@@ -229,17 +238,23 @@ export class ProjectExplorerService extends ServiceBase
     private wireProjectCommands(op: OpenProject): void
     {
         op.NewFileCommand = new RelayCommand(() => void this.newFileIn(op))
+        op.NewFolderCommand = new RelayCommand(() => void this.newFolderIn(op))
+        op.AddFileCommand = new RelayCommand(() => void this.addExistingFilesTo(op))
+        op.TreeKeyCommand = new RelayCommand((arg) => this.handleTreeKey(op, arg as KeyEventArgs))
         op.PublishCommand = new RelayCommand(() => void this.publishProject(op), () => isPublishable(op.Factory))
         op.CloseCommand = new RelayCommand(() => void this.closeProject(op))
     }
 
-    // Create a new file of the project's primary format and open it.
-    private async newFileIn(op: OpenProject): Promise<void>
+    // Create a new file of the project's primary format inside `parentFolder`
+    // (project-relative; '' = the project root) and open it. The name is the
+    // format kind, auto-numbered to dodge collisions (foo → foo-2).
+    private async newFileIn(op: OpenProject, parentFolder = ''): Promise<void>
     {
         const format = op.Factory.formats[0]
         if (format === undefined) { this.Status = 'This project type has no file format.'; return }
         try {
-            const path = await op.Factory.newFile(op.Storage, format.kind, `${format.kind}-${op.Root.Children.Count + 1}`)
+            const name = await uniqueStorageName(op.Storage, joinRel(parentFolder, `${format.kind}${format.extension}`))
+            const path = await op.Factory.newFile(op.Storage, format.kind, name)
             // Refresh the project's tree so the new file appears, then open it.
             op.Adopt(await op.Factory.openProject(op.Storage))
             this.wireNodes(op.Root, op)
@@ -247,6 +262,137 @@ export class ProjectExplorerService extends ServiceBase
             this.Status = `New ${format.displayName} at ${basename(path)}.`
         } catch (e) {
             this.Status = `New file failed: ${(e as Error).message}`
+        }
+    }
+
+    // Create a subfolder ("New Folder", auto-numbered on collision) inside
+    // `parentFolder` (project-relative; '' = the project root) and refresh the
+    // tree so it appears. Generic — a directory is backend state, not a factory
+    // format, so this goes straight through the project's storage.
+    private async newFolderIn(op: OpenProject, parentFolder = ''): Promise<void>
+    {
+        try {
+            const path = await uniqueStorageName(op.Storage, joinRel(parentFolder, 'New Folder'))
+            await op.Storage.CreateDirectory(path)
+            op.Adopt(await op.Factory.openProject(op.Storage))
+            this.wireNodes(op.Root, op)
+            this.Status = `Created folder ${basename(path)}.`
+        } catch (e) {
+            this.Status = `New folder failed: ${(e as Error).message}`
+        }
+    }
+
+    // Add existing file(s) into a project: pick from the OS (multi-select,
+    // binary-safe), copy each into the project's storage under a non-colliding
+    // name (auto-renamed foo → foo-2), then rescan the tree so they appear. The
+    // picker is seeded with the factory's formats but not restricted — any file
+    // can be brought in as an attachment.
+    private async addExistingFilesTo(op: OpenProject): Promise<void>
+    {
+        const picked = await this.fs.OpenFiles({ Title: `Add files to ${op.Name}`, Filters: importFilters(op.Factory.formats) })
+        if (picked === null || picked.length === 0) return
+
+        try {
+            const added: string[] = []
+            for (const file of picked) {
+                const name = await uniqueStorageName(op.Storage, basename(file.Path))
+                await op.Storage.WriteBytes(name, file.Bytes)
+                added.push(name)
+            }
+            // Refresh the tree so the imported files appear; re-wire the new nodes.
+            op.Adopt(await op.Factory.openProject(op.Storage))
+            this.wireNodes(op.Root, op)
+            this.Status = added.length === 1
+                ? `Added ${added[0]}.`
+                : `Added ${added.length} files.`
+        } catch (e) {
+            this.Status = `Add failed: ${(e as Error).message}`
+        }
+    }
+
+    // TreeView key handler (bound via `on KeyDown`): F2 renames the selected
+    // node, Enter commits the in-progress rename, Escape cancels it. Marks the
+    // args handled so the keystroke doesn't also drive tree navigation.
+    private handleTreeKey(op: OpenProject, args: KeyEventArgs): void
+    {
+        if (args === undefined) return
+        switch (args.Key) {
+            case Key.F2: {
+                const node = op.SelectedNode
+                if (node !== undefined && node.Path !== '') { this.beginRename(op, node); args.Handled = true }
+                return
+            }
+            case Key.Return: {
+                if (op.EditingNode !== undefined) { void this.commitRename(op, op.EditingNode); args.Handled = true }
+                return
+            }
+            case Key.Escape: {
+                if (op.EditingNode !== undefined) { this.cancelRename(op, op.EditingNode); args.Handled = true }
+                return
+            }
+        }
+    }
+
+    // Open a node's in-place editor: seed the buffer with the current name and
+    // flip IsEditing (which the row template swaps to a focused TextBox). Only
+    // one node edits at a time, so close any prior editor first.
+    private beginRename(op: OpenProject, node: ProjectNode): void
+    {
+        if (node.Path === '') return
+        const prev = op.EditingNode
+        if (prev !== undefined && prev !== node) prev.IsEditing = false
+        node.EditingName = node.Name
+        node.IsEditing = true
+        op.EditingNode = node
+    }
+
+    private cancelRename(op: OpenProject, node: ProjectNode): void
+    {
+        node.IsEditing = false
+        if (op.EditingNode === node) op.EditingNode = undefined
+    }
+
+    // Commit a rename: move the file/folder within its parent, re-point any open
+    // tabs to the new path, and rescan the tree. A no-op name, a collision, or a
+    // name with a path separator aborts back to the label (with a status).
+    private async commitRename(op: OpenProject, node: ProjectNode): Promise<void>
+    {
+        const proposed = node.EditingName.trim()
+        if (proposed === '' || proposed === node.Name) { this.cancelRename(op, node); return }
+        if (/[\\/]/.test(proposed)) { this.Status = "A name can't contain a path separator."; this.cancelRename(op, node); return }
+
+        const dest = joinRel(parentOf(node.Path), proposed)
+        try {
+            if (await op.Storage.Exists(dest)) { this.Status = `"${proposed}" already exists.`; this.cancelRename(op, node); return }
+            await op.Storage.Rename(node.Path, dest)
+            this.repointOpenDocuments(op, node.Path, dest)
+            op.EditingNode = undefined
+            // Rescan so the renamed node (and, for a folder, its moved contents)
+            // reappear under the new path; re-wire the fresh nodes' commands.
+            op.Adopt(await op.Factory.openProject(op.Storage))
+            this.wireNodes(op.Root, op)
+            this.Status = `Renamed to ${proposed}.`
+        } catch (e) {
+            this.cancelRename(op, node)
+            this.Status = `Rename failed: ${(e as Error).message}`
+        }
+    }
+
+    // After a rename, re-point every open tab whose file lived at (or under, for
+    // a folder rename) the old path — the factory updates the document's path +
+    // title in place so the tab keeps working. No-op for factories that can't
+    // relocate (their tabs would need a manual reopen).
+    private repointOpenDocuments(op: OpenProject, oldPath: string, newPath: string): void
+    {
+        if (!isRelocatable(op.Factory)) return
+        for (const [doc, path] of [...this.docPaths]) {
+            if (this.docOwners.get(doc) !== op) continue
+            const moved = path === oldPath ? newPath
+                : path.startsWith(oldPath + '/') ? newPath + path.slice(oldPath.length)
+                    : undefined
+            if (moved === undefined) continue
+            op.Factory.relocateOpenFile(doc, moved)
+            this.docPaths.set(doc, moved)
         }
     }
 
@@ -268,7 +414,7 @@ export class ProjectExplorerService extends ServiceBase
     private async closeProject(op: OpenProject): Promise<void>
     {
         for (const [doc, owner] of [...this.docOwners]) {
-            if (owner === op) { this.host.Close(doc); this.docOwners.delete(doc) }
+            if (owner === op) { this.host.Close(doc); this.docOwners.delete(doc); this.docPaths.delete(doc) }
         }
         this.OpenProjects.Remove(op)
         await this.openStore.Remove(op.Folder)
@@ -299,6 +445,7 @@ export class ProjectExplorerService extends ServiceBase
     {
         const doc = await op.Factory.openFile(op.Storage, path)
         this.docOwners.set(doc, op)
+        this.docPaths.set(doc, path)
         this.host.Open(doc)
     }
 
@@ -355,12 +502,57 @@ export class ProjectExplorerService extends ServiceBase
     private wireNodes(node: ProjectNode, op: OpenProject): void
     {
         node.OpenCommand = new RelayCommand(() => void this.openNode(node, op))
+        // The folder a node's context-menu creations land in: a folder node
+        // creates inside itself; a file node creates beside itself (VSCode-style).
+        const container = node.Kind === 'folder' ? node.Path : parentOf(node.Path)
+        node.NewFileCommand = new RelayCommand(() => void this.newFileIn(op, container))
+        node.NewFolderCommand = new RelayCommand(() => void this.newFolderIn(op, container))
+        // The root node isn't shown as a row, so it never renames; every other
+        // node's context-menu "Rename" opens its in-place editor.
+        node.BeginRenameCommand = new RelayCommand(() => this.beginRename(op, node), () => node.Path !== '')
         for (const child of node.Children.ToArray()) this.wireNodes(child, op)
     }
+}
+
+// ── project-relative path helpers (POSIX `/`; the storage backend translates) ──
+function joinRel(dir: string, name: string): string
+{
+    return dir === '' ? name : dir + '/' + name
+}
+
+function parentOf(path: string): string
+{
+    const slash = path.lastIndexOf('/')
+    return slash === -1 ? '' : path.slice(0, slash)
 }
 
 function basename(p: string): string
 {
     const parts = p.split(/[\\/]/)
     return parts[parts.length - 1] || p
+}
+
+// A project-relative name for `fileName` that doesn't collide with an existing
+// entry: returns it as-is when free, else the first free `stem-N.ext` (N ≥ 2),
+// mirroring an OS "copy" rename. The extension (leading dot only — dotfiles like
+// `.gitignore` keep their whole name) is preserved on the suffix.
+export async function uniqueStorageName(storage: IStorage, fileName: string): Promise<string>
+{
+    if (!(await storage.Exists(fileName))) return fileName
+    const dot = fileName.lastIndexOf('.')
+    const stem = dot > 0 ? fileName.slice(0, dot) : fileName
+    const ext = dot > 0 ? fileName.slice(dot) : ''
+    for (let n = 2; ; n++) {
+        const candidate = `${stem}-${n}${ext}`
+        if (!(await storage.Exists(candidate))) return candidate
+    }
+}
+
+// The open-dialog filters for importing into a project: one entry per factory
+// format (so its files surface first) plus an All-files catch-all — a guide,
+// not a restriction. Extensions carry no leading dot (the dialog's convention).
+export function importFilters(formats: readonly ProjectFileFormat[]): FileFilter[]
+{
+    const known = formats.map((f) => ({ Name: f.displayName, Extensions: [f.extension.replace(/^\./, '')] }))
+    return [...known, { Name: 'All files', Extensions: ['*'] }]
 }

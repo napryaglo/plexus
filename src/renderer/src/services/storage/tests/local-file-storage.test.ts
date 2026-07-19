@@ -14,8 +14,11 @@ function stubFs(): { fs: FileSystemService; calls: Array<[string, string]>; list
     const fs = {
         ReadText: (p: string) => { calls.push(['ReadText', p]); return Promise.resolve('text') },
         WriteText: (p: string, _c: string) => { calls.push(['WriteText', p]); return Promise.resolve() },
+        WriteBytes: (p: string, _b: Uint8Array) => { calls.push(['WriteBytes', p]); return Promise.resolve() },
         Exists: (p: string) => { calls.push(['Exists', p]); return Promise.resolve(true) },
         Delete: (p: string) => { calls.push(['Delete', p]); return Promise.resolve() },
+        CreateDirectory: (p: string) => { calls.push(['CreateDirectory', p]); return Promise.resolve() },
+        Rename: (f: string, t: string) => { calls.push(['Rename', `${f}=>${t}`]); return Promise.resolve() },
         ListDirectory: (p: string) => { calls.push(['ListDirectory', p]); return Promise.resolve(listResult) },
         OpenExternal: (p: string) => { calls.push(['OpenExternal', p]); return Promise.resolve() },
     } as unknown as FileSystemService
@@ -41,6 +44,27 @@ test('joins against a Windows (backslash) root using backslashes', async () => {
     const storage = new LocalFileStorage('C:\\Users\\proj', fs)
     await storage.WriteText('sub/x.diagram', 'data')
     expect(calls).toEqual([['WriteText', 'C:\\Users\\proj\\sub\\x.diagram']])
+})
+
+test('WriteBytes joins the path and delegates to the binary write', async () => {
+    const { fs, calls } = stubFs()
+    const storage = new LocalFileStorage('/root/proj', fs)
+    await storage.WriteBytes('assets/logo.png', new Uint8Array([1, 2, 3]))
+    expect(calls).toEqual([['WriteBytes', '/root/proj/assets/logo.png']])
+})
+
+test('CreateDirectory joins the path and delegates to the backend', async () => {
+    const { fs, calls } = stubFs()
+    const storage = new LocalFileStorage('/root/proj', fs)
+    await storage.CreateDirectory('diagrams/sub')
+    expect(calls).toEqual([['CreateDirectory', '/root/proj/diagrams/sub']])
+})
+
+test('Rename joins both paths and delegates', async () => {
+    const { fs, calls } = stubFs()
+    const storage = new LocalFileStorage('/root/proj', fs)
+    await storage.Rename('a/old.todl', 'a/new.todl')
+    expect(calls).toEqual([['Rename', '/root/proj/a/old.todl=>/root/proj/a/new.todl']])
 })
 
 test('List maps FileEntry → StorageEntry', async () => {

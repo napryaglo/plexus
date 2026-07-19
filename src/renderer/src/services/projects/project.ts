@@ -22,6 +22,24 @@ export class ProjectNode extends Model
     // without threading the node through a CommandParameter.
     static readonly OpenCommandKey = Model.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'OpenCommand', undefined, MetaData.None)
+    // Create a new file / subfolder in this node's containing folder (a folder
+    // node creates inside itself; a file node creates beside itself). Set by the
+    // host (ProjectExplorerService.wireNodes) so a row's context menu can bind
+    // `Command = $NewFileCommand` / `$NewFolderCommand` with no parameter.
+    static readonly NewFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        ProjectNode, 'NewFileCommand', undefined, MetaData.None)
+    static readonly NewFolderCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        ProjectNode, 'NewFolderCommand', undefined, MetaData.None)
+    // In-place rename state. IsEditing swaps the row's label for a TextBox (see
+    // the ProjectNodeTemplate); EditingName is that box's two-way text buffer.
+    // BeginRename (context-menu "Rename" / F2) opens the editor; the TreeView's
+    // key handler commits on Enter and cancels on Escape (host-driven).
+    static readonly IsEditingKey = Model.RegisterProperty<boolean>(
+        ProjectNode, 'IsEditing', false, MetaData.None)
+    static readonly EditingNameKey = Model.RegisterProperty<string>(
+        ProjectNode, 'EditingName', '', MetaData.None)
+    static readonly BeginRenameCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        ProjectNode, 'BeginRenameCommand', undefined, MetaData.None)
 
     constructor(name: string, path: string, kind: ProjectNodeKind)
     {
@@ -38,6 +56,21 @@ export class ProjectNode extends Model
     public get Children(): ObservableCollection<ProjectNode> { return this.get_property_value(ProjectNode.ChildrenKey) }
     public get OpenCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.OpenCommandKey) }
     public set OpenCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.OpenCommandKey, v) }
+
+    public get NewFileCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.NewFileCommandKey) }
+    public set NewFileCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.NewFileCommandKey, v) }
+
+    public get NewFolderCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.NewFolderCommandKey) }
+    public set NewFolderCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.NewFolderCommandKey, v) }
+
+    public get IsEditing(): boolean { return this.get_property_value(ProjectNode.IsEditingKey) }
+    public set IsEditing(v: boolean) { this.set_property_value(ProjectNode.IsEditingKey, v) }
+
+    public get EditingName(): string { return this.get_property_value(ProjectNode.EditingNameKey) }
+    public set EditingName(v: string) { this.set_property_value(ProjectNode.EditingNameKey, v) }
+
+    public get BeginRenameCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.BeginRenameCommandKey) }
+    public set BeginRenameCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.BeginRenameCommandKey, v) }
 }
 
 export class Project extends Model

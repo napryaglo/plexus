@@ -29,6 +29,7 @@ resources PlexusIcons {
     include "icons/folder.svg"                   as Folder
     include "icons/new-folder.svg"               as NewFolder
     include "icons/note-add.svg"                 as NoteAdd
+    include "icons/upload-file.svg"              as UploadFile
     include "icons/save.svg"                      as Save
     include "icons/publish.svg"                  as Publish
 

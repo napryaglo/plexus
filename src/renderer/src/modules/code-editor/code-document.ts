@@ -92,6 +92,19 @@ export class CodeDocument extends Model implements IDocument
 
     public get Diagnostics(): ObservableCollection<EditorDiagnostic> { return this.get_property_value(CodeDocument.DiagnosticsKey) }
 
+    // Re-point this document at a new path after an in-place rename: re-target
+    // the underlying file (so saves go to the new location) and refresh the
+    // identity DPs (Id dedupes tabs, Title labels the tab, Language re-infers
+    // from the new extension). The in-memory Content/dirty state is preserved.
+    public Relocate(newPath: string): void
+    {
+        const retargetable = this.file as Partial<{ Retarget(id: string): void }>
+        retargetable.Retarget?.(newPath)
+        this.set_property_value(CodeDocument.IdKey, newPath)
+        this.set_property_value(CodeDocument.TitleKey, fileName(newPath))
+        this.set_property_value(CodeDocument.LanguageKey, languageForPath(newPath))
+    }
+
     public async Save(): Promise<void>
     {
         const text = this.Content

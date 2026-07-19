@@ -23,10 +23,13 @@ export class FileSystemCodeFile implements ICodeFile
 // A project-relative file over an IStorage — project files, where the backend
 // (local FS today, cloud/REST later) is transparent. `id` is the project-
 // relative path, so a document opened this way carries a project-relative
-// identity (what whole-project validation keys diagnostics by).
+// identity (what whole-project validation keys diagnostics by). `id` is mutable
+// so an in-place rename can re-target the open document (via Retarget).
 export class StorageCodeFile implements ICodeFile
 {
-    constructor(private readonly storage: IStorage, public readonly id: string) {}
+    constructor(private readonly storage: IStorage, public id: string) {}
     public read(): Promise<string> { return this.storage.ReadText(this.id) }
     public write(text: string): Promise<void> { return this.storage.WriteText(this.id, text) }
+    // Re-point at a new project-relative path (subsequent read/write use it).
+    public Retarget(id: string): void { this.id = id }
 }

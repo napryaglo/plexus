@@ -30,8 +30,17 @@ export interface IStorage
 
     ReadText(path: string): Promise<string>
     WriteText(path: string, content: string): Promise<void>
+    // Write raw bytes — the binary-safe counterpart of WriteText, used to import
+    // existing files (images, archives) into a project without text corruption.
+    WriteBytes(path: string, bytes: Uint8Array): Promise<void>
     Exists(path: string): Promise<boolean>
     Delete(path: string): Promise<void>
+    // Create a directory (and any missing parents). Used to add folders to a
+    // project; idempotent — creating an existing directory is a no-op.
+    CreateDirectory(path: string): Promise<void>
+    // Rename/move a file or folder (with contents) within the project. Both
+    // paths are project-relative; used to rename tree nodes in place.
+    Rename(from: string, to: string): Promise<void>
     // Lists one directory (non-recursive). `path === ''` lists the root.
     List(path: string): Promise<readonly StorageEntry[]>
 }

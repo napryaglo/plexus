@@ -81,3 +81,19 @@ export function isPublishable(factory: IProjectFactory): factory is IProjectFact
 {
     return typeof (factory as Partial<IPublishableProjectFactory>).publish === 'function'
 }
+
+// Optional capability: re-point an already-open document after its file was
+// renamed/moved on storage (an in-place rename). The explorer feature-tests
+// with isRelocatable before offering to keep tabs open across a rename; a
+// factory that omits it simply leaves stale tabs closed to the caller's policy.
+// `newPath` is the document's new project-relative path.
+export interface IRelocatableFileFactory
+{
+    relocateOpenFile(document: IDocument, newPath: string): void
+}
+
+// Type guard: can this factory re-point an open document to a new path?
+export function isRelocatable(factory: IProjectFactory): factory is IProjectFactory & IRelocatableFileFactory
+{
+    return typeof (factory as Partial<IRelocatableFileFactory>).relocateOpenFile === 'function'
+}

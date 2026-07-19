@@ -12,6 +12,7 @@ import OpenProject from "../../services/projects/open-project.js"
 import ProjectNode from "../../services/projects/project.js"
 import KindToGeometry from "../../services/projects/project-node-icon.js"
 import ExpandedToChevron from "../../services/projects/project-node-icon.js"
+import EditingToLabelVisibility from "../../services/projects/project-node-icon.js"
 import NewProjectDialogModel from "../../services/projects/new-project-dialog-model.js"
 import ProjectTypeChoice from "../../services/projects/new-project-dialog-model.js"
 import OpenProjectDialogModel from "../../services/projects/open-project-dialog-model.js"
@@ -27,6 +28,14 @@ resources ProjectExplorerResources {
               Command = $NewFileCommand,
               Icon = Shape [ Geometry = @NoteAdd, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
         MenuItem
+            [ Header = "New Folder",
+              Command = $NewFolderCommand,
+              Icon = Shape [ Geometry = @NewFolder, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuItem
+            [ Header = "Add Existing Files…",
+              Command = $AddFileCommand,
+              Icon = Shape [ Geometry = @UploadFile, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuItem
             [ Header = "Publish",
               Command = $PublishCommand,
               Icon = Shape [ Geometry = @Publish, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
@@ -34,16 +43,53 @@ resources ProjectExplorerResources {
         MenuItem [ Header = "Close Project", Command = $CloseCommand ]
     }
 
+    // Per-node right-click menu: create a file / subfolder in the node's
+    // containing folder (the host wires each so a folder node creates inside
+    // itself, a file node beside itself). Commands resolve against the row's
+    // ProjectNode DataContext.
+    ContextMenu x:key="NodeContextMenu" {
+        MenuItem
+            [ Header = "New File",
+              Command = $NewFileCommand,
+              Icon = Shape [ Geometry = @NoteAdd, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuItem
+            [ Header = "New Folder",
+              Command = $NewFolderCommand,
+              Icon = Shape [ Geometry = @NewFolder, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuSeparator
+        MenuItem [ Header = "Rename", Command = $BeginRenameCommand ]
+    }
+
+    // Keyed Style carrying only a KeyDown trigger. Applied to the plain Border
+    // that wraps a project's TreeView (Borders have no default style to clobber,
+    // unlike the TreeView itself): a focused row's F2 / Enter / Escape bubbles up
+    // to this ancestor, where TreeKeyCommand drives rename begin / commit / cancel.
+    Style x:key="TreeKeyStyle" [ TargetType = Border ] {
+        on KeyDown { InvokeCommand [ Command = $TreeKeyCommand ] }
+    }
+
     // One tree row: a per-kind leading icon (Kind → geometry via KindToGeometry)
-    // and the node's name. `itemsselector = Children` recurses the template down
-    // the tree; the framework's default TreeView chrome supplies the chevrons,
-    // indent guides, full-row hover, and selection.
+    // and the node's name, in a transparent Border that carries the row's
+    // right-click NodeContextMenu. `itemsselector = Children` recurses the
+    // template down the tree; the framework's default TreeView chrome supplies
+    // the chevrons, indent guides, full-row hover, and selection.
     HierarchicalDataTemplate x:key="ProjectNodeTemplate"
         [ DataType = ProjectNode, itemsselector = Children ] {
-        StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
-            Shape [ Geometry = $Kind << KindToGeometry, Fill = @OnSurfaceVariant,
-                    Width = 16, Height = 16, Margin = (0,0,6,0), VerticalAlignment = Center ]
-            TextBlock [ Text = $Name, Style = @BodyMedium, VerticalAlignment = Center ]
+        Border [ Background = #00000000, ContextMenuService.ContextMenu = @NodeContextMenu ] {
+            StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
+                Shape [ Geometry = $Kind << KindToGeometry, Fill = @OnSurfaceVariant,
+                        Width = 16, Height = 16, Margin = (0,0,6,0), VerticalAlignment = Center ]
+                // Static label — hidden while the row is in rename mode.
+                TextBlock [ Text = $Name, Style = @BodyMedium, VerticalAlignment = Center,
+                            Visibility = $IsEditing << EditingToLabelVisibility ]
+                // In-place rename editor — a Border host (TextBox has no content
+                // model for a Behaviors block) revealed by IsEditing; the behavior
+                // focuses + text-selects the inner Plain TextBox the moment it shows.
+                Border [ Visibility = $IsEditing << ToVisibility ] {
+                    .Behaviors: { FocusOnVisibleBehavior }
+                    TextBox [ Text = $EditingName, Variant = Plain, MinWidth = 80, VerticalAlignment = Center ]
+                }
+            }
         }
     }
 
@@ -80,8 +126,10 @@ resources ProjectExplorerResources {
                                 VerticalAlignment = Center ]
                 }
             }
-            TreeView [ Indent = 14, ItemsSource = $Root.Children, ItemTemplate = @ProjectNodeTemplate,
-                       SelectedDataItem = $SelectedNode, Visibility = $IsExpanded << ToVisibility ]
+            Border [ Style = @TreeKeyStyle, Visibility = $IsExpanded << ToVisibility ] {
+                TreeView [ Indent = 14, ItemsSource = $Root.Children, ItemTemplate = @ProjectNodeTemplate,
+                           SelectedDataItem = $SelectedNode ]
+            }
         }
     }
 

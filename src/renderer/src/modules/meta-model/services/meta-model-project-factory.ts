@@ -6,6 +6,7 @@ import {
     PROJECT_MANIFEST_FILENAME,
     type IProjectFactory,
     type IPublishableProjectFactory,
+    type IRelocatableFileFactory,
     type ProjectFileFormat,
     type ProjectManifestEnvelope,
     type PublishResult,
@@ -37,7 +38,7 @@ interface MetaModelManifest extends ProjectManifestEnvelope
     modelVersion: string   // published version, defaults to '0.1.0'
 }
 
-export class MetaModelProjectFactory extends ServiceBase implements IProjectFactory, IPublishableProjectFactory
+export class MetaModelProjectFactory extends ServiceBase implements IProjectFactory, IPublishableProjectFactory, IRelocatableFileFactory
 {
     public static readonly Key = new ServiceKey<MetaModelProjectFactory>('MetaModelProjectFactory')
     public static readonly ProjectType = 'meta-model'
@@ -89,6 +90,15 @@ export class MetaModelProjectFactory extends ServiceBase implements IProjectFact
     public async saveFile(document: IDocument): Promise<void>
     {
         await (document as CodeDocument).Save()
+    }
+
+    // Re-point an open .todl document after its file was renamed on storage: the
+    // CodeDocument re-targets its StorageCodeFile and refreshes Id/Title/Language.
+    // The validator tracks the document by instance and reads its Id live, so no
+    // re-registration is needed — the next pass keys diagnostics by the new path.
+    public relocateOpenFile(document: IDocument, newPath: string): void
+    {
+        (document as CodeDocument).Relocate(newPath)
     }
 
     public async newFile(storage: IStorage, _format: string, name: string): Promise<string>

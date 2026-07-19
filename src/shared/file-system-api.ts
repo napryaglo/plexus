@@ -13,12 +13,16 @@
 export enum FileSystemChannel
 {
     OpenFile      = 'fs:open-file',
+    OpenFiles     = 'fs:open-files',
     OpenFolder    = 'fs:open-folder',
     SaveFileAs    = 'fs:save-file-as',
     ReadText      = 'fs:read-text',
     WriteText     = 'fs:write-text',
+    WriteBytes    = 'fs:write-bytes',
     Exists        = 'fs:exists',
     Delete        = 'fs:delete',
+    CreateDirectory = 'fs:create-directory',
+    Rename        = 'fs:rename',
     ListDirectory = 'fs:list-directory',
     OpenExternal  = 'fs:open-external',
 }
@@ -57,6 +61,15 @@ export interface OpenFileResult
     Content: string;
 }
 
+// A file picked for import: its absolute source path plus raw bytes (so binary
+// files — images, archives — survive the copy uncorrupted, unlike the text-only
+// OpenFileResult). Uint8Array rides the Electron structured clone directly.
+export interface ImportedFile
+{
+    Path:  string;
+    Bytes: Uint8Array;
+}
+
 // One entry in a directory listing.
 export interface FileEntry
 {
@@ -71,13 +84,23 @@ export interface FileEntry
 export interface IFileSystemApi
 {
     openFile(options?: OpenFileOptions): Promise<OpenFileResult | null>;
+    // Native multi-select open dialog → each picked file's path + raw bytes, or
+    // null on cancel. For importing existing files into a project.
+    openFiles(options?: OpenFileOptions): Promise<ImportedFile[] | null>;
     // Native folder picker → the chosen directory's absolute path, or null on cancel.
     openFolder(options?: OpenFolderOptions): Promise<string | null>;
     saveFileAs(content: string, options?: SaveFileOptions): Promise<string | null>;
     readText(path: string): Promise<string>;
     writeText(path: string, content: string): Promise<void>;
+    // Write raw bytes to an absolute path (binary-safe counterpart of writeText).
+    writeBytes(path: string, bytes: Uint8Array): Promise<void>;
     exists(path: string): Promise<boolean>;
     delete(path: string): Promise<void>;
+    // Create a directory (and any missing parents) at an absolute path.
+    createDirectory(path: string): Promise<void>;
+    // Rename/move a file or directory (with contents) from one absolute path to
+    // another.
+    rename(from: string, to: string): Promise<void>;
     listDirectory(path: string): Promise<readonly FileEntry[]>;
     // Open a path with the OS default application (for non-diagram attachments).
     openExternal(path: string): Promise<void>;

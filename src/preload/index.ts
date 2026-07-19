@@ -4,6 +4,7 @@ import {
   FileSystemChannel,
   type FileEntry,
   type IFileSystemApi,
+  type ImportedFile,
   type OpenFileOptions,
   type OpenFileResult,
   type OpenFolderOptions,
@@ -21,6 +22,8 @@ import { AgentChannel, type AgentEvent, type IAgentApi } from '../shared/agent-a
 const fs: IFileSystemApi = {
   openFile: (options?: OpenFileOptions): Promise<OpenFileResult | null> =>
     ipcRenderer.invoke(FileSystemChannel.OpenFile, options),
+  openFiles: (options?: OpenFileOptions): Promise<ImportedFile[] | null> =>
+    ipcRenderer.invoke(FileSystemChannel.OpenFiles, options),
   openFolder: (options?: OpenFolderOptions): Promise<string | null> =>
     ipcRenderer.invoke(FileSystemChannel.OpenFolder, options),
   saveFileAs: (content: string, options?: SaveFileOptions): Promise<string | null> =>
@@ -29,10 +32,16 @@ const fs: IFileSystemApi = {
     ipcRenderer.invoke(FileSystemChannel.ReadText, path),
   writeText: (path: string, content: string): Promise<void> =>
     ipcRenderer.invoke(FileSystemChannel.WriteText, path, content),
+  writeBytes: (path: string, bytes: Uint8Array): Promise<void> =>
+    ipcRenderer.invoke(FileSystemChannel.WriteBytes, path, bytes),
   exists: (path: string): Promise<boolean> =>
     ipcRenderer.invoke(FileSystemChannel.Exists, path),
   delete: (path: string): Promise<void> =>
     ipcRenderer.invoke(FileSystemChannel.Delete, path),
+  createDirectory: (path: string): Promise<void> =>
+    ipcRenderer.invoke(FileSystemChannel.CreateDirectory, path),
+  rename: (from: string, to: string): Promise<void> =>
+    ipcRenderer.invoke(FileSystemChannel.Rename, from, to),
   listDirectory: (path: string): Promise<readonly FileEntry[]> =>
     ipcRenderer.invoke(FileSystemChannel.ListDirectory, path),
   openExternal: (path: string): Promise<void> =>

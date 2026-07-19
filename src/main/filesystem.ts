@@ -1,9 +1,10 @@
 import { BrowserWindow, dialog, ipcMain, shell, type OpenDialogOptions, type SaveDialogOptions } from 'electron'
-import { access, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import {
   FileSystemChannel,
   type FileEntry,
   type FileFilter,
+  type ImportedFile,
   type OpenFileOptions,
   type OpenFileResult,
   type OpenFolderOptions,
@@ -43,6 +44,25 @@ export function registerFileSystemHandlers(): void {
       const path = result.filePaths[0]
       const content = await readFile(path, 'utf8')
       return { Path: path, Content: content }
+    },
+  )
+
+  ipcMain.handle(
+    FileSystemChannel.OpenFiles,
+    async (_e, options?: OpenFileOptions): Promise<ImportedFile[] | null> => {
+      const win = focusedWindow()
+      const dialogOptions: OpenDialogOptions = {
+        title: options?.Title,
+        filters: toDialogFilters(options?.Filters),
+        properties: ['openFile', 'multiSelections'],
+      }
+      const result = win
+        ? await dialog.showOpenDialog(win, dialogOptions)
+        : await dialog.showOpenDialog(dialogOptions)
+      if (result.canceled || result.filePaths.length === 0) return null
+      return Promise.all(
+        result.filePaths.map(async (path) => ({ Path: path, Bytes: await readFile(path) })),
+      )
     },
   )
 
@@ -93,6 +113,13 @@ export function registerFileSystemHandlers(): void {
     },
   )
 
+  ipcMain.handle(
+    FileSystemChannel.WriteBytes,
+    async (_e, path: string, bytes: Uint8Array): Promise<void> => {
+      await writeFile(path, Buffer.from(bytes))
+    },
+  )
+
   ipcMain.handle(FileSystemChannel.Exists, async (_e, path: string): Promise<boolean> => {
     try {
       await access(path)
@@ -104,6 +131,14 @@ export function registerFileSystemHandlers(): void {
 
   ipcMain.handle(FileSystemChannel.Delete, async (_e, path: string): Promise<void> => {
     await rm(path, { force: true })
+  })
+
+  ipcMain.handle(FileSystemChannel.CreateDirectory, async (_e, path: string): Promise<void> => {
+    await mkdir(path, { recursive: true })
+  })
+
+  ipcMain.handle(FileSystemChannel.Rename, async (_e, from: string, to: string): Promise<void> => {
+    await rename(from, to)
   })
 
   ipcMain.handle(

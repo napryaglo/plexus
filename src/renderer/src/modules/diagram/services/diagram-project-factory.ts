@@ -4,6 +4,7 @@ import { DiagramDocument, type IDocument } from '@pragmatic-lab/mural/framework'
 import {
     PROJECT_MANIFEST_FILENAME,
     type IProjectFactory,
+    type IRelocatableFileFactory,
     type ProjectFileFormat,
     type ProjectManifestEnvelope,
 } from '../../../services/projects/project-factory.js'
@@ -25,7 +26,7 @@ import { FileDiagramStorage } from '../persistence/file-diagram-storage.js'
 // type/name envelope (explicit diagram/attachment curation is a follow-up).
 interface ArchitectureManifest extends ProjectManifestEnvelope {}
 
-export class DiagramProjectFactory extends ServiceBase implements IProjectFactory
+export class DiagramProjectFactory extends ServiceBase implements IProjectFactory, IRelocatableFileFactory
 {
     public static readonly Key = new ServiceKey<DiagramProjectFactory>('DiagramProjectFactory')
     public static readonly ProjectType = 'architecture'
@@ -72,6 +73,17 @@ export class DiagramProjectFactory extends ServiceBase implements IProjectFactor
         doc.Save()
         const store = doc.Storage
         if (store instanceof FileDiagramStorage) await store.WhenWritten()
+    }
+
+    // Re-point an open diagram after its file was renamed on storage: re-target
+    // the FileDiagramStorage (so later Save()s write to the new path) and retitle
+    // the tab. The in-memory scene is untouched.
+    public relocateOpenFile(document: IDocument, newPath: string): void
+    {
+        const doc = document as DiagramDocument
+        const store = doc.Storage
+        if (store instanceof FileDiagramStorage) store.Path = newPath
+        doc.Title = basename(newPath)
     }
 
     public async newFile(storage: IStorage, _format: string, name: string): Promise<string>

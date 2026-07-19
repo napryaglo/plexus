@@ -6,7 +6,7 @@
 // flows through a value converter: the per-kind node icon (`$Kind <<
 // KindToGeometry`) and the project header's expand/collapse chevron
 // (`$IsExpanded << ExpandedToChevron`).
-import { Application, type ValueConverter } from '@pragmatic-lab/mural/runtime'
+import { Application, Visibility, type ValueConverter } from '@pragmatic-lab/mural/runtime'
 
 import type { ProjectNodeKind } from './project.js'
 
@@ -39,4 +39,11 @@ export const KindToGeometry: ValueConverter = {
 export const ExpandedToChevron: ValueConverter = {
     convert: (expanded: unknown) =>
         Application.current?.Resources.Resolve(expanded ? 'ChevronDown' : 'ChevronRight'),
+}
+
+// The row label's visibility given the node's IsEditing flag — the inverse of
+// the framework's ToVisibility: the static label hides while the rename editor
+// (bound with ToVisibility) is shown, and vice-versa.
+export const EditingToLabelVisibility: ValueConverter = {
+    convert: (editing: unknown) => (editing ? Visibility.Collapsed : Visibility.Visible),
 }

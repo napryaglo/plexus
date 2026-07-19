@@ -12,6 +12,9 @@ export class FakeStorage implements IStorage
 {
     public readonly Root: string
     private readonly files = new Map<string, string>()
+    // Explicitly-created directories (so empty folders register for Exists/List,
+    // which the file-prefix derivation alone can't represent).
+    private readonly dirs = new Set<string>()
 
     constructor(root = 'fake://project')
     {
@@ -32,19 +35,59 @@ export class FakeStorage implements IStorage
         return Promise.resolve()
     }
 
+    // Store bytes as a binary (latin1) string so the file registers for
+    // Exists/List/size; content round-trips losslessly through fromCharCode.
+    public WriteBytes(path: string, bytes: Uint8Array): Promise<void>
+    {
+        this.files.set(normalize(path), String.fromCharCode(...bytes))
+        return Promise.resolve()
+    }
+
     public Exists(path: string): Promise<boolean>
     {
         const key = normalize(path)
-        if (this.files.has(key)) return Promise.resolve(true)
-        // A directory "exists" if any file sits under it.
+        if (this.files.has(key) || this.dirs.has(key)) return Promise.resolve(true)
+        // A directory "exists" if any file or subdirectory sits under it.
         const prefix = key + '/'
         for (const k of this.files.keys()) if (k.startsWith(prefix)) return Promise.resolve(true)
+        for (const d of this.dirs) if (d.startsWith(prefix)) return Promise.resolve(true)
         return Promise.resolve(false)
     }
 
     public Delete(path: string): Promise<void>
     {
-        this.files.delete(normalize(path))
+        const key = normalize(path)
+        this.files.delete(key)
+        this.dirs.delete(key)
+        return Promise.resolve()
+    }
+
+    // Record the directory and each of its ancestors (recursive-mkdir semantics).
+    public CreateDirectory(path: string): Promise<void>
+    {
+        let key = normalize(path)
+        while (key !== '') { this.dirs.add(key); key = parentOf(key) }
+        return Promise.resolve()
+    }
+
+    // Move `from` (a file or directory) to `to`, rewriting the key of the entry
+    // itself and — for a directory — every descendant file/dir prefix.
+    public Rename(from: string, to: string): Promise<void>
+    {
+        const src = normalize(from)
+        const dst = normalize(to)
+        const rewrite = (key: string): string | undefined =>
+            key === src ? dst
+                : key.startsWith(src + '/') ? dst + key.slice(src.length)
+                    : undefined
+        for (const [key, value] of [...this.files]) {
+            const next = rewrite(key)
+            if (next !== undefined) { this.files.delete(key); this.files.set(next, value) }
+        }
+        for (const key of [...this.dirs]) {
+            const next = rewrite(key)
+            if (next !== undefined) { this.dirs.delete(key); this.dirs.add(next) }
+        }
         return Promise.resolve()
     }
 
@@ -61,6 +104,13 @@ export class FakeStorage implements IStorage
             if (slash === -1) children.set(rest, children.get(rest) ?? false)
             else children.set(rest.slice(0, slash), true)   // a folder always wins
         }
+        for (const d of this.dirs) {
+            if (!d.startsWith(prefix)) continue
+            const rest = d.slice(prefix.length)
+            if (rest === '') continue
+            const slash = rest.indexOf('/')
+            children.set(slash === -1 ? rest : rest.slice(0, slash), true)
+        }
         return Promise.resolve([...children].map(([Name, IsDirectory]) => ({ Name, IsDirectory })))
     }
 
@@ -72,4 +122,11 @@ export class FakeStorage implements IStorage
 function normalize(path: string): string
 {
     return path.split(/[\\/]/).filter((s) => s.length > 0).join('/')
+}
+
+// The parent of a normalized key ('' for a top-level entry).
+function parentOf(key: string): string
+{
+    const slash = key.lastIndexOf('/')
+    return slash === -1 ? '' : key.slice(0, slash)
 }

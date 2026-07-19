@@ -17,6 +17,15 @@ export class OpenProject extends Model
         OpenProject, 'Root', undefined as unknown as ProjectNode, MetaData.None)
     static readonly NewFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'NewFileCommand', undefined, MetaData.None)
+    static readonly AddFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        OpenProject, 'AddFileCommand', undefined, MetaData.None)
+    static readonly NewFolderCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        OpenProject, 'NewFolderCommand', undefined, MetaData.None)
+    // Keyboard handler for the project's TreeView (bound via `on KeyDown`): the
+    // host inspects the KeyEventArgs and drives F2 (begin rename of SelectedNode),
+    // Enter (commit the EditingNode) and Escape (cancel).
+    static readonly TreeKeyCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        OpenProject, 'TreeKeyCommand', undefined, MetaData.None)
     static readonly PublishCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'PublishCommand', undefined, MetaData.None)
     static readonly CloseCommandKey = Model.RegisterProperty<ICommand | undefined>(
@@ -74,6 +83,19 @@ export class OpenProject extends Model
 
     public get NewFileCommand(): ICommand | undefined { return this.get_property_value(OpenProject.NewFileCommandKey) }
     public set NewFileCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.NewFileCommandKey, v) }
+
+    public get AddFileCommand(): ICommand | undefined { return this.get_property_value(OpenProject.AddFileCommandKey) }
+    public set AddFileCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.AddFileCommandKey, v) }
+
+    public get NewFolderCommand(): ICommand | undefined { return this.get_property_value(OpenProject.NewFolderCommandKey) }
+    public set NewFolderCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.NewFolderCommandKey, v) }
+
+    public get TreeKeyCommand(): ICommand | undefined { return this.get_property_value(OpenProject.TreeKeyCommandKey) }
+    public set TreeKeyCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.TreeKeyCommandKey, v) }
+
+    // The node whose row is currently in rename mode (at most one per project).
+    // Plain view-transient state — not bound, so a field rather than a DP.
+    public EditingNode: ProjectNode | undefined = undefined
 
     public get PublishCommand(): ICommand | undefined { return this.get_property_value(OpenProject.PublishCommandKey) }
     public set PublishCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.PublishCommandKey, v) }

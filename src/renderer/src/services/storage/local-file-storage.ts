@@ -30,6 +30,11 @@ export class LocalFileStorage implements IStorage, ILocalFileAccess
         return this.fs.WriteText(this.abs(path), content)
     }
 
+    public WriteBytes(path: string, bytes: Uint8Array): Promise<void>
+    {
+        return this.fs.WriteBytes(this.abs(path), bytes)
+    }
+
     public Exists(path: string): Promise<boolean>
     {
         return this.fs.Exists(this.abs(path))
@@ -38,6 +43,16 @@ export class LocalFileStorage implements IStorage, ILocalFileAccess
     public Delete(path: string): Promise<void>
     {
         return this.fs.Delete(this.abs(path))
+    }
+
+    public CreateDirectory(path: string): Promise<void>
+    {
+        return this.fs.CreateDirectory(this.abs(path))
+    }
+
+    public Rename(from: string, to: string): Promise<void>
+    {
+        return this.fs.Rename(this.abs(from), this.abs(to))
     }
 
     public async List(path: string): Promise<readonly StorageEntry[]>
