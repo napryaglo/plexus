@@ -20,6 +20,7 @@ import OpenProjectDialogModel from "../../services/projects/open-project-dialog-
 import RecentProjectItem from "../../services/projects/open-project-dialog-model.js"
 import ConfirmDialogModel from "../../services/dialogs/confirm-dialog-model.js"
 import TreeSelectionBehavior from "../../services/projects/tree-selection-behavior.js"
+import TreeDragDropBehavior from "../../services/projects/tree-drag-drop-behavior.js"
 
 resources ProjectExplorerResources {
 
@@ -81,6 +82,7 @@ resources ProjectExplorerResources {
     HierarchicalDataTemplate x:key="ProjectNodeTemplate"
         [ DataType = ProjectNode, itemsselector = Children ] {
         Border [ Background = #00000000, ContextMenuService.ContextMenu = @NodeContextMenu ] {
+            .Behaviors: { TreeDragDropBehavior }
             StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
                 Shape [ Geometry = $Kind << KindToGeometry, Fill = @OnSurfaceVariant,
                         Width = 16, Height = 16, Margin = (0,0,6,0), VerticalAlignment = Center ]
@@ -121,6 +123,7 @@ resources ProjectExplorerResources {
             // Visibility folds with it — no button chrome anywhere.
             Border [ Background = #00000000, HorizontalAlignment = Stretch, Margin = (0,2,0,2),
                      ContextMenuService.ContextMenu = @ProjectContextMenu ] {
+                .Behaviors: { TreeDragDropBehavior }
                 DockPanel [ LastChildFill = true ] {
                     ToggleButton [ DockPanel.Dock = Left, Template = @ChevronToggle,
                                    IsChecked = $IsExpanded, Margin = (0,0,4,0) ] {
