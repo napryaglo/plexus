@@ -130,7 +130,9 @@ export function registerFileSystemHandlers(): void {
   })
 
   ipcMain.handle(FileSystemChannel.Delete, async (_e, path: string): Promise<void> => {
-    await rm(path, { force: true })
+    // recursive so deleting a project folder removes its contents too (rm on a
+    // non-empty directory throws otherwise); force ignores a missing path.
+    await rm(path, { force: true, recursive: true })
   })
 
   ipcMain.handle(FileSystemChannel.CreateDirectory, async (_e, path: string): Promise<void> => {

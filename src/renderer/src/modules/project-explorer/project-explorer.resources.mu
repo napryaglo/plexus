@@ -17,6 +17,8 @@ import NewProjectDialogModel from "../../services/projects/new-project-dialog-mo
 import ProjectTypeChoice from "../../services/projects/new-project-dialog-model.js"
 import OpenProjectDialogModel from "../../services/projects/open-project-dialog-model.js"
 import RecentProjectItem from "../../services/projects/open-project-dialog-model.js"
+import ConfirmDialogModel from "../../services/dialogs/confirm-dialog-model.js"
+import TreeSelectionBehavior from "../../services/projects/tree-selection-behavior.js"
 
 resources ProjectExplorerResources {
 
@@ -58,6 +60,7 @@ resources ProjectExplorerResources {
               Icon = Shape [ Geometry = @NewFolder, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
         MenuSeparator
         MenuItem [ Header = "Rename", Command = $BeginRenameCommand ]
+        MenuItem [ Header = "Delete", Command = $DeleteCommand ]
     }
 
     // Keyed Style carrying only a KeyDown trigger. Applied to the plain Border
@@ -128,7 +131,9 @@ resources ProjectExplorerResources {
             }
             Border [ Style = @TreeKeyStyle, Visibility = $IsExpanded << ToVisibility ] {
                 TreeView [ Indent = 14, ItemsSource = $Root.Children, ItemTemplate = @ProjectNodeTemplate,
-                           SelectedDataItem = $SelectedNode ]
+                           SelectedDataItem = $SelectedNode, SelectionMode = Extended ] {
+                    .Behaviors: { TreeSelectionBehavior }
+                }
             }
         }
     }
@@ -201,6 +206,20 @@ resources ProjectExplorerResources {
             StackPanel [ Orientation = Horizontal, HorizontalAlignment = Right ] {
                 Button [ Variant = Text, Command = $CancelCommand, Margin = (0,0,8,0) ] { TextBlock [ Text = "Cancel" ] }
                 Button [ Variant = Filled, Command = $ConfirmCommand, IsEnabled = $CanConfirm ] { TextBlock [ Text = "Create" ] }
+            }
+        }
+    }
+
+    // ── Confirm dialog ───────────────────────────────────────────────────
+    // A reusable message + Cancel / confirm pair (DialogService supplies the
+    // title/surface). The confirm button's label comes from the VM so it reads
+    // as the action ("Delete"); it's Filled to sit as the primary affordance.
+    DataTemplate [ DataType = ConfirmDialogModel ] {
+        StackPanel [ Orientation = Vertical, HorizontalAlignment = Stretch ] {
+            TextBlock [ Style = @BodyLarge, Text = $Message, Foreground = @OnSurface, TextWrapping = Wrap, Margin = (0,0,0,16) ]
+            StackPanel [ Orientation = Horizontal, HorizontalAlignment = Right ] {
+                Button [ Variant = Text, Command = $CancelCommand, Margin = (0,0,8,0) ] { TextBlock [ Text = "Cancel" ] }
+                Button [ Variant = Filled, Command = $ConfirmCommand ] { TextBlock [ Text = $ConfirmLabel ] }
             }
         }
     }

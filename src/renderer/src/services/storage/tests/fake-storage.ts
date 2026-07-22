@@ -54,11 +54,17 @@ export class FakeStorage implements IStorage
         return Promise.resolve(false)
     }
 
+    // Remove a file or a directory with its whole subtree — mirroring the local
+    // backend's `rm(path, { recursive: true })`, so deleting a folder takes its
+    // descendants (files and subdirs) with it, not just the bare directory key.
     public Delete(path: string): Promise<void>
     {
         const key = normalize(path)
         this.files.delete(key)
         this.dirs.delete(key)
+        const prefix = key + '/'
+        for (const k of [...this.files.keys()]) if (k.startsWith(prefix)) this.files.delete(k)
+        for (const d of [...this.dirs]) if (d.startsWith(prefix)) this.dirs.delete(d)
         return Promise.resolve()
     }
 

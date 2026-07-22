@@ -58,6 +58,7 @@ import {
     OpenProjectDialogModel,
     type OpenProjectResult,
 } from '../../../services/projects/open-project-dialog-model.js'
+import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
 import { RecentProjectsService } from '../../../services/projects/recent-projects-service.js'
 import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'
 import { isLocalFileAccess, type IStorage } from '../../../services/storage/storage.js'
@@ -330,6 +331,82 @@ export class ProjectExplorerService extends ServiceBase
                 if (op.EditingNode !== undefined) { this.cancelRename(op, op.EditingNode); args.Handled = true }
                 return
             }
+            case Key.Delete: {
+                // Not while a rename editor is open — there Delete edits text.
+                if (op.EditingNode !== undefined) return
+                const targets = this.selectionOf(op)
+                if (targets.length > 0) { void this.deleteNodes(op, targets); args.Handled = true }
+                return
+            }
+        }
+    }
+
+    // The tree's current selection as an array: the full multi-selection when
+    // present (kept in sync by TreeSelectionBehavior), else the single anchor
+    // node. Empty when nothing is selected.
+    private selectionOf(op: OpenProject): ProjectNode[]
+    {
+        if (op.SelectedNodes.length > 0) return [...op.SelectedNodes]
+        return op.SelectedNode !== undefined ? [op.SelectedNode] : []
+    }
+
+    // Context-menu "Delete" on a node: if the node is part of a multi-selection,
+    // delete the whole selected set; otherwise delete just this node. (Right-
+    // clicking a row outside the selection acts on that row alone, VSCode-style.)
+    private deleteFromNode(op: OpenProject, node: ProjectNode): Promise<void>
+    {
+        const selection = op.SelectedNodes
+        const targets = selection.length > 1 && selection.includes(node) ? [...selection] : [node]
+        return this.deleteNodes(op, targets)
+    }
+
+    // Delete one or more nodes: confirm once, remove each from storage (a folder
+    // takes its contents with it), close any tabs the deletion invalidates, then
+    // rescan the tree. Nodes nested under another selected node are dropped from
+    // the storage pass (their ancestor's delete already removes them). The
+    // project root ('' path) is never deletable and is filtered out.
+    private async deleteNodes(op: OpenProject, nodes: readonly ProjectNode[]): Promise<void>
+    {
+        const targets = nodes.filter((n) => n.Path !== '')
+        if (targets.length === 0) return
+        if (!(await this.confirmDelete(targets))) return
+
+        try {
+            for (const node of topLevelNodes(targets)) {
+                await op.Storage.Delete(node.Path)
+                this.closeDocumentsUnder(op, node.Path)
+            }
+            op.Adopt(await op.Factory.openProject(op.Storage))
+            this.wireNodes(op.Root, op)
+            op.SelectedNodes = []
+            this.Status = targets.length === 1 ? `Deleted ${targets[0].Name}.` : `Deleted ${targets.length} items.`
+        } catch (e) {
+            this.Status = `Delete failed: ${(e as Error).message}`
+        }
+    }
+
+    // Show the reusable confirm dialog and await the user's choice. The message
+    // adapts to the selection — a single file, a single folder (whose contents
+    // go too), or a multi-item batch. A scrim dismiss resolves undefined → false.
+    private async confirmDelete(nodes: readonly ProjectNode[]): Promise<boolean>
+    {
+        const message = deleteMessage(nodes)
+        const vm = new ConfirmDialogModel(message, 'Delete', (r) => this.dialogs.Close(r))
+        const confirmed = await this.dialogs.Show<boolean>({ Title: 'Delete', Content: vm, Width: 420 })
+        return confirmed === true
+    }
+
+    // Close every open tab whose file lived at `path` or under it (for a folder
+    // delete), and forget it — the file is gone, so the tab can't save back.
+    private closeDocumentsUnder(op: OpenProject, path: string): void
+    {
+        for (const [doc, docPath] of [...this.docPaths]) {
+            if (this.docOwners.get(doc) !== op) continue
+            if (docPath === path || docPath.startsWith(path + '/')) {
+                this.host.Close(doc)
+                this.docOwners.delete(doc)
+                this.docPaths.delete(doc)
+            }
         }
     }
 
@@ -510,6 +587,7 @@ export class ProjectExplorerService extends ServiceBase
         // The root node isn't shown as a row, so it never renames; every other
         // node's context-menu "Rename" opens its in-place editor.
         node.BeginRenameCommand = new RelayCommand(() => this.beginRename(op, node), () => node.Path !== '')
+        node.DeleteCommand = new RelayCommand(() => void this.deleteFromNode(op, node), () => node.Path !== '')
         for (const child of node.Children.ToArray()) this.wireNodes(child, op)
     }
 }
@@ -530,6 +608,28 @@ function basename(p: string): string
 {
     const parts = p.split(/[\\/]/)
     return parts[parts.length - 1] || p
+}
+
+// The subset of `nodes` that isn't nested under another node in the same set —
+// so a folder + a file inside it deletes only the folder (which takes the file
+// with it), never the already-gone child. Order is preserved.
+function topLevelNodes(nodes: readonly ProjectNode[]): ProjectNode[]
+{
+    return nodes.filter((n) => !nodes.some((other) => other !== n && n.Path.startsWith(other.Path + '/')))
+}
+
+// The confirmation prompt for a delete, phrased to the selection: a single file,
+// a single folder (contents included), or an N-item batch. Always warns it's
+// permanent — deletion has no undo (consistent with rename).
+function deleteMessage(nodes: readonly ProjectNode[]): string
+{
+    if (nodes.length === 1) {
+        const node = nodes[0]!
+        return node.Kind === 'folder'
+            ? `Delete folder "${node.Name}" and its contents? This can't be undone.`
+            : `Delete "${node.Name}"? This can't be undone.`
+    }
+    return `Delete these ${nodes.length} items? This can't be undone.`
 }
 
 // A project-relative name for `fileName` that doesn't collide with an existing

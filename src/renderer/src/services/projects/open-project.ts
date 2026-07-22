@@ -97,6 +97,13 @@ export class OpenProject extends Model
     // Plain view-transient state — not bound, so a field rather than a DP.
     public EditingNode: ProjectNode | undefined = undefined
 
+    // The tree's full multi-selection — the set of selected ProjectNodes,
+    // pushed here by TreeSelectionBehavior (the TreeView runs in Extended
+    // selection mode). SelectedNode above stays the anchor (what opens on
+    // click); this is what a Delete acts on when several rows are selected.
+    // Not bound to the view (the host reads it), so a plain field.
+    public SelectedNodes: readonly ProjectNode[] = []
+
     public get PublishCommand(): ICommand | undefined { return this.get_property_value(OpenProject.PublishCommandKey) }
     public set PublishCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.PublishCommandKey, v) }
 

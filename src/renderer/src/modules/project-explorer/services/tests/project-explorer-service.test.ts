@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import { Key, ServiceProvider, type KeyEventArgs } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DocumentsContentHostService, ProjectFactoryRegistry, type IDocument } from '@pragmatic-lab/mural/framework'
+import { ContentHostService, DialogService, DocumentsContentHostService, ProjectFactoryRegistry, type IDocument } from '@pragmatic-lab/mural/framework'
 
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
 import { FileSystemService } from '../../../../services/file-system/file-system-service.js'
@@ -10,6 +10,7 @@ import { Project, ProjectNode } from '../../../../services/projects/project.js'
 import { OpenProject } from '../../../../services/projects/open-project.js'
 import { OpenProjectsStore } from '../../../../services/projects/open-projects-store.js'
 import { PROJECT_MANIFEST_FILENAME, type IProjectFactory, type IPublishableProjectFactory, type IRelocatableFileFactory } from '../../../../services/projects/project-factory.js'
+import { ConfirmDialogModel } from '../../../../services/dialogs/confirm-dialog-model.js'
 import { ProjectExplorerService, importFilters, uniqueStorageName } from '../project-explorer-service.js'
 
 // A picked file as the OS dialog would hand it back (absolute path + raw bytes).
@@ -65,15 +66,28 @@ interface ExplorerPrivates
     beginRename(op: OpenProject, node: ProjectNode): void
     commitRename(op: OpenProject, node: ProjectNode): Promise<void>
     handleTreeKey(op: OpenProject, args: KeyEventArgs): void
+    deleteNodes(op: OpenProject, nodes: readonly ProjectNode[]): Promise<void>
+    deleteFromNode(op: OpenProject, node: ProjectNode): Promise<void>
     closeProject(op: OpenProject): Promise<void>
     saveActive(): Promise<void>
 }
 
-function makeExplorer(openFiles: Picked[] | null = null): {
+// A fake DialogService: Show records the shown content and resolves the preset
+// confirm answer (so the confirm-then-delete flow runs without a real dialog).
+function fakeDialogs(confirm: boolean, shown: unknown[]): DialogService
+{
+    return {
+        Show: (opts: { Content: unknown }) => { shown.push(opts.Content); return Promise.resolve(confirm) },
+        Close: () => {},
+    } as unknown as DialogService
+}
+
+function makeExplorer(openFiles: Picked[] | null = null, confirm = true): {
     service: ProjectExplorerService
     host: DocumentsContentHostService
     store: OpenProjectsStore
     priv: ExplorerPrivates
+    shownDialogs: unknown[]
 }
 {
     const provider = new ServiceProvider()
@@ -81,10 +95,12 @@ function makeExplorer(openFiles: Picked[] | null = null): {
     provider.registerInstance(ContentHostService.Key, host)
     provider.registerInstance(FileSystemService.Key, fakeFs(openFiles))
     provider.registerInstance(EnvironmentService.Key, { UserDataDirectory: '/data' } as unknown as EnvironmentService)
+    const shownDialogs: unknown[] = []
+    provider.registerInstance(DialogService.Key, fakeDialogs(confirm, shownDialogs))
     const store = new OpenProjectsStore(provider)
     provider.registerInstance(OpenProjectsStore.Key, store)
     const service = new ProjectExplorerService(provider)
-    return { service, host, store, priv: service as unknown as ExplorerPrivates }
+    return { service, host, store, priv: service as unknown as ExplorerPrivates, shownDialogs }
 }
 
 function childNode(op: OpenProject): ProjectNode
@@ -383,4 +399,157 @@ test('importFilters lists each format plus an All-files catch-all', () => {
         { Name: 'TODL Definition', Extensions: ['todl'] },
         { Name: 'All files', Extensions: ['*'] },
     ])
+})
+
+// ── Delete ───────────────────────────────────────────────────────────────
+
+// A root with two todl files and a subfolder holding one — for delete tests
+// that need multiple siblings and a nested file.
+function projectWithTree(folder: string): Project
+{
+    const root = new ProjectNode('A', '', 'folder')
+    root.Children.Add(new ProjectNode('a.todl', 'a.todl', 'todl'))
+    root.Children.Add(new ProjectNode('b.todl', 'b.todl', 'todl'))
+    const src = new ProjectNode('src', 'src', 'folder')
+    src.Children.Add(new ProjectNode('c.todl', 'src/c.todl', 'todl'))
+    root.Children.Add(src)
+    return new Project('meta-model', 'A', folder, root)
+}
+
+test('deleting a confirmed file removes it from storage and closes its open tab', async () => {
+    const { priv, host } = makeExplorer()
+    const storage = new FakeStorage('C:/a')
+    await storage.WriteText('core.todl', 'x')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const node = childNode(op)
+    await priv.openNode(node, op)
+    expect(host.OpenDocuments.Count).toBe(1)
+
+    await priv.deleteNodes(op, [node])
+
+    expect(await storage.Exists('core.todl')).toBe(false)
+    expect(host.OpenDocuments.Count).toBe(0)
+})
+
+test('cancelling the confirm dialog leaves the file in place', async () => {
+    const { priv } = makeExplorer(null, false)   // dialog resolves "not confirmed"
+    const storage = new FakeStorage('C:/a')
+    await storage.WriteText('core.todl', 'x')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+
+    await priv.deleteNodes(op, [childNode(op)])
+
+    expect(await storage.Exists('core.todl')).toBe(true)
+})
+
+test('deleting a folder removes its whole subtree and closes tabs underneath', async () => {
+    const { priv, host } = makeExplorer()
+    const storage = new FakeStorage('C:/a')
+    await storage.WriteText('src/c.todl', 'x')
+    const op = await priv.addOpenProject(projectWithTree('C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const src = op.Root.Children.ToArray().find((n) => n.Kind === 'folder')!
+    await priv.openNode(src.Children.ToArray()[0]!, op)   // open src/c.todl
+    expect(host.OpenDocuments.Count).toBe(1)
+
+    await priv.deleteNodes(op, [src])
+
+    expect(await storage.Exists('src/c.todl')).toBe(false)
+    expect(await storage.Exists('src')).toBe(false)
+    expect(host.OpenDocuments.Count).toBe(0)
+})
+
+test('deleting one node of a multi-selection removes the whole selected set', async () => {
+    const { priv } = makeExplorer()
+    const storage = new FakeStorage('C:/a')
+    await storage.WriteText('a.todl', 'x')
+    await storage.WriteText('b.todl', 'y')
+    const op = await priv.addOpenProject(projectWithTree('C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const [a, b] = op.Root.Children.ToArray()
+    op.SelectedNodes = [a!, b!]
+
+    await priv.deleteFromNode(op, a!)   // right-clicked a, but b is selected too
+
+    expect(await storage.Exists('a.todl')).toBe(false)
+    expect(await storage.Exists('b.todl')).toBe(false)
+})
+
+test('a selection of a folder and a file inside it deletes without a double-removal error', async () => {
+    const { priv } = makeExplorer()
+    const storage = new FakeStorage('C:/a')
+    await storage.WriteText('src/c.todl', 'x')
+    const op = await priv.addOpenProject(projectWithTree('C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const src = op.Root.Children.ToArray().find((n) => n.Kind === 'folder')!
+    const child = src.Children.ToArray()[0]!
+
+    await priv.deleteNodes(op, [src, child])
+
+    expect(await storage.Exists('src')).toBe(false)
+})
+
+test('the Delete key deletes the selected node', async () => {
+    const { priv } = makeExplorer()
+    const storage = new FakeStorage('C:/a')
+    await storage.WriteText('core.todl', 'x')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    op.SelectedNode = childNode(op)
+
+    const del = { Key: Key.Delete, Handled: false } as unknown as KeyEventArgs
+    priv.handleTreeKey(op, del)
+    await new Promise((r) => setTimeout(r, 0))   // let the fire-and-forget delete settle
+
+    expect(await storage.Exists('core.todl')).toBe(false)
+    expect(del.Handled).toBe(true)
+})
+
+test('the Delete key does nothing while a rename editor is open', async () => {
+    const { priv } = makeExplorer()
+    const storage = new FakeStorage('C:/a')
+    await storage.WriteText('core.todl', 'x')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const node = childNode(op)
+    priv.beginRename(op, node)   // editor open
+
+    const del = { Key: Key.Delete, Handled: false } as unknown as KeyEventArgs
+    priv.handleTreeKey(op, del)
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(await storage.Exists('core.todl')).toBe(true)   // not deleted
+    expect(del.Handled).toBe(false)
+})
+
+test('deleting the project root is refused (no dialog, nothing removed)', async () => {
+    const { priv, shownDialogs } = makeExplorer()
+    const storage = new FakeStorage('C:/a')
+    await storage.WriteText('core.todl', 'x')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+
+    await priv.deleteNodes(op, [op.Root])   // root's Path is ''
+
+    expect(shownDialogs.length).toBe(0)
+    expect(await storage.Exists('core.todl')).toBe(true)
+})
+
+test('the delete confirmation names the file and labels the button "Delete"', async () => {
+    const { priv, shownDialogs } = makeExplorer()
+    const storage = new FakeStorage('C:/a')
+    await storage.WriteText('core.todl', 'x')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+
+    await priv.deleteNodes(op, [childNode(op)])
+
+    expect(shownDialogs.length).toBe(1)
+    const vm = shownDialogs[0] as ConfirmDialogModel
+    expect(vm.Message).toContain('core.todl')
+    expect(vm.ConfirmLabel).toBe('Delete')
+})
+
+test('ConfirmDialogModel resolves true on confirm and false on cancel', () => {
+    let result: boolean | undefined
+    const confirm = new ConfirmDialogModel('msg', 'Delete', (r) => { result = r })
+
+    confirm.ConfirmCommand.Execute(undefined)
+    expect(result).toBe(true)
+
+    confirm.CancelCommand.Execute(undefined)
+    expect(result).toBe(false)
 })

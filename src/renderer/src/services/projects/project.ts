@@ -40,6 +40,13 @@ export class ProjectNode extends Model
         ProjectNode, 'EditingName', '', MetaData.None)
     static readonly BeginRenameCommandKey = Model.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'BeginRenameCommand', undefined, MetaData.None)
+    // Delete this node (file or folder, with its contents) from the project,
+    // after a confirmation. Set by the host (ProjectExplorerService.wireNodes)
+    // so a row's context menu can bind `Command = $DeleteCommand`; disabled on
+    // the (unshown) root. When the node is part of a multi-selection, deleting
+    // it removes the whole selected set.
+    static readonly DeleteCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        ProjectNode, 'DeleteCommand', undefined, MetaData.None)
 
     constructor(name: string, path: string, kind: ProjectNodeKind)
     {
@@ -71,6 +78,9 @@ export class ProjectNode extends Model
 
     public get BeginRenameCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.BeginRenameCommandKey) }
     public set BeginRenameCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.BeginRenameCommandKey, v) }
+
+    public get DeleteCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.DeleteCommandKey) }
+    public set DeleteCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.DeleteCommandKey, v) }
 }
 
 export class Project extends Model
