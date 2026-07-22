@@ -1,6 +1,7 @@
 import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import type { IStorage } from '../storage/storage.js'
 import type { Project } from './project.js'
+import type { BaseBindings } from './base-binding.js'
 
 // The contract a module's project factory implements — the behavior the
 // generic ProjectExplorerService delegates to. A module declares a
@@ -44,11 +45,16 @@ export interface IProjectFactory
 {
     readonly formats: readonly ProjectFileFormat[]
 
+    // True when creating this project type needs a meta-model base chosen up front
+    // (the New-Project dialog shows a meta-model picker). Absent ⇒ false.
+    readonly requiresMetaModel?: boolean
+
     // Project lifecycle. createProject writes an initial manifest into a fresh
-    // project storage; openProject reads the manifest + builds the file tree;
-    // saveProject persists project-level state (the manifest). All operate on a
-    // rooted IStorage (project-relative paths).
-    createProject(storage: IStorage, name: string): Promise<Project>
+    // project storage — with the chosen base bindings, when the type declares any;
+    // openProject reads the manifest + builds the file tree; saveProject persists
+    // project-level state (the manifest). All operate on a rooted IStorage
+    // (project-relative paths).
+    createProject(storage: IStorage, name: string, bindings?: BaseBindings): Promise<Project>
     openProject(storage: IStorage): Promise<Project>
     saveProject(project: Project, storage: IStorage): Promise<void>
 }
