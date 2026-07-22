@@ -20,8 +20,11 @@ export interface NewProjectResult
     name:      string
     location:  string
     // The meta-model the project is authored against — present only for a type
-    // that RequiresMetaModel (a library today, an architecture later).
+    // that RequiresMetaModel (a library or an architecture).
     metaModel?: BaseRef
+    // The libraries an architecture draws on — present (possibly empty) only for a
+    // type that OffersLibraries.
+    libraries?: readonly BaseRef[]
 }
 
 // One selectable project type in the picker (always a full list, even with a
@@ -35,16 +38,19 @@ export class ProjectTypeChoice extends Model
     static readonly MarkerKey = Model.RegisterProperty<string>(ProjectTypeChoice, 'Marker', '○', MetaData.None)
     static readonly RequiresMetaModelKey = Model.RegisterProperty<boolean>(
         ProjectTypeChoice, 'RequiresMetaModel', false, MetaData.None)
+    static readonly OffersLibrariesKey = Model.RegisterProperty<boolean>(
+        ProjectTypeChoice, 'OffersLibraries', false, MetaData.None)
     static readonly SelectCommandKey = Model.RegisterProperty<ICommand | undefined>(
         ProjectTypeChoice, 'SelectCommand', undefined, MetaData.None)
 
-    constructor(type: string, title: string, description: string, requiresMetaModel = false)
+    constructor(type: string, title: string, description: string, requiresMetaModel = false, offersLibraries = false)
     {
         super()
         this.set_property_value(ProjectTypeChoice.TypeKey, type)
         this.set_property_value(ProjectTypeChoice.TitleKey, title)
         this.set_property_value(ProjectTypeChoice.DescriptionKey, description)
         this.set_property_value(ProjectTypeChoice.RequiresMetaModelKey, requiresMetaModel)
+        this.set_property_value(ProjectTypeChoice.OffersLibrariesKey, offersLibraries)
     }
 
     public get Type(): string { return this.get_property_value(ProjectTypeChoice.TypeKey) }
@@ -54,6 +60,8 @@ export class ProjectTypeChoice extends Model
     public set Marker(v: string) { this.set_property_value(ProjectTypeChoice.MarkerKey, v) }
     public get RequiresMetaModel(): boolean { return this.get_property_value(ProjectTypeChoice.RequiresMetaModelKey) }
     public set RequiresMetaModel(v: boolean) { this.set_property_value(ProjectTypeChoice.RequiresMetaModelKey, v) }
+    public get OffersLibraries(): boolean { return this.get_property_value(ProjectTypeChoice.OffersLibrariesKey) }
+    public set OffersLibraries(v: boolean) { this.set_property_value(ProjectTypeChoice.OffersLibrariesKey, v) }
     public get SelectCommand(): ICommand | undefined { return this.get_property_value(ProjectTypeChoice.SelectCommandKey) }
     public set SelectCommand(v: ICommand | undefined) { this.set_property_value(ProjectTypeChoice.SelectCommandKey, v) }
 }
@@ -74,6 +82,25 @@ export class MetaModelChoice extends Model
     public toString(): string { return this.Label }
 }
 
+// One selectable library in the architecture picker: a published BaseRef, a
+// human `id @ version` label, and a two-way IsSelected the Switch row binds.
+export class LibraryChoice extends Model
+{
+    static readonly LabelKey = Model.RegisterProperty<string>(LibraryChoice, 'Label', '', MetaData.None)
+    static readonly IsSelectedKey = Model.RegisterProperty<boolean>(LibraryChoice, 'IsSelected', false, MetaData.None)
+
+    constructor(public readonly Ref: BaseRef)
+    {
+        super()
+        this.set_property_value(LibraryChoice.LabelKey, `${Ref.id} @ ${Ref.version}`)
+    }
+
+    public get Label(): string { return this.get_property_value(LibraryChoice.LabelKey) }
+    public get IsSelected(): boolean { return this.get_property_value(LibraryChoice.IsSelectedKey) }
+    public set IsSelected(v: boolean) { this.set_property_value(LibraryChoice.IsSelectedKey, v) }
+    public toString(): string { return this.Label }
+}
+
 export class NewProjectDialogModel extends Model
 {
     static readonly TypesKey = Model.RegisterProperty<ObservableCollection<ProjectTypeChoice>>(
@@ -88,6 +115,10 @@ export class NewProjectDialogModel extends Model
         NewProjectDialogModel, 'SelectedMetaModel', undefined, MetaData.None)
     static readonly ShowMetaModelPickerKey = Model.RegisterProperty<boolean>(
         NewProjectDialogModel, 'ShowMetaModelPicker', false, MetaData.None)
+    static readonly LibrariesKey = Model.RegisterProperty<ObservableCollection<LibraryChoice>>(
+        NewProjectDialogModel, 'Libraries', undefined as unknown as ObservableCollection<LibraryChoice>, MetaData.None)
+    static readonly ShowLibrariesPickerKey = Model.RegisterProperty<boolean>(
+        NewProjectDialogModel, 'ShowLibrariesPicker', false, MetaData.None)
     static readonly ErrorKey = Model.RegisterProperty<string>(NewProjectDialogModel, 'Error', '', MetaData.None)
     static readonly CanConfirmKey = Model.RegisterProperty<boolean>(NewProjectDialogModel, 'CanConfirm', false, MetaData.None)
     static readonly BrowseCommandKey = Model.RegisterProperty<ICommand>(
@@ -105,6 +136,8 @@ export class NewProjectDialogModel extends Model
         private readonly close: (result?: NewProjectResult) => void,
         // The published meta-models offered when a RequiresMetaModel type is chosen.
         metaModels: readonly BaseRef[] = [],
+        // The published libraries offered when an OffersLibraries type is chosen.
+        libraries: readonly BaseRef[] = [],
     )
     {
         super()
@@ -117,6 +150,9 @@ export class NewProjectDialogModel extends Model
         const metas = new ObservableCollection<MetaModelChoice>()
         for (const ref of metaModels) metas.Add(new MetaModelChoice(ref))
         this.set_property_value(NewProjectDialogModel.MetaModelsKey, metas)
+        const libs = new ObservableCollection<LibraryChoice>()
+        for (const ref of libraries) libs.Add(new LibraryChoice(ref))
+        this.set_property_value(NewProjectDialogModel.LibrariesKey, libs)
         this.set_property_value(NewProjectDialogModel.BrowseCommandKey, new RelayCommand(() => void this.browse()))
         this.set_property_value(NewProjectDialogModel.ConfirmCommandKey, new RelayCommand(() => void this.confirm()))
         this.set_property_value(NewProjectDialogModel.CancelCommandKey, new RelayCommand(() => this.close(undefined)))
@@ -138,6 +174,13 @@ export class NewProjectDialogModel extends Model
     public get SelectedMetaModel(): MetaModelChoice | undefined { return this.get_property_value(NewProjectDialogModel.SelectedMetaModelKey) }
     public set SelectedMetaModel(v: MetaModelChoice | undefined) { this.set_property_value(NewProjectDialogModel.SelectedMetaModelKey, v) }
     public get ShowMetaModelPicker(): boolean { return this.get_property_value(NewProjectDialogModel.ShowMetaModelPickerKey) }
+    public get Libraries(): ObservableCollection<LibraryChoice> { return this.get_property_value(NewProjectDialogModel.LibrariesKey) }
+    public get ShowLibrariesPicker(): boolean { return this.get_property_value(NewProjectDialogModel.ShowLibrariesPickerKey) }
+    // The BaseRefs of the currently-checked libraries (empty when none checked).
+    public get SelectedLibraries(): readonly BaseRef[]
+    {
+        return this.Libraries.ToArray().filter((l) => l.IsSelected).map((l) => l.Ref)
+    }
     public get Error(): string { return this.get_property_value(NewProjectDialogModel.ErrorKey) }
     public get CanConfirm(): boolean { return this.get_property_value(NewProjectDialogModel.CanConfirmKey) }
     public get BrowseCommand(): ICommand { return this.get_property_value(NewProjectDialogModel.BrowseCommandKey) }
@@ -152,6 +195,7 @@ export class NewProjectDialogModel extends Model
         for (const c of this.Types.ToArray()) c.Marker = c === choice ? '●' : '○'
         this.set_property_value(NewProjectDialogModel.SelectedTypeKey, choice)
         this.set_property_value(NewProjectDialogModel.ShowMetaModelPickerKey, choice.RequiresMetaModel)
+        this.set_property_value(NewProjectDialogModel.ShowLibrariesPickerKey, choice.OffersLibraries)
         if (choice.RequiresMetaModel && this.MetaModels.Count === 0)
             this.set_property_value(NewProjectDialogModel.ErrorKey, 'Publish a meta-model first.')
         else
@@ -176,6 +220,8 @@ export class NewProjectDialogModel extends Model
             ...(this.ShowMetaModelPicker && this.SelectedMetaModel !== undefined
                 ? { metaModel: this.SelectedMetaModel.Ref }
                 : {}),
+            // An OffersLibraries type carries the (possibly empty) checked set.
+            ...(this.ShowLibrariesPicker ? { libraries: this.SelectedLibraries } : {}),
         }
         const error = await this.validate(result)
         if (error !== null) { this.set_property_value(NewProjectDialogModel.ErrorKey, error); return }
