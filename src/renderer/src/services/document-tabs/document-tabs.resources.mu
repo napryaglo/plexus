@@ -1,19 +1,30 @@
 // document-tabs.resources.mu — the Plexus document tab strip.
 //
 // Overrides the framework's DataTemplate[DocumentsContentHostService] (mural's
-// plain TabControl) with an ExtendedTabControl: the same tab strip + active-
-// document body, PLUS an overflow dropdown pinned to the strip's top-right
-// corner. The dropdown's primary action is "Close All"; its flyout lists every
-// open tab (click a row to activate it, ✕ to close just that one). All actions
-// resolve the root-registered document host through `$service(ContentHostService)`
-// — CloseAllCommand / ActivateDocumentCommand / CloseDocumentCommand — so the
-// control itself stays a pure re-template (see extended-tab-control.ts).
+// plain TabControl) with an ExtendedTabControl. Beyond the tabs + active-document
+// body, the strip's top-right corner carries an ACTION AREA:
 //
-// Merged app-global by app.mu (`merge DocumentTabsResources`). Because it lives
-// in Application.Resources it shadows the framework theme's implicit
-// DocumentsContentHostService template (resolver walks local → app → theme).
+//   [ module command buttons … ]  [ ⋯ ]
+//
+//   * the command buttons are the host's ExtendedCommands — every module command
+//     tagged Region = ShellRegion.EditorActions, dispatched to the active document
+//     (rendered by the framework's implicit DataTemplate[CommandViewModel]);
+//   * the ⋯ split button carries NO primary command — clicking it opens a menu of
+//     the host's TabMenu rows: a "Close All" action, a separator, then one row per
+//     open document (click the title to activate, ✕ to close).
+//
+// The tabs live in a ScrollViewer (Grid column 0) so a long tab set scrolls
+// rather than spilling under the action area (Grid column 1). Host actions resolve
+// the root-registered document host via `$service(ContentHostService)`.
+//
+// Merged app-global by app.mu (`merge DocumentTabsResources`); it lives in
+// Application.Resources so it shadows the framework theme's implicit
+// DocumentsContentHostService template.
 
 import ExtendedTabControl from "./extended-tab-control.js"
+import TabMenuAction from "@pragmatic-lab/mural/framework"
+import TabMenuSeparator from "@pragmatic-lab/mural/framework"
+import TabMenuDocument from "@pragmatic-lab/mural/framework"
 
 resources DocumentTabsResources {
 
@@ -22,9 +33,9 @@ resources DocumentTabsResources {
         StackPanel [ Orientation = Horizontal ]
     }
 
-    // A left-aligned, full-width row button for the dropdown's tab entries: a
-    // transparent hit surface with the standard hover/press state layers (the
-    // default Button chrome centres + pads, which reads wrong for a menu row).
+    // A left-aligned, full-width row button for the dropdown's rows: a transparent
+    // hit surface with the standard hover/press state layers (the default Button
+    // chrome centres + pads, which reads wrong for a menu row).
     Template x:key="TabMenuRowButton" [ TargetType = Button ] {
         Border x:name="PART_Row" [ Background = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (8,6,8,6) ] {
             ContentPresenter [ HorizontalAlignment = Stretch, VerticalAlignment = Center ]
@@ -33,16 +44,21 @@ resources DocumentTabsResources {
         when ( IsPressed ) { PART_Row.Background = @StatePressOverlay; }
     }
 
-    // NOTE: the tab HEADER (strip) uses the framework's own
-    // @DocumentTabHeaderTemplate — referenced directly by the override below, so
-    // the tab close ✕ keeps its original compact chrome (@CompactHeaderIconButton).
-    // We do NOT redefine it here; a local copy previously dropped that template
-    // and inflated the close button.
+    // ── ⋯ dropdown flyout rows (host TabMenu, resolved by implicit type) ────────
+    // A one-shot action row (today "Close All") — fires its own carried command.
+    DataTemplate [ DataType = TabMenuAction ] {
+        Button [ Template = @TabMenuRowButton, Command = $Command, HorizontalAlignment = Stretch, MinWidth = 200 ] {
+            TextBlock [ Text = $Label, Foreground = @OnSurface, VerticalAlignment = Center ]
+        }
+    }
 
-    // One ROW in the overflow dropdown: click the title to activate that tab, ✕
-    // to close it. DataContext is the document (Title / Id). The close button
-    // reuses the framework's @CompactHeaderIconButton so it matches the strip's ✕.
-    DataTemplate x:key="TabMenuRowTemplate" [ DataType = RailAction ] {
+    // The rule between the action block and the document list.
+    DataTemplate [ DataType = TabMenuSeparator ] {
+        Border [ Height = 1, Background = @OutlineVariant, Margin = (6,4,6,4) ]
+    }
+
+    // One open-document row: click the title to activate that tab, ✕ to close it.
+    DataTemplate [ DataType = TabMenuDocument ] {
         DockPanel [ LastChildFill = true, MinWidth = 200, Margin = (0,1,0,1) ] {
             IconButton
                 [ DockPanel.Dock  = Right,
@@ -63,28 +79,49 @@ resources DocumentTabsResources {
         }
     }
 
-    // The ExtendedTabControl chrome: identical to the framework TabControl
-    // template except the header strip is wrapped in an inner DockPanel that
-    // reserves the RIGHT corner for the overflow dropdown (a ToolBarSplitButton:
-    // "Close All" primary + a chevron flyout listing the open tabs). The
-    // ItemsPresenter fills the remaining width so the tabs scroll under the
-    // pinned dropdown.
+    // ⋯ trigger chrome for the overflow ToolBarSplitButton — a three-dots face
+    // (Material more_horiz) in place of the default chevron. PART_Primary is the
+    // whole hit surface the control wires to toggle the popup (no primary command).
+    Template x:key="TabMenuTrigger" [ TargetType = ToolBarSplitButton ] {
+        Border x:name="PART_Primary" [ Background = #00000000, CornerRadius = @ShapeFull, BorderThickness = (0) ] {
+            Border x:name="PART_PrimaryState" [ Background = #00000000, CornerRadius = @ShapeFull, Padding = (4,4,4,4) ] {
+                Shape [ Geometry = @MoreHoriz, Fill = @OnSurfaceVariant, Width = 18, Height = 18, VerticalAlignment = Center ]
+            }
+        }
+        when ( PART_Primary.IsMouseOver ) { PART_PrimaryState.Background = @StateHoverOverlay; }
+        when ( PART_Primary.IsPressed ) { PART_PrimaryState.Background = @StatePressOverlay; }
+    }
+
+    // The ExtendedTabControl chrome: the framework TabControl template with the
+    // header strip split into a Grid — the tabs scroll in column 0 (so they never
+    // spill under the actions), and the action area (module command buttons + the
+    // ⋯ overflow dropdown) pins to column 1. The content presenter is unchanged.
     Template x:key="ExtendedTabControlTemplate" [ TargetType = ExtendedTabControl ] {
         Border x:name="PART_Border"
             [ Background      = @Surface,
               BorderBrush     = @OutlineVariant,
               BorderThickness = (0,0,0,1) ] {
             DockPanel [ LastChildFill = true ] {
-                DockPanel [ DockPanel.Dock = Top, LastChildFill = true ] {
-                    ToolBarSplitButton
-                        [ DockPanel.Dock  = Right,
-                          Command          = $service(ContentHostService).CloseAllCommand,
-                          Content          = TextBlock [ Text = "Close all", Foreground = @OnSurfaceVariant, FontSize = 12 ],
-                          ItemsSource      = $$ItemsSource,
-                          ItemTemplate     = @TabMenuRowTemplate,
-                          VerticalAlignment = Center,
-                          Margin           = (4,2,4,2) ]
-                    ItemsPresenter x:name="PART_ItemsPresenter"
+                Grid [ DockPanel.Dock = Top ] {
+                    ColumnDefinitions {
+                        ColumnDefinition [ Width = GridLength.Star ]
+                        ColumnDefinition [ Width = GridLength.Auto ]
+                    }
+                    // Tabs — scroll horizontally so a long set never overlaps the actions.
+                    ScrollViewer [ Grid.Column = 0, VerticalScrollEnabled = false ] {
+                        ItemsPresenter x:name="PART_ItemsPresenter"
+                    }
+                    // Action area: module command buttons + the ⋯ overflow dropdown.
+                    StackPanel [ Grid.Column = 1, Orientation = Horizontal, VerticalAlignment = Center, Margin = (4,0,2,0) ] {
+                        ItemsControl
+                            [ ItemsSource = $service(ContentHostService).ExtendedCommands,
+                              ItemsPanel  = @ExtendedTabStripPanel,
+                              VerticalAlignment = Center ]
+                        ToolBarSplitButton
+                            [ TriggerTemplate  = @TabMenuTrigger,
+                              ItemsSource      = $service(ContentHostService).TabMenu,
+                              VerticalAlignment = Center ]
+                    }
                 }
                 ContentPresenter x:name="PART_ContentSlot"
                     [ Content = $$SelectedContent, ReuseContentViews = true ]
@@ -98,12 +135,11 @@ resources DocumentTabsResources {
     }
 
     // Override the framework's document-host template to use the ExtendedTabControl.
-    // Same bindings as the framework's, but the DPs are qualified with their
-    // registering BASE classes (ItemsControl / Selector) rather than the bare
-    // names: the .mu compiler only knows built-in control classes, so a bare
-    // `ItemsSource=` on the custom ExtendedTabControl element can't resolve — the
-    // `Owner.Prop` form resolves the inherited DP through the built-in owner while
-    // the setter still lands on the ExtendedTabControl instance.
+    // The inherited DPs are qualified with their registering BASE classes
+    // (ItemsControl / Selector) because the .mu compiler only resolves DPs on
+    // built-in control classes, not host subclasses — the setter still lands on the
+    // ExtendedTabControl instance. The tab HEADER reuses the framework's own
+    // @DocumentTabHeaderTemplate (compact title + close ✕).
     DataTemplate [ DataType = DocumentsContentHostService ] {
         ExtendedTabControl
             [ ItemsControl.ItemsSource  = $OpenDocuments,
