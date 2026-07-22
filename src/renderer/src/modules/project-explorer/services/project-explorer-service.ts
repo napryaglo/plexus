@@ -59,6 +59,8 @@ import {
     OpenProjectDialogModel,
     type OpenProjectResult,
 } from '../../../services/projects/open-project-dialog-model.js'
+import type { BaseRef } from '../../../services/projects/base-binding.js'
+import { ensureMetaModelsBackend } from '../../meta-model/services/meta-models-backend.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
 import { RecentProjectsService } from '../../../services/projects/recent-projects-service.js'
 import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'
@@ -140,10 +142,11 @@ export class ProjectExplorerService extends ServiceBase
             this.fs,
             (r) => this.validateNewProject(r),
             (r) => this.dialogs.Close(r),
+            await this.publishedMetaModels(),
         )
         const result = (await this.dialogs.Show({ Title: 'New Project', Content: vm, Width: 520 })) as NewProjectResult | undefined
         if (result === undefined) return
-        await this.createProjectAt(result.type, result.name, result.location)
+        await this.createProjectAt(result.type, result.name, result.location, result.metaModel)
     }
 
     // Read a folder's manifest envelope → build the project's storage for the
@@ -189,14 +192,15 @@ export class ProjectExplorerService extends ServiceBase
     }
 
     // Create a project of `type` named `name` in `folder`, add + record it.
-    private async createProjectAt(type: string, name: string, folder: string): Promise<void>
+    // `metaModel` is the base binding chosen in the dialog (library/architecture).
+    private async createProjectAt(type: string, name: string, folder: string, metaModel?: BaseRef): Promise<void>
     {
         const factory = this.resolveFactory(type)
         if (factory === undefined) { this.Status = `No factory for project type "${type}".`; return }
 
         const storage = this.storageRegistry.Create(StorageProviderRegistry.DefaultBackendId, folder)
         try {
-            const project = await factory.createProject(storage, name)
+            const project = await factory.createProject(storage, name, metaModel ? { metaModel } : undefined)
             const op = await this.addOpenProject(project, factory, storage)
             await this.recents.Add({ name: op.Name, path: folder, type, openedAt: Date.now() })
             this.Status = `Created ${op.Name}.`
@@ -551,12 +555,30 @@ export class ProjectExplorerService extends ServiceBase
     }
 
     // One selectable choice per registered project-type factory (Title +
-    // Description straight from the ProjectFactoryDefinition).
+    // Description straight from the ProjectFactoryDefinition). RequiresMetaModel
+    // is read from the resolved factory so the dialog knows to show the picker.
     private typeChoices(): ProjectTypeChoice[]
     {
         return this.Provider.getRequired(ProjectFactoryRegistry.Key)
             .Definitions.ToArray()
-            .map((d) => new ProjectTypeChoice(d.Type, d.Title, d.Description))
+            .map((d) => new ProjectTypeChoice(
+                d.Type, d.Title, d.Description,
+                this.resolveFactory(d.Type)?.requiresMetaModel ?? false))
+    }
+
+    // Enumerate every published meta-model in the backend as a BaseRef
+    // (`<id>/<version>/`), offered by the New-Project meta-model picker.
+    private async publishedMetaModels(): Promise<BaseRef[]>
+    {
+        const backend = ensureMetaModelsBackend(this.Provider)
+        const refs: BaseRef[] = []
+        for (const id of await backend.List('')) {
+            if (!id.IsDirectory) continue
+            for (const version of await backend.List(id.Name)) {
+                if (version.IsDirectory) refs.push({ id: id.Name, version: version.Name })
+            }
+        }
+        return refs
     }
 
     // New Project validation: refuse a folder that already holds a project.

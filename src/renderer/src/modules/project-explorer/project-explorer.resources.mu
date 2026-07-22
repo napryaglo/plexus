@@ -201,6 +201,17 @@ resources ProjectExplorerResources {
                 TextBox [ Text = $Location ]
             }
 
+            // Meta-model picker — shown only for a project type that requires a
+            // base meta-model (library today, architecture later). The combo lists
+            // the published meta-models as `id @ version` (MetaModelChoice.Label).
+            Border [ Visibility = $ShowMetaModelPicker << ToVisibility, Margin = (0,4,0,8) ] {
+                StackPanel [ Orientation = Vertical ] {
+                    TextBlock [ Style = @BodyLarge, Text = "Meta-model", Foreground = @OnSurface ]
+                    ComboBox [ ItemsSource = $MetaModels, SelectedItem = $SelectedMetaModel,
+                               Margin = (0,4,0,0), HorizontalAlignment = Stretch ]
+                }
+            }
+
             TextBlock [ Style = @BodySmall, Text = $Error, Foreground = @Error, TextWrapping = Wrap, Margin = (0,0,0,10) ]
 
             StackPanel [ Orientation = Horizontal, HorizontalAlignment = Right ] {

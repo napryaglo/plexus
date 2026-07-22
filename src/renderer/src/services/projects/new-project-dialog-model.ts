@@ -7,6 +7,7 @@ import {
 } from '@pragmatic-lab/mural/runtime'
 
 import type { FileSystemService } from '../file-system/file-system-service.js'
+import type { BaseRef } from './base-binding.js'
 
 // The New Project dialog's view-model + its per-type choice model. Rendered by
 // DataTemplate[NewProjectDialogModel] / DataTemplate[ProjectTypeChoice]. It is a
@@ -15,9 +16,12 @@ import type { FileSystemService } from '../file-system/file-system-service.js'
 
 export interface NewProjectResult
 {
-    type:     string
-    name:     string
-    location: string
+    type:      string
+    name:      string
+    location:  string
+    // The meta-model the project is authored against — present only for a type
+    // that RequiresMetaModel (a library today, an architecture later).
+    metaModel?: BaseRef
 }
 
 // One selectable project type in the picker (always a full list, even with a
@@ -29,15 +33,18 @@ export class ProjectTypeChoice extends Model
     static readonly TitleKey = Model.RegisterProperty<string>(ProjectTypeChoice, 'Title', '', MetaData.None)
     static readonly DescriptionKey = Model.RegisterProperty<string>(ProjectTypeChoice, 'Description', '', MetaData.None)
     static readonly MarkerKey = Model.RegisterProperty<string>(ProjectTypeChoice, 'Marker', '○', MetaData.None)
+    static readonly RequiresMetaModelKey = Model.RegisterProperty<boolean>(
+        ProjectTypeChoice, 'RequiresMetaModel', false, MetaData.None)
     static readonly SelectCommandKey = Model.RegisterProperty<ICommand | undefined>(
         ProjectTypeChoice, 'SelectCommand', undefined, MetaData.None)
 
-    constructor(type: string, title: string, description: string)
+    constructor(type: string, title: string, description: string, requiresMetaModel = false)
     {
         super()
         this.set_property_value(ProjectTypeChoice.TypeKey, type)
         this.set_property_value(ProjectTypeChoice.TitleKey, title)
         this.set_property_value(ProjectTypeChoice.DescriptionKey, description)
+        this.set_property_value(ProjectTypeChoice.RequiresMetaModelKey, requiresMetaModel)
     }
 
     public get Type(): string { return this.get_property_value(ProjectTypeChoice.TypeKey) }
@@ -45,8 +52,26 @@ export class ProjectTypeChoice extends Model
     public get Description(): string { return this.get_property_value(ProjectTypeChoice.DescriptionKey) }
     public get Marker(): string { return this.get_property_value(ProjectTypeChoice.MarkerKey) }
     public set Marker(v: string) { this.set_property_value(ProjectTypeChoice.MarkerKey, v) }
+    public get RequiresMetaModel(): boolean { return this.get_property_value(ProjectTypeChoice.RequiresMetaModelKey) }
+    public set RequiresMetaModel(v: boolean) { this.set_property_value(ProjectTypeChoice.RequiresMetaModelKey, v) }
     public get SelectCommand(): ICommand | undefined { return this.get_property_value(ProjectTypeChoice.SelectCommandKey) }
     public set SelectCommand(v: ICommand | undefined) { this.set_property_value(ProjectTypeChoice.SelectCommandKey, v) }
+}
+
+// One selectable meta-model in the library picker: a published BaseRef plus a
+// human `id @ version` label the combo displays.
+export class MetaModelChoice extends Model
+{
+    static readonly LabelKey = Model.RegisterProperty<string>(MetaModelChoice, 'Label', '', MetaData.None)
+
+    constructor(public readonly Ref: BaseRef)
+    {
+        super()
+        this.set_property_value(MetaModelChoice.LabelKey, `${Ref.id} @ ${Ref.version}`)
+    }
+
+    public get Label(): string { return this.get_property_value(MetaModelChoice.LabelKey) }
+    public toString(): string { return this.Label }
 }
 
 export class NewProjectDialogModel extends Model
@@ -57,6 +82,12 @@ export class NewProjectDialogModel extends Model
         NewProjectDialogModel, 'SelectedType', undefined, MetaData.None)
     static readonly NameKey = Model.RegisterProperty<string>(NewProjectDialogModel, 'Name', '', MetaData.None)
     static readonly LocationKey = Model.RegisterProperty<string>(NewProjectDialogModel, 'Location', '', MetaData.None)
+    static readonly MetaModelsKey = Model.RegisterProperty<ObservableCollection<MetaModelChoice>>(
+        NewProjectDialogModel, 'MetaModels', undefined as unknown as ObservableCollection<MetaModelChoice>, MetaData.None)
+    static readonly SelectedMetaModelKey = Model.RegisterProperty<MetaModelChoice | undefined>(
+        NewProjectDialogModel, 'SelectedMetaModel', undefined, MetaData.None)
+    static readonly ShowMetaModelPickerKey = Model.RegisterProperty<boolean>(
+        NewProjectDialogModel, 'ShowMetaModelPicker', false, MetaData.None)
     static readonly ErrorKey = Model.RegisterProperty<string>(NewProjectDialogModel, 'Error', '', MetaData.None)
     static readonly CanConfirmKey = Model.RegisterProperty<boolean>(NewProjectDialogModel, 'CanConfirm', false, MetaData.None)
     static readonly BrowseCommandKey = Model.RegisterProperty<ICommand>(
@@ -72,6 +103,8 @@ export class NewProjectDialogModel extends Model
         // Returns an error message to show in-dialog, or null to proceed/close.
         private readonly validate: (result: NewProjectResult) => Promise<string | null>,
         private readonly close: (result?: NewProjectResult) => void,
+        // The published meta-models offered when a RequiresMetaModel type is chosen.
+        metaModels: readonly BaseRef[] = [],
     )
     {
         super()
@@ -81,12 +114,16 @@ export class NewProjectDialogModel extends Model
             types.Add(c)
         }
         this.set_property_value(NewProjectDialogModel.TypesKey, types)
+        const metas = new ObservableCollection<MetaModelChoice>()
+        for (const ref of metaModels) metas.Add(new MetaModelChoice(ref))
+        this.set_property_value(NewProjectDialogModel.MetaModelsKey, metas)
         this.set_property_value(NewProjectDialogModel.BrowseCommandKey, new RelayCommand(() => void this.browse()))
         this.set_property_value(NewProjectDialogModel.ConfirmCommandKey, new RelayCommand(() => void this.confirm()))
         this.set_property_value(NewProjectDialogModel.CancelCommandKey, new RelayCommand(() => this.close(undefined)))
 
         this.AddPropertyChangedListener(NewProjectDialogModel.NameKey, () => this.recompute())
         this.AddPropertyChangedListener(NewProjectDialogModel.LocationKey, () => this.recompute())
+        this.AddPropertyChangedListener(NewProjectDialogModel.SelectedMetaModelKey, () => this.recompute())
 
         if (choices.length > 0) this.select(choices[0])
     }
@@ -97,17 +134,28 @@ export class NewProjectDialogModel extends Model
     public set Name(v: string) { this.set_property_value(NewProjectDialogModel.NameKey, v) }
     public get Location(): string { return this.get_property_value(NewProjectDialogModel.LocationKey) }
     public set Location(v: string) { this.set_property_value(NewProjectDialogModel.LocationKey, v) }
+    public get MetaModels(): ObservableCollection<MetaModelChoice> { return this.get_property_value(NewProjectDialogModel.MetaModelsKey) }
+    public get SelectedMetaModel(): MetaModelChoice | undefined { return this.get_property_value(NewProjectDialogModel.SelectedMetaModelKey) }
+    public set SelectedMetaModel(v: MetaModelChoice | undefined) { this.set_property_value(NewProjectDialogModel.SelectedMetaModelKey, v) }
+    public get ShowMetaModelPicker(): boolean { return this.get_property_value(NewProjectDialogModel.ShowMetaModelPickerKey) }
     public get Error(): string { return this.get_property_value(NewProjectDialogModel.ErrorKey) }
     public get CanConfirm(): boolean { return this.get_property_value(NewProjectDialogModel.CanConfirmKey) }
     public get BrowseCommand(): ICommand { return this.get_property_value(NewProjectDialogModel.BrowseCommandKey) }
     public get ConfirmCommand(): ICommand { return this.get_property_value(NewProjectDialogModel.ConfirmCommandKey) }
     public get CancelCommand(): ICommand { return this.get_property_value(NewProjectDialogModel.CancelCommandKey) }
 
-    // Select a type: mark it, clear the others, refresh confirmability.
+    // Select a type: mark it, clear the others, toggle the meta-model picker, and
+    // refresh confirmability. Selecting a meta-model-requiring type with nothing
+    // published surfaces a guiding error.
     private select(choice: ProjectTypeChoice): void
     {
         for (const c of this.Types.ToArray()) c.Marker = c === choice ? '●' : '○'
         this.set_property_value(NewProjectDialogModel.SelectedTypeKey, choice)
+        this.set_property_value(NewProjectDialogModel.ShowMetaModelPickerKey, choice.RequiresMetaModel)
+        if (choice.RequiresMetaModel && this.MetaModels.Count === 0)
+            this.set_property_value(NewProjectDialogModel.ErrorKey, 'Publish a meta-model first.')
+        else
+            this.set_property_value(NewProjectDialogModel.ErrorKey, '')
         this.recompute()
     }
 
@@ -124,6 +172,10 @@ export class NewProjectDialogModel extends Model
             type: this.SelectedType.Type,
             name: this.Name.trim(),
             location: this.Location,
+            // Only a meta-model-requiring type carries a binding.
+            ...(this.ShowMetaModelPicker && this.SelectedMetaModel !== undefined
+                ? { metaModel: this.SelectedMetaModel.Ref }
+                : {}),
         }
         const error = await this.validate(result)
         if (error !== null) { this.set_property_value(NewProjectDialogModel.ErrorKey, error); return }
@@ -132,7 +184,12 @@ export class NewProjectDialogModel extends Model
 
     private recompute(): void
     {
-        const ok = this.SelectedType !== undefined && this.Name.trim().length > 0 && this.Location.length > 0
+        // A meta-model-requiring type also needs a chosen meta-model before confirm.
+        const metaOk = !this.ShowMetaModelPicker || this.SelectedMetaModel !== undefined
+        const ok = this.SelectedType !== undefined
+            && this.Name.trim().length > 0
+            && this.Location.length > 0
+            && metaOk
         this.set_property_value(NewProjectDialogModel.CanConfirmKey, ok)
         if (ok) this.set_property_value(NewProjectDialogModel.ErrorKey, '')
     }

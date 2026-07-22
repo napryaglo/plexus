@@ -1,6 +1,7 @@
 import { test, expect } from 'vitest'
 
 import type { FileSystemService } from '../../file-system/file-system-service.js'
+import type { BaseRef } from '../base-binding.js'
 import {
     NewProjectDialogModel,
     ProjectTypeChoice,
@@ -88,4 +89,81 @@ test('cancel closes with undefined', () => {
     const { vm, closed } = build()
     vm.CancelCommand.Execute(undefined)
     expect(closed()).toBeUndefined()
+})
+
+// ── meta-model picker (library projects) ──
+
+const META_REFS: readonly BaseRef[] = [{ id: 'ea', version: '5' }]
+
+// The architecture choice does not require a meta-model; the library choice does.
+function metaChoices(): ProjectTypeChoice[]
+{
+    return [
+        new ProjectTypeChoice('architecture', 'Architecture Project', 'A node-and-connector model.'),
+        new ProjectTypeChoice('library', 'Library Project', 'A taxonomy.', true),
+    ]
+}
+
+function buildLib(metaModels: readonly BaseRef[] = META_REFS)
+{
+    let result: NewProjectResult | undefined | 'uncalled' = 'uncalled'
+    const vm = new NewProjectDialogModel(
+        metaChoices(),
+        stubFs('/picked'),
+        () => Promise.resolve(null),
+        (r) => { result = r },
+        metaModels,
+    )
+    return { vm, closed: () => result }
+}
+
+test('selecting a meta-model-requiring type shows the picker; a plain type hides it', () => {
+    const { vm } = buildLib()
+    expect(vm.ShowMetaModelPicker).toBe(false)               // architecture selected by default
+    vm.Types.ToArray()[1].SelectCommand!.Execute(undefined)  // library
+    expect(vm.ShowMetaModelPicker).toBe(true)
+    vm.Types.ToArray()[0].SelectCommand!.Execute(undefined)  // back to architecture
+    expect(vm.ShowMetaModelPicker).toBe(false)
+})
+
+test('a meta-model-requiring type blocks CanConfirm until a meta-model is chosen', () => {
+    const { vm } = buildLib()
+    vm.Types.ToArray()[1].SelectCommand!.Execute(undefined)  // library
+    vm.Name = 'Acme'
+    vm.Location = '/work/acme'
+    expect(vm.CanConfirm).toBe(false)                        // no meta-model chosen yet
+    vm.SelectedMetaModel = vm.MetaModels.ToArray()[0]
+    expect(vm.CanConfirm).toBe(true)
+})
+
+test('confirm on a library type includes the chosen meta-model ref', async () => {
+    const { vm, closed } = buildLib()
+    vm.Types.ToArray()[1].SelectCommand!.Execute(undefined)  // library
+    vm.Name = 'Acme'
+    vm.Location = '/work/acme'
+    vm.SelectedMetaModel = vm.MetaModels.ToArray()[0]
+    vm.ConfirmCommand.Execute(undefined)
+    await flush()
+    expect(closed()).toEqual({ type: 'library', name: 'Acme', location: '/work/acme', metaModel: { id: 'ea', version: '5' } })
+})
+
+test('a non-requiring type never blocks on, nor includes, a meta-model', async () => {
+    const { vm, closed } = buildLib()
+    vm.Name = 'Acme'                                         // architecture selected by default
+    vm.Location = '/work/acme'
+    expect(vm.CanConfirm).toBe(true)
+    vm.ConfirmCommand.Execute(undefined)
+    await flush()
+    expect(closed()).toEqual({ type: 'architecture', name: 'Acme', location: '/work/acme' })
+})
+
+test('selecting a requiring type with no published meta-models shows an error', () => {
+    const { vm } = buildLib([])
+    vm.Types.ToArray()[1].SelectCommand!.Execute(undefined)  // library
+    expect(vm.Error).toMatch(/Publish a meta-model first/)
+})
+
+test('the meta-model choices carry an id @ version label', () => {
+    const { vm } = buildLib()
+    expect(vm.MetaModels.ToArray()[0].Label).toBe('ea @ 5')
 })
