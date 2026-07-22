@@ -2,7 +2,8 @@ import { test, expect } from 'vitest'
 import { ObservableCollection } from '@pragmatic-lab/mural/runtime'
 
 import { CodeDocument } from '../code-document.js'
-import type { ICodeFile } from '../code-file.js'
+import { StorageCodeFile, type ICodeFile } from '../code-file.js'
+import { FakeStorage } from '../../../services/storage/tests/fake-storage.js'
 
 // An in-memory ICodeFile — the document's ctor load() reads through it.
 function codeFile(id: string, text = ''): ICodeFile & { written?: string }
@@ -35,4 +36,17 @@ test('Save writes Content through the file and clears dirty', async () => {
     await doc.Save()
     expect(file.written).toBe('concept Thing;')
     expect(doc.IsDirty).toBe(false)
+})
+
+test('RelocateTo re-points the document at a new storage + path; Save hits the target', async () => {
+    const a = new FakeStorage('A'); await a.WriteText('x.todl', 'seed')
+    const b = new FakeStorage('B')
+    const doc = new CodeDocument(new StorageCodeFile(a, 'x.todl'))
+    doc.RelocateTo(b, 'sub/y.todl')
+    expect(doc.Id).toBe('sub/y.todl')
+    expect(doc.Title).toBe('y.todl')
+    doc.Content = 'moved'
+    await doc.Save()
+    expect(await b.ReadText('sub/y.todl')).toBe('moved')   // saved to the target storage
+    expect(await a.Exists('sub/y.todl')).toBe(false)       // not the source
 })

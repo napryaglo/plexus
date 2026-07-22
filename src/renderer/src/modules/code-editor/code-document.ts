@@ -2,6 +2,7 @@ import { Model, MetaData, ObservableCollection, type PropertyDescriptor } from '
 import type { IDocument } from '@pragmatic-lab/mural/framework'
 import type { ICodeFile } from './code-file.js'
 import type { EditorDiagnostic } from './editor-diagnostic.js'
+import type { IStorage } from '../../services/storage/storage.js'
 
 function fileName(path: string): string
 {
@@ -92,14 +93,27 @@ export class CodeDocument extends Model implements IDocument
 
     public get Diagnostics(): ObservableCollection<EditorDiagnostic> { return this.get_property_value(CodeDocument.DiagnosticsKey) }
 
-    // Re-point this document at a new path after an in-place rename: re-target
-    // the underlying file (so saves go to the new location) and refresh the
-    // identity DPs (Id dedupes tabs, Title labels the tab, Language re-infers
-    // from the new extension). The in-memory Content/dirty state is preserved.
+    // Re-point this document at a new path after an in-place rename (same
+    // storage): re-target the underlying file (so saves go to the new location)
+    // and refresh the identity DPs. The in-memory Content/dirty state is preserved.
     public Relocate(newPath: string): void
     {
-        const retargetable = this.file as Partial<{ Retarget(id: string): void }>
-        retargetable.Retarget?.(newPath)
+        (this.file as Partial<{ Retarget(id: string, storage?: unknown): void }>).Retarget?.(newPath)
+        this.refreshIdentity(newPath)
+    }
+
+    // Re-point at a new STORAGE + path after a cross-project move; the tab stays
+    // open (Content/dirty preserved) and now saves to the new project's storage.
+    public RelocateTo(storage: IStorage, newPath: string): void
+    {
+        (this.file as Partial<{ Retarget(id: string, storage?: IStorage): void }>).Retarget?.(newPath, storage)
+        this.refreshIdentity(newPath)
+    }
+
+    // Refresh the identity DPs: Id dedupes tabs, Title labels the tab, Language
+    // re-infers from the new extension.
+    private refreshIdentity(newPath: string): void
+    {
         this.set_property_value(CodeDocument.IdKey, newPath)
         this.set_property_value(CodeDocument.TitleKey, fileName(newPath))
         this.set_property_value(CodeDocument.LanguageKey, languageForPath(newPath))

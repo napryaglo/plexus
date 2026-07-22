@@ -134,6 +134,17 @@ export class TodlValidationService extends ServiceBase
         this.scheduleRevalidate()
     }
 
+    // Re-key a tracked document to a new project storage (after a cross-project
+    // move) so it validates against the new project's bases. Keeps the Content
+    // listener; schedules a revalidation pass. Untracked ⇒ a plain attach.
+    public ReattachDocument(doc: CodeDocument, storage: IStorage): void
+    {
+        const t = this.tracked.get(doc)
+        if (t === undefined) { this.AttachDocument(doc, storage); return }
+        this.tracked.set(doc, { storage, unhook: t.unhook })
+        this.scheduleRevalidate()
+    }
+
     // Drop cached bases (all, or one project's) so the next Revalidate re-resolves
     // them from the backends — used after a base is (re)published.
     public ClearBaseCache(storage?: IStorage): void

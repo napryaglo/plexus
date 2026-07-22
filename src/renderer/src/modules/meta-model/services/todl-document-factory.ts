@@ -44,6 +44,15 @@ export class TodlDocumentFactory extends ServiceBase implements IDocumentFactory
         (document as CodeDocument).Relocate(newPath)
     }
 
+    // Cross-project move: re-point the document at the target project's storage +
+    // path (tab stays open) and re-attach it to the validator under that storage,
+    // so it validates against the new project's bases.
+    public relocateAcrossStorage(document: IDocument, storage: IStorage, newPath: string): void
+    {
+        (document as CodeDocument).RelocateTo(storage, newPath)
+        this.Provider.get(TodlValidationService.Key)?.ReattachDocument(document as CodeDocument, storage)
+    }
+
     public async newFile(storage: IStorage, name: string): Promise<string>
     {
         const path = ensureExtension(name, '.todl')   // project-relative, at the root

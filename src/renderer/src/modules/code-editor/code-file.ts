@@ -27,9 +27,10 @@ export class FileSystemCodeFile implements ICodeFile
 // so an in-place rename can re-target the open document (via Retarget).
 export class StorageCodeFile implements ICodeFile
 {
-    constructor(private readonly storage: IStorage, public id: string) {}
+    constructor(private storage: IStorage, public id: string) {}
     public read(): Promise<string> { return this.storage.ReadText(this.id) }
     public write(text: string): Promise<void> { return this.storage.WriteText(this.id, text) }
-    // Re-point at a new project-relative path (subsequent read/write use it).
-    public Retarget(id: string): void { this.id = id }
+    // Re-point at a new project-relative path (in-place rename) and, when given, a
+    // new storage (cross-project move); subsequent read/write use them.
+    public Retarget(id: string, storage?: IStorage): void { this.id = id; if (storage !== undefined) this.storage = storage }
 }

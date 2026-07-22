@@ -28,10 +28,22 @@ export interface IDocumentFactory
 export interface IRelocatableDocumentFactory
 {
     relocateOpenFile(document: IDocument, newPath: string): void
+    // Optional: re-point an already-open document at a DIFFERENT storage + path (a
+    // cross-project move keeps the tab open, now saving to the target project).
+    // Editors that can follow a file across storages implement it.
+    relocateAcrossStorage?(document: IDocument, storage: IStorage, newPath: string): void
 }
 
 // Type guard: can this factory re-point an open document to a new path?
 export function isRelocatable(factory: IDocumentFactory): factory is IDocumentFactory & IRelocatableDocumentFactory
 {
     return typeof (factory as Partial<IRelocatableDocumentFactory>).relocateOpenFile === 'function'
+}
+
+// Type guard: can this factory re-point an open document across storages?
+export function isRelocatableAcrossStorage(
+    factory: IDocumentFactory,
+): factory is IDocumentFactory & Required<Pick<IRelocatableDocumentFactory, 'relocateAcrossStorage'>>
+{
+    return typeof (factory as Partial<IRelocatableDocumentFactory>).relocateAcrossStorage === 'function'
 }
