@@ -99,6 +99,11 @@ import AgentChatResources from "./modules/agent-chat/agent-chat.resources.mu.js"
 // opens/dedupes tabs; CodeEditorResources carries DataTemplate[CodeDocument].
 import CodeEditorService from "./modules/code-editor/code-editor-service.js"
 
+// Document tab strip — overrides the framework's DataTemplate[DocumentsContentHostService]
+// with an ExtendedTabControl that adds a top-right overflow dropdown (Close All +
+// the open-tabs list). No service; view resources only.
+import DocumentTabsResources from "./services/document-tabs/document-tabs.resources.mu.js"
+
 // Shared TODL live-validation service (base-aware): validates any authoring
 // project's .todl files against its declared bases via checkAgainst. Root-scoped
 // like ProjectFactoryRegistry so every module's editor can attach documents.
@@ -226,6 +231,11 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // Code editor (DataTemplate[CodeDocument] declares a CodeEditor — a
         // DomHost subclass hosting Monaco, self-bound to the document's Content).
         merge CodeEditorResources
+
+        // Document tab strip override: ExtendedTabControl with a top-right
+        // overflow dropdown (Close All + open-tabs list). Shadows the framework's
+        // DocumentsContentHostService template from Application.Resources.
+        merge DocumentTabsResources
 
         // The app root — the framework's default EditorShell. All regions are
         // data-driven (services + the active document), so the app declares no
