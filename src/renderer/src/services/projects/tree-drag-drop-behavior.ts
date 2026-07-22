@@ -30,10 +30,17 @@ export class TreeDragDropBehavior extends Behavior
     {
         this.visual = visual
         visual.AllowDrop = true
-        if (visual.DataContext instanceof ProjectNode) {
-            visual.IsDraggable = true
-            visual.OnDragStart = (source) => this.startDrag(source)
-        }
+        // Arm the drag latch unconditionally. We CANNOT gate on DataContext
+        // here: during data-driven TreeView materialization the item's
+        // DataContext isn't bound yet when behaviors attach (row bindings like
+        // $Name work because they're reactive; this read would be one-shot), so
+        // a `DataContext instanceof ProjectNode` test leaves every row
+        // non-draggable and drag never starts. startDrag re-reads DataContext at
+        // drag time — when it IS present — and returns null for a non-node host
+        // (the project header, DataContext = OpenProject), so only real nodes
+        // actually begin a drag.
+        visual.IsDraggable = true
+        visual.OnDragStart = (source) => this.startDrag(source)
         visual.AddRoutedEventListener('DragOver', this.onOver)
         visual.AddRoutedEventListener('Drop', this.onDrop)
     }
