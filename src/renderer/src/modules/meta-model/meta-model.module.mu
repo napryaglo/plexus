@@ -13,13 +13,11 @@
 // ProjectFactoryRegistry.
 
 import MetaModelProjectFactory from "./services/meta-model-project-factory.js"
-import MetaModelValidationService from "./services/meta-model-validation-service.js"
 import TodlDocumentFactory from "./services/todl-document-factory.js"
 
 module MetaModelModule [ Name = "Meta-model" ] {
     .services: {
         MetaModelProjectFactory
-        MetaModelValidationService
         TodlDocumentFactory
     }
 

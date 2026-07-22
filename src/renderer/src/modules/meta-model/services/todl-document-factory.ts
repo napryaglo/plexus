@@ -5,7 +5,7 @@ import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../ser
 import type { IStorage } from '../../../services/storage/storage.js'
 import { CodeDocument } from '../../code-editor/code-document.js'
 import { StorageCodeFile } from '../../code-editor/code-file.js'
-import { MetaModelValidationService } from './meta-model-validation-service.js'
+import { TodlValidationService } from '../../../services/todl/todl-validation-service.js'
 
 // The `.todl` editor: a definition file is plain-text TODL edited in the Monaco
 // CodeEditor (a CodeDocument over the project's IStorage). Contributed as the
@@ -26,7 +26,7 @@ export class TodlDocumentFactory extends ServiceBase implements IDocumentFactory
         // Register the document + its project storage with the validator so it
         // gets live squiggles within its own project's file set. Optional (`get`,
         // not `getRequired`) — absent in unit tests.
-        this.Provider.get(MetaModelValidationService.Key)?.AttachDocument(doc, storage)
+        this.Provider.get(TodlValidationService.Key)?.AttachDocument(doc, storage)
         return doc
     }
 

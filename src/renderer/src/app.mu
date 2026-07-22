@@ -97,6 +97,11 @@ import AgentChatResources from "./modules/agent-chat/agent-chat.resources.mu.js"
 // Monaco's DOM into the SVG surface via <foreignObject>). CodeEditorService
 // opens/dedupes tabs; CodeEditorResources carries DataTemplate[CodeDocument].
 import CodeEditorService from "./modules/code-editor/code-editor-service.js"
+
+// Shared TODL live-validation service (base-aware): validates any authoring
+// project's .todl files against its declared bases via checkAgainst. Root-scoped
+// like ProjectFactoryRegistry so every module's editor can attach documents.
+import TodlValidationService from "./services/todl/todl-validation-service.js"
 import CodeEditorResources from "./modules/code-editor/code-editor.resources.mu.js"
 
 
@@ -171,6 +176,8 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // Code editor: opens files as Monaco-backed document tabs. Resolves the
         // content host + FileSystemService lazily, so registration order is free.
         CodeEditorService
+        // Shared base-aware TODL validator (meta-model / library / architecture).
+        TodlValidationService
     }
 
     .modules: {

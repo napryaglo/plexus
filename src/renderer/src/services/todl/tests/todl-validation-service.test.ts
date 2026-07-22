@@ -1,16 +1,17 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { ContentHostService, DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+import { check, toJSON } from '@pragmatic-lab/todl'
 
-import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
-import { CodeDocument } from '../../../code-editor/code-document.js'
-import { StorageCodeFile } from '../../../code-editor/code-file.js'
-import { EditorSeverity } from '../../../code-editor/editor-diagnostic.js'
+import { FakeStorage } from '../../storage/tests/fake-storage.js'
+import { CodeDocument } from '../../../modules/code-editor/code-document.js'
+import { StorageCodeFile } from '../../../modules/code-editor/code-file.js'
+import { EditorSeverity } from '../../../modules/code-editor/editor-diagnostic.js'
 import {
-    MetaModelValidationService,
+    TodlValidationService,
     validateSources,
     overlaySources,
-} from '../meta-model-validation-service.js'
+} from '../todl-validation-service.js'
 
 // Verified-clean / erroring TODL (see the empirical probe in the factory test).
 const CONCEPTS = 'namespace d { concept model { label : string; } concept component { label : string; } }'
@@ -38,6 +39,27 @@ test('validateSources returns empty per-file entries for a clean cross-file proj
     expect(byUri.get('ea.todl')).toEqual([])
 })
 
+// ── base-aware validation ──
+
+// A meta-model base: a component concept with a taxonomy-typed `category` field,
+// plus the taxonomy. A usage that names a NON-existent taxonomy term errors only
+// when the base is present (without it, `component` is an unresolved placeholder
+// with no schema, so the value goes unchecked).
+const META = `namespace ea {
+  concept category { label : string; }
+  concept component { category : component-category; }
+  taxonomy component-category : represents category { term platform-api { label = "API"; } }
+}`
+const BAD_USAGE = 'namespace u { component c { category = component-category.ghost; } }'
+
+test('validateSources uses the given bases (a bad taxonomy value errors only against the base)', () => {
+    const base = toJSON(check([{ uri: 'ea.todl', text: META }]).model)
+    const withBase = validateSources([{ uri: 'u.todl', text: BAD_USAGE }], [base])
+    const without = validateSources([{ uri: 'u.todl', text: BAD_USAGE }])
+    expect(withBase.get('u.todl')!.length).toBeGreaterThan(0)   // base resolves component's schema → value checked
+    expect(without.get('u.todl')!.length).toBe(0)               // no base → under-validated
+})
+
 test('overlaySources prefers open buffers and adds open-only files', () => {
     const merged = overlaySources(
         [{ uri: 'a.todl', text: 'old' }, { uri: 'b.todl', text: 'stored' }],
@@ -51,12 +73,12 @@ test('overlaySources prefers open buffers and adds open-only files', () => {
 
 // ── service integration (real content host, diagnostics distributed to docs) ──
 
-function env(): { service: MetaModelValidationService; host: DocumentsContentHostService }
+function env(): { service: TodlValidationService; host: DocumentsContentHostService }
 {
     const provider = new ServiceProvider()
     const host = new DocumentsContentHostService(provider)
     provider.registerInstance(ContentHostService.Key, host)
-    return { service: new MetaModelValidationService(provider), host }
+    return { service: new TodlValidationService(provider), host }
 }
 
 test('validates two projects independently and distributes to each doc; clears on fix', async () => {
