@@ -23,11 +23,11 @@ export function registerAgentHandlers(): void
     providers.register(new ClaudeCliProvider())
     const session = new AgentSession(providers, emitToRenderer)
 
-    ipcMain.handle(AgentChannel.StartSession, (_e, workingDirectory: string): void => {
-        session.start(workingDirectory)
+    ipcMain.handle(AgentChannel.StartSession, (_e, workingDirectory: string, addDirs: readonly string[]): void => {
+        session.start(workingDirectory, addDirs)
     })
-    ipcMain.handle(AgentChannel.SendTurn, (_e, workingDirectory: string, text: string): void => {
-        session.send(workingDirectory, text)
+    ipcMain.handle(AgentChannel.SendTurn, (_e, workingDirectory: string, addDirs: readonly string[], text: string): void => {
+        session.send(workingDirectory, addDirs, text)
     })
     ipcMain.handle(AgentChannel.Abort, (): void => {
         session.abort()

@@ -15,7 +15,7 @@ export interface AiProviderSession
 export interface IAiProvider
 {
     readonly Id: string;
-    start(workingDirectory: string, onEvent: (event: AgentEvent) => void): AiProviderSession;
+    start(workingDirectory: string, addDirs: readonly string[], onEvent: (event: AgentEvent) => void): AiProviderSession;
 }
 
 // The subset of a spawned child this provider uses. Kept minimal + injectable so

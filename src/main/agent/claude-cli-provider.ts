@@ -33,9 +33,10 @@ export class ClaudeCliProvider implements IAiProvider
         private readonly spawnFn: SpawnFn = defaultSpawn,
     ) {}
 
-    public start(workingDirectory: string, onEvent: (event: AgentEvent) => void): AiProviderSession
+    public start(workingDirectory: string, addDirs: readonly string[], onEvent: (event: AgentEvent) => void): AiProviderSession
     {
-        const child = this.spawnFn(this.binaryPath, CLI_ARGS, { cwd: workingDirectory })
+        const args = [...CLI_ARGS, ...addDirs.flatMap((d) => ['--add-dir', d])]
+        const child = this.spawnFn(this.binaryPath, args, { cwd: workingDirectory })
         const parser = new StreamJsonParser()
         let buffer = ''
 
