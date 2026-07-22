@@ -1,43 +1,50 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 
-import { PROJECT_MANIFEST_FILENAME } from '../../../../services/projects/project-factory.js'
+import { PROJECT_MANIFEST_FILENAME, isPublishable } from '../../../../services/projects/project-factory.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchitectureProjectFactory } from '../architecture-project-factory.js'
 
-function factory(): ArchitectureProjectFactory
-{
-    return new ArchitectureProjectFactory(new ServiceProvider())
-}
+function factory(): ArchitectureProjectFactory { return new ArchitectureProjectFactory(new ServiceProvider()) }
 
-test('createProject writes an architecture manifest and returns the project', async () => {
+test('createProject writes an architecture manifest with meta-model + libraries bindings', async () => {
     const storage = new FakeStorage('fake://Acme')
-    const project = await factory().createProject(storage, 'Acme')
-
+    const project = await factory().createProject(storage, 'Acme Arch', {
+        metaModel: { id: 'ea', version: '5' },
+        libraries: [{ id: 'microsoft', version: '0.1.0' }, { id: 'aws', version: '2' }],
+    })
     expect(project.Type).toBe('architecture')
-    expect(project.Name).toBe('Acme')
     const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME))
     expect(manifest.type).toBe('architecture')
-    expect(manifest.name).toBe('Acme')
+    expect(manifest.name).toBe('Acme Arch')
+    expect(manifest.metaModel).toEqual({ id: 'ea', version: '5' })
+    expect(manifest.libraries).toEqual([{ id: 'microsoft', version: '0.1.0' }, { id: 'aws', version: '2' }])
 })
 
-test('openProject scans storage into a tree, hiding the manifest', async () => {
-    const storage = new FakeStorage()
-    await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify({ type: 'architecture', name: 'P' }))
-    await storage.WriteText('diagrams/city.diagram', '{}')
-    await storage.WriteText('notes.txt', 'hi')
+test('createProject with no bindings omits both binding fields', async () => {
+    const storage = new FakeStorage('fake://Bare')
+    await factory().createProject(storage, 'Bare')
+    const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME))
+    expect('metaModel' in manifest).toBe(false)
+    expect('libraries' in manifest).toBe(false)
+})
+
+test('requiresMetaModel + offersLibraries are true; the factory is not publishable', () => {
+    const f = factory()
+    expect(f.requiresMetaModel).toBe(true)
+    expect(f.offersLibraries).toBe(true)
+    expect(isPublishable(f)).toBe(false)
+})
+
+test('openProject tags .todl files as openable todl nodes; the manifest is hidden', async () => {
+    const storage = new FakeStorage('fake://Acme')
+    await factory().createProject(storage, 'Acme')
+    await storage.WriteText('model.todl', 'namespace a { concept x { label : string; } }')
+    await storage.WriteText('notes.md', '# notes')
 
     const project = await factory().openProject(storage)
-    const names = project.Root.Children.ToArray().map((n) => n.Name)
-    expect(names).toContain('diagrams')
-    expect(names).toContain('notes.txt')
-    expect(names).not.toContain(PROJECT_MANIFEST_FILENAME)
-
-    const diagramsFolder = project.Root.Children.ToArray().find((n) => n.Name === 'diagrams')!
-    expect(diagramsFolder.Kind).toBe('folder')
-    const cityDiagram = diagramsFolder.Children.ToArray()[0]
-    expect(cityDiagram.Kind).toBe('diagram')
-    expect(cityDiagram.Path).toBe('diagrams/city.diagram')   // project-relative
-    const notes = project.Root.Children.ToArray().find((n) => n.Name === 'notes.txt')!
-    expect(notes.Kind).toBe('file')
+    const kinds = new Map(project.Root.Children.ToArray().map((c) => [c.Name, c.Kind]))
+    expect(kinds.get('model.todl')).toBe('todl')
+    expect(kinds.get('notes.md')).toBe('file')
+    expect([...kinds.keys()]).not.toContain(PROJECT_MANIFEST_FILENAME)
 })

@@ -49,6 +49,10 @@ export interface IProjectFactory
     // (the New-Project dialog shows a meta-model picker). Absent ⇒ false.
     readonly requiresMetaModel?: boolean
 
+    // True when this project type binds a set of libraries chosen up front (the
+    // New-Project dialog shows a libraries multi-select). Absent ⇒ false.
+    readonly offersLibraries?: boolean
+
     // Project lifecycle. createProject writes an initial manifest into a fresh
     // project storage — with the chosen base bindings, when the type declares any;
     // openProject reads the manifest + builds the file tree; saveProject persists
