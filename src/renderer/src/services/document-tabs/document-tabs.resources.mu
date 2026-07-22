@@ -33,29 +33,20 @@ resources DocumentTabsResources {
         when ( IsPressed ) { PART_Row.Background = @StatePressOverlay; }
     }
 
-    // One tab HEADER in the strip: title + a close ✕ (matches the framework's
-    // DocumentTabHeaderTemplate). DataType is nominal — this template is applied
-    // by key (never type-dispatched); RailAction is the structural placeholder
-    // the framework uses for IDocument, carried here for the same reason.
-    DataTemplate x:key="DocumentTabHeaderTemplate" [ DataType = RailAction ] {
-        StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
-            TextBlock [ Text = $Title, VerticalAlignment = Center, Margin = (4,0,0,0) ]
-            IconButton
-                [ Command          = $service(ContentHostService).CloseDocumentCommand,
-                  CommandParameter = $Id,
-                  VerticalAlignment = Center,
-                  Margin           = (2,0,0,0) ] {
-                Shape [ Geometry = @IconClose, Fill = @OnSurfaceVariant, Width = 8, Height = 8 ]
-            }
-        }
-    }
+    // NOTE: the tab HEADER (strip) uses the framework's own
+    // @DocumentTabHeaderTemplate — referenced directly by the override below, so
+    // the tab close ✕ keeps its original compact chrome (@CompactHeaderIconButton).
+    // We do NOT redefine it here; a local copy previously dropped that template
+    // and inflated the close button.
 
     // One ROW in the overflow dropdown: click the title to activate that tab, ✕
-    // to close it. DataContext is the document (Title / Id).
+    // to close it. DataContext is the document (Title / Id). The close button
+    // reuses the framework's @CompactHeaderIconButton so it matches the strip's ✕.
     DataTemplate x:key="TabMenuRowTemplate" [ DataType = RailAction ] {
         DockPanel [ LastChildFill = true, MinWidth = 200, Margin = (0,1,0,1) ] {
             IconButton
                 [ DockPanel.Dock  = Right,
+                  Template         = @CompactHeaderIconButton,
                   Command          = $service(ContentHostService).CloseDocumentCommand,
                   CommandParameter = $Id,
                   VerticalAlignment = Center,
