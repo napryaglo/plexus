@@ -44,10 +44,10 @@ export type AgentEvent =
 // subscribes to the push channel and returns an unsubscribe function.
 export interface IAgentApi
 {
-    startSession(workingDirectory: string): Promise<void>;
-    // The renderer supplies the working directory each turn; a turn lazily starts
-    // the session when none is running (see AgentSession).
-    sendTurn(workingDirectory: string, text: string): Promise<void>;
+    startSession(workingDirectory: string, addDirs: readonly string[]): Promise<void>;
+    // The renderer supplies the working directory + extra dirs each turn; a turn
+    // lazily starts (or re-targets) the session (see AgentSession).
+    sendTurn(workingDirectory: string, addDirs: readonly string[], text: string): Promise<void>;
     abort(): Promise<void>;
     onEvent(handler: (event: AgentEvent) => void): () => void;
 }

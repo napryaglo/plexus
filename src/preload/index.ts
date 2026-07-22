@@ -70,12 +70,13 @@ const settings: ISettingsBridge = {
 
 // Agent runtime bridge. Commands are ipcRenderer.invoke round-trips; onEvent
 // subscribes to the pushed AgentChannel.Event stream and returns an unsubscribe.
-// sendTurn forwards the working directory + text (matching the SendTurn handler).
+// sendTurn forwards the working directory + extra dirs + text (matching the
+// SendTurn handler).
 const agent: IAgentApi = {
-  startSession: (workingDirectory: string): Promise<void> =>
-    ipcRenderer.invoke(AgentChannel.StartSession, workingDirectory),
-  sendTurn: (workingDirectory: string, text: string): Promise<void> =>
-    ipcRenderer.invoke(AgentChannel.SendTurn, workingDirectory, text),
+  startSession: (workingDirectory: string, addDirs: readonly string[]): Promise<void> =>
+    ipcRenderer.invoke(AgentChannel.StartSession, workingDirectory, addDirs),
+  sendTurn: (workingDirectory: string, addDirs: readonly string[], text: string): Promise<void> =>
+    ipcRenderer.invoke(AgentChannel.SendTurn, workingDirectory, addDirs, text),
   abort: (): Promise<void> => ipcRenderer.invoke(AgentChannel.Abort),
   onEvent: (handler: (event: AgentEvent) => void): (() => void) => {
     const listener = (_e: unknown, event: AgentEvent): void => handler(event)
