@@ -136,7 +136,8 @@ resources ProjectExplorerResources {
             }
             Border [ Style = @TreeKeyStyle, Visibility = $IsExpanded << ToVisibility ] {
                 TreeView [ Indent = 14, ItemsSource = $Root.Children, ItemTemplate = @ProjectNodeTemplate,
-                           SelectedDataItem = $SelectedNode, SelectionMode = Extended ] {
+                           SelectedDataItem = $SelectedNode, SelectionMode = Extended,
+                           AllowMarqueeSelection = true ] {
                     .Behaviors: { TreeSelectionBehavior }
                 }
             }
