@@ -34,3 +34,10 @@ test('when a folder and its child are both selected, only the folder moves', () 
     const plan = planNodeMoves([folder('src'), file('src/a.todl')], 'dst')
     expect(plan.moves).toEqual([{ from: 'src', to: 'dst/src', name: 'src' }])
 })
+
+test('cross-project plan keeps ancestor-filter but skips same-project guards', () => {
+    // Into a DIFFERENT project's 'src' folder: not "already there", not "into self".
+    const plan = planNodeMoves([folder('src'), file('src/a.todl')], 'src', false)
+    expect(plan.moves).toEqual([{ from: 'src', to: 'src/src', name: 'src' }])
+    expect(plan.rejects).toEqual([])
+})

@@ -45,7 +45,8 @@ import {
     type ProjectFileFormat,
     type ProjectManifestEnvelope,
 } from '../../../services/projects/project-factory.js'
-import { isRelocatable, type IDocumentFactory } from '../../../services/documents/document-factory.js'
+import { isRelocatable, isRelocatableAcrossStorage, type IDocumentFactory } from '../../../services/documents/document-factory.js'
+import { copyTree } from '../../../services/storage/copy-tree.js'
 import type { FileFilter } from '../../../../../shared/file-system-api.js'
 import type { Project, ProjectNode } from '../../../services/projects/project.js'
 import { OpenProject } from '../../../services/projects/open-project.js'
@@ -266,7 +267,8 @@ export class ProjectExplorerService extends ServiceBase
         op.CloseCommand = new RelayCommand(() => void this.closeProject(op))
         op.MoveNodesCommand = new RelayCommand((arg) => {
             const a = arg as MoveArg
-            void this.moveNodes(op, a.nodes, a.destPath)
+            if (a.source === op) void this.moveNodes(op, a.nodes, a.destPath)
+            else void this.moveNodesAcross(a.source, a.nodes, op, a.destPath)
         })
     }
 
@@ -540,6 +542,52 @@ export class ProjectExplorerService extends ServiceBase
         this.Status = `Move: ${parts.join(', ')}.`
     }
 
+    // Move nodes from `source` into `target` (a DIFFERENT project / storage): copy
+    // each subtree across (binary-safe), delete the source, re-point any open tabs,
+    // then rescan both projects. Target name-collisions are skipped with a status.
+    private async moveNodesAcross(
+        source: OpenProject, nodes: readonly ProjectNode[], target: OpenProject, destParentPath: string): Promise<void>
+    {
+        const { moves } = planNodeMoves(nodes, destParentPath, false)
+        const collisions: string[] = []
+        let moved = 0
+        for (const m of moves) {
+            if (await target.Storage.Exists(m.to)) { collisions.push(m.name); continue }
+            const node = nodes.find((n) => n.Path === m.from)!
+            await copyTree(source.Storage, m.from, target.Storage, m.to, node.Kind === 'folder')
+            await source.Storage.Delete(m.from)
+            this.repointMovedDocs(source, target, m.from, m.to)
+            moved++
+        }
+        if (moved > 0) { await this.rescan(source); await this.rescan(target) }
+
+        if (collisions.length === 0) { if (moved > 0) this.Status = `Moved ${moved} item(s) to ${target.Name}.`; return }
+        this.Status = `Move to ${target.Name}: ${moved > 0 ? `moved ${moved}, ` : ''}${collisions.length} already exist.`
+    }
+
+    // Re-point every open doc that lived at (or under) fromPath in `source` to the
+    // corresponding path under `toPath` in `target`: keep the tab open when its
+    // editor supports a cross-storage relocate (reassigning ownership), else close
+    // it (a non-relocatable editor can't follow the file across storages).
+    private repointMovedDocs(source: OpenProject, target: OpenProject, fromPath: string, toPath: string): void
+    {
+        for (const [doc, path] of [...this.docPaths]) {
+            if (this.docOwners.get(doc) !== source) continue
+            const moved = path === fromPath ? toPath
+                : path.startsWith(fromPath + '/') ? toPath + path.slice(fromPath.length)
+                    : undefined
+            if (moved === undefined) continue
+            const factory = this.resolveDocumentFactory(extname(moved))
+            if (factory !== undefined && isRelocatableAcrossStorage(factory)) {
+                factory.relocateAcrossStorage(doc, target.Storage, moved)
+                this.docOwners.set(doc, target)
+                this.docPaths.set(doc, moved)
+            } else {
+                this.host.Close(doc); this.docOwners.delete(doc); this.docPaths.delete(doc)
+            }
+        }
+    }
+
     // Publish the project through its factory (the menu item is disabled for
     // non-publishable types, but guard anyway). Surfaces the result message.
     private async publishProject(op: OpenProject): Promise<void>
@@ -791,10 +839,11 @@ export async function uniqueStorageName(storage: IStorage, fileName: string): Pr
     }
 }
 
-// The command argument for OpenProject.MoveNodesCommand — the dragged nodes and
-// the destination folder path (project-relative; '' = root). Exported so the
-// drag behavior can construct it.
-export interface MoveArg { nodes: readonly ProjectNode[]; destPath: string }
+// The command argument for OpenProject.MoveNodesCommand — the dragged nodes, the
+// destination folder path (project-relative; '' = root), and the SOURCE project
+// the nodes came from (equal to the target for a same-project move). Exported so
+// the drag behavior can construct it.
+export interface MoveArg { nodes: readonly ProjectNode[]; destPath: string; source: OpenProject }
 
 // The open-dialog filters for importing into a project: one entry per factory
 // format (so its files surface first) plus an All-files catch-all — a guide,

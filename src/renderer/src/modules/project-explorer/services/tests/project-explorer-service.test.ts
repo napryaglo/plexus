@@ -83,6 +83,7 @@ interface ExplorerPrivates
     deleteNodes(op: OpenProject, nodes: readonly ProjectNode[]): Promise<void>
     deleteFromNode(op: OpenProject, node: ProjectNode): Promise<void>
     moveNodes(op: OpenProject, nodes: readonly ProjectNode[], destParentPath: string): Promise<void>
+    moveNodesAcross(source: OpenProject, nodes: readonly ProjectNode[], target: OpenProject, destParentPath: string): Promise<void>
     closeProject(op: OpenProject): Promise<void>
     saveActive(): Promise<void>
 }
@@ -596,4 +597,27 @@ test('moveNodes into the current parent is a silent no-op', async () => {
     const op = await priv.addOpenProject(projectWith('P', 'C:/p'), fakeProjectFactory(), storage)
     await priv.moveNodes(op, [new ProjectNode('a.todl', 'src/a.todl', 'todl')], 'src')
     expect(await storage.Exists('src/a.todl')).toBe(true)
+})
+
+test('moveNodesAcross copies a file to the target storage and removes it from the source', async () => {
+    const { priv } = makeExplorer()
+    const a = new FakeStorage('C:/a'); await a.WriteText('x.todl', 'hi')
+    const b = new FakeStorage('C:/b'); await b.CreateDirectory('src')
+    const opA = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), a)
+    const opB = await priv.addOpenProject(projectWith('B', 'C:/b'), fakeProjectFactory(), b)
+    await priv.moveNodesAcross(opA, [new ProjectNode('x.todl', 'x.todl', 'todl')], opB, 'src')
+    expect(await b.ReadText('src/x.todl')).toBe('hi')
+    expect(await a.Exists('x.todl')).toBe(false)
+})
+
+test('moveNodesAcross skips a target collision, leaving source intact', async () => {
+    const { priv, service } = makeExplorer()
+    const a = new FakeStorage('C:/a'); await a.WriteText('x.todl', 'hi')
+    const b = new FakeStorage('C:/b'); await b.WriteText('src/x.todl', 'other')
+    const opA = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), a)
+    const opB = await priv.addOpenProject(projectWith('B', 'C:/b'), fakeProjectFactory(), b)
+    await priv.moveNodesAcross(opA, [new ProjectNode('x.todl', 'x.todl', 'todl')], opB, 'src')
+    expect(await a.Exists('x.todl')).toBe(true)                 // not moved
+    expect(await b.ReadText('src/x.todl')).toBe('other')        // untouched
+    expect(service.Status).toMatch(/exist/i)
 })

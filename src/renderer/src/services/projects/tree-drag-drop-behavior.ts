@@ -18,6 +18,7 @@ import type { MoveArg } from '../../modules/project-explorer/services/project-ex
 // DataObject travels within one tree, and the owning OpenProject is found by
 // walking up to the TreeView's DataContext.
 const NODES_FORMAT = 'plexus/project-nodes'
+const SOURCE_FORMAT = 'plexus/project-source'
 
 export class TreeDragDropBehavior extends Behavior
 {
@@ -56,6 +57,8 @@ export class TreeDragDropBehavior extends Behavior
         const nodes = selected.includes(node) ? selected : [node]
         const data = new DataObject()
         data.Set(NODES_FORMAT, nodes)
+        // Carry the source project so a drop onto ANOTHER project can move across.
+        if (op !== undefined) data.Set(SOURCE_FORMAT, op)
         return { data, effects: DragDropEffects.Move }
     }
 
@@ -75,7 +78,10 @@ export class TreeDragDropBehavior extends Behavior
         if (op === undefined) return
         const targetNode = this.visual.DataContext instanceof ProjectNode ? this.visual.DataContext : undefined
         const destPath = resolveDropTargetPath(targetNode)
-        op.MoveNodesCommand?.Execute({ nodes, destPath } satisfies MoveArg)
+        // The source project rode in the DataObject; a drag begun elsewhere (no
+        // source) is treated as same-project (source = the drop target's project).
+        const source = a.Data.Get<OpenProject>(SOURCE_FORMAT) ?? op
+        op.MoveNodesCommand?.Execute({ nodes, destPath, source } satisfies MoveArg)
         a.Handled = true
     }
 
