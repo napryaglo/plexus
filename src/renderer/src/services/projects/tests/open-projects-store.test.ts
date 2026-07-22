@@ -43,3 +43,33 @@ test('Remove drops a folder', async () => {
     await s.Remove('/a')
     expect(await s.List()).toEqual(['/b'])
 })
+
+test('Add notifies subscribers with the updated folder list', async () => {
+    const s = store()
+    const seen: string[][] = []
+    s.Subscribe((f) => seen.push([...f]))
+    await s.Add('/a')
+    await s.Add('/b')
+    expect(seen).toEqual([['/a'], ['/a', '/b']])
+})
+
+test('a duplicate Add does not notify (the set did not change)', async () => {
+    const s = store()
+    await s.Add('/a')
+    const seen: string[][] = []
+    s.Subscribe((f) => seen.push([...f]))
+    await s.Add('/a')   // already present
+    expect(seen).toEqual([])
+})
+
+test('Remove notifies; Current reflects the mirror; unsubscribe stops delivery', async () => {
+    const s = store()
+    await s.Add('/a'); await s.Add('/b')
+    const seen: string[][] = []
+    const off = s.Subscribe((f) => seen.push([...f]))
+    await s.Remove('/a')
+    expect(s.Current()).toEqual(['/b'])
+    off()
+    await s.Remove('/b')
+    expect(seen).toEqual([['/b']])   // only the pre-unsubscribe change delivered
+})
