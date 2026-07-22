@@ -30,6 +30,8 @@ const fs: IFileSystemApi = {
     ipcRenderer.invoke(FileSystemChannel.SaveFileAs, content, options),
   readText: (path: string): Promise<string> =>
     ipcRenderer.invoke(FileSystemChannel.ReadText, path),
+  readBytes: (path: string): Promise<Uint8Array> =>
+    ipcRenderer.invoke(FileSystemChannel.ReadBytes, path),
   writeText: (path: string, content: string): Promise<void> =>
     ipcRenderer.invoke(FileSystemChannel.WriteText, path, content),
   writeBytes: (path: string, bytes: Uint8Array): Promise<void> =>

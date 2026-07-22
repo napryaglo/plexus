@@ -25,6 +25,11 @@ export class LocalFileStorage implements IStorage, ILocalFileAccess
         return this.fs.ReadText(this.abs(path))
     }
 
+    public ReadBytes(path: string): Promise<Uint8Array>
+    {
+        return this.fs.ReadBytes(this.abs(path))
+    }
+
     public WriteText(path: string, content: string): Promise<void>
     {
         return this.fs.WriteText(this.abs(path), content)

@@ -40,6 +40,9 @@ export interface IStorage
     readonly Root: string
 
     ReadText(path: string): Promise<string>
+    // Read raw bytes — the binary-safe counterpart of ReadText, used to copy a
+    // file across storages (its bytes may not be valid UTF-8).
+    ReadBytes(path: string): Promise<Uint8Array>
     WriteText(path: string, content: string): Promise<void>
     // Write raw bytes — the binary-safe counterpart of WriteText, used to import
     // existing files (images, archives) into a project without text corruption.

@@ -107,6 +107,11 @@ export function registerFileSystemHandlers(): void {
   )
 
   ipcMain.handle(
+    FileSystemChannel.ReadBytes,
+    async (_e, path: string): Promise<Uint8Array> => new Uint8Array(await readFile(path)),
+  )
+
+  ipcMain.handle(
     FileSystemChannel.WriteText,
     async (_e, path: string, content: string): Promise<void> => {
       await writeFile(path, content, 'utf8')

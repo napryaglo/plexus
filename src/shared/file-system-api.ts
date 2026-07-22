@@ -17,6 +17,7 @@ export enum FileSystemChannel
     OpenFolder    = 'fs:open-folder',
     SaveFileAs    = 'fs:save-file-as',
     ReadText      = 'fs:read-text',
+    ReadBytes     = 'fs:read-bytes',
     WriteText     = 'fs:write-text',
     WriteBytes    = 'fs:write-bytes',
     Exists        = 'fs:exists',
@@ -91,6 +92,8 @@ export interface IFileSystemApi
     openFolder(options?: OpenFolderOptions): Promise<string | null>;
     saveFileAs(content: string, options?: SaveFileOptions): Promise<string | null>;
     readText(path: string): Promise<string>;
+    // Read raw bytes from an absolute path (binary-safe counterpart of readText).
+    readBytes(path: string): Promise<Uint8Array>;
     writeText(path: string, content: string): Promise<void>;
     // Write raw bytes to an absolute path (binary-safe counterpart of writeText).
     writeBytes(path: string, bytes: Uint8Array): Promise<void>;

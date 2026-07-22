@@ -29,6 +29,16 @@ export class FakeStorage implements IStorage
         return Promise.resolve(value)
     }
 
+    // Read stored content back as bytes (latin1 of the stored string; round-trips
+    // WriteBytes exactly, and WriteText for ASCII — enough for the copy tests).
+    public ReadBytes(path: string): Promise<Uint8Array>
+    {
+        const key = normalize(path)
+        const value = this.files.get(key)
+        if (value === undefined) return Promise.reject(new Error(`ENOENT: ${key}`))
+        return Promise.resolve(Uint8Array.from(value, (c) => c.charCodeAt(0)))
+    }
+
     public WriteText(path: string, content: string): Promise<void>
     {
         this.files.set(normalize(path), content)

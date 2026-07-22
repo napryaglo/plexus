@@ -74,6 +74,12 @@ export class FileSystemService extends ServiceBase
         return this.api.readText(path);
     }
 
+    // Read raw bytes from a path — the binary-safe counterpart of ReadText.
+    public ReadBytes(path: string): Promise<Uint8Array>
+    {
+        return this.api.readBytes(path);
+    }
+
     public WriteText(path: string, content: string): Promise<void>
     {
         return this.api.writeText(path, content);

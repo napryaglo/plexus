@@ -13,6 +13,7 @@ function stubFs(): { fs: FileSystemService; calls: Array<[string, string]>; list
     const listResult: FileEntry[] = []
     const fs = {
         ReadText: (p: string) => { calls.push(['ReadText', p]); return Promise.resolve('text') },
+        ReadBytes: (p: string) => { calls.push(['ReadBytes', p]); return Promise.resolve(new Uint8Array()) },
         WriteText: (p: string, _c: string) => { calls.push(['WriteText', p]); return Promise.resolve() },
         WriteBytes: (p: string, _b: Uint8Array) => { calls.push(['WriteBytes', p]); return Promise.resolve() },
         Exists: (p: string) => { calls.push(['Exists', p]); return Promise.resolve(true) },
@@ -95,6 +96,12 @@ test('List rethrows a listing failure when the directory DOES exist (a real erro
     } as unknown as FileSystemService
     const storage = new LocalFileStorage('/r', fs)
     await expect(storage.List('secret')).rejects.toThrow('EPERM')
+})
+
+test('ReadBytes joins the path and delegates', async () => {
+    const { fs, calls } = stubFs()
+    await new LocalFileStorage('/root/proj', fs).ReadBytes('a/b.bin')
+    expect(calls).toEqual([['ReadBytes', '/root/proj/a/b.bin']])
 })
 
 test('Root exposes the location descriptor', () => {
