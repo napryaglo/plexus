@@ -63,6 +63,7 @@ import type { BaseRef } from '../../../services/projects/base-binding.js'
 import { ensureMetaModelsBackend } from '../../meta-model/services/meta-models-backend.js'
 import { ensureLibrariesBackend } from '../../library/services/libraries-backend.js'
 import { TodlValidationService } from '../../../services/todl/todl-validation-service.js'
+import { planNodeMoves } from '../../../services/projects/node-move.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
 import { RecentProjectsService } from '../../../services/projects/recent-projects-service.js'
 import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'
@@ -263,6 +264,10 @@ export class ProjectExplorerService extends ServiceBase
             () => this.refreshBases(op),
             () => op.Factory.requiresMetaModel === true)
         op.CloseCommand = new RelayCommand(() => void this.closeProject(op))
+        op.MoveNodesCommand = new RelayCommand((arg) => {
+            const a = arg as MoveArg
+            void this.moveNodes(op, a.nodes, a.destPath)
+        })
     }
 
     // Create a new file of the project's primary format inside `parentFolder`
@@ -462,13 +467,11 @@ export class ProjectExplorerService extends ServiceBase
         const dest = joinRel(parentOf(node.Path), proposed)
         try {
             if (await op.Storage.Exists(dest)) { this.Status = `"${proposed}" already exists.`; this.cancelRename(op, node); return }
-            await op.Storage.Rename(node.Path, dest)
-            this.repointOpenDocuments(op, node.Path, dest)
+            await this.relocatePath(op, node.Path, dest)
             op.EditingNode = undefined
             // Rescan so the renamed node (and, for a folder, its moved contents)
             // reappear under the new path; re-wire the fresh nodes' commands.
-            op.Adopt(await op.Factory.openProject(op.Storage))
-            this.wireNodes(op.Root, op)
+            await this.rescan(op)
             this.Status = `Renamed to ${proposed}.`
         } catch (e) {
             this.cancelRename(op, node)
@@ -492,6 +495,49 @@ export class ProjectExplorerService extends ServiceBase
             if (factory !== undefined && isRelocatable(factory)) factory.relocateOpenFile(doc, moved)
             this.docPaths.set(doc, moved)
         }
+    }
+
+    // Rename a path on storage and re-point any open tabs under it. Shared by
+    // rename (name change in place) and move (into another folder).
+    private async relocatePath(op: OpenProject, fromPath: string, toPath: string): Promise<void>
+    {
+        await op.Storage.Rename(fromPath, toPath)
+        this.repointOpenDocuments(op, fromPath, toPath)
+    }
+
+    // Re-scan the project so a structural change (rename/move/new) reappears with
+    // correct paths, and re-wire the fresh nodes' commands.
+    private async rescan(op: OpenProject): Promise<void>
+    {
+        op.Adopt(await op.Factory.openProject(op.Storage))
+        this.wireNodes(op.Root, op)
+    }
+
+    // Move the given nodes into destParentPath (project-relative; '' = root),
+    // within this project. Planning (ancestor-filter, already-there, into-self/
+    // descendant) is pure (planNodeMoves); here we add the storage collision check
+    // + execute, then a single rescan.
+    private async moveNodes(op: OpenProject, nodes: readonly ProjectNode[], destParentPath: string): Promise<void>
+    {
+        const { moves, rejects } = planNodeMoves(nodes, destParentPath)
+        const collisions: string[] = []
+        let moved = 0
+        for (const m of moves) {
+            if (await op.Storage.Exists(m.to)) { collisions.push(m.name); continue }
+            await this.relocatePath(op, m.from, m.to)
+            moved++
+        }
+        if (moved > 0) await this.rescan(op)
+
+        if (collisions.length === 0 && rejects.length === 0) {
+            if (moved > 0) this.Status = `Moved ${moved} item(s).`
+            return
+        }
+        const parts: string[] = []
+        if (moved > 0) parts.push(`moved ${moved}`)
+        if (collisions.length > 0) parts.push(`${collisions.length} already exist`)
+        if (rejects.length > 0) parts.push(`${rejects.length} can't move there`)
+        this.Status = `Move: ${parts.join(', ')}.`
     }
 
     // Publish the project through its factory (the menu item is disabled for
@@ -744,6 +790,11 @@ export async function uniqueStorageName(storage: IStorage, fileName: string): Pr
         if (!(await storage.Exists(candidate))) return candidate
     }
 }
+
+// The command argument for OpenProject.MoveNodesCommand — the dragged nodes and
+// the destination folder path (project-relative; '' = root). Exported so the
+// drag behavior can construct it.
+export interface MoveArg { nodes: readonly ProjectNode[]; destPath: string }
 
 // The open-dialog filters for importing into a project: one entry per factory
 // format (so its files surface first) plus an All-files catch-all — a guide,

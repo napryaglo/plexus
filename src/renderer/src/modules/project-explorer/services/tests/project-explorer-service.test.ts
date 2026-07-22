@@ -82,6 +82,7 @@ interface ExplorerPrivates
     handleTreeKey(op: OpenProject, args: KeyEventArgs): void
     deleteNodes(op: OpenProject, nodes: readonly ProjectNode[]): Promise<void>
     deleteFromNode(op: OpenProject, node: ProjectNode): Promise<void>
+    moveNodes(op: OpenProject, nodes: readonly ProjectNode[], destParentPath: string): Promise<void>
     closeProject(op: OpenProject): Promise<void>
     saveActive(): Promise<void>
 }
@@ -563,4 +564,36 @@ test('ConfirmDialogModel resolves true on confirm and false on cancel', () => {
 
     confirm.CancelCommand.Execute(undefined)
     expect(result).toBe(false)
+})
+
+test('moveNodes renames a file into a subfolder on storage', async () => {
+    const { priv } = makeExplorer()
+    const storage = new FakeStorage('C:/p')
+    await storage.WriteText('a.todl', 'x')
+    await storage.CreateDirectory('src')
+    const op = await priv.addOpenProject(projectWith('P', 'C:/p'), fakeProjectFactory(), storage)
+    await priv.moveNodes(op, [new ProjectNode('a.todl', 'a.todl', 'todl')], 'src')
+    expect(await storage.Exists('src/a.todl')).toBe(true)
+    expect(await storage.Exists('a.todl')).toBe(false)
+})
+
+test('moveNodes skips a name collision, leaving both paths intact', async () => {
+    const { priv, service } = makeExplorer()
+    const storage = new FakeStorage('C:/p')
+    await storage.WriteText('a.todl', 'x')
+    await storage.WriteText('src/a.todl', 'y')
+    const op = await priv.addOpenProject(projectWith('P', 'C:/p'), fakeProjectFactory(), storage)
+    await priv.moveNodes(op, [new ProjectNode('a.todl', 'a.todl', 'todl')], 'src')
+    expect(await storage.ReadText('a.todl')).toBe('x')        // not moved
+    expect(await storage.ReadText('src/a.todl')).toBe('y')    // untouched
+    expect(service.Status).toMatch(/exist/i)
+})
+
+test('moveNodes into the current parent is a silent no-op', async () => {
+    const { priv } = makeExplorer()
+    const storage = new FakeStorage('C:/p')
+    await storage.WriteText('src/a.todl', 'x')
+    const op = await priv.addOpenProject(projectWith('P', 'C:/p'), fakeProjectFactory(), storage)
+    await priv.moveNodes(op, [new ProjectNode('a.todl', 'src/a.todl', 'todl')], 'src')
+    expect(await storage.Exists('src/a.todl')).toBe(true)
 })

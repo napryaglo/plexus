@@ -34,6 +34,10 @@ export class OpenProject extends Model
         OpenProject, 'RefreshBasesCommand', undefined, MetaData.None)
     static readonly CloseCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'CloseCommand', undefined, MetaData.None)
+    // Move dragged node(s) into a target folder — the drag behavior executes this
+    // with a { nodes, destPath } argument (see MoveArg in the explorer service).
+    static readonly MoveNodesCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        OpenProject, 'MoveNodesCommand', undefined, MetaData.None)
     // The tree's selected node — two-way target of the TreeView's
     // SelectedDataItem. Selecting a row pushes the ProjectNode here; the
     // OnPropertyChanged hook activates it (a leaf opens, a folder no-ops via its
@@ -113,6 +117,9 @@ export class OpenProject extends Model
 
     public get RefreshBasesCommand(): ICommand | undefined { return this.get_property_value(OpenProject.RefreshBasesCommandKey) }
     public set RefreshBasesCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.RefreshBasesCommandKey, v) }
+
+    public get MoveNodesCommand(): ICommand | undefined { return this.get_property_value(OpenProject.MoveNodesCommandKey) }
+    public set MoveNodesCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.MoveNodesCommandKey, v) }
 
     public get CloseCommand(): ICommand | undefined { return this.get_property_value(OpenProject.CloseCommandKey) }
     public set CloseCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.CloseCommandKey, v) }
