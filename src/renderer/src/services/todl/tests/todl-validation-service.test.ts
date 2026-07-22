@@ -4,6 +4,9 @@ import { ContentHostService, DocumentsContentHostService } from '@pragmatic-lab/
 import { check, toJSON } from '@pragmatic-lab/todl'
 
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
+import { StorageProviderRegistry } from '../../storage/storage-provider-registry.js'
+import { PROJECT_MANIFEST_FILENAME } from '../../projects/project-factory.js'
+import { META_MODELS_BACKEND_ID } from '../../../modules/meta-model/services/meta-models-backend.js'
 import { CodeDocument } from '../../../modules/code-editor/code-document.js'
 import { StorageCodeFile } from '../../../modules/code-editor/code-file.js'
 import { EditorSeverity } from '../../../modules/code-editor/editor-diagnostic.js'
@@ -104,6 +107,52 @@ test('validates two projects independently and distributes to each doc; clears o
     a.Content = 'namespace d { concept task { label : string; } }'   // fix project A
     await service.Revalidate()
     expect(a.Diagnostics.Count).toBe(0)
+
+    service.Dispose()
+})
+
+// ── base cache + ClearBaseCache (the Refresh-Bases contract) ──
+
+// A clean library source (no cross-refs) so the only diagnostic in play is the
+// unresolved-base binding error — present while ea@1 is unpublished, gone once
+// it is published AND the cache is cleared.
+const CLEAN_LIB = 'namespace u { concept widget { label : string; } }'
+
+function baseEnv(): { service: TodlValidationService; host: DocumentsContentHostService; meta: FakeStorage }
+{
+    const provider = new ServiceProvider()
+    const host = new DocumentsContentHostService(provider)
+    provider.registerInstance(ContentHostService.Key, host)
+    const registry = new StorageProviderRegistry(provider)
+    const meta = new FakeStorage('fake://meta-models')
+    registry.Register(META_MODELS_BACKEND_ID, () => meta)
+    provider.registerInstance(StorageProviderRegistry.Key, registry)
+    return { service: new TodlValidationService(provider), host, meta }
+}
+
+test('bases are cached until ClearBaseCache, then a republished base is re-resolved', async () => {
+    const { service, host, meta } = baseEnv()
+    // A library project bound to ea@1, which is NOT published yet.
+    const proj = new FakeStorage('proj')
+    await proj.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify({ type: 'library', metaModel: { id: 'ea', version: '1' } }))
+    await proj.WriteText('u.todl', CLEAN_LIB)
+    const doc = new CodeDocument(new StorageCodeFile(proj, 'u.todl'))
+    doc.Content = CLEAN_LIB
+    host.Open(doc)
+    service.AttachDocument(doc, proj)
+
+    await service.Revalidate()
+    expect(doc.Diagnostics.Count).toBe(1)   // unresolved-base binding error
+
+    // Publish ea@1, but do NOT clear the cache — the stale "not published" result stands.
+    await meta.WriteText('ea/1/model.json', JSON.stringify(toJSON(check([{ uri: 'ea.todl', text: META }]).model)))
+    await service.Revalidate()
+    expect(doc.Diagnostics.Count).toBe(1)   // still cached
+
+    // Refresh Bases: drop this project's cache → the base resolves, error clears.
+    service.ClearBaseCache(proj)
+    await service.Revalidate()
+    expect(doc.Diagnostics.Count).toBe(0)
 
     service.Dispose()
 })

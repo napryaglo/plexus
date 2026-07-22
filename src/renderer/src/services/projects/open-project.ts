@@ -28,6 +28,10 @@ export class OpenProject extends Model
         OpenProject, 'TreeKeyCommand', undefined, MetaData.None)
     static readonly PublishCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'PublishCommand', undefined, MetaData.None)
+    // Re-resolve the project's declared bases (drop the validator's per-storage
+    // cache + revalidate) — picks up a republished meta-model/library.
+    static readonly RefreshBasesCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        OpenProject, 'RefreshBasesCommand', undefined, MetaData.None)
     static readonly CloseCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'CloseCommand', undefined, MetaData.None)
     // The tree's selected node — two-way target of the TreeView's
@@ -106,6 +110,9 @@ export class OpenProject extends Model
 
     public get PublishCommand(): ICommand | undefined { return this.get_property_value(OpenProject.PublishCommandKey) }
     public set PublishCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.PublishCommandKey, v) }
+
+    public get RefreshBasesCommand(): ICommand | undefined { return this.get_property_value(OpenProject.RefreshBasesCommandKey) }
+    public set RefreshBasesCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.RefreshBasesCommandKey, v) }
 
     public get CloseCommand(): ICommand | undefined { return this.get_property_value(OpenProject.CloseCommandKey) }
     public set CloseCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.CloseCommandKey, v) }

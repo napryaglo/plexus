@@ -61,6 +61,7 @@ import {
 } from '../../../services/projects/open-project-dialog-model.js'
 import type { BaseRef } from '../../../services/projects/base-binding.js'
 import { ensureMetaModelsBackend } from '../../meta-model/services/meta-models-backend.js'
+import { TodlValidationService } from '../../../services/todl/todl-validation-service.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
 import { RecentProjectsService } from '../../../services/projects/recent-projects-service.js'
 import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'
@@ -248,6 +249,11 @@ export class ProjectExplorerService extends ServiceBase
         op.AddFileCommand = new RelayCommand(() => void this.addExistingFilesTo(op))
         op.TreeKeyCommand = new RelayCommand((arg) => this.handleTreeKey(op, arg as KeyEventArgs))
         op.PublishCommand = new RelayCommand(() => void this.publishProject(op), () => isPublishable(op.Factory))
+        // Re-resolve the project's declared bases after a base was republished —
+        // only meaningful for a type that binds one (library/architecture).
+        op.RefreshBasesCommand = new RelayCommand(
+            () => this.refreshBases(op),
+            () => op.Factory.requiresMetaModel === true)
         op.CloseCommand = new RelayCommand(() => void this.closeProject(op))
     }
 
@@ -491,6 +497,17 @@ export class ProjectExplorerService extends ServiceBase
         } catch (e) {
             this.Status = `Publish failed: ${(e as Error).message}`
         }
+    }
+
+    // Refresh a project's bases: drop the validator's cached bases for this
+    // project's storage and revalidate, so a meta-model/library republished since
+    // the project opened is picked up (its live squiggles re-resolve).
+    private refreshBases(op: OpenProject): void
+    {
+        const validator = this.Provider.get(TodlValidationService.Key)
+        validator?.ClearBaseCache(op.Storage)
+        void validator?.Revalidate()
+        this.Status = `Refreshed bases for ${op.Name}.`
     }
 
     // Close a project: close its open tabs, drop it from the tree, and forget it
