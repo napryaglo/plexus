@@ -15,6 +15,7 @@ import ExpandedToChevron from "../../services/projects/project-node-icon.js"
 import EditingToLabelVisibility from "../../services/projects/project-node-icon.js"
 import NewProjectDialogModel from "../../services/projects/new-project-dialog-model.js"
 import ProjectTypeChoice from "../../services/projects/new-project-dialog-model.js"
+import LibraryChoice from "../../services/projects/new-project-dialog-model.js"
 import OpenProjectDialogModel from "../../services/projects/open-project-dialog-model.js"
 import RecentProjectItem from "../../services/projects/open-project-dialog-model.js"
 import ConfirmDialogModel from "../../services/dialogs/confirm-dialog-model.js"
@@ -183,6 +184,16 @@ resources ProjectExplorerResources {
     // HorizontalAlignment = Stretch so the panel fills the dialog width — a bare
     // StackPanel shrinks to its widest child and the content presenter pins it
     // to one side (leaving Name/Location collapsed).
+
+    // One library row in the architecture picker's checklist: a Switch two-waying
+    // LibraryChoice.IsSelected + its `id @ version` label.
+    DataTemplate [ DataType = LibraryChoice ] {
+        DockPanel [ LastChildFill = true, Margin = (0,2,0,2) ] {
+            Switch [ DockPanel.Dock = Left, IsChecked = $IsSelected, Margin = (0,0,8,0) ]
+            TextBlock [ Text = $Label, Style = @BodyMedium, Foreground = @OnSurface, VerticalAlignment = Center ]
+        }
+    }
+
     DataTemplate [ DataType = NewProjectDialogModel ] {
         StackPanel [ Orientation = Vertical, HorizontalAlignment = Stretch ] {
             TextBlock [ Style = @BodyLarge, Text = "Project type", Foreground = @OnSurface, Margin = (0,0,0,4) ]
@@ -210,6 +221,16 @@ resources ProjectExplorerResources {
                     TextBlock [ Style = @BodyLarge, Text = "Meta-model", Foreground = @OnSurface ]
                     ComboBox [ ItemsSource = $MetaModels, SelectedItem = $SelectedMetaModel,
                                Margin = (0,4,0,0), HorizontalAlignment = Stretch ]
+                }
+            }
+
+            // Libraries picker — shown only for a project type that offers
+            // libraries (architecture). A checklist of published libraries; each
+            // row's Switch two-ways LibraryChoice.IsSelected. Zero selected is valid.
+            Border [ Visibility = $ShowLibrariesPicker << ToVisibility, Margin = (0,4,0,8) ] {
+                StackPanel [ Orientation = Vertical ] {
+                    TextBlock [ Style = @BodyLarge, Text = "Libraries", Foreground = @OnSurface ]
+                    ItemsControl [ ItemsSource = $Libraries, ItemsPanel = @VerticalStackPanel, Margin = (0,4,0,0) ]
                 }
             }
 
