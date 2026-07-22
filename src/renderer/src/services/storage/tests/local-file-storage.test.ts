@@ -75,6 +75,28 @@ test('List maps FileEntry → StorageEntry', async () => {
     expect(entries).toEqual([{ Name: 'a', IsDirectory: true }, { Name: 'b.diagram', IsDirectory: false }])
 })
 
+test('List returns [] for a directory that does not exist (matches FakeStorage, not a throw)', async () => {
+    // readdir on a missing path rejects with ENOENT; a not-yet-created backend
+    // (e.g. <userData>/meta-models before anything is published) hits exactly this.
+    const enoent = Object.assign(new Error("ENOENT: no such file or directory, scandir '/r/missing'"), { code: 'ENOENT' })
+    const fs = {
+        ListDirectory: () => Promise.reject(enoent),
+        Exists: () => Promise.resolve(false),   // the directory genuinely isn't there
+    } as unknown as FileSystemService
+    const storage = new LocalFileStorage('/r', fs)
+    expect(await storage.List('missing')).toEqual([])
+})
+
+test('List rethrows a listing failure when the directory DOES exist (a real error)', async () => {
+    const eperm = Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' })
+    const fs = {
+        ListDirectory: () => Promise.reject(eperm),
+        Exists: () => Promise.resolve(true),    // it exists, so the failure is genuine
+    } as unknown as FileSystemService
+    const storage = new LocalFileStorage('/r', fs)
+    await expect(storage.List('secret')).rejects.toThrow('EPERM')
+})
+
 test('Root exposes the location descriptor', () => {
     const { fs } = stubFs()
     expect(new LocalFileStorage('/root/proj', fs).Root).toBe('/root/proj')

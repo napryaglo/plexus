@@ -57,8 +57,20 @@ export class LocalFileStorage implements IStorage, ILocalFileAccess
 
     public async List(path: string): Promise<readonly StorageEntry[]>
     {
-        const entries = await this.fs.ListDirectory(this.abs(path))
-        return entries.map((e) => ({ Name: e.Name, IsDirectory: e.IsDirectory }))
+        const abs = this.abs(path)
+        try {
+            const entries = await this.fs.ListDirectory(abs)
+            return entries.map((e) => ({ Name: e.Name, IsDirectory: e.IsDirectory }))
+        } catch (e) {
+            // A non-existent directory lists as empty — matching the in-memory
+            // FakeStorage double and the normal "backend not created yet" state
+            // (e.g. <userData>/meta-models before anything is published). Any other
+            // failure (permissions, I/O) is genuine and rethrows. Existence is
+            // re-checked rather than sniffing the error code, which the IPC bridge
+            // can strip off the underlying ENOENT.
+            if (!(await this.fs.Exists(abs))) return []
+            throw e
+        }
     }
 
     public ResolveOsPath(path: string): string
