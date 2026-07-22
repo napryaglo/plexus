@@ -25,9 +25,6 @@ resources PlexusIcons {
     // Send affordance for the agent-chat input (up-arrow, Material arrow_upward).
     include "icons/arrow-upward.svg"             as ArrowUpward
 
-    // Editor tab-strip overflow dropdown face (Material more_horiz — three dots).
-    include "icons/more-horiz.svg"               as MoreHoriz
-
     // Project Explorer command-bar glyphs (Open / New / New File / Save / Publish).
     include "icons/folder.svg"                   as Folder
     include "icons/new-folder.svg"               as NewFolder

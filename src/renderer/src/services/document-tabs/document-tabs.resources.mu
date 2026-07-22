@@ -79,19 +79,6 @@ resources DocumentTabsResources {
         }
     }
 
-    // ⋯ trigger chrome for the overflow ToolBarSplitButton — a three-dots face
-    // (Material more_horiz) in place of the default chevron. PART_Primary is the
-    // whole hit surface the control wires to toggle the popup (no primary command).
-    Template x:key="TabMenuTrigger" [ TargetType = ToolBarSplitButton ] {
-        Border x:name="PART_Primary" [ Background = #00000000, CornerRadius = @ShapeFull, BorderThickness = (0) ] {
-            Border x:name="PART_PrimaryState" [ Background = #00000000, CornerRadius = @ShapeFull, Padding = (4,4,4,4) ] {
-                Shape [ Geometry = @MoreHoriz, Fill = @OnSurfaceVariant, Width = 18, Height = 18, VerticalAlignment = Center ]
-            }
-        }
-        when ( PART_Primary.IsMouseOver ) { PART_PrimaryState.Background = @StateHoverOverlay; }
-        when ( PART_Primary.IsPressed ) { PART_PrimaryState.Background = @StatePressOverlay; }
-    }
-
     // The ExtendedTabControl chrome: the framework TabControl template with the
     // header strip split into a Grid — the tabs scroll in column 0 (so they never
     // spill under the actions), and the action area (module command buttons + the
@@ -103,6 +90,14 @@ resources DocumentTabsResources {
               BorderThickness = (0,0,0,1) ] {
             DockPanel [ LastChildFill = true ] {
                 Grid [ DockPanel.Dock = Top ] {
+                    // The header row hugs the tab height (Auto). Without an
+                    // explicit RowDefinition the Grid falls back to a single
+                    // Star row, which — measured with the DockPanel's finite
+                    // remaining height — greedily fills the whole pane and
+                    // centres the tabs vertically.
+                    RowDefinitions {
+                        RowDefinition [ Height = GridLength.Auto ]
+                    }
                     ColumnDefinitions {
                         ColumnDefinition [ Width = GridLength.Star ]
                         ColumnDefinition [ Width = GridLength.Auto ]
@@ -117,9 +112,13 @@ resources DocumentTabsResources {
                             [ ItemsSource = $service(ContentHostService).ExtendedCommands,
                               ItemsPanel  = @ExtendedTabStripPanel,
                               VerticalAlignment = Center ]
+                        // No Command + no TriggerTemplate → mural's default
+                        // dropdown trigger: the whole button is one hit region
+                        // that opens the popup, faced with a centred three-dots
+                        // (more_horiz) glyph. The popup renders the host's
+                        // TabMenu rows via the by-type DataTemplates above.
                         ToolBarSplitButton
-                            [ TriggerTemplate  = @TabMenuTrigger,
-                              ItemsSource      = $service(ContentHostService).TabMenu,
+                            [ ItemsSource      = $service(ContentHostService).TabMenu,
                               VerticalAlignment = Center ]
                     }
                 }

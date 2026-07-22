@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@pragmatic-lab/fresco": "^0.3.1",
-    "@pragmatic-lab/mural": "^0.1.30",
+    "@pragmatic-lab/mural": "^0.1.31",
     "@pragmatic-lab/todl": "^0.2.0",
     "monaco-editor": "^0.55.1"
   },
