@@ -39,6 +39,7 @@ import TechnologyLibraryModule from "./modules/technology-library/technology-lib
 import ProjectExplorerModule from "./modules/project-explorer/project-explorer.module.mu.js"
 import OntologiesModule from "./modules/ontologies/ontologies.module.mu.js"
 import MetaModelModule from "./modules/meta-model/meta-model.module.mu.js"
+import LibraryModule from "./modules/library/library.module.mu.js"
 import AgentChatModule from "./modules/agent-chat/agent-chat.module.mu.js"
 
 // Shared icon dictionary — one Geometry per capability, merged into the app's
@@ -187,6 +188,7 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         ProjectExplorerModule
         OntologiesModule
         MetaModelModule
+        LibraryModule
         AgentChatModule
     }
 
