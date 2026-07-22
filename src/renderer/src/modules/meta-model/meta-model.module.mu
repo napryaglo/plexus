@@ -14,11 +14,13 @@
 
 import MetaModelProjectFactory from "./services/meta-model-project-factory.js"
 import MetaModelValidationService from "./services/meta-model-validation-service.js"
+import TodlDocumentFactory from "./services/todl-document-factory.js"
 
 module MetaModelModule [ Name = "Meta-model" ] {
     .services: {
         MetaModelProjectFactory
         MetaModelValidationService
+        TodlDocumentFactory
     }
 
     .projectFactories: {
@@ -27,5 +29,16 @@ module MetaModelModule [ Name = "Meta-model" ] {
               Title       = "Meta-model Project",
               Description = "Author and validate TODL meta-model definitions.",
               Factory     = MetaModelProjectFactory ]
+    }
+
+    // The `.todl` editor — resolved by the ProjectExplorerService for open/save/
+    // new of any `.todl` file (in any project). Factory is TodlDocumentFactory.
+    .documents: {
+        DocumentDefinition
+            [ Type           = "todl",
+              Title          = "TODL",
+              Description    = "A TODL definition source file.",
+              FileExtensions = [".todl"],
+              Factory        = TodlDocumentFactory ]
     }
 }

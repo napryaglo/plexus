@@ -31,6 +31,7 @@ import {
 import {
     ContentHostService,
     DialogService,
+    DocumentTypeRegistry,
     ProjectFactoryRegistry,
     type DocumentsContentHostService,
     type IDocument,
@@ -40,11 +41,11 @@ import { FileSystemService } from '../../../services/file-system/file-system-ser
 import {
     PROJECT_MANIFEST_FILENAME,
     isPublishable,
-    isRelocatable,
     type IProjectFactory,
     type ProjectFileFormat,
     type ProjectManifestEnvelope,
 } from '../../../services/projects/project-factory.js'
+import { isRelocatable, type IDocumentFactory } from '../../../services/documents/document-factory.js'
 import type { FileFilter } from '../../../../../shared/file-system-api.js'
 import type { Project, ProjectNode } from '../../../services/projects/project.js'
 import { OpenProject } from '../../../services/projects/open-project.js'
@@ -253,13 +254,15 @@ export class ProjectExplorerService extends ServiceBase
     {
         const format = op.Factory.formats[0]
         if (format === undefined) { this.Status = 'This project type has no file format.'; return }
+        const factory = this.resolveDocumentFactory(format.extension)
+        if (factory === undefined) { this.Status = `No editor for ${format.extension}.`; return }
         try {
             const name = await uniqueStorageName(op.Storage, joinRel(parentFolder, `${format.kind}${format.extension}`))
-            const path = await op.Factory.newFile(op.Storage, format.kind, name)
+            const path = await factory.newFile(op.Storage, name)
             // Refresh the project's tree so the new file appears, then open it.
             op.Adopt(await op.Factory.openProject(op.Storage))
             this.wireNodes(op.Root, op)
-            await this.openDocument(op, path)
+            await this.openDocument(op, path, factory)
             this.Status = `New ${format.displayName} at ${basename(path)}.`
         } catch (e) {
             this.Status = `New file failed: ${(e as Error).message}`
@@ -461,14 +464,14 @@ export class ProjectExplorerService extends ServiceBase
     // relocate (their tabs would need a manual reopen).
     private repointOpenDocuments(op: OpenProject, oldPath: string, newPath: string): void
     {
-        if (!isRelocatable(op.Factory)) return
         for (const [doc, path] of [...this.docPaths]) {
             if (this.docOwners.get(doc) !== op) continue
             const moved = path === oldPath ? newPath
                 : path.startsWith(oldPath + '/') ? newPath + path.slice(oldPath.length)
                     : undefined
             if (moved === undefined) continue
-            op.Factory.relocateOpenFile(doc, moved)
+            const factory = this.resolveDocumentFactory(extname(moved))
+            if (factory !== undefined && isRelocatable(factory)) factory.relocateOpenFile(doc, moved)
             this.docPaths.set(doc, moved)
         }
     }
@@ -498,42 +501,49 @@ export class ProjectExplorerService extends ServiceBase
         this.Status = `Closed ${op.Name}.`
     }
 
-    // Activate a tree node: open a factory-format file in a tab (any node whose
-    // kind matches a declared format of its OWNING project), or open another file
-    // in the OS default app when the backend supports local access.
+    // Activate a tree node: open a file whose extension a registered editor
+    // handles in a tab (any project may contain any such file — editors own
+    // files, not projects), or open it in the OS default app when the backend
+    // supports local access and no editor claims the extension.
     private async openNode(node: ProjectNode, op: OpenProject): Promise<void>
     {
+        if (node.Kind === 'folder') return
+        const factory = this.resolveDocumentFactory(extname(node.Path))
         try {
-            const openable = op.Factory.formats.some((f) => f.kind === node.Kind)
-            if (openable) {
-                await this.openDocument(op, node.Path)
+            if (factory !== undefined) {
+                await this.openDocument(op, node.Path, factory)
                 this.Status = `Opened ${node.Name}.`
-            } else if (node.Kind === 'file') {
-                if (isLocalFileAccess(op.Storage)) await op.Storage.OpenExternal(node.Path)
-                else this.Status = `Can't open ${node.Name} — this project's storage has no OS access.`
+            } else if (isLocalFileAccess(op.Storage)) {
+                await op.Storage.OpenExternal(node.Path)
+            } else {
+                this.Status = `Can't open ${node.Name} — no editor for its type.`
             }
         } catch (e) {
             this.Status = `Open failed: ${(e as Error).message}`
         }
     }
 
-    // Open a project file as a document tab and record its owning project.
-    private async openDocument(op: OpenProject, path: string): Promise<void>
+    // Open a project file as a document tab (through the resolved editor) and
+    // record its owning project.
+    private async openDocument(op: OpenProject, path: string, factory: IDocumentFactory): Promise<void>
     {
-        const doc = await op.Factory.openFile(op.Storage, path)
+        const doc = await factory.openFile(op.Storage, path)
         this.docOwners.set(doc, op)
         this.docPaths.set(doc, path)
         this.host.Open(doc)
     }
 
-    // Save the active document through ITS project's factory.
+    // Save the active document through the editor registered for its extension.
     private async saveActive(): Promise<void>
     {
         const doc: IDocument | undefined = this.host.ActiveDocument
         const op = doc === undefined ? undefined : this.docOwners.get(doc)
-        if (doc === undefined || op === undefined) { this.Status = 'Nothing to save.'; return }
+        const path = doc === undefined ? undefined : this.docPaths.get(doc)
+        if (doc === undefined || op === undefined || path === undefined) { this.Status = 'Nothing to save.'; return }
+        const factory = this.resolveDocumentFactory(extname(path))
+        if (factory === undefined) { this.Status = `Can't save ${doc.Title} — no editor.`; return }
         try {
-            await op.Factory.saveFile(doc)
+            await factory.saveFile(doc)
             this.Status = `Saved ${doc.Title}.`
         } catch (e) {
             this.Status = `Save failed: ${(e as Error).message}`
@@ -566,6 +576,19 @@ export class ProjectExplorerService extends ServiceBase
         // static `.Key` (tokenFor). Normalize class → .Key so the lookup matches.
         const token = ServiceProvider.tokenFor(def.Factory as unknown as new (...args: never[]) => IProjectFactory)
         return this.Provider.get(token) as IProjectFactory | undefined
+    }
+
+    // Resolve the editor for a file extension via the framework DocumentTypeRegistry.
+    // A module contributes a DocumentDefinition whose `Factory` token resolves to an
+    // IDocumentFactory (see DiagramDocumentFactory / TodlDocumentFactory). Mirrors
+    // resolveFactory's class→token normalization. Unknown extension → undefined.
+    private resolveDocumentFactory(ext: string): IDocumentFactory | undefined
+    {
+        const registry = this.Provider.get(DocumentTypeRegistry.Key)
+        const def = registry?.GetByExtension(ext)
+        if (def?.Factory === undefined) return undefined
+        const token = ServiceProvider.tokenFor(def.Factory as unknown as new (...args: never[]) => IDocumentFactory)
+        return this.Provider.get(token) as IDocumentFactory | undefined
     }
 
     private findByFolder(folder: string): OpenProject | undefined
@@ -608,6 +631,14 @@ function basename(p: string): string
 {
     const parts = p.split(/[\\/]/)
     return parts[parts.length - 1] || p
+}
+
+// The lowercased extension (with leading dot) of a path, e.g. ".todl"; '' when
+// there's none or the name is a dotfile. Used to resolve a file's editor.
+function extname(p: string): string
+{
+    const i = p.lastIndexOf('.')
+    return i > 0 ? p.slice(i).toLowerCase() : ''
 }
 
 // The subset of `nodes` that isn't nested under another node in the same set —

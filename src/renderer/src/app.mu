@@ -162,6 +162,11 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // any dialog shows). Registering here makes EditorShell's `has()` guard
         // skip its shell registration and share this one.
         ProjectFactoryRegistry
+        // Document-type registry (module .documents → editors). Root-registered
+        // for the same reason as ProjectFactoryRegistry: the root-scoped
+        // ProjectExplorerService resolves a file's editor (by extension) through
+        // it. Its constructor populates from module .documents: blocks.
+        DocumentTypeRegistry
         ApplicationSettings
         // Code editor: opens files as Monaco-backed document tabs. Resolves the
         // content host + FileSystemService lazily, so registration order is free.

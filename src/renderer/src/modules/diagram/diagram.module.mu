@@ -18,25 +18,14 @@
 import ToolBoxService from "./services/diagram-panel-services.js"
 import LayersService from "./services/diagram-panel-services.js"
 import OutlineService from "./services/diagram-panel-services.js"
-import DiagramProjectFactory from "./services/diagram-project-factory.js"
+import DiagramDocumentFactory from "./services/diagram-document-factory.js"
 
 module DiagramModule [ Name = "Diagram" ] {
     .services: {
         ToolBoxService
         LayersService
         OutlineService
-        DiagramProjectFactory
-    }
-
-    // The 'architecture' project type — the diagram module's contribution to the
-    // generic ProjectExplorerService. DiagramProjectFactory owns the .diagram
-    // format; the ProjectFactoryRegistry routes a folder whose manifest type is
-    // "architecture" to it.
-    .projectFactories: {
-        ProjectFactoryDefinition
-            [ Type    = "architecture",
-              Title   = "Architecture Project",
-              Factory = DiagramProjectFactory ]
+        DiagramDocumentFactory
     }
 
     // Settings this module contributes to the app's ApplicationSettings. Each is
@@ -68,15 +57,16 @@ module DiagramModule [ Name = "Diagram" ] {
     }
 
     // The document type this module edits. Declarative schema aggregated by the
-    // framework DocumentTypeRegistry (Type + extensions → future file-open;
-    // CommandContexts → the toolbar contexts a diagram activates). No Factory yet
-    // — documents are seeded in memory (DiagramWorkspaceService).
+    // framework DocumentTypeRegistry (Type + extensions → file-open by extension;
+    // CommandContexts → the toolbar contexts a diagram activates). Factory is the
+    // .diagram editor the ProjectExplorerService resolves for open/save/new.
     .documents: {
         DocumentDefinition
             [ Type            = "diagram",
               Title           = "Diagram",
               Description     = "A node-and-connector diagram.",
               FileExtensions  = [".diagram"],
+              Factory         = DiagramDocumentFactory,
               CommandContexts = [DiagramEditingContext] ]
     }
 

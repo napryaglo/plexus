@@ -5,7 +5,6 @@ import { fromJSON } from '@pragmatic-lab/todl'
 import { PROJECT_MANIFEST_FILENAME } from '../../../../services/projects/project-factory.js'
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
-import { CodeDocument } from '../../../code-editor/code-document.js'
 import { MetaModelProjectFactory } from '../meta-model-project-factory.js'
 import { META_MODELS_BACKEND_ID } from '../meta-models-backend.js'
 
@@ -63,19 +62,6 @@ test('openProject tags .todl nodes openable and hides the manifest', async () =>
     expect(core.Path).toBe('defs/core.todl')
     const readme = project.Root.Children.ToArray().find((n) => n.Name === 'readme.md')!
     expect(readme.Kind).toBe('file')
-})
-
-test('newFile creates a project-relative .todl and openFile returns a todl CodeDocument', async () => {
-    const storage = new FakeStorage()
-    const f = factory()
-    const path = await f.newFile(storage, 'todl', 'core')
-    expect(path).toBe('core.todl')
-    expect(await storage.Exists('core.todl')).toBe(true)
-
-    const doc = await f.openFile(storage, path)
-    expect(doc).toBeInstanceOf(CodeDocument)
-    expect((doc as CodeDocument).Language).toBe('todl')
-    expect(doc.Title).toBe('core.todl')
 })
 
 test('publish writes compiled model + sources for a clean project', async () => {

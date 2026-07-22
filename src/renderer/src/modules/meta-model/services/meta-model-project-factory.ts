@@ -1,29 +1,24 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { IDocument } from '@pragmatic-lab/mural/framework'
 import { check, toJSON, Severity } from '@pragmatic-lab/todl'
 
 import {
     PROJECT_MANIFEST_FILENAME,
     type IProjectFactory,
     type IPublishableProjectFactory,
-    type IRelocatableFileFactory,
     type ProjectFileFormat,
     type ProjectManifestEnvelope,
     type PublishResult,
 } from '../../../services/projects/project-factory.js'
 import { Project, ProjectNode, type ProjectNodeKind } from '../../../services/projects/project.js'
 import { compareStorageEntries, type IStorage } from '../../../services/storage/storage.js'
-import { CodeDocument } from '../../code-editor/code-document.js'
-import { StorageCodeFile } from '../../code-editor/code-file.js'
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
 import { collectTodlSources, extname, joinRel } from './todl-sources.js'
-import { MetaModelValidationService } from './meta-model-validation-service.js'
 
 // The 'meta-model' project type's factory — the meta-model module's contribution
 // to the generic ProjectExplorerService (declared via `.projectFactories:` and
-// resolved through the ProjectFactoryRegistry). It owns the `.todl` format: a
-// definition file is a plain-text TODL source edited in the Monaco CodeEditor
-// (a CodeDocument over the project's IStorage).
+// resolved through the ProjectFactoryRegistry). It owns the project lifecycle;
+// the `.todl` FILE format is edited by TodlDocumentFactory (resolved by
+// extension) — editors own files, this factory owns the project.
 //
 // It is also publishable (IPublishableProjectFactory): publish validates every
 // `.todl` in the project with TODL's check(), and — if clean — writes the
@@ -38,7 +33,7 @@ interface MetaModelManifest extends ProjectManifestEnvelope
     modelVersion: string   // published version, defaults to '0.1.0'
 }
 
-export class MetaModelProjectFactory extends ServiceBase implements IProjectFactory, IPublishableProjectFactory, IRelocatableFileFactory
+export class MetaModelProjectFactory extends ServiceBase implements IProjectFactory, IPublishableProjectFactory
 {
     public static readonly Key = new ServiceKey<MetaModelProjectFactory>('MetaModelProjectFactory')
     public static readonly ProjectType = 'meta-model'
@@ -72,40 +67,6 @@ export class MetaModelProjectFactory extends ServiceBase implements IProjectFact
         const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as MetaModelManifest
         manifest.name = project.Name
         await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
-    }
-
-    public async openFile(storage: IStorage, path: string): Promise<IDocument>
-    {
-        // A .todl file is a CodeDocument over the project storage; its language
-        // resolves to 'todl' from the extension. The project-relative path is the
-        // document's Id — what whole-project validation keys diagnostics by.
-        const doc = new CodeDocument(new StorageCodeFile(storage, path))
-        // Register the document + its project storage with the validator so it
-        // gets live squiggles, validated within its own project's file set.
-        // Optional (`get`, not `getRequired`) — absent in unit tests.
-        this.Provider.get(MetaModelValidationService.Key)?.AttachDocument(doc, storage)
-        return doc
-    }
-
-    public async saveFile(document: IDocument): Promise<void>
-    {
-        await (document as CodeDocument).Save()
-    }
-
-    // Re-point an open .todl document after its file was renamed on storage: the
-    // CodeDocument re-targets its StorageCodeFile and refreshes Id/Title/Language.
-    // The validator tracks the document by instance and reads its Id live, so no
-    // re-registration is needed — the next pass keys diagnostics by the new path.
-    public relocateOpenFile(document: IDocument, newPath: string): void
-    {
-        (document as CodeDocument).Relocate(newPath)
-    }
-
-    public async newFile(storage: IStorage, _format: string, name: string): Promise<string>
-    {
-        const path = ensureExtension(name, '.todl')   // project-relative, at the root
-        await storage.WriteText(path, '')
-        return path
     }
 
     // Validate every `.todl` together; if clean, emit the compiled model + copy
@@ -165,9 +126,4 @@ function basename(p: string): string
 {
     const parts = p.split(/[\\/]/)
     return parts[parts.length - 1] || p
-}
-
-function ensureExtension(name: string, ext: string): string
-{
-    return name.toLowerCase().endsWith(ext) ? name : name + ext
 }

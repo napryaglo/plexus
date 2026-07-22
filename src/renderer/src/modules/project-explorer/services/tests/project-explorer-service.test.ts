@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import { Key, ServiceProvider, type KeyEventArgs } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DialogService, DocumentsContentHostService, ProjectFactoryRegistry, type IDocument } from '@pragmatic-lab/mural/framework'
+import { ContentHostService, DialogService, DocumentsContentHostService, DocumentTypeRegistry, ProjectFactoryRegistry, type IDocument } from '@pragmatic-lab/mural/framework'
 
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
 import { FileSystemService } from '../../../../services/file-system/file-system-service.js'
@@ -9,7 +9,8 @@ import { StorageProviderRegistry } from '../../../../services/storage/storage-pr
 import { Project, ProjectNode } from '../../../../services/projects/project.js'
 import { OpenProject } from '../../../../services/projects/open-project.js'
 import { OpenProjectsStore } from '../../../../services/projects/open-projects-store.js'
-import { PROJECT_MANIFEST_FILENAME, type IProjectFactory, type IPublishableProjectFactory, type IRelocatableFileFactory } from '../../../../services/projects/project-factory.js'
+import { PROJECT_MANIFEST_FILENAME, type IProjectFactory, type IPublishableProjectFactory } from '../../../../services/projects/project-factory.js'
+import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../../services/documents/document-factory.js'
 import { ConfirmDialogModel } from '../../../../services/dialogs/confirm-dialog-model.js'
 import { ProjectExplorerService, importFilters, uniqueStorageName } from '../project-explorer-service.js'
 
@@ -17,21 +18,34 @@ import { ProjectExplorerService, importFilters, uniqueStorageName } from '../pro
 type Picked = { Path: string; Bytes: Uint8Array }
 const bytesOf = (s: string): Uint8Array => new TextEncoder().encode(s)
 
-// A recording fake factory declaring one 'todl' format. openProject returns a
-// fresh tree (used by New File refresh); openFile records + returns a stub doc.
-interface Rec { opened: string[]; saved: IDocument[]; relocated?: Array<[IDocument, string]> }
-function fakeFactory(rec: Rec, publishable = true): IProjectFactory
+// Editors own files, not projects. The document factory (below) records file
+// I/O; a project factory now provides only lifecycle + formats + publish.
+interface Rec { opened: string[]; saved: IDocument[]; relocated: Array<[IDocument, string]> }
+
+// A marker class: the DocumentDefinition.Factory token the explorer resolves for
+// the `.todl` extension. Registered in the provider to a recording fake below.
+class TodlDocFactoryToken {}
+
+function fakeDocFactory(rec: Rec): IDocumentFactory & IRelocatableDocumentFactory
 {
     const doc = (id: string): IDocument => ({ Id: id, Title: id, IsDirty: false, Save() {} })
-    const base: IProjectFactory & IRelocatableFileFactory = {
+    return {
+        openFile: async (_s, path) => { rec.opened.push(path); return doc(path) },
+        saveFile: async (d) => { rec.saved.push(d) },
+        newFile: async (_s, name) => (name.endsWith('.todl') ? name : `${name}.todl`),
+        relocateOpenFile: (d, newPath) => { rec.relocated.push([d, newPath]) },
+    }
+}
+
+// A project factory: lifecycle + one 'todl' format + optional publish. No file
+// I/O — that lives on the document factory, resolved by extension.
+function fakeProjectFactory(publishable = true): IProjectFactory
+{
+    const base: IProjectFactory = {
         formats: [{ extension: '.todl', kind: 'todl', displayName: 'TODL Definition' }],
         createProject: async (_s, name) => projectWith(name, 'C:/x'),
         openProject: async () => projectWith('P', 'C:/x'),
         saveProject: async () => {},
-        openFile: async (_s, path) => { rec.opened.push(path); return doc(path) },
-        saveFile: async (d) => { rec.saved.push(d) },
-        newFile: async (_s, _fmt, name) => (name.endsWith('.todl') ? name : `${name}.todl`),
-        relocateOpenFile: (d, newPath) => { (rec.relocated ??= []).push([d, newPath]) },
     }
     if (!publishable) return base
     const pub: IProjectFactory & IPublishableProjectFactory = { ...base, publish: async () => ({ ok: true, message: 'Published.' }) }
@@ -88,6 +102,7 @@ function makeExplorer(openFiles: Picked[] | null = null, confirm = true): {
     store: OpenProjectsStore
     priv: ExplorerPrivates
     shownDialogs: unknown[]
+    rec: Rec
 }
 {
     const provider = new ServiceProvider()
@@ -99,8 +114,15 @@ function makeExplorer(openFiles: Picked[] | null = null, confirm = true): {
     provider.registerInstance(DialogService.Key, fakeDialogs(confirm, shownDialogs))
     const store = new OpenProjectsStore(provider)
     provider.registerInstance(OpenProjectsStore.Key, store)
+    // Editor routing: a recording `.todl` document factory + a registry that
+    // resolves the extension to its token.
+    const rec: Rec = { opened: [], saved: [], relocated: [] }
+    provider.registerInstance(ServiceProvider.tokenFor(TodlDocFactoryToken), fakeDocFactory(rec))
+    provider.registerInstance(DocumentTypeRegistry.Key, {
+        GetByExtension: (ext: string) => (ext === '.todl' ? { Factory: TodlDocFactoryToken } : undefined),
+    } as unknown as DocumentTypeRegistry)
     const service = new ProjectExplorerService(provider)
-    return { service, host, store, priv: service as unknown as ExplorerPrivates, shownDialogs }
+    return { service, host, store, priv: service as unknown as ExplorerPrivates, shownDialogs, rec }
 }
 
 function childNode(op: OpenProject): ProjectNode
@@ -110,44 +132,39 @@ function childNode(op: OpenProject): ProjectNode
 
 test('opening two projects adds two roots; reopening one dedupes', async () => {
     const { service, priv, store } = makeExplorer()
-    const rec: Rec = { opened: [], saved: [] }
-    await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory(rec), new FakeStorage('C:/a'))
-    await priv.addOpenProject(projectWith('B', 'C:/b'), fakeFactory(rec), new FakeStorage('C:/b'))
-    await priv.addOpenProject(projectWith('A2', 'C:/a'), fakeFactory(rec), new FakeStorage('C:/a'))   // same folder
+    await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), new FakeStorage('C:/a'))
+    await priv.addOpenProject(projectWith('B', 'C:/b'), fakeProjectFactory(), new FakeStorage('C:/b'))
+    await priv.addOpenProject(projectWith('A2', 'C:/a'), fakeProjectFactory(), new FakeStorage('C:/a'))   // same folder
 
     expect(service.OpenProjects.Count).toBe(2)
     expect((await store.List()).slice().sort()).toEqual(['C:/a', 'C:/b'])
 })
 
-test('a node opens through its OWN project factory', async () => {
-    const { priv } = makeExplorer()
-    const recA: Rec = { opened: [], saved: [] }
-    const recB: Rec = { opened: [], saved: [] }
-    await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory(recA), new FakeStorage('C:/a'))
-    const opB = await priv.addOpenProject(projectWith('B', 'C:/b'), fakeFactory(recB), new FakeStorage('C:/b'))
+test('opening a node opens it through the registered document editor', async () => {
+    const { priv, host, rec } = makeExplorer()
+    await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), new FakeStorage('C:/a'))
+    const opB = await priv.addOpenProject(projectWith('B', 'C:/b'), fakeProjectFactory(), new FakeStorage('C:/b'))
 
     await priv.openNode(childNode(opB), opB)
 
-    expect(recB.opened).toEqual(['core.todl'])
-    expect(recA.opened).toEqual([])
+    expect(rec.opened).toEqual(['core.todl'])
+    expect(host.OpenDocuments.Count).toBe(1)
 })
 
-test('the active document saves through its owning project factory', async () => {
-    const { host, priv } = makeExplorer()
-    const recA: Rec = { opened: [], saved: [] }
-    const opA = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory(recA), new FakeStorage('C:/a'))
+test('the active document saves through the registered document editor', async () => {
+    const { host, priv, rec } = makeExplorer()
+    const opA = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), new FakeStorage('C:/a'))
 
     await priv.openNode(childNode(opA), opA)
     host.ActiveDocument = host.OpenDocuments.ToArray()[0]
 
     await priv.saveActive()
-    expect(recA.saved.length).toBe(1)
+    expect(rec.saved.length).toBe(1)
 })
 
 test('closing a project removes it, closes its tabs, and unpersists it', async () => {
     const { service, host, store, priv } = makeExplorer()
-    const rec: Rec = { opened: [], saved: [] }
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory(rec), new FakeStorage('C:/a'))
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), new FakeStorage('C:/a'))
 
     await priv.openNode(childNode(op), op)
     expect(host.OpenDocuments.Count).toBe(1)
@@ -161,9 +178,8 @@ test('closing a project removes it, closes its tabs, and unpersists it', async (
 
 test('Publish is disabled for a non-publishable project', async () => {
     const { priv } = makeExplorer()
-    const rec: Rec = { opened: [], saved: [] }
-    const pub = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory(rec, true), new FakeStorage('C:/a'))
-    const plain = await priv.addOpenProject(projectWith('B', 'C:/b'), fakeFactory(rec, false), new FakeStorage('C:/b'))
+    const pub = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(true), new FakeStorage('C:/a'))
+    const plain = await priv.addOpenProject(projectWith('B', 'C:/b'), fakeProjectFactory(false), new FakeStorage('C:/b'))
 
     expect(pub.PublishCommand!.CanExecute(undefined)).toBe(true)
     expect(plain.PublishCommand!.CanExecute(undefined)).toBe(false)
@@ -211,9 +227,8 @@ test('Add Existing Files copies each picked file into the project storage', asyn
         { Path: 'C:/ext/notes.txt', Bytes: bytesOf('hello') },
     ]
     const { service, priv } = makeExplorer(picked)
-    const rec: Rec = { opened: [], saved: [] }
     const storage = new FakeStorage('C:/a')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory(rec), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
 
     await priv.addExistingFilesTo(op)
 
@@ -225,10 +240,9 @@ test('Add Existing Files copies each picked file into the project storage', asyn
 test('Add Existing Files auto-renames on a name collision, leaving the original', async () => {
     const picked: Picked[] = [{ Path: 'C:/ext/core.todl', Bytes: bytesOf('imported') }]
     const { priv } = makeExplorer(picked)
-    const rec: Rec = { opened: [], saved: [] }
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('core.todl', 'existing')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory(rec), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
 
     await priv.addExistingFilesTo(op)
 
@@ -238,9 +252,8 @@ test('Add Existing Files auto-renames on a name collision, leaving the original'
 
 test('Add Existing Files is a no-op when the picker is cancelled', async () => {
     const { priv } = makeExplorer(null)
-    const rec: Rec = { opened: [], saved: [] }
     const storage = new FakeStorage('C:/a')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory(rec), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
     const before = storage.size
 
     await priv.addExistingFilesTo(op)
@@ -266,7 +279,7 @@ test('uniqueStorageName keeps a dotfile name whole (no false extension split)', 
 test('New Folder creates "New Folder" under the given parent, auto-numbering on collision', async () => {
     const { priv } = makeExplorer()
     const storage = new FakeStorage('C:/a')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
 
     await priv.newFolderIn(op, '')
     expect(await storage.Exists('New Folder')).toBe(true)
@@ -279,18 +292,17 @@ test('New Folder nests under a subfolder', async () => {
     const { priv } = makeExplorer()
     const storage = new FakeStorage('C:/a')
     await storage.CreateDirectory('src')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
 
     await priv.newFolderIn(op, 'src')
     expect(await storage.Exists('src/New Folder')).toBe(true)
 })
 
 test('New File in a subfolder is created and opened under that folder', async () => {
-    const { priv } = makeExplorer()
-    const rec: Rec = { opened: [], saved: [] }
+    const { priv, rec } = makeExplorer()
     const storage = new FakeStorage('C:/a')
     await storage.CreateDirectory('src')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory(rec), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
 
     await priv.newFileIn(op, 'src')
     expect(rec.opened).toEqual(['src/todl.todl'])
@@ -302,7 +314,7 @@ test('a folder node is wired to create inside itself (container-aware)', async (
     await storage.CreateDirectory('src')
     const root = new ProjectNode('A', '', 'folder')
     root.Children.Add(new ProjectNode('src', 'src', 'folder'))
-    const op = await priv.addOpenProject(new Project('meta-model', 'A', 'C:/a', root), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(new Project('meta-model', 'A', 'C:/a', root), fakeProjectFactory(), storage)
 
     const folder = op.Root.Children.ToArray().find((n) => n.Kind === 'folder')!
     folder.NewFolderCommand!.Execute(undefined)
@@ -315,7 +327,7 @@ test('commitRename moves the file on storage under the same parent', async () =>
     const { priv } = makeExplorer()
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('core.todl', 'x')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
     const node = childNode(op)
 
     priv.beginRename(op, node)
@@ -331,7 +343,7 @@ test('commitRename rejects a name that collides and leaves the file put', async 
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('core.todl', 'x')
     await storage.WriteText('taken.todl', 'y')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
     const node = childNode(op)
 
     priv.beginRename(op, node)
@@ -347,7 +359,7 @@ test('commitRename with an unchanged name is a no-op that closes the editor', as
     const { priv } = makeExplorer()
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('core.todl', 'x')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
     const node = childNode(op)
 
     priv.beginRename(op, node)
@@ -359,11 +371,10 @@ test('commitRename with an unchanged name is a no-op that closes the editor', as
 })
 
 test('renaming an open file re-points its document to the new path', async () => {
-    const { priv } = makeExplorer()
-    const rec: Rec = { opened: [], saved: [] }
+    const { priv, rec } = makeExplorer()
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('core.todl', 'x')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory(rec), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
     const node = childNode(op)
     await priv.openNode(node, op)   // opens core.todl → tracked as an open document
 
@@ -371,13 +382,13 @@ test('renaming an open file re-points its document to the new path', async () =>
     node.EditingName = 'renamed.todl'
     await priv.commitRename(op, node)
 
-    expect(rec.relocated?.map(([, p]) => p)).toEqual(['renamed.todl'])
+    expect(rec.relocated.map(([, p]) => p)).toEqual(['renamed.todl'])
 })
 
 test('F2 begins rename on the selected node; Escape cancels it', async () => {
     const { priv } = makeExplorer()
     const storage = new FakeStorage('C:/a')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
     const node = childNode(op)
     op.SelectedNode = node
 
@@ -420,7 +431,7 @@ test('deleting a confirmed file removes it from storage and closes its open tab'
     const { priv, host } = makeExplorer()
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('core.todl', 'x')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
     const node = childNode(op)
     await priv.openNode(node, op)
     expect(host.OpenDocuments.Count).toBe(1)
@@ -435,7 +446,7 @@ test('cancelling the confirm dialog leaves the file in place', async () => {
     const { priv } = makeExplorer(null, false)   // dialog resolves "not confirmed"
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('core.todl', 'x')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
 
     await priv.deleteNodes(op, [childNode(op)])
 
@@ -446,7 +457,7 @@ test('deleting a folder removes its whole subtree and closes tabs underneath', a
     const { priv, host } = makeExplorer()
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('src/c.todl', 'x')
-    const op = await priv.addOpenProject(projectWithTree('C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWithTree('C:/a'), fakeProjectFactory(), storage)
     const src = op.Root.Children.ToArray().find((n) => n.Kind === 'folder')!
     await priv.openNode(src.Children.ToArray()[0]!, op)   // open src/c.todl
     expect(host.OpenDocuments.Count).toBe(1)
@@ -463,7 +474,7 @@ test('deleting one node of a multi-selection removes the whole selected set', as
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('a.todl', 'x')
     await storage.WriteText('b.todl', 'y')
-    const op = await priv.addOpenProject(projectWithTree('C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWithTree('C:/a'), fakeProjectFactory(), storage)
     const [a, b] = op.Root.Children.ToArray()
     op.SelectedNodes = [a!, b!]
 
@@ -477,7 +488,7 @@ test('a selection of a folder and a file inside it deletes without a double-remo
     const { priv } = makeExplorer()
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('src/c.todl', 'x')
-    const op = await priv.addOpenProject(projectWithTree('C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWithTree('C:/a'), fakeProjectFactory(), storage)
     const src = op.Root.Children.ToArray().find((n) => n.Kind === 'folder')!
     const child = src.Children.ToArray()[0]!
 
@@ -490,7 +501,7 @@ test('the Delete key deletes the selected node', async () => {
     const { priv } = makeExplorer()
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('core.todl', 'x')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
     op.SelectedNode = childNode(op)
 
     const del = { Key: Key.Delete, Handled: false } as unknown as KeyEventArgs
@@ -505,7 +516,7 @@ test('the Delete key does nothing while a rename editor is open', async () => {
     const { priv } = makeExplorer()
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('core.todl', 'x')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
     const node = childNode(op)
     priv.beginRename(op, node)   // editor open
 
@@ -521,7 +532,7 @@ test('deleting the project root is refused (no dialog, nothing removed)', async 
     const { priv, shownDialogs } = makeExplorer()
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('core.todl', 'x')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
 
     await priv.deleteNodes(op, [op.Root])   // root's Path is ''
 
@@ -533,7 +544,7 @@ test('the delete confirmation names the file and labels the button "Delete"', as
     const { priv, shownDialogs } = makeExplorer()
     const storage = new FakeStorage('C:/a')
     await storage.WriteText('core.todl', 'x')
-    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeFactory({ opened: [], saved: [] }), storage)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
 
     await priv.deleteNodes(op, [childNode(op)])
 
