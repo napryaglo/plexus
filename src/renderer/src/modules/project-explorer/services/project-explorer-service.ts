@@ -248,6 +248,9 @@ export class ProjectExplorerService extends ServiceBase
         this.wireProjectCommands(op)
         this.wireNodes(op.Root, op)
         this.OpenProjects.Add(op)
+        // Register the project for whole-project live validation (populates the
+        // Problems dock even before any file is opened).
+        this.Provider.get(TodlValidationService.Key)?.AttachProject(op.Project.RootPath, op.Project.Name, op.Storage)
         await this.openStore.Add(op.Folder)
         return op
     }
@@ -619,6 +622,8 @@ export class ProjectExplorerService extends ServiceBase
         for (const [doc, owner] of [...this.docOwners]) {
             if (owner === op) { this.host.Close(doc); this.docOwners.delete(doc); this.docPaths.delete(doc) }
         }
+        // Unregister from validation and drop this project's diagnostics.
+        this.Provider.get(TodlValidationService.Key)?.DetachProject(op.Storage)
         this.OpenProjects.Remove(op)
         await this.openStore.Remove(op.Folder)
         this.Status = `Closed ${op.Name}.`
@@ -647,13 +652,41 @@ export class ProjectExplorerService extends ServiceBase
     }
 
     // Open a project file as a document tab (through the resolved editor) and
-    // record its owning project.
-    private async openDocument(op: OpenProject, path: string, factory: IDocumentFactory): Promise<void>
+    // record its owning project. Returns the opened document.
+    private async openDocument(op: OpenProject, path: string, factory: IDocumentFactory): Promise<IDocument>
     {
         const doc = await factory.openFile(op.Storage, path)
         this.docOwners.set(doc, op)
         this.docPaths.set(doc, path)
         this.host.Open(doc)
+        return doc
+    }
+
+    // Navigate to a diagnostic: open (or re-activate) `uri` in the project with the
+    // given RootPath and scroll to (line, column). Used by the Problems dock. A
+    // no-op when the project isn't open or no editor claims the file's extension.
+    public async OpenFileInProject(projectId: string, uri: string, line: number, column: number): Promise<void>
+    {
+        const op = this.findByFolder(projectId)
+        if (op === undefined) return
+        let doc = this.findOpenDoc(op, uri)
+        if (doc === undefined) {
+            const factory = this.resolveDocumentFactory(extname(uri))
+            if (factory === undefined) return
+            doc = await this.openDocument(op, uri, factory)
+        } else {
+            this.host.Open(doc)   // re-activate the existing tab
+        }
+        if (isRevealable(doc)) doc.RequestReveal(line, column)
+    }
+
+    // The already-open document for (project, project-relative path), if any.
+    private findOpenDoc(op: OpenProject, path: string): IDocument | undefined
+    {
+        for (const [doc, p] of this.docPaths) {
+            if (p === path && this.docOwners.get(doc) === op) return doc
+        }
+        return undefined
     }
 
     // Save the active document through the editor registered for its extension.
@@ -773,6 +806,13 @@ export class ProjectExplorerService extends ServiceBase
         node.DeleteCommand = new RelayCommand(() => void this.deleteFromNode(op, node), () => node.Path !== '')
         for (const child of node.Children.ToArray()) this.wireNodes(child, op)
     }
+}
+
+// A document that can scroll to + select a span (the CodeDocument does). Duck-
+// typed so the explorer stays decoupled from the code-editor module.
+function isRevealable(doc: unknown): doc is { RequestReveal(line: number, column: number): void }
+{
+    return typeof (doc as Partial<{ RequestReveal: unknown }>).RequestReveal === 'function'
 }
 
 // ── project-relative path helpers (POSIX `/`; the storage backend translates) ──
