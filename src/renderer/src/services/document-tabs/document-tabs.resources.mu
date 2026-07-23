@@ -79,6 +79,45 @@ resources DocumentTabsResources {
         }
     }
 
+    // Compact ⋯ overflow-button chrome — a HALF-SIZE take on mural's default
+    // dropdown trigger (glyph 10 / padding 4 vs the framework's 18 / 8), so the
+    // tab-strip corner button reads as a small affordance rather than a full
+    // toolbar-height pill. PART_Primary is the whole hit surface the control
+    // wires to toggle the popup (the button carries no Command). Three-dots
+    // (@MoreHoriz) glyph, self-centred (StackPanel HorizontalAlignment=Center,
+    // no leading margin).
+    Template x:key="TabOverflowTrigger" [ TargetType = ToolBarSplitButton ] {
+        Border x:name="PART_Primary" [ Background = @SurfaceContainerHigh, CornerRadius = @ShapeFull, BorderThickness = (0) ] {
+            Border x:name="PART_PrimaryState" [ Background = #00000000, CornerRadius = @ShapeFull, Padding = (4,4,4,4) ] {
+                StackPanel [ Orientation = Horizontal, HorizontalAlignment = Center, VerticalAlignment = Center ] {
+                    Border x:name="PART_Content" [ HorizontalAlignment = Center, VerticalAlignment = Center ]
+                    Shape [ Geometry = @MoreHoriz, Fill = @OnSurfaceVariant, Width = 10, Height = 10, VerticalAlignment = Center ]
+                }
+            }
+        }
+        when ( PART_Primary.IsMouseOver ) { PART_PrimaryState.Background = @OnSurfaceVariantHoverLayer; }
+        when ( PART_Primary.IsPressed ) { PART_PrimaryState.Background = @OnSurfaceVariantPressLayer; }
+        when ( IsEnabled = false ) { PART_Primary.Opacity = @DisabledContentOpacity; }
+    }
+
+    // An explicit keyed Style set on the tab-strip ⋯ button so it gets the
+    // compact trigger. It must be a FULL style, not a tweak: an explicit Style
+    // REPLACES the theme style outright (Element.refresh_active_style picks
+    // Style ?? implicit ?? theme — they don't merge), so it re-supplies the
+    // popup Template + menu ItemsPanel from the framework theme (resolved by
+    // key at runtime). This is also the only way to override the no-command
+    // trigger — mural ranks Trigger above Local, so the theme Style's
+    // `when (Command is unset)` setter would otherwise beat a locally-set
+    // TriggerTemplate. Scoped to this one instance via the explicit ref, so no
+    // other split button is affected.
+    Style x:key="CompactSplitButtonStyle" [ TargetType = ToolBarSplitButton ] {
+        Template        = @DefaultToolBarSplitPopup;
+        TriggerTemplate = @TabOverflowTrigger;
+        ItemsPanel      = @DefaultToolBarMenuPanel;
+        VerticalAlignment    = Center;
+        TextBlock.Foreground = @OnSurfaceVariant;
+    }
+
     // The ExtendedTabControl chrome: the framework TabControl template with the
     // header strip split into a Grid — the tabs scroll in column 0 (so they never
     // spill under the actions), and the action area (module command buttons + the
@@ -112,13 +151,14 @@ resources DocumentTabsResources {
                             [ ItemsSource = $service(ContentHostService).ExtendedCommands,
                               ItemsPanel  = @ExtendedTabStripPanel,
                               VerticalAlignment = Center ]
-                        // No Command + no TriggerTemplate → mural's default
-                        // dropdown trigger: the whole button is one hit region
-                        // that opens the popup, faced with a centred three-dots
-                        // (more_horiz) glyph. The popup renders the host's
-                        // TabMenu rows via the by-type DataTemplates above.
+                        // No Command → the whole button is one hit region that
+                        // opens the popup. The explicit compact Style gives it a
+                        // half-size three-dots (more_horiz) face; the popup
+                        // renders the host's TabMenu rows via the by-type
+                        // DataTemplates above.
                         ToolBarSplitButton
-                            [ ItemsSource      = $service(ContentHostService).TabMenu,
+                            [ Style            = @CompactSplitButtonStyle,
+                              ItemsSource      = $service(ContentHostService).TabMenu,
                               VerticalAlignment = Center ]
                     }
                 }
