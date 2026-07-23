@@ -65,6 +65,13 @@ export class CodeDocument extends Model implements IDocument
     public static readonly DiagnosticsKey = Model.RegisterProperty<ObservableCollection<EditorDiagnostic>>(
         CodeDocument, 'Diagnostics', undefined as unknown as ObservableCollection<EditorDiagnostic>, MetaData.None)
 
+    // A one-shot reveal request (line/column, 1-based) the editor honors to scroll
+    // to + select a span — used by the Problems dock to navigate to a diagnostic.
+    // The editor listens for changes; the value carries a monotonic seq so repeated
+    // reveals to the same position still fire a change.
+    public static readonly RevealRequestKey = Model.RegisterProperty<{ line: number; column: number; seq: number } | undefined>(
+        CodeDocument, 'RevealRequest', undefined, MetaData.None)
+
     private readonly file: ICodeFile
     // Last value written to / read from the file. IsDirty = Content !== this.
     private savedContent = ''
@@ -92,6 +99,18 @@ export class CodeDocument extends Model implements IDocument
     public get Language(): string { return this.get_property_value(CodeDocument.LanguageKey) }
 
     public get Diagnostics(): ObservableCollection<EditorDiagnostic> { return this.get_property_value(CodeDocument.DiagnosticsKey) }
+
+    public get RevealRequest(): { line: number; column: number; seq: number } | undefined
+    { return this.get_property_value(CodeDocument.RevealRequestKey) }
+
+    private revealSeq = 0
+
+    // Ask a bound editor to scroll to + select (line, column) — both 1-based.
+    public RequestReveal(line: number, column: number): void
+    {
+        this.revealSeq += 1
+        this.set_property_value(CodeDocument.RevealRequestKey, { line, column, seq: this.revealSeq })
+    }
 
     // Re-point this document at a new path after an in-place rename (same
     // storage): re-target the underlying file (so saves go to the new location)

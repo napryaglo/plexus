@@ -138,13 +138,11 @@ test('validates two projects independently and distributes to each doc; clears o
     service.AttachProject('B', 'B', sB)
     await service.Revalidate()
 
-    expect(a.Diagnostics.Count).toBe(1)   // project A's error localizes to A's doc (dual-write)
-    expect(b.Diagnostics.Count).toBe(0)   // project B is clean
-    expect(diagnostics.ForUri('a.todl').length).toBe(1)   // and published to the store
+    expect(diagnostics.ForUri('a.todl').length).toBe(1)   // project A's error localizes to A's doc
+    expect(diagnostics.ForUri('b.todl').length).toBe(0)   // project B is clean
 
     a.Content = 'namespace d { concept task { label : string; } }'   // fix project A
     await service.Revalidate()
-    expect(a.Diagnostics.Count).toBe(0)
     expect(diagnostics.ForUri('a.todl').length).toBe(0)
 
     service.Dispose()
@@ -172,7 +170,7 @@ function baseEnv(): { service: TodlValidationService; host: DocumentsContentHost
 }
 
 test('bases are cached until ClearBaseCache, then a republished base is re-resolved', async () => {
-    const { service, host, meta } = baseEnv()
+    const { service, host, meta, diagnostics } = baseEnv()
     // A library project bound to ea@1, which is NOT published yet.
     const proj = new FakeStorage('proj')
     await proj.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify({ type: 'library', metaModel: { id: 'ea', version: '1' } }))
@@ -183,18 +181,20 @@ test('bases are cached until ClearBaseCache, then a republished base is re-resol
     service.AttachDocument(doc, proj)
     service.AttachProject('proj', 'proj', proj)
 
+    const projLevelCount = (): number => [...diagnostics.All].filter((d) => d.uri === null).length
+
     await service.Revalidate()
-    expect(doc.Diagnostics.Count).toBe(1)   // unresolved-base binding error (dual-write)
+    expect(projLevelCount()).toBe(1)   // unresolved-base binding error
 
     // Publish ea@1, but do NOT clear the cache — the stale "not published" result stands.
     await meta.WriteText('ea/1/model.json', JSON.stringify(toJSON(check([{ uri: 'ea.todl', text: META }]).model)))
     await service.Revalidate()
-    expect(doc.Diagnostics.Count).toBe(1)   // still cached
+    expect(projLevelCount()).toBe(1)   // still cached
 
     // Refresh Bases: drop this project's cache → the base resolves, error clears.
     service.ClearBaseCache(proj)
     await service.Revalidate()
-    expect(doc.Diagnostics.Count).toBe(0)
+    expect(projLevelCount()).toBe(0)
 
     service.Dispose()
 })

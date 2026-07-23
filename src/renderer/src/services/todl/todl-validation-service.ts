@@ -304,16 +304,6 @@ export class TodlValidationService extends ServiceBase
                 })
             }
             this.diagnostics?.Publish(TODL_OWNER, projectId, canonical)
-
-            // Keep per-doc squiggles working (dual-write; removed in Task 4).
-            const byUri = validateSources(sources, bases)
-            const bindingError = problems.length > 0 ? wholeFileError(`Unresolved base: ${problems.join('; ')}.`) : undefined
-            for (const doc of docs) {
-                const target = doc.Diagnostics
-                target.Clear()
-                if (bindingError !== undefined) target.Add(bindingError)
-                for (const dg of byUri.get(doc.Id) ?? []) target.Add(dg)
-            }
         }
     }
 }

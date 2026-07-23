@@ -44,6 +44,11 @@ export class CodeEditor extends DomHost
     public static readonly DiagnosticsKey = Model.RegisterProperty<ObservableCollection<EditorDiagnostic>>(
         CodeEditor, 'Diagnostics', undefined as unknown as ObservableCollection<EditorDiagnostic>, MetaData.None)
 
+    // A one-shot reveal request from the document (Problems-dock navigation): the
+    // document binds its RevealRequest here; on change we scroll to + select it.
+    public static readonly RevealRequestKey = Model.RegisterProperty<{ line: number; column: number; seq: number } | undefined>(
+        CodeEditor, 'RevealRequest', undefined, MetaData.None)
+
     private editor: monaco.editor.IStandaloneCodeEditor | undefined
     // True while WE push a change across the Monaco↔DP boundary, so the
     // resulting echo on the other side is ignored (no feedback loop).
@@ -70,6 +75,9 @@ export class CodeEditor extends DomHost
         this.set_property_value(
             CodeEditor.DiagnosticsKey,
             DataContextBinding(this, 'Diagnostics') as unknown as ObservableCollection<EditorDiagnostic>)
+        this.set_property_value(
+            CodeEditor.RevealRequestKey,
+            DataContextBinding(this, 'RevealRequest') as unknown as { line: number; column: number; seq: number } | undefined)
     }
 
     public get Text(): string { return this.get_property_value(CodeEditor.TextKey) }
@@ -112,6 +120,14 @@ export class CodeEditor extends DomHost
         // Catch up on diagnostics bound before the editor existed (the binding may
         // resolve before mount), and reflect any already-present ones.
         this.bindDiagnostics(this.Diagnostics)
+        // Replay a reveal that arrived before mount (dock navigation opens a tab
+        // then reveals; the editor may not exist yet on first open).
+        if (this.pendingReveal !== undefined)
+        {
+            const { line, column } = this.pendingReveal
+            this.pendingReveal = undefined
+            this.revealSpan(line, column)
+        }
         return el
     }
 
@@ -130,6 +146,20 @@ export class CodeEditor extends DomHost
         const model = this.editor?.getModel()
         if (model === null || model === undefined) return
         monaco.editor.setModelMarkers(model, MARKER_OWNER, toMarkers(this.Diagnostics?.ToArray() ?? []))
+    }
+
+    // A reveal requested before the editor mounted, replayed once it exists.
+    private pendingReveal: { line: number; column: number } | undefined
+
+    // Scroll to + select (line, column) — both 1-based. Buffers the request when
+    // the editor isn't mounted yet (open-then-reveal from the Problems dock).
+    private revealSpan(line: number, column: number): void
+    {
+        if (this.editor === undefined) { this.pendingReveal = { line, column }; return }
+        const range = new monaco.Range(line, column, line, column)
+        this.editor.revealRangeInCenter(range, monaco.editor.ScrollType.Smooth)
+        this.editor.setSelection(range)
+        this.editor.focus()
     }
 
     // Self-materialise: touching HostElement the first time we're measured in
@@ -153,6 +183,12 @@ export class CodeEditor extends DomHost
         if (descriptor.Name === 'Diagnostics')
         {
             this.bindDiagnostics(newValue as ObservableCollection<EditorDiagnostic> | undefined)
+            return
+        }
+        if (descriptor.Name === 'RevealRequest')
+        {
+            const req = newValue as { line: number; column: number } | undefined
+            if (req !== undefined) this.revealSpan(req.line, req.column)
             return
         }
         if (this.editor === undefined) return
