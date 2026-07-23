@@ -10,6 +10,8 @@ import { META_MODELS_BACKEND_ID } from '../../../modules/meta-model/services/met
 import { CodeDocument } from '../../../modules/code-editor/code-document.js'
 import { StorageCodeFile } from '../../../modules/code-editor/code-file.js'
 import { EditorSeverity } from '../../../modules/code-editor/editor-diagnostic.js'
+import { DiagnosticsService } from '../../diagnostics/diagnostics-service.js'
+import { DiagnosticSeverity } from '../../diagnostics/diagnostic.js'
 import {
     TodlValidationService,
     validateSources,
@@ -76,16 +78,49 @@ test('overlaySources prefers open buffers and adds open-only files', () => {
 
 // ── service integration (real content host, diagnostics distributed to docs) ──
 
-function env(): { service: TodlValidationService; host: DocumentsContentHostService }
+function env(): { service: TodlValidationService; host: DocumentsContentHostService; diagnostics: DiagnosticsService }
 {
     const provider = new ServiceProvider()
     const host = new DocumentsContentHostService(provider)
     provider.registerInstance(ContentHostService.Key, host)
-    return { service: new TodlValidationService(provider), host }
+    const diagnostics = new DiagnosticsService(provider)
+    provider.registerInstance(DiagnosticsService.Key, diagnostics)
+    return { service: new TodlValidationService(provider), host, diagnostics }
 }
 
+test('validates a project with no open editor and publishes to the store', async () => {
+    const { service, diagnostics } = env()
+    const proj = new FakeStorage('proj')
+    await proj.WriteText('a.todl', BAD)
+    await proj.WriteText('b.todl', CONCEPTS)
+
+    service.AttachProject('/proj', 'Proj', proj)   // no AttachDocument — no editor open
+    await service.Revalidate()
+
+    // a.todl has the syntax error; b.todl is clean; all published under project /proj.
+    const forA = diagnostics.ForUri('a.todl')
+    expect(forA.length).toBe(1)
+    expect(forA[0]!.projectId).toBe('/proj')
+    expect(forA[0]!.projectName).toBe('Proj')
+    expect(forA[0]!.owner).toBe('todl')
+    expect(forA[0]!.severity).toBe(DiagnosticSeverity.Error)
+    expect(diagnostics.ForUri('b.todl')).toEqual([])
+})
+
+test('DetachProject clears the project\'s diagnostics from the store', async () => {
+    const { service, diagnostics } = env()
+    const proj = new FakeStorage('proj')
+    await proj.WriteText('a.todl', BAD)
+    service.AttachProject('/proj', 'Proj', proj)
+    await service.Revalidate()
+    expect(diagnostics.ForUri('a.todl').length).toBe(1)
+
+    service.DetachProject(proj)
+    expect(diagnostics.All.Count).toBe(0)
+})
+
 test('validates two projects independently and distributes to each doc; clears on fix', async () => {
-    const { service, host } = env()
+    const { service, host, diagnostics } = env()
     // Two separate projects (storages), each with one open .todl document.
     const sA = new FakeStorage('A'); await sA.WriteText('a.todl', BAD)
     const sB = new FakeStorage('B'); await sB.WriteText('b.todl', CONCEPTS)
@@ -99,14 +134,18 @@ test('validates two projects independently and distributes to each doc; clears o
 
     service.AttachDocument(a, sA)
     service.AttachDocument(b, sB)
+    service.AttachProject('A', 'A', sA)
+    service.AttachProject('B', 'B', sB)
     await service.Revalidate()
 
-    expect(a.Diagnostics.Count).toBe(1)   // project A's error localizes to A's doc
+    expect(a.Diagnostics.Count).toBe(1)   // project A's error localizes to A's doc (dual-write)
     expect(b.Diagnostics.Count).toBe(0)   // project B is clean
+    expect(diagnostics.ForUri('a.todl').length).toBe(1)   // and published to the store
 
     a.Content = 'namespace d { concept task { label : string; } }'   // fix project A
     await service.Revalidate()
     expect(a.Diagnostics.Count).toBe(0)
+    expect(diagnostics.ForUri('a.todl').length).toBe(0)
 
     service.Dispose()
 })
@@ -118,7 +157,7 @@ test('validates two projects independently and distributes to each doc; clears o
 // it is published AND the cache is cleared.
 const CLEAN_LIB = 'namespace u { concept widget { label : string; } }'
 
-function baseEnv(): { service: TodlValidationService; host: DocumentsContentHostService; meta: FakeStorage }
+function baseEnv(): { service: TodlValidationService; host: DocumentsContentHostService; meta: FakeStorage; diagnostics: DiagnosticsService }
 {
     const provider = new ServiceProvider()
     const host = new DocumentsContentHostService(provider)
@@ -127,7 +166,9 @@ function baseEnv(): { service: TodlValidationService; host: DocumentsContentHost
     const meta = new FakeStorage('fake://meta-models')
     registry.Register(META_MODELS_BACKEND_ID, () => meta)
     provider.registerInstance(StorageProviderRegistry.Key, registry)
-    return { service: new TodlValidationService(provider), host, meta }
+    const diagnostics = new DiagnosticsService(provider)
+    provider.registerInstance(DiagnosticsService.Key, diagnostics)
+    return { service: new TodlValidationService(provider), host, meta, diagnostics }
 }
 
 test('bases are cached until ClearBaseCache, then a republished base is re-resolved', async () => {
@@ -140,9 +181,10 @@ test('bases are cached until ClearBaseCache, then a republished base is re-resol
     doc.Content = CLEAN_LIB
     host.Open(doc)
     service.AttachDocument(doc, proj)
+    service.AttachProject('proj', 'proj', proj)
 
     await service.Revalidate()
-    expect(doc.Diagnostics.Count).toBe(1)   // unresolved-base binding error
+    expect(doc.Diagnostics.Count).toBe(1)   // unresolved-base binding error (dual-write)
 
     // Publish ea@1, but do NOT clear the cache — the stale "not published" result stands.
     await meta.WriteText('ea/1/model.json', JSON.stringify(toJSON(check([{ uri: 'ea.todl', text: META }]).model)))
@@ -155,6 +197,19 @@ test('bases are cached until ClearBaseCache, then a republished base is re-resol
     expect(doc.Diagnostics.Count).toBe(0)
 
     service.Dispose()
+})
+
+test('an unresolved base surfaces as a project-level (null-uri) diagnostic in the store', async () => {
+    const { service, diagnostics } = baseEnv()
+    const proj = new FakeStorage('proj')
+    await proj.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify({ type: 'library', metaModel: { id: 'ea', version: '1' } }))
+    await proj.WriteText('u.todl', CLEAN_LIB)
+    service.AttachProject('/proj', 'Proj', proj)
+    await service.Revalidate()
+
+    const projLevel = [...diagnostics.All].filter((d) => d.uri === null)
+    expect(projLevel.length).toBe(1)
+    expect(projLevel[0]!.message).toMatch(/unresolved base/i)
 })
 
 test('validateSources surfaces a TODL throw as a project-level error, not a crash', () => {

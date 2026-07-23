@@ -108,6 +108,7 @@ import DocumentTabsResources from "./services/document-tabs/document-tabs.resour
 // project's .todl files against its declared bases via checkAgainst. Root-scoped
 // like ProjectFactoryRegistry so every module's editor can attach documents.
 import TodlValidationService from "./services/todl/todl-validation-service.js"
+import DiagnosticsService from "./services/diagnostics/diagnostics-service.js"
 import CodeEditorResources from "./modules/code-editor/code-editor.resources.mu.js"
 
 
@@ -182,6 +183,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // Code editor: opens files as Monaco-backed document tabs. Resolves the
         // content host + FileSystemService lazily, so registration order is free.
         CodeEditorService
+        // Source-agnostic diagnostics store — the single sink the TODL validator
+        // publishes to and the Problems dock + editor consume from.
+        DiagnosticsService
         // Shared base-aware TODL validator (meta-model / library / architecture).
         TodlValidationService
     }

@@ -1,6 +1,6 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { ContentHostService, type IDocument, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
-import { checkAgainst, Severity, type Diagnostic, type SourceFile, type TodlDocument } from '@pragmatic-lab/todl'
+import { checkAgainst, Severity, type Diagnostic as Diagnostic_TODL, type SourceFile, type TodlDocument } from '@pragmatic-lab/todl'
 
 import type { IStorage } from '../storage/storage.js'
 import { CodeDocument } from '../../modules/code-editor/code-document.js'
@@ -9,6 +9,8 @@ import { collectTodlSources } from '../../modules/meta-model/services/todl-sourc
 import { resolveBases } from '../projects/base-resolver.js'
 import { PROJECT_MANIFEST_FILENAME } from '../projects/project-factory.js'
 import type { BaseBindings } from '../projects/base-binding.js'
+import { DiagnosticsService } from '../diagnostics/diagnostics-service.js'
+import { DiagnosticSeverity, type Diagnostic, type DiagnosticSpan } from '../diagnostics/diagnostic.js'
 
 // Whole-project live validation for any TODL-authoring project (meta-model,
 // library, architecture). It watches the shell's open documents; whenever an open
@@ -26,15 +28,42 @@ import type { BaseBindings } from '../projects/base-binding.js'
 
 const DEBOUNCE_MS = 250
 
+// Producer id under which TODL diagnostics are published to the DiagnosticsService.
+const TODL_OWNER = 'todl'
+
 const SEVERITY_MAP: Record<string, EditorSeverity> = {
     [Severity.Error]:   EditorSeverity.Error,
     [Severity.Warning]: EditorSeverity.Warning,
 }
 
+const CANON_SEVERITY: Record<string, DiagnosticSeverity> = {
+    [Severity.Error]:   DiagnosticSeverity.Error,
+    [Severity.Warning]: DiagnosticSeverity.Warning,
+}
+
+// Map a spanned TODL diagnostic to a canonical Diagnostic for a project. A null
+// span (unattributed / whole-model) becomes a project-level diagnostic (uri null).
+export function diagnosticToCanonical(
+    d: Diagnostic_TODL, projectId: string, projectName: string,
+): Diagnostic
+{
+    const span: DiagnosticSpan | null = d.span
+        ? { startLine: d.span.start.line, startColumn: d.span.start.column,
+            endLine: d.span.end.line, endColumn: d.span.end.column }
+        : null
+    return {
+        owner: TODL_OWNER, projectId, projectName,
+        uri: d.span?.uri ?? null,
+        message: d.message,
+        severity: CANON_SEVERITY[d.severity] ?? DiagnosticSeverity.Error,
+        span,
+    }
+}
+
 // Map a spanned TODL diagnostic to an editor diagnostic. Both use 1-based
 // positions with an exclusive end, so the range is a straight copy; a null span
 // (genuine whole-model diagnostic) collapses to the document start.
-export function diagnosticToEditor(d: Diagnostic): EditorDiagnostic
+export function diagnosticToEditor(d: Diagnostic_TODL): EditorDiagnostic
 {
     const start = d.span?.start ?? { line: 1, column: 1 }
     const end = d.span?.end ?? { line: 1, column: 2 }
@@ -77,7 +106,7 @@ export function validateSources(sources: SourceFile[], bases: TodlDocument[] = [
     const byUri = new Map<string, EditorDiagnostic[]>()
     for (const s of sources) byUri.set(s.uri, [])
 
-    let diagnostics: readonly Diagnostic[]
+    let diagnostics: readonly Diagnostic_TODL[]
     try {
         diagnostics = checkAgainst(bases, sources).diagnostics
     } catch (e) {
@@ -109,6 +138,10 @@ export class TodlValidationService extends ServiceBase
     // unhooks its Content listener. Keyed by document so several projects' docs
     // coexist and validate independently.
     private readonly tracked = new Map<CodeDocument, { storage: IStorage; unhook: () => void }>()
+    // Open projects (storage → identity), registered by the explorer on project
+    // open. This is the unit of validation: a project validates whole even with
+    // no editor open. Tracked docs only overlay live buffers + trigger passes.
+    private readonly openProjects = new Map<IStorage, { projectId: string; projectName: string }>()
     // Per-project resolved bases, cached so a validation pass doesn't re-read the
     // backends on every keystroke. Dropped by ClearBaseCache after a republish.
     private readonly baseCache = new Map<IStorage, { bases: TodlDocument[]; problems: string[] }>()
@@ -119,6 +152,11 @@ export class TodlValidationService extends ServiceBase
     private get host(): DocumentsContentHostService
     {
         return this.Provider.getRequired(ContentHostService.Key) as DocumentsContentHostService
+    }
+
+    private get diagnostics(): DiagnosticsService | undefined
+    {
+        return this.Provider.get(DiagnosticsService.Key)
     }
 
     // Track a `.todl` document + the project storage it belongs to (called by the
@@ -153,6 +191,23 @@ export class TodlValidationService extends ServiceBase
         else this.baseCache.delete(storage)
     }
 
+    // Register an open project so it validates whole (independent of open editors).
+    // Idempotent; schedules a pass so the dock is populated on project open.
+    public AttachProject(projectId: string, projectName: string, storage: IStorage): void
+    {
+        this.openProjects.set(storage, { projectId, projectName })
+        this.scheduleRevalidate()
+    }
+
+    // Unregister a project on close: drop its base cache and its diagnostics.
+    public DetachProject(storage: IStorage): void
+    {
+        const info = this.openProjects.get(storage)
+        this.openProjects.delete(storage)
+        this.baseCache.delete(storage)
+        if (info !== undefined) this.diagnostics?.ClearProject(info.projectId)
+    }
+
     // Stop watching and clear pending work.
     public Dispose(): void
     {
@@ -162,6 +217,7 @@ export class TodlValidationService extends ServiceBase
         for (const t of this.tracked.values()) t.unhook()
         this.tracked.clear()
         this.baseCache.clear()
+        this.openProjects.clear()
     }
 
     // Watch the open-set only to UNTRACK closed documents (docs are attached
@@ -210,17 +266,47 @@ export class TodlValidationService extends ServiceBase
     // awaitable so it's directly testable.
     public async Revalidate(): Promise<void>
     {
-        const byStorage = new Map<IStorage, CodeDocument[]>()
+        // Group tracked (open) docs by their storage for buffer overlay + squiggles.
+        const docsByStorage = new Map<IStorage, CodeDocument[]>()
         for (const [doc, { storage }] of this.tracked) {
-            const list = byStorage.get(storage)
-            if (list === undefined) byStorage.set(storage, [doc])
+            const list = docsByStorage.get(storage)
+            if (list === undefined) docsByStorage.set(storage, [doc])
             else list.push(doc)
         }
-        for (const [storage, docs] of byStorage) {
+
+        for (const [storage, { projectId, projectName }] of this.openProjects) {
             const { bases, problems } = await this.basesFor(storage)
             const stored = await collectTodlSources(storage)
+            const docs = docsByStorage.get(storage) ?? []
             const open = docs.map((d) => ({ id: d.Id, text: d.Content }))
-            const byUri = validateSources(overlaySources(stored, open), bases)
+            const sources = overlaySources(stored, open)
+
+            // Canonical diagnostics for the store (every file in the project).
+            const canonical: Diagnostic[] = []
+            try {
+                for (const d of checkAgainst(bases, sources).diagnostics) {
+                    canonical.push(diagnosticToCanonical(d, projectId, projectName))
+                }
+            } catch (e) {
+                const message = `Validation failed: ${(e as Error).message}`
+                for (const s of sources) {
+                    canonical.push({
+                        owner: TODL_OWNER, projectId, projectName, uri: s.uri,
+                        message, severity: DiagnosticSeverity.Error, span: null,
+                    })
+                }
+            }
+            if (problems.length > 0) {
+                canonical.push({
+                    owner: TODL_OWNER, projectId, projectName, uri: null,
+                    message: `Unresolved base: ${problems.join('; ')}.`,
+                    severity: DiagnosticSeverity.Error, span: null,
+                })
+            }
+            this.diagnostics?.Publish(TODL_OWNER, projectId, canonical)
+
+            // Keep per-doc squiggles working (dual-write; removed in Task 4).
+            const byUri = validateSources(sources, bases)
             const bindingError = problems.length > 0 ? wholeFileError(`Unresolved base: ${problems.join('; ')}.`) : undefined
             for (const doc of docs) {
                 const target = doc.Diagnostics
