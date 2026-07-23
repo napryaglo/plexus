@@ -71,6 +71,9 @@ export class ProblemsService extends ServiceBase
         ProblemsService, 'Rows', undefined as unknown as ObservableCollection<ProblemsRow>, MetaData.None)
     public static readonly ErrorCountKey = Model.RegisterProperty<number>(ProblemsService, 'ErrorCount', 0, MetaData.None)
     public static readonly WarningCountKey = Model.RegisterProperty<number>(ProblemsService, 'WarningCount', 0, MetaData.None)
+    // String forms for the status-bar cell (Text binds a string cleanly).
+    public static readonly ErrorTextKey = Model.RegisterProperty<string>(ProblemsService, 'ErrorText', '0', MetaData.None)
+    public static readonly WarningTextKey = Model.RegisterProperty<string>(ProblemsService, 'WarningText', '0', MetaData.None)
     public static readonly IsExpandedKey = Model.RegisterProperty<boolean>(ProblemsService, 'IsExpanded', false, MetaData.None)
     public static readonly ToggleCommandKey = Model.RegisterProperty<ICommand>(
         ProblemsService, 'ToggleCommand', undefined as unknown as ICommand, MetaData.None)
@@ -89,6 +92,8 @@ export class ProblemsService extends ServiceBase
     public get Rows(): ObservableCollection<ProblemsRow> { return this.get_property_value(ProblemsService.RowsKey) }
     public get ErrorCount(): number { return this.get_property_value(ProblemsService.ErrorCountKey) }
     public get WarningCount(): number { return this.get_property_value(ProblemsService.WarningCountKey) }
+    public get ErrorText(): string { return this.get_property_value(ProblemsService.ErrorTextKey) }
+    public get WarningText(): string { return this.get_property_value(ProblemsService.WarningTextKey) }
     public get IsExpanded(): boolean { return this.get_property_value(ProblemsService.IsExpandedKey) }
     public set IsExpanded(v: boolean) { this.set_property_value(ProblemsService.IsExpandedKey, v) }
     public get ToggleCommand(): ICommand { return this.get_property_value(ProblemsService.ToggleCommandKey) }
@@ -114,6 +119,8 @@ export class ProblemsService extends ServiceBase
         }
         this.set_property_value(ProblemsService.ErrorCountKey, errors)
         this.set_property_value(ProblemsService.WarningCountKey, warnings)
+        this.set_property_value(ProblemsService.ErrorTextKey, String(errors))
+        this.set_property_value(ProblemsService.WarningTextKey, String(warnings))
 
         // Group project → file (null-uri under a "Project" bucket), preserving
         // first-seen order for a stable list.

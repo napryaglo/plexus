@@ -41,6 +41,7 @@ import OntologiesModule from "./modules/ontologies/ontologies.module.mu.js"
 import MetaModelModule from "./modules/meta-model/meta-model.module.mu.js"
 import LibraryModule from "./modules/library/library.module.mu.js"
 import AgentChatModule from "./modules/agent-chat/agent-chat.module.mu.js"
+import ProblemsModule from "./modules/problems/problems.module.mu.js"
 
 // Shared icon dictionary — one Geometry per capability, merged into the app's
 // Resources (via `merge` below) so each module's `Icon = @<Key>` resolves.
@@ -93,6 +94,9 @@ import ProjectExplorerResources from "./modules/project-explorer/project-explore
 
 // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
 import AgentChatResources from "./modules/agent-chat/agent-chat.resources.mu.js"
+
+// Problems dock (DataTemplate[ProblemsService] + ProblemsRow rows).
+import ProblemsResources from "./modules/problems/problems.resources.mu.js"
 
 // Code editor: opens files as Monaco-backed CodeDocuments (a DomHost carries
 // Monaco's DOM into the SVG surface via <foreignObject>). CodeEditorService
@@ -199,6 +203,7 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         MetaModelModule
         LibraryModule
         AgentChatModule
+        ProblemsModule
     }
 
     resources: {
@@ -231,6 +236,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
 
         // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
         merge AgentChatResources
+
+        // Problems dock (StatusBar DataTemplate[ProblemsService] + ProblemsRow rows).
+        merge ProblemsResources
 
         // Code editor (DataTemplate[CodeDocument] declares a CodeEditor — a
         // DomHost subclass hosting Monaco, self-bound to the document's Content).

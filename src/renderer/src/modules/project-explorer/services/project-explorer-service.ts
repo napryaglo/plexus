@@ -64,6 +64,7 @@ import type { BaseRef } from '../../../services/projects/base-binding.js'
 import { ensureMetaModelsBackend } from '../../meta-model/services/meta-models-backend.js'
 import { ensureLibrariesBackend } from '../../library/services/libraries-backend.js'
 import { TodlValidationService } from '../../../services/todl/todl-validation-service.js'
+import { ProblemsService } from '../../problems/problems-service.js'
 import { planNodeMoves } from '../../../services/projects/node-move.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
 import { RecentProjectsService } from '../../../services/projects/recent-projects-service.js'
@@ -596,11 +597,17 @@ export class ProjectExplorerService extends ServiceBase
     private async publishProject(op: OpenProject): Promise<void>
     {
         if (!isPublishable(op.Factory)) { this.Status = "This project type can't be published."; return }
+        // Refresh diagnostics so the Problems dock reflects exactly what publish sees.
+        const validator = this.Provider.get(TodlValidationService.Key)
+        validator?.ClearBaseCache(op.Storage)
+        await validator?.Revalidate()
         try {
             const result = await op.Factory.publish(op.Project, op.Storage, this.Provider)
             this.Status = result.message
+            if (!result.ok) this.Provider.get(ProblemsService.Key)?.Expand()
         } catch (e) {
             this.Status = `Publish failed: ${(e as Error).message}`
+            this.Provider.get(ProblemsService.Key)?.Expand()
         }
     }
 
