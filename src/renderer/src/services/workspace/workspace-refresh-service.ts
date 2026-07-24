@@ -5,7 +5,7 @@
 // bridge (which unblocks the tool call in main). Eagerly constructed at startup so
 // a refresh works even if the chat panel was never opened.
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { AgentEvent, IAgentApi, RefreshProjectRequest } from '../../../../shared/agent-api.js'
+import type { IAgentApi, RefreshProjectRequest } from '../../../../shared/agent-api.js'
 import { AgentEventKind } from '../../../../shared/agent-api.js'
 import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'
 import { DiagnosticsService } from '../diagnostics/diagnostics-service.js'
