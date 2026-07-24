@@ -19,6 +19,10 @@ import { DynamicResource, Model, PropertyKey, Thickness } from '@pragmatic-lab/m
 // Monospace stack for code. FontFamily accepts a raw CSS stack (TextElement).
 const MONO = 'Consolas, "SF Mono", "Courier New", monospace'
 const BASE_SIZE = 14
+// A little extra leading over the ~17px natural line so body text breathes and
+// baseline-aligned inline chips (which now hang below the baseline) don't crowd
+// the following row.
+const BODY_LINE_HEIGHT = 21
 // h1..h6 point sizes (h5/h6 fall back to base; emphasis carries them).
 const HEADING_SIZE = [22, 19, 17, 15, BASE_SIZE, BASE_SIZE]
 // Non-breaking space — used to keep code indentation from collapsing in layout.
@@ -128,6 +132,7 @@ function paragraph(text: string): Paragraph
 {
     const p = new Paragraph()
     p.Margin = blockGap()
+    p.LineHeight = BODY_LINE_HEIGHT
     for (const inline of parseInlines(text)) p.AddChild(inline)
     return p
 }
@@ -149,6 +154,7 @@ function quoteBlock(text: string): Paragraph
 {
     const p = new Paragraph()
     p.Margin = new Thickness(12, 0, 0, 8)   // indent stands in for a quote bar
+    p.LineHeight = BODY_LINE_HEIGHT
     const italic = new Italic()
     for (const inline of parseInlines(text)) italic.AddChild(inline)
     p.AddChild(italic)
@@ -171,6 +177,7 @@ function listItem(text: string): ListItem
 {
     const item = new ListItem()
     const p = new Paragraph()
+    p.LineHeight = BODY_LINE_HEIGHT
     for (const inline of parseInlines(text)) p.AddChild(inline)
     item.AddChild(p)                          // a ListItem holds Blocks, not inlines
     return item
@@ -293,7 +300,9 @@ function codeChip(text: string): InlineUIContainer
 
     const chip = new Border(label)
     chip.CornerRadius = 4
-    chip.Padding = new Thickness(5, 1, 5, 1)
+    // Slightly taller box; with baseline alignment the label sits on the text
+    // baseline and the extra bottom padding lets the chip hang below the line.
+    chip.Padding = new Thickness(6, 2, 6, 2)
     bindTheme(chip, Border.BackgroundKey, 'SurfaceContainerHigh')
 
     return new InlineUIContainer(chip)
