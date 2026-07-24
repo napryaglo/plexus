@@ -1,4 +1,5 @@
 import { test, expect } from 'vitest'
+import { Model } from '@pragmatic-lab/mural/runtime'
 import { AgentEventKind, type QuestionAnswer } from '../../../../../../shared/agent-api.js'
 import { TranscriptReducer, UserMessage, AssistantMessage, ToolActivity } from '../transcript.js'
 import { QuestionCard } from '../question-card.js'
@@ -117,4 +118,26 @@ test('SessionStarted and TurnComplete add no transcript items', () => {
     r.apply({ Kind: AgentEventKind.SessionStarted, SessionId: 'x' })
     r.apply({ Kind: AgentEventKind.TurnComplete })
     expect(items(r)).toHaveLength(0)
+})
+
+test('addPendingCard adds the card, blocks input, and resets the assistant bubble; releasePending clears it', () => {
+    const r = new TranscriptReducer()
+    let pendingChanges = 0
+    r.onPendingChange = () => { pendingChanges += 1 }
+    r.apply({ Kind: AgentEventKind.AssistantText, Text: 'hi' })   // opens an assistant bubble
+
+    const card = new Model()
+    r.addPendingCard('c1', card)
+    expect(items(r).includes(card)).toBe(true)
+    expect(r.HasPendingQuestion).toBe(true)      // input gated
+    expect(pendingChanges).toBe(1)
+
+    // A following AssistantText starts a NEW bubble (the card reset currentAssistant).
+    r.apply({ Kind: AgentEventKind.AssistantText, Text: 'more' })
+    const texts = items(r).filter((m) => m instanceof AssistantMessage) as AssistantMessage[]
+    expect(texts.length).toBe(2)
+
+    r.releasePending('c1')
+    expect(r.HasPendingQuestion).toBe(false)
+    expect(pendingChanges).toBe(2)
 })

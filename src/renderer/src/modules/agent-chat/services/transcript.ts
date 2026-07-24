@@ -139,7 +139,8 @@ export class TranscriptReducer
     private currentAssistant: AssistantMessage | null = null
     // Tool activities awaiting their result, keyed by tool_use id.
     private readonly pendingTools = new Map<string, ToolActivity>()
-    // Question cards awaiting the user's answer, by request id.
+    // Blocking cards awaiting the user (question + create-project cards), by
+    // request id — while any is open the input row is gated.
     private readonly pendingQuestions = new Set<string>()
 
     // Set by AgentService: forward a submitted answer to the agent bridge, and
@@ -154,6 +155,25 @@ export class TranscriptReducer
     {
         this.currentAssistant = null
         this.Transcript.Add(new UserMessage(text))
+    }
+
+    // Add a card built outside the reducer (e.g. the create_project card, whose
+    // form AgentService assembles asynchronously), mirroring how the Question case
+    // adds a QuestionCard: reset the open assistant bubble, track it as a blocking
+    // card so input is gated, and insert it.
+    public addPendingCard(id: string, card: Model): void
+    {
+        this.currentAssistant = null
+        this.pendingQuestions.add(id)
+        this.Transcript.Add(card)
+        this.onPendingChange?.()
+    }
+
+    // Release a blocking card once its interaction completes.
+    public releasePending(id: string): void
+    {
+        this.pendingQuestions.delete(id)
+        this.onPendingChange?.()
     }
 
     public apply(event: AgentEvent): void
@@ -211,6 +231,11 @@ export class TranscriptReducer
             case AgentEventKind.RefreshProject:
                 // Handled entirely by WorkspaceRefreshService — not part of the
                 // transcript, and it must not disturb the open assistant bubble.
+                break
+
+            case AgentEventKind.CreateProject:
+                // Handled by AgentService (it builds the form + card asynchronously);
+                // not folded here, and it must not disturb the open assistant bubble.
                 break
 
             case AgentEventKind.SessionStarted:
