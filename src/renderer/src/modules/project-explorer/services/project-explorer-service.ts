@@ -622,6 +622,25 @@ export class ProjectExplorerService extends ServiceBase
         this.Status = `Refreshed bases for ${op.Name}.`
     }
 
+    // Re-scan the named open projects from disk and re-validate their models —
+    // the agent's refresh_project path. Rescans + drops each project's cached
+    // bases, then revalidates once (Revalidate covers all open projects). Unknown
+    // folders are skipped. Awaitable so the caller knows validation has settled.
+    public async RefreshProjects(folders: readonly string[]): Promise<void>
+    {
+        const validator = this.Provider.get(TodlValidationService.Key)
+        let any = false
+        for (const folder of folders)
+        {
+            const op = this.findByFolder(folder)
+            if (op === undefined) continue
+            await this.rescan(op)
+            validator?.ClearBaseCache(op.Storage)
+            any = true
+        }
+        if (any) await validator?.Revalidate()
+    }
+
     // Close a project: close its open tabs, drop it from the tree, and forget it
     // from the persisted open set.
     private async closeProject(op: OpenProject): Promise<void>

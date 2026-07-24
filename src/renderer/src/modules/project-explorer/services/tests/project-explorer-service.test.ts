@@ -13,6 +13,7 @@ import { PROJECT_MANIFEST_FILENAME, type IProjectFactory, type IPublishableProje
 import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../../services/documents/document-factory.js'
 import { ConfirmDialogModel } from '../../../../services/dialogs/confirm-dialog-model.js'
 import { ProjectExplorerService, importFilters, uniqueStorageName } from '../project-explorer-service.js'
+import { TodlValidationService } from '../../../../services/todl/todl-validation-service.js'
 
 // A picked file as the OS dialog would hand it back (absolute path + raw bytes).
 type Picked = { Path: string; Bytes: Uint8Array }
@@ -103,6 +104,7 @@ function makeExplorer(openFiles: Picked[] | null = null, confirm = true): {
     host: DocumentsContentHostService
     store: OpenProjectsStore
     priv: ExplorerPrivates
+    provider: ServiceProvider
     shownDialogs: unknown[]
     rec: Rec
 }
@@ -124,7 +126,7 @@ function makeExplorer(openFiles: Picked[] | null = null, confirm = true): {
         GetByExtension: (ext: string) => (ext === '.todl' ? { Factory: TodlDocFactoryToken } : undefined),
     } as unknown as DocumentTypeRegistry)
     const service = new ProjectExplorerService(provider)
-    return { service, host, store, priv: service as unknown as ExplorerPrivates, shownDialogs, rec }
+    return { service, host, store, priv: service as unknown as ExplorerPrivates, provider, shownDialogs, rec }
 }
 
 function childNode(op: OpenProject): ProjectNode
@@ -140,6 +142,29 @@ test('opening two projects adds two roots; reopening one dedupes', async () => {
 
     expect(service.OpenProjects.Count).toBe(2)
     expect((await store.List()).slice().sort()).toEqual(['C:/a', 'C:/b'])
+})
+
+test('RefreshProjects rescans each named project and revalidates once; unknown folders are skipped', async () => {
+    const { service, priv, provider } = makeExplorer()
+    const factory = fakeProjectFactory()
+    await priv.addOpenProject(projectWith('A', 'C:/a'), factory, new FakeStorage('C:/a'))
+
+    // A recording validator, registered AFTER open so AttachProject stays skipped.
+    const calls: string[] = []
+    provider.registerInstance(TodlValidationService.Key, {
+        ClearBaseCache: () => { calls.push('clear') },
+        Revalidate: async () => { calls.push('revalidate') },
+    } as unknown as TodlValidationService)
+
+    // Count rescans via the factory's openProject.
+    let opened = 0
+    const orig = factory.openProject.bind(factory)
+    factory.openProject = async (s) => { opened += 1; return orig(s) }
+
+    await service.RefreshProjects(['C:/a', 'C:/does-not-exist'])
+
+    expect(opened).toBe(1)                       // only the known project rescanned
+    expect(calls).toEqual(['clear', 'revalidate']) // cleared its bases, revalidated once
 })
 
 test('opening a node opens it through the registered document editor', async () => {
