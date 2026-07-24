@@ -208,6 +208,11 @@ export class TranscriptReducer
                 break
             }
 
+            case AgentEventKind.RefreshProject:
+                // Handled entirely by WorkspaceRefreshService — not part of the
+                // transcript, and it must not disturb the open assistant bubble.
+                break
+
             case AgentEventKind.SessionStarted:
             case AgentEventKind.TurnComplete:
                 // No transcript item; TurnComplete closes the current bubble so the

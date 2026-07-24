@@ -20,6 +20,7 @@ import { attachTabSwitchDiagnostics } from './dev/tab-switch-diagnostics.js'
 import { CodeEditorService } from './modules/code-editor/code-editor-service.js'
 import { EnvironmentService } from './services/environment/environment-service.js'
 import { ProjectExplorerService } from './modules/project-explorer/services/project-explorer-service.js'
+import { WorkspaceRefreshService } from './services/workspace/workspace-refresh-service.js'
 import { registerTodlLanguage } from './modules/meta-model/todl-language.js'
 
 // Register the 'todl' Monaco language once, before any editor mounts, so .todl
@@ -43,6 +44,9 @@ try {
     // bound shell control) before opening the first document, so the toolbar
     // service surfaces it on the document-open rebuild.
     registerThemeSchemePicker(app)
+    // Construct the workspace-refresh service now so it subscribes to agent
+    // events before any turn runs (it isn't tied to a visible panel).
+    app.Services.get(WorkspaceRefreshService.Key)
     // Open the seeded diagram as the initial document. The content region is
     // document-driven (DocumentsContentHostService under ContentHostService.Key),
     // so opening the workspace's document activates it → the canvas renders via
