@@ -11,5 +11,9 @@ import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 export class OntologiesService extends PlexusPanelService
 {
     public static readonly Key = new ServiceKey<OntologiesService>('OntologiesService');
-    constructor(provider: IServiceProvider) { super(provider, ['Business', 'Application', 'Technology']); }
+    
+    constructor(provider: IServiceProvider) 
+    { super(provider, ['Business', 'Application', 'Technology']); 
+
+    }
 }

@@ -1,52 +1,74 @@
 // problems.resources.mu — the Problems dock (Status-region) view.
 //
-// DataTemplate[ProblemsService] renders a collapsed summary cell (error/warning
-// counts) that expands into a scrollable, grouped list of ProblemsRow items. The
-// ShellControlDefinition in problems.module.mu places it in the StatusBar region
-// with DataContext = ProblemsService (always visible, document-independent).
+// The dock is a MenuButton in the StatusBar region. Its face and its popup rows
+// deliberately match the document-content-host ⋯ extended-commands dropdown
+// (services/document-tabs/document-tabs.resources.mu):
 //
-// @VerticalStackPanel is an app-level shared resource (defined in app.mu). The
-// ToVisibility converter is a framework built-in (resolved by default symbol table).
+//   * the FACE is a regular Button restyled with @ProblemsTriggerChrome — the
+//     same pill @SurfaceContainerHigh surface + @OnSurfaceVariant hover/press
+//     state layers as that dropdown's @TabOverflowTrigger, but hosting the
+//     problem summary ($SummaryText) instead of a three-dots glyph;
+//   * each popup ROW reuses @TabMenuRowButton verbatim — the same left-aligned,
+//     full-width transparent hit surface the dropdown's rows use. Both keys are
+//     app-global (merged by app.mu), so this cross-module reference resolves.
+//
+// Clicking the face opens a FLOATING popup (MenuPopupHost) that overlays the
+// content above the bar rather than growing the status bar. IsOpen binds the
+// service's IsOpen so a failed publish can force the popup open (Expand()).
+//
+// The ShellControlDefinition in problems.module.mu references @ProblemsDock.
 
 import ProblemsService from "./problems-service.js"
 import ProblemsRow from "./problems-service.js"
 
 resources ProblemsResources {
-    // Collapsed summary + expandable list. The summary button toggles IsExpanded;
-    // the list is shown only when expanded (bottom-anchored, height-capped).
-    // Keyed so the StatusBar ShellControlDefinition references it by @ProblemsDock.
     DataTemplate x:key="ProblemsDock" [ DataType = ProblemsService ] {
-        StackPanel [ Orientation = Vertical, VerticalAlignment = Bottom ] {
-            // Expanded list — grouped rows. Shown only while IsExpanded.
-            Border [ Visibility     = $IsExpanded << ToVisibility,
-                     Background      = @Surface,
-                     BorderBrush     = @OutlineVariant,
-                     BorderThickness = (0,1,0,0),
-                     MaxHeight       = 220 ] {
-                ScrollViewer [ HorizontalScrollEnabled = false ] {
-                    ItemsControl [ ItemsSource = $Rows, ItemsPanel = @VerticalStackPanel, Margin = (4,4,4,4) ]
-                }
-            }
-            // Collapsed summary cell — a toggle that reveals the panel.
-            Button [ Command = $ToggleCommand, HorizontalAlignment = Left ] {
-                StackPanel [ Orientation = Horizontal, VerticalAlignment = Center, Margin = (8,2,8,2) ] {
-                    Border [ Width = 8, Height = 8, CornerRadius = (4), Background = #f44336, Margin = (0,0,4,0), VerticalAlignment = Center ]
-                    TextBlock [ Text = $ErrorText, FontSize = 11, Foreground = @OnSurfaceVariant, Margin = (0,0,10,0), VerticalAlignment = Center ]
-                    Border [ Width = 8, Height = 8, CornerRadius = (4), Background = #ff9800, Margin = (0,0,4,0), VerticalAlignment = Center ]
-                    TextBlock [ Text = $WarningText, FontSize = 11, Foreground = @OnSurfaceVariant, VerticalAlignment = Center ]
-                }
+        MenuButton
+            [ Header          = $SummaryText,
+              IsOpen          = $IsOpen,
+              ItemsSource     = $Rows,
+              TriggerTemplate = @ProblemsDockTrigger,
+              HorizontalAlignment = Left ]
+    }
+
+    // The MenuButton trigger: root PART_Trigger is a Button (MenuButton's
+    // trigger contract), PART_TriggerStack + PART_HeaderText are the parts its
+    // ctor keeps in sync with the Header DP. The Button wears @ProblemsTriggerChrome
+    // for the dropdown-face look.
+    Template x:key="ProblemsDockTrigger" [ TargetType = MenuButton ] {
+        Button x:name="PART_Trigger" [ Template = @ProblemsTriggerChrome ] {
+            StackPanel x:name="PART_TriggerStack" [ Orientation = Horizontal, VerticalAlignment = Center ] {
+                TextBlock x:name="PART_HeaderText"
+                    [ Style = @LabelMedium, Foreground = @OnSurfaceVariant, VerticalAlignment = Center ]
             }
         }
     }
 
-    // One row: project header / file header / diagnostic. A button bound to the
-    // row's ActivateCommand (null for headers → inert): diagnostic rows navigate
-    // to their file + span, headers do nothing.
+    // Face chrome — mirrors document-tabs' @TabOverflowTrigger (pill
+    // @SurfaceContainerHigh surface, @OnSurfaceVariant state layers), sized for a
+    // text summary rather than a single glyph. ContentPresenter shows the
+    // trigger's PART_TriggerStack.
+    Template x:key="ProblemsTriggerChrome" [ TargetType = Button ] {
+        Border x:name="PART_Primary" [ Background = @SurfaceContainerHigh, CornerRadius = @ShapeFull, BorderThickness = (0) ] {
+            Border x:name="PART_PrimaryState" [ Background = #00000000, CornerRadius = @ShapeFull, Padding = (10,3,10,3) ] {
+                ContentPresenter [ HorizontalAlignment = Center, VerticalAlignment = Center ]
+            }
+        }
+        when ( IsMouseOver ) { PART_PrimaryState.Background = @OnSurfaceVariantHoverLayer; }
+        when ( IsPressed ) { PART_PrimaryState.Background = @OnSurfaceVariantPressLayer; }
+        when ( IsEnabled = false ) { PART_Primary.Opacity = @DisabledContentOpacity; }
+    }
+
+    // One popup row: the SAME @TabMenuRowButton chrome the document-host ⋯
+    // dropdown uses — a full-width, left-aligned transparent hit surface with the
+    // standard hover/press state layers. Diagnostic rows navigate to their file +
+    // span via ActivateCommand (project-level rows carry no command → inert). The
+    // message sits left, the file location ($Detail) right.
     DataTemplate [ DataType = ProblemsRow ] {
-        Button [ Command = $ActivateCommand, HorizontalAlignment = Stretch ] {
-            DockPanel [ Margin = (8,1,8,1) ] {
-                TextBlock [ DockPanel.Dock = Right, Text = $Detail, FontSize = 11, Foreground = @OnSurfaceVariant, Margin = (8,0,0,0) ]
-                TextBlock [ Text = $Label, FontSize = 11, Foreground = @OnSurface ]
+        Button [ Template = @TabMenuRowButton, Command = $ActivateCommand, HorizontalAlignment = Stretch, MinWidth = 260 ] {
+            DockPanel [ LastChildFill = true ] {
+                TextBlock [ DockPanel.Dock = Right, Text = $Detail, Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (12,0,0,0) ]
+                TextBlock [ Text = $Label, Foreground = @OnSurface, VerticalAlignment = Center ]
             }
         }
     }

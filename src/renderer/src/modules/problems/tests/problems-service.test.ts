@@ -32,13 +32,19 @@ test('counts errors and warnings across the store', () => {
     expect(problems.WarningCount).toBe(1)
 })
 
-test('single project: file headers, no project header', () => {
+test('single project: no project header, one self-contained row per diagnostic', () => {
     const { store, problems } = env()
-    store.Publish('todl', '/p', [diag({ uri: 'a.todl' }), diag({ uri: 'b.todl' })])
+    store.Publish('todl', '/p', [
+        diag({ uri: 'a.todl', message: 'boom', span: { startLine: 2, startColumn: 3, endLine: 2, endColumn: 4 } }),
+        diag({ uri: 'b.todl' }),
+    ])
     const kinds = [...problems.Rows].map((r) => r.Kind)
     expect(kinds).not.toContain(ProblemRowKind.ProjectHeader)
-    expect(kinds.filter((k) => k === ProblemRowKind.FileHeader).length).toBe(2)
-    expect(kinds.filter((k) => k === ProblemRowKind.Diagnostic).length).toBe(2)
+    expect(kinds).toEqual([ProblemRowKind.Diagnostic, ProblemRowKind.Diagnostic])
+    // Each row carries the message AND its file+location in one item.
+    const first = [...problems.Rows][0]!
+    expect(first.Label).toBe('boom')
+    expect(first.Detail).toBe('a.todl 2:3')
 })
 
 test('multi-project: a project header per project', () => {
@@ -49,20 +55,28 @@ test('multi-project: a project header per project', () => {
     expect(headers.map((h) => h.Label).sort()).toEqual(['P', 'Q'])
 })
 
-test('project-level (null-uri) diagnostic groups under a Project bucket', () => {
+test('project-level (null-uri) diagnostic renders as a row with an empty location', () => {
     const { store, problems } = env()
-    store.Publish('todl', '/p', [diag({ uri: null, message: 'Unresolved base: ea@1.' })])
-    const fileHeaders = [...problems.Rows].filter((r) => r.Kind === ProblemRowKind.FileHeader)
-    expect(fileHeaders.map((h) => h.Label)).toContain('Project')
+    store.Publish('todl', '/p', [diag({ uri: null, span: null, message: 'Unresolved base: ea@1.' })])
+    const diags = [...problems.Rows].filter((r) => r.Kind === ProblemRowKind.Diagnostic)
+    expect(diags.length).toBe(1)
+    expect(diags[0]!.Label).toBe('Unresolved base: ea@1.')
+    expect(diags[0]!.Detail).toBe('')
 })
 
-test('IsExpanded starts collapsed; ToggleCommand flips it; Expand forces open', () => {
+test('IsOpen starts closed; Expand() forces the popup open', () => {
     const { problems } = env()
-    expect(problems.IsExpanded).toBe(false)
-    problems.ToggleCommand.Execute(undefined)
-    expect(problems.IsExpanded).toBe(true)
-    problems.ToggleCommand.Execute(undefined)
-    expect(problems.IsExpanded).toBe(false)
+    expect(problems.IsOpen).toBe(false)
     problems.Expand()
-    expect(problems.IsExpanded).toBe(true)
+    expect(problems.IsOpen).toBe(true)
+})
+
+test('SummaryText reflects the counts', () => {
+    const { store, problems } = env()
+    expect(problems.SummaryText).toBe('No problems')
+    store.Publish('todl', '/p', [
+        diag({ uri: 'a.todl', severity: DiagnosticSeverity.Error }),
+        diag({ uri: 'a.todl', severity: DiagnosticSeverity.Warning }),
+    ])
+    expect(problems.SummaryText).toBe('1 error, 1 warning')
 })

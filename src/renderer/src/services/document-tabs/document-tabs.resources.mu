@@ -79,8 +79,8 @@ resources DocumentTabsResources {
         }
     }
 
-    // Compact ⋯ overflow-button chrome — a HALF-SIZE take on mural's default
-    // dropdown trigger (glyph 10 / padding 4 vs the framework's 18 / 8), so the
+    // Compact ⋯ overflow-button chrome — a small take on mural's default
+    // dropdown trigger (glyph 5 / padding 4 vs the framework's 18 / 8), so the
     // tab-strip corner button reads as a small affordance rather than a full
     // toolbar-height pill. PART_Primary is the whole hit surface the control
     // wires to toggle the popup (the button carries no Command). Three-dots
@@ -101,21 +101,20 @@ resources DocumentTabsResources {
     }
 
     // An explicit keyed Style set on the tab-strip ⋯ button so it gets the
-    // compact trigger. It must be a FULL style, not a tweak: an explicit Style
-    // REPLACES the theme style outright (Element.refresh_active_style picks
-    // Style ?? implicit ?? theme — they don't merge), so it re-supplies the
-    // popup Template + menu ItemsPanel from the framework theme (resolved by
-    // key at runtime). This is also the only way to override the no-command
-    // trigger — mural ranks Trigger above Local, so the theme Style's
-    // `when (Command is unset)` setter would otherwise beat a locally-set
-    // TriggerTemplate. Scoped to this one instance via the explicit ref, so no
-    // other split button is affected.
+    // compact trigger. The ONLY thing it declares is the no-command trigger,
+    // and that is deliberate: an explicit Style does NOT replace the theme
+    // style — mural's Style.Seal() splices the theme in as this style's
+    // implicit BasedOn base, so Template / ItemsPanel / ink all inherit. But
+    // the theme's own `when (Command is unset) { TriggerTemplate = <default> }`
+    // is inherited too, and Trigger outranks a plain setter — so simply setting
+    // TriggerTemplate here (or on the instance) is beaten by that inherited
+    // trigger. The fix is to RE-DECLARE the trigger: own triggers resolve after
+    // BasedOn ones, so this Trigger-tier setter is applied last and wins.
+    // (Regression-guarded in mural: tool-bar.test.ts "explicit Style
+    // re-declaring the no-command trigger adopts its custom chrome".) Scoped to
+    // this one instance via the explicit ref, so no other split button changes.
     Style x:key="CompactSplitButtonStyle" [ TargetType = ToolBarSplitButton ] {
-        Template        = @DefaultToolBarSplitPopup;
-        TriggerTemplate = @TabOverflowTrigger;
-        ItemsPanel      = @DefaultToolBarMenuPanel;
-        VerticalAlignment    = Center;
-        TextBlock.Foreground = @OnSurfaceVariant;
+        when ( Command is unset ) { TriggerTemplate = @TabOverflowTrigger; }
     }
 
     // The ExtendedTabControl chrome: the framework TabControl template with the

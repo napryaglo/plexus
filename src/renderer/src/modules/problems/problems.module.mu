@@ -2,11 +2,14 @@
 //
 // Registers the ProblemsService and contributes a StatusBar-region ShellControl
 // that renders it via the keyed @ProblemsDock template (problems.resources.mu).
-// DataContext = ProblemsService makes the cell always-visible and document-
-// independent: the shell resolves the root service as the template's data context
-// (see toolbar-service.SyncStatusItems), independent of the active document.
+// The cell is always-visible and document-independent: the shell resolves the
+// DataContext service via provider.get(token) in SyncStatusItems, regardless of
+// the active document. DataContext must be the ServiceKey INSTANCE
+// (ProblemsServiceKey), not the ProblemsService class — provider.get does no
+// class→Key normalization, so a class token would miss and drop the control.
 
 import ProblemsService from "./problems-service.js"
+import ProblemsServiceKey from "./problems-service.js"
 
 module ProblemsModule [ Name = "Problems" ] {
     .services: {
@@ -16,7 +19,7 @@ module ProblemsModule [ Name = "Problems" ] {
     .ShellControls: {
         ShellControlDefinition
             [ Template    = @ProblemsDock,
-              DataContext = ProblemsService,
+              DataContext = ProblemsServiceKey,
               Region      = StatusBar ]
     }
 }
