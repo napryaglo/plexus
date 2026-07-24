@@ -102,8 +102,13 @@ resources AgentChatResources {
                                     Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (0,0,6,0) ]
                         TextBlock [ DockPanel.Dock = Left, Style = @LabelLarge, Text = $Name,
                                     Foreground = @OnSurface, VerticalAlignment = Center ]
-                        TextBlock [ Style = @BodySmall, Text = $Description, Visibility = $HasDescription << ToVisibility,
-                                    Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (8,0,0,0) ]
+                        // Fill slot — clipped so a long description is cut at the
+                        // status boundary instead of painting over "done".
+                        Border [ ClipToBounds = true, Background = #00000000,
+                                 Visibility = $HasDescription << ToVisibility, Margin = (8,0,8,0) ] {
+                            TextBlock [ Style = @BodySmall, Text = $Description,
+                                        Foreground = @OnSurfaceVariant, VerticalAlignment = Center ]
+                        }
                     }
                 }
                 StackPanel [ Orientation = Vertical, Visibility = $IsExpanded << ToVisibility, Margin = (2,4,2,2) ] {
