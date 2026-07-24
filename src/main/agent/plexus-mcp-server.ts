@@ -25,9 +25,12 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import {
     AgentEventKind,
     ASK_TOOL_NAME,
+    CREATE_PROJECT_TOOL_NAME,
     MCP_SERVER_KEY,
     REFRESH_TOOL_NAME,
     type AgentEvent,
+    type CreateProjectPrefill,
+    type CreateProjectResult,
     type Question,
     type QuestionAnswer,
     type RefreshProjectResult,
@@ -51,6 +54,7 @@ export class PlexusMcpServer
     // shared (`q…` vs `r…` prefixes keep them distinct).
     private readonly pendingAnswers = new Map<string, (answers: QuestionAnswer['answers']) => void>()
     private readonly pendingRefresh = new Map<string, (result: RefreshProjectResult) => void>()
+    private readonly pendingCreate = new Map<string, (result: CreateProjectResult) => void>()
     // Monotonic id source — no Date.now/Math.random (keeps behaviour deterministic
     // and dependency-free).
     private seq = 0
@@ -111,6 +115,31 @@ export class PlexusMcpServer
         })
     }
 
+    // Deliver the renderer's outcome to a blocked create_project call; no-op if stale.
+    public resolveCreate(result: CreateProjectResult): void
+    {
+        const done = this.pendingCreate.get(result.id)
+        if (done === undefined) return
+        this.pendingCreate.delete(result.id)
+        done(result)
+    }
+
+    // Emit a CreateProject request and await the renderer's outcome. No timeout —
+    // a human fills the form. No sink (probe/headless) → resolve with an error so
+    // the round-trip still completes.
+    public requestCreateProject(prefill?: CreateProjectPrefill): Promise<CreateProjectResult>
+    {
+        const id = `c${(this.seq += 1)}`
+        const sink = this.sink
+        if (sink === undefined)
+            return Promise.resolve({ id, created: false, error: 'No Plexus window is available to create a project.' })
+        return new Promise((resolve) =>
+        {
+            this.pendingCreate.set(id, resolve)
+            sink({ Kind: AgentEventKind.CreateProject, Request: { id, prefill } })
+        })
+    }
+
     public async listen(host = '127.0.0.1'): Promise<void>
     {
         this.httpServer = http.createServer((req, res) => { void this.handle(req, res) })
@@ -125,6 +154,7 @@ export class PlexusMcpServer
         // Unblock any in-flight tool call so the CLI doesn't hang on a dead session.
         for (const [id, done] of [...this.pendingAnswers]) { this.pendingAnswers.delete(id); done({}) }
         for (const [id, done] of [...this.pendingRefresh]) { this.pendingRefresh.delete(id); done({ id, projects: [], error: 'Server closed.' }) }
+        for (const [id, done] of [...this.pendingCreate]) { this.pendingCreate.delete(id); done({ id, created: false, error: 'Server closed.' }) }
         for (const transport of this.transports.values()) await transport.close()
         this.transports.clear()
         await new Promise<void>((resolve) => { if (this.httpServer) this.httpServer.close(() => resolve()); else resolve() })
@@ -169,6 +199,23 @@ export class PlexusMcpServer
             async ({ path }) =>
             {
                 const result = await this.requestRefresh(path)
+                return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
+            },
+        )
+
+        server.registerTool(
+            CREATE_PROJECT_TOOL_NAME,
+            {
+                title: 'Create a new Plexus project',
+                description:
+                    'Open the New Project form in the chat so the user can create a project. Optionally '
+                    + 'prefill `name`, `type`, and/or `location`; the user reviews and confirms (or cancels). '
+                    + 'Returns the created project\'s folder and name, or a cancelled/error outcome.',
+                inputSchema: { name: z.string().optional(), type: z.string().optional(), location: z.string().optional() },
+            },
+            async ({ name, type, location }) =>
+            {
+                const result = await this.requestCreateProject({ name, type, location })
                 return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
             },
         )

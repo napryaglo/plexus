@@ -86,7 +86,7 @@ test('writes the server config, allow-lists every tool, and appends the system p
         servers: {
             plexus: { type: 'http', url: 'http://127.0.0.1:11111/mcp' },
         },
-        allowedTools: ['mcp__plexus__ask_user_question', 'mcp__plexus__refresh_project'],
+        allowedTools: ['mcp__plexus__ask_user_question', 'mcp__plexus__refresh_project', 'mcp__plexus__create_project'],
         appendSystemPrompt: 'CALL REFRESH ONLY AFTER FILE CHANGES',
     }).start('/proj', [], () => {})
 
@@ -98,6 +98,7 @@ test('writes the server config, allow-lists every tool, and appends the system p
     // Both tools are allow-listed so they run without a permission prompt.
     expect(args).toContain('mcp__plexus__ask_user_question')
     expect(args).toContain('mcp__plexus__refresh_project')
+    expect(args).toContain('mcp__plexus__create_project')
     // The instruction rides --append-system-prompt.
     const p = args.indexOf('--append-system-prompt')
     expect(p).toBeGreaterThan(-1)
