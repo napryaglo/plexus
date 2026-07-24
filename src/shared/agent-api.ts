@@ -24,7 +24,7 @@ export enum AgentEventKind
     ToolUse        = 'tool-use',
     ToolResult     = 'tool-result',
     // The agent called the ask_user_question tool: render a choice card and block
-    // until the user answers (see AskUserQuestionServer + AnswerQuestion).
+    // until the user answers (see PlexusMcpServer + AnswerQuestion).
     Question       = 'question',
     // The agent called refresh_project: the renderer re-scans + re-validates the
     // target project(s) and replies via AgentChannel.RefreshProjectResult.
@@ -66,20 +66,16 @@ export interface RefreshProjectResult
     error?: string
 }
 
-// The ask-user-question MCP tool identity. `MCP_SERVER_KEY` is the --mcp-config
-// key, so the CLI re-exposes the tool to the model as ASK_TOOL_QUALIFIED. Kept in
-// this dep-free shared module so the stream parser can suppress the tool's chip and
-// the provider can allow-list it without importing the SDK-heavy server.
+// The Plexus MCP tool identities. `MCP_SERVER_KEY` is the --mcp-config key of the
+// single in-process server (see PlexusMcpServer), so the CLI re-exposes both tools
+// to the model as ASK_TOOL_QUALIFIED / REFRESH_TOOL_QUALIFIED. Kept in this dep-free
+// shared module so the stream parser can suppress a tool's chip and the provider can
+// allow-list the tools without importing the SDK-heavy server.
 export const MCP_SERVER_KEY = 'plexus'
 export const ASK_TOOL_NAME = 'ask_user_question'
 export const ASK_TOOL_QUALIFIED = `mcp__${MCP_SERVER_KEY}__${ASK_TOOL_NAME}`
-
-// The PlexusWorkspace MCP tool identity — a second in-process server. Kept next
-// to the ask-tool consts so the provider can allow-list it without importing the
-// SDK-heavy server.
-export const WORKSPACE_SERVER_KEY = 'PlexusWorkspace'
 export const REFRESH_TOOL_NAME = 'refresh_project'
-export const REFRESH_TOOL_QUALIFIED = `mcp__${WORKSPACE_SERVER_KEY}__${REFRESH_TOOL_NAME}`
+export const REFRESH_TOOL_QUALIFIED = `mcp__${MCP_SERVER_KEY}__${REFRESH_TOOL_NAME}`
 
 // Emitted once per session from the CLI's system:init line.
 export interface SessionStartedEvent { Kind: AgentEventKind.SessionStarted; SessionId: string }

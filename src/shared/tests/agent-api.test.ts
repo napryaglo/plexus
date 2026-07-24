@@ -2,8 +2,8 @@ import { test, expect } from 'vitest'
 import {
   AgentChannel,
   AgentEventKind,
+  MCP_SERVER_KEY,
   REFRESH_TOOL_QUALIFIED,
-  WORKSPACE_SERVER_KEY,
   REFRESH_TOOL_NAME,
 } from '../agent-api.js'
 
@@ -19,10 +19,10 @@ test('every event kind has a distinct string value', () => {
   expect(new Set(values).size).toBe(values.length)
 })
 
-test('qualified refresh tool name matches the mcp__<server>__<tool> shape the allow-list needs', () => {
-  expect(WORKSPACE_SERVER_KEY).toBe('PlexusWorkspace')
+test('both tools are qualified under the single plexus server key', () => {
+  expect(MCP_SERVER_KEY).toBe('plexus')
   expect(REFRESH_TOOL_NAME).toBe('refresh_project')
-  expect(REFRESH_TOOL_QUALIFIED).toBe('mcp__PlexusWorkspace__refresh_project')
+  expect(REFRESH_TOOL_QUALIFIED).toBe('mcp__plexus__refresh_project')
 })
 
 test('the workspace channel and event-kind members exist', () => {

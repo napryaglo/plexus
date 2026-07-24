@@ -193,7 +193,7 @@ export class TranscriptReducer
             case AgentEventKind.Question:
             {
                 // The agent asked a structured question: render a card and block
-                // the turn until the user submits (see AskUserQuestionServer).
+                // the turn until the user submits (see PlexusMcpServer).
                 this.currentAssistant = null
                 const request = event.Request
                 this.pendingQuestions.add(request.id)
