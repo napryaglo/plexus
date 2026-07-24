@@ -12,6 +12,7 @@ import {
 import { Project, ProjectNode, type ProjectNodeKind } from '../../../services/projects/project.js'
 import { compareStorageEntries, type IStorage } from '../../../services/storage/storage.js'
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
+import { ensureScaffold } from './meta-model-scaffold.js'
 import { collectTodlSources, extname, joinRel } from './todl-sources.js'
 
 // The 'meta-model' project type's factory — the meta-model module's contribution
@@ -51,12 +52,18 @@ export class MetaModelProjectFactory extends ServiceBase implements IProjectFact
             id: slugify(name), modelVersion: '0.1.0',
         }
         await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
+        // Lay down the agent-support scaffold (CLAUDE.md + .claude/) so an agent
+        // working in the project has the TODL rules + manual from the start.
+        await ensureScaffold(storage)
         return this.buildProject(storage, manifest)
     }
 
     public async openProject(storage: IStorage): Promise<Project>
     {
         const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as MetaModelManifest
+        // Self-heal: write any missing scaffold file (never overwrites the
+        // author's edits) so existing projects gain it too.
+        await ensureScaffold(storage)
         return this.buildProject(storage, manifest)
     }
 

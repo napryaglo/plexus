@@ -44,6 +44,40 @@ test('createProject writes a meta-model manifest with a publish identity', async
     expect(manifest.modelVersion).toBe('0.1.0')
 })
 
+test('createProject writes the agent-support scaffold (CLAUDE.md + .claude/)', async () => {
+    const storage = new FakeStorage('fake://Acme')
+    await factory().createProject(storage, 'Acme EA')
+
+    expect(await storage.Exists('CLAUDE.md')).toBe(true)
+    expect(await storage.Exists('.claude/todl-manual.md')).toBe(true)
+    expect(await storage.Exists('.claude/meta-model-guide.md')).toBe(true)
+    expect(await storage.Exists('.claude/commands/new-concept.md')).toBe(true)
+    // Content is the real asset, not a placeholder.
+    expect(await storage.ReadText('CLAUDE.md')).toMatch(/meta-model/i)
+    expect(await storage.ReadText('.claude/todl-manual.md')).toMatch(/namespace/)
+})
+
+test('scaffold surfaces in the tree (shown, not hidden like the manifest)', async () => {
+    const storage = new FakeStorage('fake://Acme')
+    const project = await factory().createProject(storage, 'Acme EA')
+    const names = project.Root.Children.ToArray().map((n) => n.Name)
+    expect(names).toContain('CLAUDE.md')
+    expect(names).toContain('.claude')
+    expect(names).not.toContain(PROJECT_MANIFEST_FILENAME)
+})
+
+test('openProject self-heals a missing scaffold without overwriting edits', async () => {
+    const storage = new FakeStorage()
+    await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify({ type: 'meta-model', name: 'P', id: 'p', modelVersion: '0.1.0' }))
+    // Pre-existing, author-edited CLAUDE.md — must be preserved.
+    await storage.WriteText('CLAUDE.md', 'MY EDITS')
+
+    await factory().openProject(storage)
+
+    expect(await storage.ReadText('CLAUDE.md')).toBe('MY EDITS')   // not clobbered
+    expect(await storage.Exists('.claude/todl-manual.md')).toBe(true)   // the missing one filled in
+})
+
 test('openProject tags .todl nodes openable and hides the manifest', async () => {
     const storage = new FakeStorage()
     await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify({ type: 'meta-model', name: 'P', id: 'p', modelVersion: '0.1.0' }))
