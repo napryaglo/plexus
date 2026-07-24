@@ -58,10 +58,71 @@ resources AgentChatResources {
         }
     }
 
+    // Borderless header button — a full-width clickable row (name + description +
+    // status) that toggles the tool card open/closed. Transparent with a neutral
+    // hover/press state layer; content is left-aligned (not centred like a Button).
+    Template x:key="ToolHeaderButton" [ TargetType = Button ] {
+        Border x:name="PART_Border" [ Background = #00000000, CornerRadius = 6 ] {
+            Border x:name="PART_StateLayer"
+                [ Background = #00000000, CornerRadius = 6, Padding = (6,4,6,4) ] {
+                ContentPresenter [ HorizontalAlignment = Stretch, VerticalAlignment = Center ]
+            }
+        }
+        when ( IsMouseOver ) { PART_StateLayer.Background = @StateHoverOverlay; }
+        when ( IsPressed ) { PART_StateLayer.Background = @StatePressOverlay; }
+    }
+
+    // Mono block used for both IN and OUT — a tinted, outlined box with the
+    // command / output in a monospace face. ClipToBounds keeps a long
+    // unbreakable token (a path, a hash) from spilling past the rounded corners.
+    Style x:key="ToolMonoBox" [ TargetType = Border ] {
+        Background = @SurfaceContainerHigh;
+        BorderBrush = @OutlineVariant;
+        BorderThickness = (1);
+        CornerRadius = 6;
+        Padding = (8,6,8,6);
+        ClipToBounds = true;
+    }
+
+    // The agent invoked a tool: a collapsible card. The header (name +
+    // description + status) is always shown and toggles the body; the body holds
+    // the IN (command / input) and OUT (captured result) mono blocks. Starts
+    // collapsed — $IsCollapsed shows the ▸ caret, $IsExpanded reveals the body.
     DataTemplate [ DataType = ToolActivity ] {
-        DockPanel [ LastChildFill = true, Margin = (0,2,0,2) ] {
-            TextBlock [ DockPanel.Dock = Right, Style = @BodySmall, Text = $Status, Foreground = @OnSurfaceVariant, Margin = (8,0,0,0) ]
-            TextBlock [ Style = @BodySmall, Text = $Name, Foreground = @OnSurfaceVariant ]
+        Border [ BorderBrush = @OutlineVariant, BorderThickness = (1), CornerRadius = 8,
+                 Background = @SurfaceContainerLow, Padding = (4), Margin = (0,3,20,3) ] {
+            StackPanel [ Orientation = Vertical ] {
+                Button [ Command = $ToggleCommand, Template = @ToolHeaderButton, HorizontalAlignment = Stretch ] {
+                    DockPanel [ LastChildFill = true ] {
+                        TextBlock [ DockPanel.Dock = Right, Style = @BodySmall, Text = $Status,
+                                    Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (8,0,0,0) ]
+                        TextBlock [ DockPanel.Dock = Left, Text = "▸", Visibility = $IsCollapsed << ToVisibility,
+                                    Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (0,0,6,0) ]
+                        TextBlock [ DockPanel.Dock = Left, Text = "▾", Visibility = $IsExpanded << ToVisibility,
+                                    Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (0,0,6,0) ]
+                        TextBlock [ DockPanel.Dock = Left, Style = @LabelLarge, Text = $Name,
+                                    Foreground = @OnSurface, VerticalAlignment = Center ]
+                        TextBlock [ Style = @BodySmall, Text = $Description, Visibility = $HasDescription << ToVisibility,
+                                    Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (8,0,0,0) ]
+                    }
+                }
+                StackPanel [ Orientation = Vertical, Visibility = $IsExpanded << ToVisibility, Margin = (2,4,2,2) ] {
+                    StackPanel [ Orientation = Vertical, Visibility = $HasCommand << ToVisibility ] {
+                        TextBlock [ Style = @LabelSmall, Text = "IN", Foreground = @OnSurfaceVariant, Margin = (0,0,0,2) ]
+                        Border [ Style = @ToolMonoBox ] {
+                            TextBlock [ Style = @BodySmall, FontFamily = "Consolas", Text = $Command,
+                                        Foreground = @OnSurface, TextWrapping = Wrap ]
+                        }
+                    }
+                    StackPanel [ Orientation = Vertical, Visibility = $HasOutput << ToVisibility, Margin = (0,6,0,0) ] {
+                        TextBlock [ Style = @LabelSmall, Text = "OUT", Foreground = @OnSurfaceVariant, Margin = (0,0,0,2) ]
+                        Border [ Style = @ToolMonoBox ] {
+                            TextBlock [ Style = @BodySmall, FontFamily = "Consolas", Text = $Output,
+                                        Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
+                        }
+                    }
+                }
+            }
         }
     }
 

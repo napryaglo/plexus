@@ -2,7 +2,7 @@
 // agent-chat.resources.mu) and the pure reducer that folds AgentEvents into an
 // ObservableCollection. Kept free of ServiceBase/window so it is unit-testable;
 // AgentService is a thin shell over it.
-import { MetaData, Model, ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, ObservableCollection, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
 import { type FlowDocument } from '@pragmatic-lab/mural/basic'
 import { AgentEventKind, type AgentEvent, type QuestionAnswer } from '../../../../../shared/agent-api.js'
 import { buildFlowDocument } from './markdown-document.js'
@@ -40,20 +40,94 @@ export class AssistantMessage extends Model
     }
 }
 
+// A tool the agent invoked. The header (Name + Description + Status) is always
+// shown; the body — IN (the tool's command / input) and OUT (a capped slice of
+// the result) — collapses. Starts collapsed; ToggleCommand flips it. Every
+// view-bound field is a DP (mural binds via get_property_value).
 export class ToolActivity extends Model
 {
-    public static readonly NameKey   = Model.RegisterProperty<string>(ToolActivity, 'Name', '', MetaData.None)
-    public static readonly StatusKey = Model.RegisterProperty<string>(ToolActivity, 'Status', 'running', MetaData.None)
+    public static readonly NameKey           = Model.RegisterProperty<string>(ToolActivity, 'Name', '', MetaData.None)
+    public static readonly DescriptionKey    = Model.RegisterProperty<string>(ToolActivity, 'Description', '', MetaData.None)
+    public static readonly HasDescriptionKey = Model.RegisterProperty<boolean>(ToolActivity, 'HasDescription', false, MetaData.None)
+    public static readonly CommandKey        = Model.RegisterProperty<string>(ToolActivity, 'Command', '', MetaData.None)
+    public static readonly HasCommandKey     = Model.RegisterProperty<boolean>(ToolActivity, 'HasCommand', false, MetaData.None)
+    public static readonly OutputKey         = Model.RegisterProperty<string>(ToolActivity, 'Output', '', MetaData.None)
+    public static readonly HasOutputKey      = Model.RegisterProperty<boolean>(ToolActivity, 'HasOutput', false, MetaData.None)
+    public static readonly StatusKey         = Model.RegisterProperty<string>(ToolActivity, 'Status', 'running', MetaData.None)
+    // IsExpanded + its inverse — no inverse Visibility converter exists, so the
+    // collapsed-caret binds $IsCollapsed and the body binds $IsExpanded.
+    public static readonly IsExpandedKey     = Model.RegisterProperty<boolean>(ToolActivity, 'IsExpanded', false, MetaData.None)
+    public static readonly IsCollapsedKey    = Model.RegisterProperty<boolean>(ToolActivity, 'IsCollapsed', true, MetaData.None)
+    public static readonly ToggleCommandKey  = Model.RegisterProperty<ICommand>(
+        ToolActivity, 'ToggleCommand', undefined as unknown as ICommand, MetaData.None)
+
     public readonly Id: string
-    constructor(id: string, name: string)
+
+    constructor(id: string, name: string, input: unknown)
     {
         super()
         this.Id = id
+        const description = toolDescription(input)
+        const command = toolDetail(input)
         this.set_property_value(ToolActivity.NameKey, name)
+        this.set_property_value(ToolActivity.DescriptionKey, description)
+        this.set_property_value(ToolActivity.HasDescriptionKey, description !== '')
+        this.set_property_value(ToolActivity.CommandKey, command)
+        this.set_property_value(ToolActivity.HasCommandKey, command !== '')
+        this.set_property_value(ToolActivity.ToggleCommandKey, new RelayCommand(() => this.toggle()))
     }
+
     public get Name(): string { return this.get_property_value(ToolActivity.NameKey) }
+    public get Description(): string { return this.get_property_value(ToolActivity.DescriptionKey) }
+    public get HasDescription(): boolean { return this.get_property_value(ToolActivity.HasDescriptionKey) }
+    public get Command(): string { return this.get_property_value(ToolActivity.CommandKey) }
+    public get HasCommand(): boolean { return this.get_property_value(ToolActivity.HasCommandKey) }
+    public get Output(): string { return this.get_property_value(ToolActivity.OutputKey) }
+    public get HasOutput(): boolean { return this.get_property_value(ToolActivity.HasOutputKey) }
     public get Status(): string { return this.get_property_value(ToolActivity.StatusKey) }
+    public get IsExpanded(): boolean { return this.get_property_value(ToolActivity.IsExpandedKey) }
+    public get IsCollapsed(): boolean { return this.get_property_value(ToolActivity.IsCollapsedKey) }
+    public get ToggleCommand(): ICommand { return this.get_property_value(ToolActivity.ToggleCommandKey) }
+
     public setStatus(status: string): void { this.set_property_value(ToolActivity.StatusKey, status) }
+    public setOutput(output: string): void
+    {
+        this.set_property_value(ToolActivity.OutputKey, output)
+        this.set_property_value(ToolActivity.HasOutputKey, output !== '')
+    }
+
+    private toggle(): void
+    {
+        const next = !this.IsExpanded
+        this.set_property_value(ToolActivity.IsExpandedKey, next)
+        this.set_property_value(ToolActivity.IsCollapsedKey, !next)
+    }
+}
+
+// Header subtitle — the agent's own one-line description (e.g. Bash's
+// `description` param). Empty for tools that don't supply one.
+function toolDescription(input: unknown): string
+{
+    if (input !== null && typeof input === 'object')
+    {
+        const d = (input as Record<string, unknown>).description
+        if (typeof d === 'string') return d
+    }
+    return ''
+}
+
+// The IN block — a tool's `command` (Bash) verbatim, otherwise its remaining
+// input fields as `key: value` lines. `description` is dropped (header subtitle).
+function toolDetail(input: unknown): string
+{
+    if (input === null || input === undefined) return ''
+    if (typeof input !== 'object') return String(input)
+    const o = input as Record<string, unknown>
+    if (typeof o.command === 'string') return o.command
+    return Object.entries(o)
+        .filter(([k]) => k !== 'description')
+        .map(([k, v]) => `${k}: ${typeof v === 'string' || typeof v === 'number' ? v : JSON.stringify(v)}`)
+        .join('\n')
 }
 
 export class TranscriptReducer
@@ -98,7 +172,7 @@ export class TranscriptReducer
             case AgentEventKind.ToolUse:
             {
                 this.currentAssistant = null
-                const activity = new ToolActivity(event.Id, event.Name)
+                const activity = new ToolActivity(event.Id, event.Name, event.Input)
                 this.pendingTools.set(event.Id, activity)
                 this.Transcript.Add(activity)
                 break
@@ -110,6 +184,7 @@ export class TranscriptReducer
                 if (activity !== undefined)
                 {
                     activity.setStatus(event.Ok ? 'done' : 'failed')
+                    activity.setOutput(event.Summary)
                     this.pendingTools.delete(event.Id)
                 }
                 break

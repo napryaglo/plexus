@@ -74,6 +74,34 @@ test('a failed tool result marks the activity failed', () => {
     expect((items(r)[0] as ToolActivity).Status).toBe('failed')
 })
 
+test('a Bash tool derives Description + Command and OUT from the result; toggles expand', () => {
+    const r = new TranscriptReducer()
+    r.apply({ Kind: AgentEventKind.ToolUse, Id: 't1', Name: 'Bash',
+        Input: { command: 'git status', description: 'Show working tree status' } })
+    const a = items(r)[0] as ToolActivity
+    expect(a.Description).toBe('Show working tree status')
+    expect(a.Command).toBe('git status')
+    expect(a.HasCommand).toBe(true)
+    expect(a.IsCollapsed).toBe(true)       // starts collapsed
+    expect(a.HasOutput).toBe(false)        // no result yet
+
+    r.apply({ Kind: AgentEventKind.ToolResult, Id: 't1', Ok: true, Summary: 'on branch main' })
+    expect(a.Output).toBe('on branch main')
+    expect(a.HasOutput).toBe(true)
+
+    a.ToggleCommand.Execute(undefined)     // click the header
+    expect(a.IsExpanded).toBe(true)
+    expect(a.IsCollapsed).toBe(false)
+})
+
+test('a non-Bash tool renders its input as key: value IN lines', () => {
+    const r = new TranscriptReducer()
+    r.apply({ Kind: AgentEventKind.ToolUse, Id: 't1', Name: 'Read', Input: { file_path: '/a/b.ts', limit: 40 } })
+    const a = items(r)[0] as ToolActivity
+    expect(a.Description).toBe('')                         // no description param
+    expect(a.Command).toBe('file_path: /a/b.ts\nlimit: 40')
+})
+
 test('assistant text after a tool starts a fresh bubble (does not reopen the old one)', () => {
     const r = new TranscriptReducer()
     r.apply({ Kind: AgentEventKind.AssistantText, Text: 'a' })

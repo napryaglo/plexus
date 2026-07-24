@@ -11,20 +11,27 @@ import {
     type AgentEvent,
 } from '../../shared/agent-api.js'
 
-// Reduce a tool_result's content (a string or an array of text blocks) to a
-// short one-line summary for the UI chip.
-function summarize(content: unknown): string
+// Capture a tool_result's content (a string or an array of text blocks) as the
+// OUT block: the first ~20 lines, capped at ~2000 chars, with a trailing ellipsis
+// when clipped. Enough to read typical command output without pasting a whole log.
+const OUT_MAX_LINES = 20
+const OUT_MAX_CHARS = 2000
+function captureOutput(content: unknown): string
 {
-    if (typeof content === 'string') return content.slice(0, 200)
-    if (Array.isArray(content))
-    {
-        const text = content
+    let text = ''
+    if (typeof content === 'string') text = content
+    else if (Array.isArray(content))
+        text = content
             .map((b) => (b !== null && typeof b === 'object' && 'text' in b ? String((b as { text: unknown }).text) : ''))
-            .join(' ')
+            .join('\n')
             .trim()
-        return text.slice(0, 200)
-    }
-    return ''
+    if (text === '') return ''
+
+    const lines = text.split('\n')
+    let clipped = lines.length > OUT_MAX_LINES
+    let out = lines.slice(0, OUT_MAX_LINES).join('\n')
+    if (out.length > OUT_MAX_CHARS) { out = out.slice(0, OUT_MAX_CHARS); clipped = true }
+    return clipped ? out + '\n…' : out
 }
 
 export class StreamJsonParser
@@ -83,7 +90,7 @@ export class StreamJsonParser
                                 Kind:    AgentEventKind.ToolResult,
                                 Id:      String(block.tool_use_id),
                                 Ok:      block.is_error !== true,
-                                Summary: summarize(block.content),
+                                Summary: captureOutput(block.content),
                             })
                 break
             }
