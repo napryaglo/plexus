@@ -14,9 +14,12 @@ import {
     type ICommand,
     type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
-import type { IAgentApi } from '../../../../../shared/agent-api.js'
+import { AgentEventKind, type CreateProjectRequest, type IAgentApi } from '../../../../../shared/agent-api.js'
 import { EnvironmentService } from '../../../services/environment/environment-service.js'
 import { OpenProjectsStore } from '../../../services/projects/open-projects-store.js'
+import { ProjectExplorerService } from '../../project-explorer/services/project-explorer-service.js'
+import type { NewProjectResult } from '../../../services/projects/new-project-dialog-model.js'
+import { NewProjectCard } from './new-project-card.js'
 import { TranscriptReducer } from './transcript.js'
 
 export class AgentService extends ServiceBase
@@ -78,8 +81,12 @@ export class AgentService extends ServiceBase
         this.reducer.onPendingChange = () =>
             this.set_property_value(AgentService.CanInputKey, !this.reducer.HasPendingQuestion)
 
-        // Fold every pushed agent event into the transcript.
-        this.agent.onEvent((event) => this.reducer.apply(event))
+        // Fold every pushed agent event into the transcript. create_project is
+        // diverted: its card + creation are assembled asynchronously here.
+        this.agent.onEvent((event) => {
+            if (event.Kind === AgentEventKind.CreateProject) { void this.handleCreateProject(event.Request); return }
+            this.reducer.apply(event)
+        })
 
         // Track the open-project set: seed from the store (forcing a load), then
         // follow changes. Each change re-targets the NEXT turn + refreshes Status.
@@ -122,6 +129,35 @@ export class AgentService extends ServiceBase
         this.reducer.beginUserTurn(text)   // optimistic echo
         void this.agent.sendTurn(cwd, addDirs, text)
         this.set_property_value(AgentService.DraftKey, '')
+    }
+
+    // The agent called create_project: build a pre-filled New Project form (the
+    // modal's view-model), host it in a card in the transcript, and — when the
+    // user submits — create the project via the shared creator and post the
+    // outcome back to unblock the tool. Cancel posts a cancelled outcome.
+    private async handleCreateProject(req: CreateProjectRequest): Promise<void>
+    {
+        const explorer = this.Provider.getRequired(ProjectExplorerService.Key)
+        const card = new NewProjectCard(req.id)
+        const close = (result?: NewProjectResult): void =>
+        {
+            if (result === undefined)
+            {
+                card.showCancelled()
+                void this.agent.createProjectResult({ id: req.id, created: false, cancelled: true })
+                this.reducer.releasePending(req.id)
+                return
+            }
+            void (async () =>
+            {
+                const outcome = await explorer.CreateProject(result)
+                card.showResult(outcome)
+                void this.agent.createProjectResult({ id: req.id, ...outcome })
+                this.reducer.releasePending(req.id)
+            })()
+        }
+        card.Form = await explorer.NewProjectFormFor(close, req.prefill)
+        this.reducer.addPendingCard(req.id, card)
     }
 }
 
