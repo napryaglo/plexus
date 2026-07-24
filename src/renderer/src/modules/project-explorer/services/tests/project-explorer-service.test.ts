@@ -12,7 +12,8 @@ import { OpenProjectsStore } from '../../../../services/projects/open-projects-s
 import { PROJECT_MANIFEST_FILENAME, type IProjectFactory, type IPublishableProjectFactory } from '../../../../services/projects/project-factory.js'
 import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../../services/documents/document-factory.js'
 import { ConfirmDialogModel } from '../../../../services/dialogs/confirm-dialog-model.js'
-import { ProjectExplorerService, importFilters, uniqueStorageName } from '../project-explorer-service.js'
+import { ProjectExplorerService, applyPrefill, importFilters, uniqueStorageName } from '../project-explorer-service.js'
+import { NewProjectDialogModel, ProjectTypeChoice } from '../../../../services/projects/new-project-dialog-model.js'
 import { TodlValidationService } from '../../../../services/todl/todl-validation-service.js'
 
 // A picked file as the OS dialog would hand it back (absolute path + raw bytes).
@@ -107,6 +108,7 @@ function makeExplorer(openFiles: Picked[] | null = null, confirm = true): {
     provider: ServiceProvider
     shownDialogs: unknown[]
     rec: Rec
+    occupied: Set<string>
 }
 {
     const provider = new ServiceProvider()
@@ -116,6 +118,14 @@ function makeExplorer(openFiles: Picked[] | null = null, confirm = true): {
     provider.registerInstance(EnvironmentService.Key, { UserDataDirectory: '/data' } as unknown as EnvironmentService)
     const shownDialogs: unknown[] = []
     provider.registerInstance(DialogService.Key, fakeDialogs(confirm, shownDialogs))
+    // Storage registry whose per-folder storage reports a project manifest only for
+    // folders marked `occupied` — enough to exercise New-Project validation.
+    const occupied = new Set<string>()
+    provider.registerInstance(StorageProviderRegistry.Key, {
+        Create: (_backend: string, folder: string) => ({
+            Exists: (name: string) => Promise.resolve(occupied.has(folder) && name === PROJECT_MANIFEST_FILENAME),
+        }),
+    } as unknown as StorageProviderRegistry)
     const store = new OpenProjectsStore(provider)
     provider.registerInstance(OpenProjectsStore.Key, store)
     // Editor routing: a recording `.todl` document factory + a registry that
@@ -126,7 +136,7 @@ function makeExplorer(openFiles: Picked[] | null = null, confirm = true): {
         GetByExtension: (ext: string) => (ext === '.todl' ? { Factory: TodlDocFactoryToken } : undefined),
     } as unknown as DocumentTypeRegistry)
     const service = new ProjectExplorerService(provider)
-    return { service, host, store, priv: service as unknown as ExplorerPrivates, provider, shownDialogs, rec }
+    return { service, host, store, priv: service as unknown as ExplorerPrivates, provider, shownDialogs, rec, occupied }
 }
 
 function childNode(op: OpenProject): ProjectNode
@@ -165,6 +175,35 @@ test('RefreshProjects rescans each named project and revalidates once; unknown f
 
     expect(opened).toBe(1)                       // only the known project rescanned
     expect(calls).toEqual(['clear', 'revalidate']) // cleared its bases, revalidated once
+})
+
+function formWith(types: string[]): NewProjectDialogModel {
+    const choices = types.map((t) => new ProjectTypeChoice(t, t, `${t} project`))
+    // fs/validate/close are unused by applyPrefill; pass inert stubs.
+    return new NewProjectDialogModel(choices, {} as never, async () => null, () => {})
+}
+
+test('applyPrefill sets name/location and selects the matching type', () => {
+    const form = formWith(['diagram', 'library'])
+    applyPrefill(form, { name: 'Acme', location: 'C:/acme', type: 'library' })
+    expect(form.Name).toBe('Acme')
+    expect(form.Location).toBe('C:/acme')
+    expect(form.SelectedType?.Type).toBe('library')
+})
+
+test('applyPrefill ignores an unknown type and missing fields', () => {
+    const form = formWith(['diagram'])
+    applyPrefill(form, { type: 'nope' })
+    expect(form.SelectedType?.Type).toBe('diagram')   // stays on the default first type
+    expect(form.Name).toBe('')
+})
+
+test('CreateProject refuses a folder that already contains a project', async () => {
+    const { service, occupied } = makeExplorer()
+    occupied.add('C:/taken')
+    const outcome = await service.CreateProject({ type: 'diagram', name: 'X', location: 'C:/taken' })
+    expect(outcome.created).toBe(false)
+    expect(outcome.error).toContain('already contains a project')
 })
 
 test('opening a node opens it through the registered document editor', async () => {

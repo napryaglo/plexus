@@ -70,6 +70,25 @@ import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-mod
 import { RecentProjectsService } from '../../../services/projects/recent-projects-service.js'
 import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'
 import { isLocalFileAccess, type IStorage } from '../../../services/storage/storage.js'
+import type { CreateProjectPrefill, CreateProjectResult } from '../../../../../shared/agent-api.js'
+
+// The result of CreateProject — the tool outcome minus its correlation id.
+export type CreateOutcome = Omit<CreateProjectResult, 'id'>
+
+// Apply the agent's optional prefill onto a New Project form: set the name /
+// location text and select the matching type (unknown/missing values are ignored,
+// leaving the form's defaults).
+export function applyPrefill(form: NewProjectDialogModel, prefill?: CreateProjectPrefill): void
+{
+    if (prefill === undefined) return
+    if (prefill.name !== undefined) form.Name = prefill.name
+    if (prefill.location !== undefined) form.Location = prefill.location
+    if (prefill.type !== undefined)
+    {
+        const match = form.Types.ToArray().find((t) => t.Type === prefill.type)
+        if (match?.SelectCommand !== undefined) match.SelectCommand.Execute()
+    }
+}
 
 export class ProjectExplorerService extends ServiceBase
 {
@@ -141,18 +160,42 @@ export class ProjectExplorerService extends ServiceBase
     {
         const choices = this.typeChoices()
         if (choices.length === 0) { this.Status = 'No project factory registered.'; return }
+        const vm = await this.NewProjectFormFor((r) => this.dialogs.Close(r))
+        const result = (await this.dialogs.Show({ Title: 'New Project', Content: vm, Width: 520 })) as NewProjectResult | undefined
+        if (result === undefined) return
+        await this.CreateProject(result)
+    }
 
+    // Build a configured New Project form: the type choices, the published
+    // meta-models/libraries pickers, and live validation — pre-filled from the
+    // agent's proposal. `close` is supplied by the caller (the modal or the chat
+    // card). Shared by newProject() and the agent's create_project card.
+    public async NewProjectFormFor(
+        close: (result?: NewProjectResult) => void,
+        prefill?: CreateProjectPrefill): Promise<NewProjectDialogModel>
+    {
         const vm = new NewProjectDialogModel(
-            choices,
+            this.typeChoices(),
             this.fs,
             (r) => this.validateNewProject(r),
-            (r) => this.dialogs.Close(r),
+            close,
             await this.publishedMetaModels(),
             await this.publishedLibraries(),
         )
-        const result = (await this.dialogs.Show({ Title: 'New Project', Content: vm, Width: 520 })) as NewProjectResult | undefined
-        if (result === undefined) return
-        await this.createProjectAt(result.type, result.name, result.location, result.metaModel, result.libraries)
+        applyPrefill(vm, prefill)
+        return vm
+    }
+
+    // The single project creator: validate, create on disk, add to the open set,
+    // and return the outcome (which a void command cannot). Shared by the toolbar
+    // dialog and the agent's create card.
+    public async CreateProject(data: NewProjectResult): Promise<CreateOutcome>
+    {
+        const error = await this.validateNewProject(data)
+        if (error !== null) return { created: false, error }
+        const op = await this.createProjectAt(data.type, data.name, data.location, data.metaModel, data.libraries)
+        if (op === undefined) return { created: false, error: this.Status }
+        return { created: true, folder: op.Folder, name: op.Name, type: data.type }
     }
 
     // Read a folder's manifest envelope → build the project's storage for the
@@ -202,10 +245,10 @@ export class ProjectExplorerService extends ServiceBase
     // (library binds a meta-model; architecture binds a meta-model + libraries).
     private async createProjectAt(
         type: string, name: string, folder: string,
-        metaModel?: BaseRef, libraries?: readonly BaseRef[]): Promise<void>
+        metaModel?: BaseRef, libraries?: readonly BaseRef[]): Promise<OpenProject | undefined>
     {
         const factory = this.resolveFactory(type)
-        if (factory === undefined) { this.Status = `No factory for project type "${type}".`; return }
+        if (factory === undefined) { this.Status = `No factory for project type "${type}".`; return undefined }
 
         const storage = this.storageRegistry.Create(StorageProviderRegistry.DefaultBackendId, folder)
         try {
@@ -216,8 +259,10 @@ export class ProjectExplorerService extends ServiceBase
             const op = await this.addOpenProject(project, factory, storage)
             await this.recents.Add({ name: op.Name, path: folder, type, openedAt: Date.now() })
             this.Status = `Created ${op.Name}.`
+            return op
         } catch (e) {
             this.Status = `Create failed: ${(e as Error).message}`
+            return undefined
         }
     }
 
