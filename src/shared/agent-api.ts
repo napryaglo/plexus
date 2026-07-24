@@ -15,6 +15,9 @@ export enum AgentChannel
     // renderer→main: the WorkspaceRefreshService's result for a pending
     // refresh_project tool call (unblocks the tool).
     RefreshProjectResult = 'agent:refresh-project-result',
+    // renderer→main: the create_project card's outcome for a pending
+    // create_project tool call (unblocks the tool).
+    CreateProjectResult = 'agent:create-project-result',
 }
 
 export enum AgentEventKind
@@ -29,6 +32,9 @@ export enum AgentEventKind
     // The agent called refresh_project: the renderer re-scans + re-validates the
     // target project(s) and replies via AgentChannel.RefreshProjectResult.
     RefreshProject = 'refresh-project',
+    // The agent called create_project: the renderer shows the New Project form as
+    // a card and replies with the outcome via AgentChannel.CreateProjectResult.
+    CreateProject  = 'create-project',
     TurnComplete   = 'turn-complete',
     Error          = 'error',
 }
@@ -76,6 +82,24 @@ export const ASK_TOOL_NAME = 'ask_user_question'
 export const ASK_TOOL_QUALIFIED = `mcp__${MCP_SERVER_KEY}__${ASK_TOOL_NAME}`
 export const REFRESH_TOOL_NAME = 'refresh_project'
 export const REFRESH_TOOL_QUALIFIED = `mcp__${MCP_SERVER_KEY}__${REFRESH_TOOL_NAME}`
+export const CREATE_PROJECT_TOOL_NAME = 'create_project'
+export const CREATE_PROJECT_TOOL_QUALIFIED = `mcp__${MCP_SERVER_KEY}__${CREATE_PROJECT_TOOL_NAME}`
+
+// create_project payloads. `prefill` is the agent's optional proposal; the user
+// finalizes it in the New Project form. Correlated by `id` like a Question.
+export interface CreateProjectPrefill { name?: string; type?: string; location?: string }
+export interface CreateProjectRequest { id: string; prefill?: CreateProjectPrefill }
+// The outcome the create_project card returns to the agent.
+export interface CreateProjectResult
+{
+    id: string
+    created: boolean
+    cancelled?: boolean
+    folder?: string
+    name?: string
+    type?: string
+    error?: string
+}
 
 // Emitted once per session from the CLI's system:init line.
 export interface SessionStartedEvent { Kind: AgentEventKind.SessionStarted; SessionId: string }
@@ -85,6 +109,7 @@ export interface ToolUseEvent        { Kind: AgentEventKind.ToolUse;    Id: stri
 export interface ToolResultEvent     { Kind: AgentEventKind.ToolResult; Id: string; Ok: boolean; Summary: string }
 export interface QuestionEvent       { Kind: AgentEventKind.Question; Request: QuestionRequest }
 export interface RefreshProjectEvent { Kind: AgentEventKind.RefreshProject; Request: RefreshProjectRequest }
+export interface CreateProjectEvent  { Kind: AgentEventKind.CreateProject; Request: CreateProjectRequest }
 export interface TurnCompleteEvent   { Kind: AgentEventKind.TurnComplete }
 export interface AgentErrorEvent     { Kind: AgentEventKind.Error; Message: string }
 
@@ -95,6 +120,7 @@ export type AgentEvent =
     | ToolResultEvent
     | QuestionEvent
     | RefreshProjectEvent
+    | CreateProjectEvent
     | TurnCompleteEvent
     | AgentErrorEvent
 
@@ -112,5 +138,7 @@ export interface IAgentApi
     answerQuestion(answer: QuestionAnswer): Promise<void>;
     // The renderer's summary for a pending refresh_project tool call.
     refreshProjectResult(result: RefreshProjectResult): Promise<void>;
+    // The renderer's outcome for a pending create_project tool call.
+    createProjectResult(result: CreateProjectResult): Promise<void>;
     onEvent(handler: (event: AgentEvent) => void): () => void;
 }

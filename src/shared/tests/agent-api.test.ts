@@ -5,6 +5,8 @@ import {
   MCP_SERVER_KEY,
   REFRESH_TOOL_QUALIFIED,
   REFRESH_TOOL_NAME,
+  CREATE_PROJECT_TOOL_NAME,
+  CREATE_PROJECT_TOOL_QUALIFIED,
 } from '../agent-api.js'
 
 test('channel ids are namespaced under agent:', () => {
@@ -28,4 +30,16 @@ test('both tools are qualified under the single plexus server key', () => {
 test('the workspace channel and event-kind members exist', () => {
   expect(AgentChannel.RefreshProjectResult).toBe('agent:refresh-project-result')
   expect(AgentEventKind.RefreshProject).toBe('refresh-project')
+})
+
+test('create_project tool is qualified under the single plexus server key', () => {
+  expect(CREATE_PROJECT_TOOL_NAME).toBe('create_project')
+  expect(CREATE_PROJECT_TOOL_QUALIFIED).toBe('mcp__plexus__create_project')
+})
+
+test('the create-project channel and event kind exist and are distinct', () => {
+  expect(AgentChannel.CreateProjectResult).toBe('agent:create-project-result')
+  expect(AgentEventKind.CreateProject).toBe('create-project')
+  const kinds = Object.values(AgentEventKind)
+  expect(new Set(kinds).size).toBe(kinds.length)
 })

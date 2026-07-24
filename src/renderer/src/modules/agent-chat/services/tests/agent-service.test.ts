@@ -15,6 +15,7 @@ function fakeAgent(): { api: IAgentApi; turns: Array<{ cwd: string; addDirs: rea
         abort: () => Promise.resolve(),
         answerQuestion: () => Promise.resolve(),
         refreshProjectResult: () => Promise.resolve(),
+        createProjectResult: () => Promise.resolve(),
         onEvent: () => () => {},
     }
     return { api, turns }
