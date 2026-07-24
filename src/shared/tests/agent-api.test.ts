@@ -1,5 +1,11 @@
 import { test, expect } from 'vitest'
-import { AgentChannel, AgentEventKind } from '../agent-api.js'
+import {
+  AgentChannel,
+  AgentEventKind,
+  REFRESH_TOOL_QUALIFIED,
+  WORKSPACE_SERVER_KEY,
+  REFRESH_TOOL_NAME,
+} from '../agent-api.js'
 
 test('channel ids are namespaced under agent:', () => {
   expect(AgentChannel.StartSession).toBe('agent:start-session')
@@ -11,4 +17,15 @@ test('channel ids are namespaced under agent:', () => {
 test('every event kind has a distinct string value', () => {
   const values = Object.values(AgentEventKind)
   expect(new Set(values).size).toBe(values.length)
+})
+
+test('qualified refresh tool name matches the mcp__<server>__<tool> shape the allow-list needs', () => {
+  expect(WORKSPACE_SERVER_KEY).toBe('PlexusWorkspace')
+  expect(REFRESH_TOOL_NAME).toBe('refresh_project')
+  expect(REFRESH_TOOL_QUALIFIED).toBe('mcp__PlexusWorkspace__refresh_project')
+})
+
+test('the workspace channel and event-kind members exist', () => {
+  expect(AgentChannel.RefreshProjectResult).toBe('agent:refresh-project-result')
+  expect(AgentEventKind.RefreshProject).toBe('refresh-project')
 })

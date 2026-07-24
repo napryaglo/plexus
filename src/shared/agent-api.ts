@@ -12,6 +12,9 @@ export enum AgentChannel
     Event          = 'agent:event',
     // renderer→main: the user's answer to a pending AskUserQuestion card.
     AnswerQuestion = 'agent:answer-question',
+    // renderer→main: the WorkspaceRefreshService's result for a pending
+    // refresh_project tool call (unblocks the tool).
+    RefreshProjectResult = 'agent:refresh-project-result',
 }
 
 export enum AgentEventKind
@@ -23,6 +26,9 @@ export enum AgentEventKind
     // The agent called the ask_user_question tool: render a choice card and block
     // until the user answers (see AskUserQuestionServer + AnswerQuestion).
     Question       = 'question',
+    // The agent called refresh_project: the renderer re-scans + re-validates the
+    // target project(s) and replies via AgentChannel.RefreshProjectResult.
+    RefreshProject = 'refresh-project',
     TurnComplete   = 'turn-complete',
     Error          = 'error',
 }
@@ -38,6 +44,28 @@ export interface QuestionRequest { id: string; questions: Question[] }
 // "Other" pick contributes the typed string as one of the array entries.
 export interface QuestionAnswer { id: string; answers: Record<string, string[]> }
 
+// refresh_project payloads. `path` (optional) targets one project by containment;
+// omitted ⇒ all open projects. Correlated by `id` like a Question.
+export interface RefreshProjectRequest { id: string; path?: string }
+// Per-project outcome the tool returns to the agent.
+export interface RefreshedProjectSummary
+{
+    name: string
+    folder: string
+    errorCount: number
+    warningCount: number
+    sampleMessages: string[]
+}
+// The tool result: one summary per refreshed project. `note` explains an empty
+// set (e.g. path matched nothing); `error` marks a failure to refresh at all.
+export interface RefreshProjectResult
+{
+    id: string
+    projects: RefreshedProjectSummary[]
+    note?: string
+    error?: string
+}
+
 // The ask-user-question MCP tool identity. `MCP_SERVER_KEY` is the --mcp-config
 // key, so the CLI re-exposes the tool to the model as ASK_TOOL_QUALIFIED. Kept in
 // this dep-free shared module so the stream parser can suppress the tool's chip and
@@ -46,6 +74,13 @@ export const MCP_SERVER_KEY = 'plexus'
 export const ASK_TOOL_NAME = 'ask_user_question'
 export const ASK_TOOL_QUALIFIED = `mcp__${MCP_SERVER_KEY}__${ASK_TOOL_NAME}`
 
+// The PlexusWorkspace MCP tool identity — a second in-process server. Kept next
+// to the ask-tool consts so the provider can allow-list it without importing the
+// SDK-heavy server.
+export const WORKSPACE_SERVER_KEY = 'PlexusWorkspace'
+export const REFRESH_TOOL_NAME = 'refresh_project'
+export const REFRESH_TOOL_QUALIFIED = `mcp__${WORKSPACE_SERVER_KEY}__${REFRESH_TOOL_NAME}`
+
 // Emitted once per session from the CLI's system:init line.
 export interface SessionStartedEvent { Kind: AgentEventKind.SessionStarted; SessionId: string }
 // A token delta appended to the growing assistant bubble.
@@ -53,6 +88,7 @@ export interface AssistantTextEvent  { Kind: AgentEventKind.AssistantText;  Text
 export interface ToolUseEvent        { Kind: AgentEventKind.ToolUse;    Id: string; Name: string; Input: unknown }
 export interface ToolResultEvent     { Kind: AgentEventKind.ToolResult; Id: string; Ok: boolean; Summary: string }
 export interface QuestionEvent       { Kind: AgentEventKind.Question; Request: QuestionRequest }
+export interface RefreshProjectEvent { Kind: AgentEventKind.RefreshProject; Request: RefreshProjectRequest }
 export interface TurnCompleteEvent   { Kind: AgentEventKind.TurnComplete }
 export interface AgentErrorEvent     { Kind: AgentEventKind.Error; Message: string }
 
@@ -62,6 +98,7 @@ export type AgentEvent =
     | ToolUseEvent
     | ToolResultEvent
     | QuestionEvent
+    | RefreshProjectEvent
     | TurnCompleteEvent
     | AgentErrorEvent
 
@@ -77,5 +114,7 @@ export interface IAgentApi
     abort(): Promise<void>;
     // Reply to a pending AskUserQuestion card; unblocks the agent's tool call.
     answerQuestion(answer: QuestionAnswer): Promise<void>;
+    // The renderer's summary for a pending refresh_project tool call.
+    refreshProjectResult(result: RefreshProjectResult): Promise<void>;
     onEvent(handler: (event: AgentEvent) => void): () => void;
 }
