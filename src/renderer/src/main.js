@@ -12,6 +12,7 @@
 import './fonts.css'
 import { app } from './app.mu.js'
 import { HtmlTarget } from '@pragmatic-lab/mural/visual-engine'
+import { ThemeManager, Density } from '@pragmatic-lab/mural/runtime'
 import { ContentHostService, PanelDockService } from '@pragmatic-lab/mural/framework'
 import { DiagramWorkspaceService } from './modules/diagram/services/diagram-workspace-service.js'
 import { AgentService } from './modules/agent-chat/services/agent-service.js'
@@ -45,6 +46,13 @@ registerMuralLanguage()
 // blank white window otherwise).
 window.addEventListener('error', (e) => console.error('[plexus] uncaught:', e.error ?? e.message))
 window.addEventListener('unhandledrejection', (e) => console.error('[plexus] unhandled rejection:', e.reason))
+
+// Run the whole shell at Compact density — matches the mural demo platform.
+// ThemeManager.Density is an inherited attached property on the app root (set
+// up by app.mu's initialize on import), so this single write cascades to every
+// control's `when (ThemeManager.Density = Compact)` template trigger (tighter
+// chip/toolbar/list chrome). Set before mount so the first layout is compact.
+ThemeManager.Density = Density.Compact
 
 // Pin layout to the loaded icon-font metrics before mounting — measureText
 // returns fallback widths until the @font-face resolves.
