@@ -300,10 +300,10 @@ function codeChip(text: string): InlineUIContainer
 
     const chip = new Border(label)
     chip.CornerRadius = 4
-    // Old tight padding. With baseline alignment (mural ≥ 0.1.35) the label sits
-    // exactly on the surrounding text baseline regardless of this padding — the
-    // padding only sets how far the box extends above/below the label.
-    chip.Padding = new Thickness(5, 1, 5, 1)
+    // With baseline alignment (mural ≥ 0.1.35) the label sits exactly on the
+    // surrounding text baseline regardless of this padding — the padding only
+    // sets how far the box extends above/below the label (a touch more above).
+    chip.Padding = new Thickness(5, 2, 5, 1)
     bindTheme(chip, Border.BackgroundKey, 'SurfaceContainerHigh')
 
     return new InlineUIContainer(chip)
