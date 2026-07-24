@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import {
     Bold, Border, Hyperlink, InlineUIContainer, Italic, List, ListItem, ListMarkerStyle,
-    Paragraph, Run,
+    Paragraph, Run, Table, TableCell, TableRow, TextAlignment,
 } from '@pragmatic-lab/mural/basic'
 import { buildFlowDocument } from '../markdown-document.js'
 
@@ -91,6 +91,82 @@ test('a paragraph directly followed by a list still splits', () => {
     expect(b.length).toBe(2)
     expect(b[0]).toBeInstanceOf(Paragraph)
     expect(b[1]).toBeInstanceOf(List)
+})
+
+// ── GFM tables ───────────────────────────────────────────────────────────────
+
+const TABLE = [
+    '| File | Taxonomy |',
+    '|------|----------|',
+    '| `enums/app.todl` | application-kind |',
+    '| `enums/env.todl` | environment-kind |',
+].join('\n')
+
+function firstRowCells(t: Table): TableCell[] { return t.Rows.ToArray()[0]!.Cells.ToArray() }
+
+test('a GFM table becomes a Table with a header row and one row per body line', () => {
+    const b = blocks(TABLE)
+    expect(b.length).toBe(1)
+    expect(b[0]).toBeInstanceOf(Table)
+    const rows = (b[0] as Table).Rows.ToArray()
+    expect(rows.length).toBe(3)              // header + 2 body rows
+    expect(rows[0]).toBeInstanceOf(TableRow)
+    expect(rows[0]!.IsHeader).toBe(true)
+    expect(rows[1]!.IsHeader).toBe(false)
+    expect(rows[0]!.Cells.ToArray().length).toBe(2)
+})
+
+test('header cells are bold; body cells are not', () => {
+    const t = blocks(TABLE)[0] as Table
+    const headerCell = firstRowCells(t)[0]!
+    const headerPara = headerCell.Blocks.ToArray()[0] as Paragraph
+    expect(headerPara.Inlines.ToArray()[0]).toBeInstanceOf(Bold)
+
+    const bodyCell = t.Rows.ToArray()[1]!.Cells.ToArray()[1]!
+    const bodyPara = bodyCell.Blocks.ToArray()[0] as Paragraph
+    expect(bodyPara.Inlines.ToArray().some((x) => x instanceof Bold)).toBe(false)
+})
+
+test('cell content still parses inline markup (code chips)', () => {
+    const t = blocks(TABLE)[0] as Table
+    const cell = t.Rows.ToArray()[1]!.Cells.ToArray()[0]!    // `enums/app.todl`
+    const para = cell.Blocks.ToArray()[0] as Paragraph
+    const chip = para.Inlines.ToArray().find((x) => x instanceof InlineUIContainer) as InlineUIContainer | undefined
+    expect(chip).toBeDefined()
+    expect(chip!.Child).toBeInstanceOf(Border)
+})
+
+test('column alignment is read from the delimiter colons', () => {
+    const md = [
+        '| L | C | R |',
+        '|:--|:-:|--:|',
+        '| a | b | c |',
+    ].join('\n')
+    const t = blocks(md)[0] as Table
+    const cells = t.Rows.ToArray()[1]!.Cells.ToArray()
+    const align = (c: TableCell): TextAlignment => (c.Blocks.ToArray()[0] as Paragraph).TextAlignment
+    expect(align(cells[0]!)).toBe(TextAlignment.Left)
+    expect(align(cells[1]!)).toBe(TextAlignment.Center)
+    expect(align(cells[2]!)).toBe(TextAlignment.Right)
+})
+
+test('tables work with or without edge pipes and after a paragraph', () => {
+    const md = [
+        'Here is a table:',
+        'A | B',
+        '--- | ---',
+        '1 | 2',
+    ].join('\n')
+    const b = blocks(md)
+    expect(b[0]).toBeInstanceOf(Paragraph)   // prose splits off
+    expect(b[1]).toBeInstanceOf(Table)
+    expect((b[1] as Table).Rows.ToArray()[0]!.Cells.ToArray().length).toBe(2)
+})
+
+test('a pipe-containing sentence with no delimiter row is NOT a table', () => {
+    const b = blocks('use a | b to pipe output')
+    expect(b[0]).toBeInstanceOf(Paragraph)
+    expect(b.some((x) => x instanceof Table)).toBe(false)
 })
 
 test('unterminated markup degrades to literal text (streaming-safe)', () => {

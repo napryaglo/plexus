@@ -1,6 +1,7 @@
 import {
     Bold, Border, FlowDocument, Hyperlink, InlineUIContainer, Italic, LineBreak,
-    List, ListItem, ListMarkerStyle, Paragraph, Run, TextBlock,
+    List, ListItem, ListMarkerStyle, Paragraph, Run, Table, TableCell, TableRow,
+    TextAlignment, TextBlock,
     type Block, type Inline,
 } from '@pragmatic-lab/mural/basic'
 import { DynamicResource, Model, PropertyKey, Thickness } from '@pragmatic-lab/mural/runtime'
@@ -106,9 +107,26 @@ function parseBlocks(text: string): Block[]
             continue
         }
 
-        // Paragraph — gather soft-wrapped lines until a blank line or a new block.
+        // GFM table — a header row of `| … |` cells immediately followed by a
+        // delimiter row of dashes (`| --- | :--: |`). The lookahead keeps a lone
+        // sentence that happens to contain a pipe from being read as a table.
+        if (startsTable(lines, i)) {
+            const header = splitTableRow(line)
+            const aligns = columnAlignments(lines[i + 1]!, header.length)
+            i += 2
+            const body: string[][] = []
+            // Body runs until a blank line or a line without a pipe (a new block).
+            while (i < lines.length && lines[i]!.trim() !== '' && lines[i]!.includes('|')) {
+                body.push(splitTableRow(lines[i]!)); i += 1
+            }
+            blocks.push(tableBlock(header, aligns, body))
+            continue
+        }
+
+        // Paragraph — gather soft-wrapped lines until a blank line or a new block
+        // (including a table that starts on the next line).
         const para: string[] = []
-        while (i < lines.length && lines[i]!.trim() !== '' && !isBlockStart(lines[i]!)) {
+        while (i < lines.length && lines[i]!.trim() !== '' && !isBlockStart(lines[i]!) && !startsTable(lines, i)) {
             para.push(lines[i]!.trim()); i += 1
         }
         blocks.push(paragraph(para.join(' ')))
@@ -126,6 +144,14 @@ function isBlockStart(line: string): boolean
         || /^\s*>\s?/.test(line)
         || /^\s*[-*+]\s+/.test(line)
         || /^\s*\d+\.\s+/.test(line)
+}
+
+// Does line `i` begin a GFM table? True when it has a pipe and the next line is
+// a delimiter row — the two-line signature that distinguishes a table header
+// from an ordinary sentence containing a pipe.
+function startsTable(lines: string[], i: number): boolean
+{
+    return lines[i]!.includes('|') && i + 1 < lines.length && isTableDelimiter(lines[i + 1]!)
 }
 
 function paragraph(text: string): Paragraph
@@ -181,6 +207,84 @@ function listItem(text: string): ListItem
     for (const inline of parseInlines(text)) p.AddChild(inline)
     item.AddChild(p)                          // a ListItem holds Blocks, not inlines
     return item
+}
+
+// ── GFM tables ─────────────────────────────────────────────────────────────
+
+// Is this the dashes line under a table header? Every cell must be dashes with
+// optional leading/trailing colon (`---`, `:--`, `--:`, `:-:`).
+function isTableDelimiter(line: string): boolean
+{
+    if (!line.includes('-')) return false
+    const cells = splitTableRow(line)
+    return cells.length > 0 && cells.every((c) => /^:?-+:?$/.test(c))
+}
+
+// Split one table line into trimmed cell texts. Optional leading/trailing edge
+// pipes are dropped; a backslash-escaped `\|` stays literal inside a cell.
+function splitTableRow(line: string): string[]
+{
+    let s = line.trim()
+    if (s.startsWith('|')) s = s.slice(1)
+    if (s.endsWith('|')) s = s.slice(0, -1)
+    return s.split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, '|'))
+}
+
+// Per-column alignment from the delimiter row's colons (`:--`=left, `--:`=right,
+// `:-:`=center, plain=left). Padded/truncated to the header's column count.
+function columnAlignments(delimiter: string, count: number): TextAlignment[]
+{
+    const cells = splitTableRow(delimiter)
+    const aligns: TextAlignment[] = []
+    for (let i = 0; i < count; i += 1) {
+        const c = cells[i] ?? ''
+        const left = c.startsWith(':')
+        const right = c.endsWith(':')
+        aligns.push(left && right ? TextAlignment.Center : right ? TextAlignment.Right : TextAlignment.Left)
+    }
+    return aligns
+}
+
+// A GFM table → mural Table. Gridlines + header tint come from theme tokens via
+// DynamicResource (like the code chips) so the table tracks light/dark.
+function tableBlock(header: string[], aligns: TextAlignment[], body: string[][]): Table
+{
+    const table = new Table()
+    table.Margin = blockGap()
+    bindTheme(table, Table.BorderBrushKey, 'OutlineVariant')
+    bindTheme(table, Table.HeaderBackgroundKey, 'SurfaceContainerHigh')
+
+    table.AddChild(tableRow(header, aligns, true))
+    for (const cells of body) table.AddChild(tableRow(cells, aligns, false))
+    return table
+}
+
+function tableRow(cells: string[], aligns: TextAlignment[], header: boolean): TableRow
+{
+    const row = new TableRow()
+    row.IsHeader = header
+    cells.forEach((text, ci) => row.AddChild(tableCell(text, aligns[ci] ?? TextAlignment.Left, header)))
+    return row
+}
+
+// One cell: a Paragraph aligned per its column. Header cells wrap their content
+// in Bold; both track inline markup (chips, links, emphasis) via parseInlines.
+function tableCell(text: string, align: TextAlignment, header: boolean): TableCell
+{
+    const cell = new TableCell()
+    const p = new Paragraph()
+    p.LineHeight = BODY_LINE_HEIGHT
+    p.TextAlignment = align
+    const parsed = parseInlines(text)
+    if (header) {
+        const bold = new Bold()
+        for (const inline of parsed) bold.AddChild(inline)
+        p.AddChild(bold)
+    } else {
+        for (const inline of parsed) p.AddChild(inline)
+    }
+    cell.AddChild(p)
+    return cell
 }
 
 // Keep leading indentation visible — layout collapses ordinary leading spaces, so
@@ -303,7 +407,7 @@ function codeChip(text: string): InlineUIContainer
     // With baseline alignment (mural ≥ 0.1.35) the label sits exactly on the
     // surrounding text baseline regardless of this padding — the padding only
     // sets how far the box extends above/below the label (a touch more above).
-    chip.Padding = new Thickness(5, 2, 5, 1)
+    chip.Padding = new Thickness(5, 3, 5, 0)
     bindTheme(chip, Border.BackgroundKey, 'SurfaceContainerHigh')
 
     return new InlineUIContainer(chip)
