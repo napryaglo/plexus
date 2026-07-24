@@ -93,11 +93,15 @@ Mirrors `ask-user-question-server.ts`.
   files/folders in a project. This is the "passed every session / called each
   time" reliability lever — the tool description alone is not reliable enough.
 - Instruction (approximate): *"This workspace exposes a PlexusWorkspace MCP
-  server. After finishing any task in which you created, modified, deleted,
-  moved, or renamed a file or folder inside a project directory, call
-  `mcp__PlexusWorkspace__refresh_project` (optionally with a path you changed) so
-  Plexus re-scans the project from disk and re-validates its models. Call it once
-  at the end of such work, not after every individual edit."*
+  server. Call `mcp__PlexusWorkspace__refresh_project` (optionally with a path you
+  changed) **only when** the work you just finished created, modified, deleted,
+  moved, or renamed a file or folder inside a project directory — so Plexus
+  re-scans the project from disk and re-validates its models. Call it once at the
+  end of such work, not after every individual edit. **Do not call it** for turns
+  that changed nothing on disk — answering a question, reading or explaining code,
+  running read-only commands, or pure discussion."*
+- The condition is **"files or folders actually changed"** — a read-only or
+  conversational turn must not trigger a refresh.
 - `mcpArgs()` already writes **all** servers into one config file, so adding a
   second server needs no change there beyond the `McpOptions` above.
 
