@@ -11,6 +11,7 @@ import ToolActivity from "./services/transcript.js"
 import QuestionCard from "./services/question-card.js"
 import QuestionVM from "./services/question-card.js"
 import OptionVM from "./services/question-card.js"
+import NewProjectCard from "./services/new-project-card.js"
 
 resources AgentChatResources {
     DataTemplate [ DataType = AgentService ] {
@@ -174,6 +175,21 @@ resources AgentChatResources {
                     }
                 }
                 TextBlock [ Text = $AnswerSummary, Visibility = $IsAnswered << ToVisibility,
+                            Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
+            }
+        }
+    }
+
+    // ── create_project card ─────────────────────────────────────────────────────
+    // The agent called create_project: a bordered card hosting the reused New
+    // Project form ($Form → DataTemplate[NewProjectDialogModel]) while pending;
+    // after Create/Cancel it collapses to a one-line recap.
+    DataTemplate [ DataType = NewProjectCard ] {
+        Border [ BorderBrush = @OutlineVariant, BorderThickness = (1,1,1,1), CornerRadius = 10,
+                 Background = @SurfaceContainer, Padding = (12,10,12,12), Margin = (0,4,20,4) ] {
+            StackPanel [ Orientation = Vertical ] {
+                ContentControl [ Content = $Form, Visibility = $IsPending << ToVisibility ]
+                TextBlock [ Text = $ResultSummary, Visibility = $IsDone << ToVisibility,
                             Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
             }
         }
