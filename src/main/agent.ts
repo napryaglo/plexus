@@ -4,11 +4,26 @@
 //   • events     main→renderer via webContents.send on AgentChannel.Event
 // Register once from app.whenReady(), alongside registerFileSystemHandlers().
 import { BrowserWindow, ipcMain } from 'electron'
-import { AgentChannel, ASK_TOOL_QUALIFIED, MCP_SERVER_KEY, type AgentEvent, type QuestionAnswer } from '../shared/agent-api.js'
+import {
+    AgentChannel, ASK_TOOL_QUALIFIED, MCP_SERVER_KEY, REFRESH_TOOL_QUALIFIED,
+    WORKSPACE_SERVER_KEY, type AgentEvent, type QuestionAnswer, type RefreshProjectResult,
+} from '../shared/agent-api.js'
 import { AiProviderService } from './agent/ai-provider-service.js'
 import { ClaudeCliProvider } from './agent/claude-cli-provider.js'
 import { AgentSession } from './agent/agent-session.js'
 import { AskUserQuestionServer } from './agent/ask-user-question-server.js'
+import { PlexusWorkspaceServer } from './agent/plexus-workspace-server.js'
+
+// Appended to the model's system prompt every session so it calls refresh_project
+// after — and only after — a turn that changed files or folders in a project.
+const REFRESH_INSTRUCTION =
+    'This workspace exposes a PlexusWorkspace MCP server. Call '
+    + 'mcp__PlexusWorkspace__refresh_project (optionally with a path you changed) ONLY when the '
+    + 'work you just finished created, modified, deleted, moved, or renamed a file or folder inside '
+    + 'a project directory, so Plexus re-scans the project from disk and re-validates its models. '
+    + 'Call it once at the end of such work, not after every individual edit. Do NOT call it for '
+    + 'turns that changed nothing on disk — answering a question, reading or explaining code, '
+    + 'running read-only commands, or pure discussion.'
 
 // Push an agent event to the renderer (the focused window, falling back to the
 // first — a single window today, but this stays correct if more open).
@@ -26,13 +41,23 @@ export async function registerAgentHandlers(): Promise<void>
     await questionServer.listen()
     questionServer.setSink(emitToRenderer)
 
+    // Start the in-process workspace MCP server (refresh_project). Its refresh
+    // requests ride the same push sink as every other agent event.
+    const workspaceServer = new PlexusWorkspaceServer()
+    await workspaceServer.listen()
+    workspaceServer.setSink(emitToRenderer)
+
     const providers = new AiProviderService()
     providers.register(new ClaudeCliProvider(undefined, undefined, {
-        servers: { [MCP_SERVER_KEY]: { type: 'http', url: questionServer.Url } },
-        allowedTools: [ASK_TOOL_QUALIFIED],
+        servers: {
+            [MCP_SERVER_KEY]:       { type: 'http', url: questionServer.Url },
+            [WORKSPACE_SERVER_KEY]: { type: 'http', url: workspaceServer.Url },
+        },
+        allowedTools: [ASK_TOOL_QUALIFIED, REFRESH_TOOL_QUALIFIED],
         // Turn off Claude Code's built-in AskUserQuestion (it can't render in
         // headless -p mode → fails), so the model uses our MCP tool instead.
         disallowedTools: ['AskUserQuestion'],
+        appendSystemPrompt: REFRESH_INSTRUCTION,
     }))
     const session = new AgentSession(providers, emitToRenderer)
 
@@ -48,5 +73,9 @@ export async function registerAgentHandlers(): Promise<void>
     // The user's answer to a pending card → unblock the tool call.
     ipcMain.handle(AgentChannel.AnswerQuestion, (_e, answer: QuestionAnswer): void => {
         questionServer.resolve(answer)
+    })
+    // The renderer's refresh summary → unblock the refresh_project tool call.
+    ipcMain.handle(AgentChannel.RefreshProjectResult, (_e, result: RefreshProjectResult): void => {
+        workspaceServer.resolve(result)
     })
 }
