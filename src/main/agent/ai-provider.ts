@@ -32,6 +32,10 @@ export interface McpOptions
     // `AskUserQuestion` (which can't render in headless -p mode and fails), so the
     // model uses our MCP tool instead.
     disallowedTools?: readonly string[];
+    // Text appended to the backend's system prompt each session (via
+    // --append-system-prompt). Used to instruct the model to call refresh_project
+    // after file-changing turns.
+    appendSystemPrompt?: string;
 }
 
 // The subset of a spawned child this provider uses. Kept minimal + injectable so

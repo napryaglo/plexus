@@ -79,6 +79,30 @@ test('adds --mcp-config (a temp file) + --allowedTools when MCP options are give
     expect(cfg.mcpServers.plexus.url).toBe('http://127.0.0.1:12345/mcp')
 })
 
+test('writes every server to the config and appends the system prompt when given', () => {
+    let captured: { args: string[] } | undefined
+    const spawn: SpawnFn = (_command, args) => { captured = { args }; return fakeChild().child }
+    new ClaudeCliProvider('claude', spawn, {
+        servers: {
+            plexus:          { type: 'http', url: 'http://127.0.0.1:11111/mcp' },
+            PlexusWorkspace: { type: 'http', url: 'http://127.0.0.1:22222/mcp' },
+        },
+        allowedTools: ['mcp__plexus__ask_user_question', 'mcp__PlexusWorkspace__refresh_project'],
+        appendSystemPrompt: 'CALL REFRESH ONLY AFTER FILE CHANGES',
+    }).start('/proj', [], () => {})
+
+    const args = captured!.args
+    const i = args.indexOf('--mcp-config')
+    const cfg = JSON.parse(readFileSync(args[i + 1]!, 'utf8'))
+    expect(Object.keys(cfg.mcpServers).sort()).toEqual(['PlexusWorkspace', 'plexus'])
+    // The refresh tool is allow-listed so it runs without a permission prompt.
+    expect(args).toContain('mcp__PlexusWorkspace__refresh_project')
+    // The instruction rides --append-system-prompt.
+    const p = args.indexOf('--append-system-prompt')
+    expect(p).toBeGreaterThan(-1)
+    expect(args[p + 1]).toBe('CALL REFRESH ONLY AFTER FILE CHANGES')
+})
+
 test('forwards parsed events from a real stdout line', () => {
     const f = fakeChild()
     const events: AgentEvent[] = []
