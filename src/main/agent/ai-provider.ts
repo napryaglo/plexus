@@ -18,6 +18,22 @@ export interface IAiProvider
     start(workingDirectory: string, addDirs: readonly string[], onEvent: (event: AgentEvent) => void): AiProviderSession;
 }
 
+// An extra MCP server the provider mounts into the backend (today: the in-process
+// ask-user-question HTTP tool). Kept generic so the provider stays unaware of what
+// the tool does — it just wires servers + allow-listed tool names into the CLI.
+export interface McpHttpServerConfig { type: 'http'; url: string }
+export interface McpOptions
+{
+    servers: Record<string, McpHttpServerConfig>;
+    // Tool names to auto-approve (e.g. `mcp__plexus__ask_user_question`), so the
+    // headless CLI runs them without a permission prompt.
+    allowedTools: readonly string[];
+    // Tool names to disable. Used to turn OFF Claude Code's built-in
+    // `AskUserQuestion` (which can't render in headless -p mode and fails), so the
+    // model uses our MCP tool instead.
+    disallowedTools?: readonly string[];
+}
+
 // The subset of a spawned child this provider uses. Kept minimal + injectable so
 // ClaudeCliProvider is unit-testable without a real process.
 export interface ChildLike

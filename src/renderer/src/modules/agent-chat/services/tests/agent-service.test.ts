@@ -13,6 +13,7 @@ function fakeAgent(): { api: IAgentApi; turns: Array<{ cwd: string; addDirs: rea
         startSession: () => Promise.resolve(),
         sendTurn: (cwd, addDirs, text) => { turns.push({ cwd, addDirs, text }); return Promise.resolve() },
         abort: () => Promise.resolve(),
+        answerQuestion: () => Promise.resolve(),
         onEvent: () => () => {},
     }
     return { api, turns }

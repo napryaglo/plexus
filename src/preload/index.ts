@@ -80,6 +80,7 @@ const agent: IAgentApi = {
   sendTurn: (workingDirectory: string, addDirs: readonly string[], text: string): Promise<void> =>
     ipcRenderer.invoke(AgentChannel.SendTurn, workingDirectory, addDirs, text),
   abort: (): Promise<void> => ipcRenderer.invoke(AgentChannel.Abort),
+  answerQuestion: (answer): Promise<void> => ipcRenderer.invoke(AgentChannel.AnswerQuestion, answer),
   onEvent: (handler: (event: AgentEvent) => void): (() => void) => {
     const listener = (_e: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AgentChannel.Event, listener)

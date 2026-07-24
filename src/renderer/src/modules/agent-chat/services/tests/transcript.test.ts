@@ -1,6 +1,7 @@
 import { test, expect } from 'vitest'
-import { AgentEventKind } from '../../../../../../shared/agent-api.js'
+import { AgentEventKind, type QuestionAnswer } from '../../../../../../shared/agent-api.js'
 import { TranscriptReducer, UserMessage, AssistantMessage, ToolActivity } from '../transcript.js'
+import { QuestionCard } from '../question-card.js'
 
 function items(r: TranscriptReducer) { return Array.from(r.Transcript) }
 
@@ -11,6 +12,30 @@ test('a user turn appends a UserMessage carrying the text', () => {
     expect(list).toHaveLength(1)
     expect(list[0]).toBeInstanceOf(UserMessage)
     expect((list[0] as UserMessage).Text).toBe('hello')
+})
+
+test('a Question event adds a card, gates input, and submitting answers + clears the gate', () => {
+    const r = new TranscriptReducer()
+    let pendingChanges = 0
+    let answered: QuestionAnswer | undefined
+    r.onPendingChange = () => { pendingChanges += 1 }
+    r.onAnswerSubmitted = (a) => { answered = a }
+
+    r.apply({ Kind: AgentEventKind.Question, Request: { id: 'q9',
+        questions: [{ question: 'Pick?', header: 'Pick', multiSelect: false, options: [{ label: 'A' }, { label: 'B' }] }] } })
+
+    const card = items(r)[0] as QuestionCard
+    expect(card).toBeInstanceOf(QuestionCard)
+    expect(r.HasPendingQuestion).toBe(true)
+    expect(pendingChanges).toBe(1)                 // fired on arrival (gate input)
+
+    const q = card.Questions.ToArray()[0]!
+    q.SelectedOption = q.Options.ToArray()[0]!   // single-select picks via the radio group
+    card.SubmitCommand.Execute(undefined)
+
+    expect(answered).toEqual({ id: 'q9', answers: { 'Pick?': ['A'] } })
+    expect(r.HasPendingQuestion).toBe(false)       // gate released
+    expect(pendingChanges).toBe(2)                 // fired again on submit
 })
 
 test('assistant text deltas accumulate into ONE growing bubble', () => {

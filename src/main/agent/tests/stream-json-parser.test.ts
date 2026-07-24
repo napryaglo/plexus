@@ -2,7 +2,18 @@ import { test, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { StreamJsonParser } from '../stream-json-parser.js'
-import { AgentEventKind, type AgentEvent, type SessionStartedEvent } from '../../../shared/agent-api.js'
+import { AgentEventKind, ASK_TOOL_QUALIFIED, type AgentEvent, type SessionStartedEvent } from '../../../shared/agent-api.js'
+
+const assistantToolUse = (id: string, name: string): string =>
+    JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name, input: {} }] } })
+
+test('suppresses the ask-user-question tool_use (the card is its surface), keeps other tools', () => {
+    const parser = new StreamJsonParser()
+    expect(parser.push(assistantToolUse('t1', ASK_TOOL_QUALIFIED))).toEqual([])
+    const normal = parser.push(assistantToolUse('t2', 'Read'))
+    expect(normal.length).toBe(1)
+    expect(normal[0]!.Kind).toBe(AgentEventKind.ToolUse)
+})
 
 function parseFixture(name: string): AgentEvent[] {
     const text = readFileSync(join(__dirname, 'fixtures', name), 'utf8')

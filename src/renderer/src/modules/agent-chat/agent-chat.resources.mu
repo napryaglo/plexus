@@ -8,6 +8,9 @@ import AgentService from "./services/agent-service.js"
 import UserMessage from "./services/transcript.js"
 import AssistantMessage from "./services/transcript.js"
 import ToolActivity from "./services/transcript.js"
+import QuestionCard from "./services/question-card.js"
+import QuestionVM from "./services/question-card.js"
+import OptionVM from "./services/question-card.js"
 
 resources AgentChatResources {
     DataTemplate [ DataType = AgentService ] {
@@ -24,12 +27,13 @@ resources AgentChatResources {
                     on KeyDown { InvokeCommand [ Command = $SubmitCommand ] }
                 }
             }
-            // Input row pinned to the bottom.
+            // Input row pinned to the bottom. Disabled ($CanInput = false) while a
+            // question card is awaiting an answer — the user must resolve it first.
             DockPanel [ DockPanel.Dock = Bottom, LastChildFill = true, Margin = (0,8,0,0) ] {
-                PanelButton [ DockPanel.Dock = Right, Command = $SendCommand, Margin = (8,0,0,0) ] {
+                PanelButton [ DockPanel.Dock = Right, Command = $SendCommand, IsEnabled = $CanInput, Margin = (8,0,0,0) ] {
                     Shape [ Geometry = @ArrowUpward, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
                 }
-                TextBox [ Text = $Draft ]
+                TextBox [ Text = $Draft, IsEnabled = $CanInput ]
             }
             // Scrolling transcript fills the rest.
             ScrollViewer [ HorizontalScrollEnabled = false ] {
@@ -45,9 +49,12 @@ resources AgentChatResources {
         }
     }
 
+    // The agent writes markdown; $Document is the parsed FlowDocument and the
+    // RichTextBlock lays it out with real formatting (headings, bold/italic,
+    // inline + fenced code, lists, quotes, links). Foreground inherits to runs.
     DataTemplate [ DataType = AssistantMessage ] {
         Border [ Padding = (10,6,10,6), Margin = (0,3,40,3) ] {
-            TextBlock [ Style = @BodyMedium, Text = $Text, Foreground = @OnSurface, TextWrapping = Wrap ]
+            RichTextBlock [ Document = $Document, Foreground = @OnSurface ]
         }
     }
 
@@ -55,6 +62,104 @@ resources AgentChatResources {
         DockPanel [ LastChildFill = true, Margin = (0,2,0,2) ] {
             TextBlock [ DockPanel.Dock = Right, Style = @BodySmall, Text = $Status, Foreground = @OnSurfaceVariant, Margin = (8,0,0,0) ]
             TextBlock [ Style = @BodySmall, Text = $Name, Foreground = @OnSurfaceVariant ]
+        }
+    }
+
+    // Compact filled button — a faithful copy of the framework's
+    // DefaultFilledButton with a tighter state-layer padding (12,5 vs 24,10).
+    // Padding lives inside the template (not a Button DP), so a smaller
+    // Submit means its own template. Used by the card's Submit.
+    Template x:key="CompactButton" [ TargetType = Button ] {
+        Border x:name="PART_Border"
+            [ Background           = @Primary,
+              BorderThickness      = (0),
+              CornerRadius         = $$CornerRadius,
+              TextBlock.Foreground = @OnPrimary,
+              TextBlock.FontFamily = @LabelLargeFont,
+              TextBlock.FontWeight = @LabelLargeWeight,
+              TextBlock.FontSize = @LabelLargeSize,
+              TextBlock.LineHeight = @LabelLargeLineHeight,
+              TextBlock.LetterSpacing = @LabelLargeTracking ] {
+            Border x:name="PART_StateLayer"
+                [ Background   = #00000000,
+                  CornerRadius = $$CornerRadius,
+                  Padding      = (12,5,12,5) ] {
+                ContentPresenter [ HorizontalAlignment = Center, VerticalAlignment = Center ]
+            }
+        }
+        when ( IsMouseOver ) { PART_StateLayer.Background = @OnPrimaryHoverLayer; }
+        when ( IsPressed ) { PART_StateLayer.Background = @OnPrimaryPressLayer; }
+        when ( IsEnabled = false ) { PART_Border.Opacity = @DisabledContentOpacity; }
+    }
+
+    // ── AskUserQuestion card ────────────────────────────────────────────────────
+    // The agent called ask_user_question: a bordered card of QuestionVMs. While
+    // pending ($IsPending) it shows the questions + a Submit (enabled once every
+    // question has a selection); after answering it collapses to a compact recap.
+    DataTemplate [ DataType = QuestionCard ] {
+        Border [ BorderBrush = @OutlineVariant, BorderThickness = (1,1,1,1), CornerRadius = 10,
+                 Background = @SurfaceContainer, Padding = (12,10,12,12), Margin = (0,4,20,4) ] {
+            StackPanel [ Orientation = Vertical ] {
+                StackPanel [ Orientation = Vertical, Visibility = $IsPending << ToVisibility ] {
+                    ItemsControl [ ItemsSource = $Questions, ItemsPanel = @VerticalStackPanel ]
+                    Button [ Command = $SubmitCommand, IsEnabled = $IsSubmittable,
+                             HorizontalAlignment = Right, Margin = (0,10,0,0), Template = @CompactButton ] {
+                        TextBlock [ Text = "Submit" ]
+                    }
+                }
+                TextBlock [ Text = $AnswerSummary, Visibility = $IsAnswered << ToVisibility,
+                            Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
+            }
+        }
+    }
+
+    // One question: a header chip, the prompt, its selectable options, and an
+    // "Other" toggle that enables a free-text box. Single-select questions get
+    // a RadioButtonGroup (it owns mutual exclusion); multi-select gets the
+    // independent-toggle list. Exactly one is visible per question.
+    DataTemplate [ DataType = QuestionVM ] {
+        StackPanel [ Orientation = Vertical, Margin = (0,0,0,12) ] {
+            Border [ HorizontalAlignment = Left, Background = @SurfaceContainerHigh, CornerRadius = 4,
+                     Padding = (6,1,6,1), Margin = (0,0,0,4) ] {
+                TextBlock [ Style = @BodySmall, Text = $Header, Foreground = @OnSurfaceVariant ]
+            }
+            TextBlock [ Text = $Question, Foreground = @OnSurface, TextWrapping = Wrap, Margin = (0,0,0,6) ]
+            // Single-select: labelled radio rows. SelectedItem two-ways back to
+            // the VM's SelectedOption; each row hosts the OptionVM and renders
+            // it through the DataTemplate[OptionVM] below.
+            RadioButtonGroup [ ItemsSource = $Options, SelectedItem = $SelectedOption,
+                               Visibility = $IsSingleSelect << ToVisibility ]
+            // Multi-select: independent toggles (checkbox semantics). Both
+            // lists include the trailing "Other" row (last option).
+            ItemsControl [ ItemsSource = $Options, ItemsPanel = @VerticalStackPanel,
+                           ItemTemplate = @OptionToggleTemplate,
+                           Visibility = $IsMultiSelect << ToVisibility ]
+            // Free-text editor — revealed only while the "Other" row is chosen.
+            TextBox [ Text = $OtherText, Visibility = $IsOtherChosen << ToVisibility, Margin = (0,4,0,0) ]
+        }
+    }
+
+    // One option's label + optional description. Implicit-by-DataType, so a
+    // RadioButtonItem (single-select) slots it as its Content automatically.
+    DataTemplate [ DataType = OptionVM ] {
+        StackPanel [ Orientation = Vertical ] {
+            TextBlock [ Text = $Label, Foreground = @OnSurface, TextWrapping = Wrap ]
+            TextBlock [ Text = $Description, Visibility = $HasDescription << ToVisibility,
+                        Style = @BodySmall, Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
+        }
+    }
+
+    // Multi-select row: a ToggleButton whose IsChecked binds the option's
+    // IsSelected (TwoWay). x:key'd, so it's reachable only via
+    // @OptionToggleTemplate and does NOT shadow the implicit OptionVM
+    // template the single-select radio rows resolve.
+    DataTemplate x:key="OptionToggleTemplate" [ DataType = OptionVM ] {
+        ToggleButton [ IsChecked = $IsSelected, HorizontalAlignment = Stretch, Margin = (0,2,0,0) ] {
+            StackPanel [ Orientation = Vertical ] {
+                TextBlock [ Text = $Label, Foreground = @OnSurface, TextWrapping = Wrap ]
+                TextBlock [ Text = $Description, Visibility = $HasDescription << ToVisibility,
+                            Style = @BodySmall, Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
+            }
         }
     }
 }

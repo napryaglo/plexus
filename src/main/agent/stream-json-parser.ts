@@ -7,6 +7,7 @@
 // (hook_started, status, rate_limit_event, …) fall through to [].
 import {
     AgentEventKind,
+    ASK_TOOL_QUALIFIED,
     type AgentEvent,
 } from '../../shared/agent-api.js'
 
@@ -60,7 +61,9 @@ export class StreamJsonParser
                 const content = (msg.message as { content?: unknown })?.content
                 if (Array.isArray(content))
                     for (const block of content as Array<Record<string, unknown>>)
-                        if (block?.type === 'tool_use')
+                        // The ask-user-question tool has its own card (driven by the
+                        // Question event), so its tool_use doesn't get a generic chip.
+                        if (block?.type === 'tool_use' && String(block.name) !== ASK_TOOL_QUALIFIED)
                             out.push({
                                 Kind:  AgentEventKind.ToolUse,
                                 Id:    String(block.id),

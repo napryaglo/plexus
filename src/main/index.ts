@@ -50,7 +50,7 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.plexus.app')
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
@@ -63,9 +63,11 @@ app.whenReady().then(() => {
   // Settings persistence (userData/settings.json), backing the framework's
   // ApplicationSettings via the renderer's ElectronSettingsStore.
   registerSettingsHandlers()
-  // Agent runtime — owns the claude CLI child + session, exposed to the renderer
-  // as command handlers plus a pushed event stream (AgentChannel.Event).
-  registerAgentHandlers()
+  // Agent runtime — owns the claude CLI child + session + the in-process
+  // ask-user-question MCP tool, exposed to the renderer as command handlers plus a
+  // pushed event stream (AgentChannel.Event). Awaited so the tool server is
+  // listening before the first turn.
+  await registerAgentHandlers()
 
   createWindow()
 

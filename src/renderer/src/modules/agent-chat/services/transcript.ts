@@ -3,7 +3,10 @@
 // ObservableCollection. Kept free of ServiceBase/window so it is unit-testable;
 // AgentService is a thin shell over it.
 import { MetaData, Model, ObservableCollection } from '@pragmatic-lab/mural/runtime'
-import { AgentEventKind, type AgentEvent } from '../../../../../shared/agent-api.js'
+import { type FlowDocument } from '@pragmatic-lab/mural/basic'
+import { AgentEventKind, type AgentEvent, type QuestionAnswer } from '../../../../../shared/agent-api.js'
+import { buildFlowDocument } from './markdown-document.js'
+import { QuestionCard } from './question-card.js'
 
 export enum TranscriptRole { User = 'user', Assistant = 'assistant', Tool = 'tool' }
 
@@ -17,12 +20,23 @@ export class UserMessage extends Model
 export class AssistantMessage extends Model
 {
     public static readonly TextKey = Model.RegisterProperty<string>(AssistantMessage, 'Text', '', MetaData.None)
+    // The formatted view of Text — the agent writes markdown, so we parse it into
+    // a FlowDocument the RichTextBlock lays out (headings, bold, code, lists, …).
+    // Rebuilt on every delta so formatting appears live as the response streams.
+    public static readonly DocumentKey = Model.RegisterProperty<FlowDocument | undefined>(
+        AssistantMessage, 'Document', undefined, MetaData.None)
+
     public get Text(): string { return this.get_property_value(AssistantMessage.TextKey) }
+    public get Document(): FlowDocument | undefined { return this.get_property_value(AssistantMessage.DocumentKey) }
+
     // Append a token delta — set_property_value fires INotifyPropertyChanged so
-    // the bound TextBlock grows live.
+    // the bound RichTextBlock re-renders live. Reparsing the whole text each time
+    // is O(n) per delta; fine for chat-sized responses.
     public appendText(delta: string): void
     {
-        this.set_property_value(AssistantMessage.TextKey, this.Text + delta)
+        const text = this.Text + delta
+        this.set_property_value(AssistantMessage.TextKey, text)
+        this.set_property_value(AssistantMessage.DocumentKey, buildFlowDocument(text))
     }
 }
 
@@ -51,6 +65,16 @@ export class TranscriptReducer
     private currentAssistant: AssistantMessage | null = null
     // Tool activities awaiting their result, keyed by tool_use id.
     private readonly pendingTools = new Map<string, ToolActivity>()
+    // Question cards awaiting the user's answer, by request id.
+    private readonly pendingQuestions = new Set<string>()
+
+    // Set by AgentService: forward a submitted answer to the agent bridge, and
+    // react when the pending-question set changes (to gate input).
+    public onAnswerSubmitted: ((answer: QuestionAnswer) => void) | undefined
+    public onPendingChange: (() => void) | undefined
+
+    // True while any card is still awaiting an answer (the turn is blocked).
+    public get HasPendingQuestion(): boolean { return this.pendingQuestions.size > 0 }
 
     public beginUserTurn(text: string): void
     {
@@ -88,6 +112,24 @@ export class TranscriptReducer
                     activity.setStatus(event.Ok ? 'done' : 'failed')
                     this.pendingTools.delete(event.Id)
                 }
+                break
+            }
+
+            case AgentEventKind.Question:
+            {
+                // The agent asked a structured question: render a card and block
+                // the turn until the user submits (see AskUserQuestionServer).
+                this.currentAssistant = null
+                const request = event.Request
+                this.pendingQuestions.add(request.id)
+                const card = new QuestionCard(request, (answer) =>
+                {
+                    this.pendingQuestions.delete(request.id)
+                    this.onAnswerSubmitted?.(answer)
+                    this.onPendingChange?.()
+                })
+                this.Transcript.Add(card)
+                this.onPendingChange?.()
                 break
             }
 

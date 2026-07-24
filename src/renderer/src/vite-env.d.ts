@@ -6,3 +6,11 @@ declare module '*?worker' {
     const workerConstructor: { new (): Worker }
     export default workerConstructor
 }
+
+// Vite's `?raw` imports — the file's contents as a string. Used to embed
+// scaffold/template assets (e.g. the meta-model project's CLAUDE.md + manual)
+// without escaping them into TS string literals.
+declare module '*?raw' {
+    const content: string
+    export default content
+}

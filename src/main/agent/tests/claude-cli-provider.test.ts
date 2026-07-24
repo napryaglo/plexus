@@ -55,6 +55,30 @@ test('appends --add-dir for each extra directory, spawning at the cwd', () => {
     ])
 })
 
+test('adds --mcp-config (a temp file) + --allowedTools when MCP options are given', () => {
+    let captured: { args: string[] } | undefined
+    const spawn: SpawnFn = (_command, args) => { captured = { args }; return fakeChild().child }
+    new ClaudeCliProvider('claude', spawn, {
+        servers: { plexus: { type: 'http', url: 'http://127.0.0.1:12345/mcp' } },
+        allowedTools: ['mcp__plexus__ask_user_question'],
+        disallowedTools: ['AskUserQuestion'],
+    }).start('/proj', [], () => {})
+
+    const args = captured!.args
+    const i = args.indexOf('--mcp-config')
+    expect(i).toBeGreaterThan(-1)
+    // Config is a FILE path (inline JSON is mangled by the Windows shell), named by port.
+    expect(args[i + 1]).toContain('plexus-mcp-12345.json')
+    expect(args).toContain('--allowedTools')
+    expect(args).toContain('mcp__plexus__ask_user_question')
+    // The built-in AskUserQuestion is disabled so the model uses our MCP tool.
+    expect(args).toContain('--disallowedTools')
+    expect(args).toContain('AskUserQuestion')
+    // The file really holds our server config.
+    const cfg = JSON.parse(readFileSync(args[i + 1]!, 'utf8'))
+    expect(cfg.mcpServers.plexus.url).toBe('http://127.0.0.1:12345/mcp')
+})
+
 test('forwards parsed events from a real stdout line', () => {
     const f = fakeChild()
     const events: AgentEvent[] = []

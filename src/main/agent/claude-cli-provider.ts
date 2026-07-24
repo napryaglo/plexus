@@ -4,9 +4,12 @@
 // Constraints). stdout is line-buffered through StreamJsonParser; each user turn
 // is written to stdin as a stream-json user message.
 import { spawn as nodeSpawn } from 'node:child_process'
+import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { StreamJsonParser } from './stream-json-parser.js'
 import { AgentEventKind, type AgentEvent } from '../../shared/agent-api.js'
-import type { AiProviderSession, ChildLike, IAiProvider, SpawnFn } from './ai-provider.js'
+import type { AiProviderSession, ChildLike, IAiProvider, McpOptions, SpawnFn } from './ai-provider.js'
 
 const CLI_ARGS = [
     '-p',
@@ -31,11 +34,14 @@ export class ClaudeCliProvider implements IAiProvider
     constructor(
         private readonly binaryPath: string = 'claude',
         private readonly spawnFn: SpawnFn = defaultSpawn,
+        // Optional extra MCP tools (the ask-user-question server). When present,
+        // the CLI is pointed at them via --mcp-config and they're allow-listed.
+        private readonly mcp: McpOptions | undefined = undefined,
     ) {}
 
     public start(workingDirectory: string, addDirs: readonly string[], onEvent: (event: AgentEvent) => void): AiProviderSession
     {
-        const args = [...CLI_ARGS, ...addDirs.flatMap((d) => ['--add-dir', d])]
+        const args = [...CLI_ARGS, ...addDirs.flatMap((d) => ['--add-dir', d]), ...this.mcpArgs()]
         const child = this.spawnFn(this.binaryPath, args, { cwd: workingDirectory })
         const parser = new StreamJsonParser()
         let buffer = ''
@@ -64,5 +70,23 @@ export class ClaudeCliProvider implements IAiProvider
             abort:   () => child.kill(),
             dispose: () => child.kill(),
         }
+    }
+
+    // Build the --mcp-config / --allowedTools args. The config is written to a temp
+    // FILE (not passed inline): on Windows the provider spawns with shell:true (the
+    // `claude.cmd` shim needs it), which mangles an inline-JSON arg. The file is
+    // named by the server port so concurrent Plexus instances don't collide. Not
+    // strict — the user's own MCP servers still load alongside ours.
+    private mcpArgs(): string[]
+    {
+        if (this.mcp === undefined) return []
+        const first = Object.values(this.mcp.servers)[0]
+        const port = first !== undefined ? new URL(first.url).port : '0'
+        const configPath = join(tmpdir(), `plexus-mcp-${port}.json`)
+        writeFileSync(configPath, JSON.stringify({ mcpServers: this.mcp.servers }))
+        const allow = this.mcp.allowedTools.length > 0 ? ['--allowedTools', ...this.mcp.allowedTools] : []
+        const disallow = this.mcp.disallowedTools !== undefined && this.mcp.disallowedTools.length > 0
+            ? ['--disallowedTools', ...this.mcp.disallowedTools] : []
+        return ['--mcp-config', configPath, ...allow, ...disallow]
     }
 }

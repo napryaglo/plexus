@@ -29,6 +29,10 @@ export class AgentService extends ServiceBase
         AgentService, 'Draft', '', MetaData.None)
     public static readonly StatusKey = Model.RegisterProperty<string>(
         AgentService, 'Status', 'idle', MetaData.None)
+    // False while the agent is blocked on a pending AskUserQuestion card — the
+    // input row binds IsEnabled = $CanInput so a turn can't be sent mid-question.
+    public static readonly CanInputKey = Model.RegisterProperty<boolean>(
+        AgentService, 'CanInput', true, MetaData.None)
     public static readonly SendCommandKey = Model.RegisterProperty<ICommand>(
         AgentService, 'SendCommand', undefined as unknown as ICommand, MetaData.None)
     // Bound to a KeyDown EventTrigger on the input row; fires the turn only when
@@ -68,6 +72,12 @@ export class AgentService extends ServiceBase
             if ((arg as { Key?: unknown } | undefined)?.Key === Key.Return) this.send()
         }))
 
+        // A submitted answer goes back to the agent bridge; a change in the pending
+        // set gates the input row (CanInput).
+        this.reducer.onAnswerSubmitted = (answer) => { void this.agent.answerQuestion(answer) }
+        this.reducer.onPendingChange = () =>
+            this.set_property_value(AgentService.CanInputKey, !this.reducer.HasPendingQuestion)
+
         // Fold every pushed agent event into the transcript.
         this.agent.onEvent((event) => this.reducer.apply(event))
 
@@ -96,6 +106,7 @@ export class AgentService extends ServiceBase
     public get Draft(): string { return this.get_property_value(AgentService.DraftKey) }
     public set Draft(value: string) { this.set_property_value(AgentService.DraftKey, value) }
     public get Status(): string { return this.get_property_value(AgentService.StatusKey) }
+    public get CanInput(): boolean { return this.get_property_value(AgentService.CanInputKey) }
     public get SendCommand(): ICommand { return this.get_property_value(AgentService.SendCommandKey) }
     public get SubmitCommand(): ICommand { return this.get_property_value(AgentService.SubmitCommandKey) }
 
@@ -103,6 +114,8 @@ export class AgentService extends ServiceBase
     {
         const text = this.Draft.trim()
         if (text === '') return
+        // Blocked on a pending question — the user must answer the card first.
+        if (!this.CanInput) return
         const dirs = this.workingDirs
         const cwd = dirs.length > 0 ? dirs[0] : this.fallbackCwd
         const addDirs = dirs.length > 0 ? dirs.slice(1) : []
