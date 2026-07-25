@@ -91,6 +91,10 @@ import LayoutInspectorResources from "./modules/diagram/layout/layout-inspector.
 // (DataTemplate[ProjectExplorerService] + recursive DataTemplate[ProjectNode]).
 import ProjectExplorerResources from "./modules/project-explorer/project-explorer.resources.mu.js"
 
+// Meta-models capability panel: the published-meta-models tree
+// (DataTemplate[MetaModelsService] + MetaModelRow / MetaModelVersionRow rows).
+import MetaModelResources from "./modules/meta-model/meta-model.resources.mu.js"
+
 // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
 import AgentChatResources from "./modules/agent-chat/agent-chat.resources.mu.js"
 
@@ -236,6 +240,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
 
         // Project Explorer tree + command bar (DataTemplate[ProjectExplorerService]).
         merge ProjectExplorerResources
+
+        // Meta-models capability panel (DataTemplate[MetaModelsService] + rows).
+        merge MetaModelResources
 
         // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
         merge AgentChatResources
