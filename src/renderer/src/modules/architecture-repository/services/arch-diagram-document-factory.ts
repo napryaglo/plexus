@@ -6,6 +6,7 @@ import type { IStorage } from '../../../services/storage/storage.js'
 import { PROJECT_MANIFEST_FILENAME } from '../../../services/projects/project-factory.js'
 import type { BaseBindings } from '../../../services/projects/base-binding.js'
 import { resolveBases } from '../../../services/projects/base-resolver.js'
+import { LibraryRegistry } from '../../library/services/library-registry.js'
 import { ArchInstanceModel } from './architecture-instance-model.js'
 import { ArchDiagramDocument, type ArchLayout } from './arch-diagram-document.js'
 
@@ -26,7 +27,8 @@ export class ArchDiagramDocumentFactory extends ServiceBase implements IDocument
         const { bases } = await resolveBases(this.Provider, await this.bindings(storage))
         const source = (await storage.Exists(layoutDoc.todlFile)) ? await storage.ReadText(layoutDoc.todlFile) : ''
         const model = ArchInstanceModel.load(bases, source, layoutDoc.namespace)
-        return new ArchDiagramDocument(path, model, storage, layoutDoc.todlFile, layoutDoc.layout ?? {}, basename(path))
+        const registry = this.Provider.get(LibraryRegistry.Key)
+        return new ArchDiagramDocument(path, model, storage, layoutDoc.todlFile, layoutDoc.layout ?? {}, basename(path), registry)
     }
 
     public async saveFile(document: IDocument): Promise<void>

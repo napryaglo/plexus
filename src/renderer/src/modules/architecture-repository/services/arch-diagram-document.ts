@@ -1,7 +1,9 @@
 import { MetaData, Model, ObservableCollection } from '@pragmatic-lab/mural/runtime'
 import type { IDocument } from '@pragmatic-lab/mural/framework'
+import type { DataTemplate } from '@pragmatic-lab/mural/basic'
 
 import type { IStorage } from '../../../services/storage/storage.js'
+import type { LibraryRegistry } from '../../library/services/library-registry.js'
 import type { ArchInstanceModel } from './architecture-instance-model.js'
 import { InstanceNodeVM } from './instance-node-vm.js'
 
@@ -33,6 +35,7 @@ export class ArchDiagramDocument extends Model implements IDocument
         public readonly todlFile: string,
         layout: Record<string, { x: number; y: number }>,
         title: string,
+        private readonly registry?: LibraryRegistry,
     )
     {
         super()
@@ -44,6 +47,15 @@ export class ArchDiagramDocument extends Model implements IDocument
 
     public get Title(): string { return this.get_property_value(ArchDiagramDocument.TitleKey) }
     public get IsDirty(): boolean { return this.dirty }
+
+    // The visual template for a node — its referenced term's template (else its
+    // concept), resolved through the LibraryRegistry (which returns the default box
+    // when nothing is mounted). Undefined only when no registry is wired.
+    public ResolveTemplate(vm: InstanceNodeVM): DataTemplate | undefined
+    {
+        const key = vm.ReferencedTerm !== '' ? vm.ReferencedTerm : vm.Concept
+        return this.registry?.resolve(key, vm.Concept)
+    }
 
     public LayoutOf(id: string): { x: number; y: number } | undefined { return this.positions.get(id) }
     public SetLayout(id: string, x: number, y: number): void { this.positions.set(id, { x, y }); this.dirty = true }

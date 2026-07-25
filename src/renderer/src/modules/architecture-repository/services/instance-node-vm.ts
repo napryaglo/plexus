@@ -1,4 +1,5 @@
 import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
+import type { DataTemplate } from '@pragmatic-lab/mural/basic'
 
 import type { ArchInstanceModel } from './architecture-instance-model.js'
 
@@ -15,6 +16,11 @@ export class InstanceNodeVM extends Model
     // The library term the node references (its first reference edge target) — the
     // key the canvas resolves the visual template with. '' when none.
     public static readonly ReferencedTermKey = Model.RegisterProperty<string>(InstanceNodeVM, 'ReferencedTerm', '', MetaData.None)
+    // The resolved visual template (its referenced term's, via LibraryRegistry).
+    // Set by the canvas when the node's container is built; a
+    // `DataTemplate[InstanceNodeVM]` binds a ContentPresenter's ContentTemplate to it.
+    public static readonly TemplateKey = Model.RegisterProperty<DataTemplate | undefined>(
+        InstanceNodeVM, 'Template', undefined, MetaData.None)
 
     private readonly unsubscribe: () => void
 
@@ -31,6 +37,8 @@ export class InstanceNodeVM extends Model
     public get Display(): string { return this.get_property_value(InstanceNodeVM.DisplayKey) }
     public get Concept(): string { return this.get_property_value(InstanceNodeVM.ConceptKey) }
     public get ReferencedTerm(): string { return this.get_property_value(InstanceNodeVM.ReferencedTermKey) }
+    public get Template(): DataTemplate | undefined { return this.get_property_value(InstanceNodeVM.TemplateKey) }
+    public set Template(v: DataTemplate | undefined) { this.set_property_value(InstanceNodeVM.TemplateKey, v) }
 
     // Edit a scalar field; the model fires `changed`, which refreshes this VM.
     public SetField(name: string, value: string | number | boolean): void
