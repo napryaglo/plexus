@@ -37,7 +37,6 @@ import DiagramModule from "./modules/diagram/diagram.module.mu.js"
 import ArchitectureRepositoryModule from "./modules/architecture-repository/architecture-repository.module.mu.js"
 import TechnologyLibraryModule from "./modules/technology-library/technology-library.module.mu.js"
 import ProjectExplorerModule from "./modules/project-explorer/project-explorer.module.mu.js"
-import OntologiesModule from "./modules/ontologies/ontologies.module.mu.js"
 import MetaModelModule from "./modules/meta-model/meta-model.module.mu.js"
 import LibraryModule from "./modules/library/library.module.mu.js"
 import AgentChatModule from "./modules/agent-chat/agent-chat.module.mu.js"
@@ -204,7 +203,6 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         ArchitectureRepositoryModule
         TechnologyLibraryModule
         ProjectExplorerModule
-        OntologiesModule
         MetaModelModule
         LibraryModule
         AgentChatModule

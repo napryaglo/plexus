@@ -1,4 +1,4 @@
-// ontologies-service.ts — the Ontologies module's left-panel content service.
+// meta-models-service.ts — the Meta-model module's left-panel content service.
 // Module-local: registered by the module's `.services:` block and named by its
 // Capability's `ServiceKey`. Extends the SHARED PlexusPanelService base
 // (root services/panels/) and renders through the shared
@@ -8,12 +8,12 @@ import {
 } from '../../../services/panels/panel-services.js';
 import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime';
 
-export class OntologiesService extends PlexusPanelService
+export class MetaModelsService extends PlexusPanelService
 {
-    public static readonly Key = new ServiceKey<OntologiesService>('OntologiesService');
-    
-    constructor(provider: IServiceProvider) 
-    { super(provider, ['Business', 'Application', 'Technology']); 
+    public static readonly Key = new ServiceKey<MetaModelsService>('MetaModelsService');
 
+    constructor(provider: IServiceProvider)
+    {
+        super(provider, ['Business', 'Application', 'Technology']);
     }
 }
