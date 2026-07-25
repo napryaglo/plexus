@@ -6,6 +6,7 @@ import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { LIBRARIES_BACKEND_ID } from '../libraries-backend.js'
 import { LibraryRegistry } from '../library-registry.js'
 import { LibrariesPanelService } from '../libraries-panel-service.js'
+import { LibraryNodeKind, type LibraryTreeNode } from '../library-tree-node.js'
 
 // Synchronous seed (see the registry test) so all files exist before Reload lists.
 function providerWith(seed: (b: FakeStorage) => void): ServiceProvider {
@@ -19,31 +20,80 @@ function providerWith(seed: (b: FakeStorage) => void): ServiceProvider {
     return provider
 }
 
-test('builds a LibraryRow per library with a ClassRow (template resolved) per class', async () => {
+function leaves(root: LibraryTreeNode): LibraryTreeNode[] {
+    const out: LibraryTreeNode[] = []
+    for (const concept of root.Children.ToArray())
+        for (const cls of concept.Children.ToArray()) out.push(cls)
+    return out
+}
+
+test('builds a Library -> Concept -> Class tree, concepts sorted, leaves carry term + template', async () => {
     const provider = providerWith((b) => {
         void b.WriteText('microsoft/0.1.0/library.json', JSON.stringify({
             id: 'microsoft', version: '0.1.0', name: 'Microsoft', metaModel: { id: 'ea', version: '5' },
-            classes: [{ id: 'microsoft.azure', localId: 'azure', label: 'Azure', concept: 'location', template: 'visuals/microsoft.azure.mural' }],
+            classes: [
+                { id: 'microsoft.azure', localId: 'azure', label: 'Azure', concept: 'location', template: 'visuals/a.mural' },
+                { id: 'stack.azure-openai', localId: 'azure-openai', label: 'Azure OpenAI', concept: 'technology', template: 'visuals/b.mural' },
+            ],
             assets: [], docs: [], samples: [],
         }))
-        void b.WriteText('microsoft/0.1.0/visuals/microsoft.azure.mural', 'TextBlock [ Text = $Display ]')
+        void b.WriteText('microsoft/0.1.0/visuals/a.mural', 'TextBlock [ Text = $Display ]')
+        void b.WriteText('microsoft/0.1.0/visuals/b.mural', 'TextBlock [ Text = $Display ]')
     })
     const svc = new LibrariesPanelService(provider)
     await svc.Reload()
 
     expect(svc.IsEmpty).toBe(false)
-    expect(svc.Libraries.Count).toBe(1)
-    const lib = svc.Libraries.Get(0)!
+    expect(svc.Roots.Count).toBe(1)
+    const lib = svc.Roots.Get(0)!
+    expect(lib.Kind).toBe(LibraryNodeKind.Library)
     expect(lib.Name).toContain('Microsoft')
-    expect(lib.Classes.Count).toBe(1)
-    const row = lib.Classes.Get(0)!
-    expect(row.Data.Display).toBe('Azure')
-    expect(typeof row.Template.Apply).toBe('function')
+    expect(lib.Children.ToArray().map((c) => c.Name)).toEqual(['location', 'technology'])   // sorted
+
+    const tech = lib.Children.ToArray().find((c) => c.Name === 'technology')!
+    expect(tech.Kind).toBe(LibraryNodeKind.Concept)
+    expect(tech.Children.Count).toBe(1)
+    const leaf = tech.Children.Get(0)!
+    expect(leaf.Kind).toBe(LibraryNodeKind.Class)
+    expect(leaf.TermId).toBe('stack.azure-openai')
+    expect(leaf.Concept).toBe('technology')
+    expect(leaf.IsDraggable).toBe(true)
+    expect(typeof leaf.Template!.Apply).toBe('function')
+})
+
+test('selecting a class opens its preview; selecting another moves it; a group closes it', async () => {
+    const provider = providerWith((b) => {
+        void b.WriteText('ms/0.1.0/library.json', JSON.stringify({
+            id: 'ms', version: '0.1.0', name: 'MS', metaModel: { id: 'ea', version: '5' },
+            classes: [
+                { id: 'stack.a', localId: 'a', label: 'A', concept: 'technology', template: 'visuals/a.mural' },
+                { id: 'stack.b', localId: 'b', label: 'B', concept: 'technology', template: 'visuals/b.mural' },
+            ],
+            assets: [], docs: [], samples: [],
+        }))
+        void b.WriteText('ms/0.1.0/visuals/a.mural', 'TextBlock [ Text = $Display ]')
+        void b.WriteText('ms/0.1.0/visuals/b.mural', 'TextBlock [ Text = $Display ]')
+    })
+    const svc = new LibrariesPanelService(provider)
+    await svc.Reload()
+
+    const lib = svc.Roots.Get(0)!
+    const [a, b] = leaves(lib)
+
+    svc.SelectedNode = a
+    expect(a.IsPreviewOpen).toBe(true)
+
+    svc.SelectedNode = b
+    expect(a.IsPreviewOpen).toBe(false)
+    expect(b.IsPreviewOpen).toBe(true)
+
+    svc.SelectedNode = lib          // a group node closes any open preview
+    expect(b.IsPreviewOpen).toBe(false)
 })
 
 test('IsEmpty is true when nothing is published', async () => {
     const svc = new LibrariesPanelService(providerWith(() => {}))
     await svc.Reload()
     expect(svc.IsEmpty).toBe(true)
-    expect(svc.Libraries.Count).toBe(0)
+    expect(svc.Roots.Count).toBe(0)
 })
