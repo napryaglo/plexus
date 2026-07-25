@@ -61,7 +61,7 @@ test('builds a Library -> Concept -> Class tree, concepts sorted, leaves carry t
     expect(typeof leaf.Template!.Apply).toBe('function')
 })
 
-test('selecting a class opens its preview; selecting another moves it; a group closes it', async () => {
+test('selecting a class drives the bottom preview pane; selecting another moves it; a group clears it', async () => {
     const provider = providerWith((b) => {
         void b.WriteText('ms/0.1.0/library.json', JSON.stringify({
             id: 'ms', version: '0.1.0', name: 'MS', metaModel: { id: 'ea', version: '5' },
@@ -81,14 +81,17 @@ test('selecting a class opens its preview; selecting another moves it; a group c
     const [a, b] = leaves(lib)
 
     svc.SelectedNode = a
-    expect(a.IsPreviewOpen).toBe(true)
+    expect(svc.HasPreview).toBe(true)
+    expect(svc.PreviewData).toBe(a)
+    expect(svc.PreviewConcept).toBe('technology')
+    expect(svc.PreviewTemplate).toBe(a.Template)
 
     svc.SelectedNode = b
-    expect(a.IsPreviewOpen).toBe(false)
-    expect(b.IsPreviewOpen).toBe(true)
+    expect(svc.PreviewData).toBe(b)
 
-    svc.SelectedNode = lib          // a group node closes any open preview
-    expect(b.IsPreviewOpen).toBe(false)
+    svc.SelectedNode = lib          // a group node clears the preview
+    expect(svc.HasPreview).toBe(false)
+    expect(svc.PreviewData).toBeUndefined()
 })
 
 test('IsEmpty is true when nothing is published', async () => {

@@ -20,7 +20,6 @@ export class LibraryTreeNode extends Model
         LibraryTreeNode, 'Children', undefined as unknown as ObservableCollection<LibraryTreeNode>, MetaData.None)
     public static readonly IsLibraryKey = Model.RegisterProperty<boolean>(LibraryTreeNode, 'IsLibrary', false, MetaData.None)
     public static readonly IsDraggableKey = Model.RegisterProperty<boolean>(LibraryTreeNode, 'IsDraggable', false, MetaData.None)
-    public static readonly IsPreviewOpenKey = Model.RegisterProperty<boolean>(LibraryTreeNode, 'IsPreviewOpen', false, MetaData.None)
 
     // Class-leaf render surface + drag payload.
     public static readonly TermIdKey = Model.RegisterProperty<string>(LibraryTreeNode, 'TermId', '', MetaData.None)
@@ -45,8 +44,6 @@ export class LibraryTreeNode extends Model
     public get Children(): ObservableCollection<LibraryTreeNode> { return this.get_property_value(LibraryTreeNode.ChildrenKey) }
     public get IsLibrary(): boolean { return this.get_property_value(LibraryTreeNode.IsLibraryKey) }
     public get IsDraggable(): boolean { return this.get_property_value(LibraryTreeNode.IsDraggableKey) }
-    public get IsPreviewOpen(): boolean { return this.get_property_value(LibraryTreeNode.IsPreviewOpenKey) }
-    public set IsPreviewOpen(v: boolean) { this.set_property_value(LibraryTreeNode.IsPreviewOpenKey, v) }
     public get TermId(): string { return this.get_property_value(LibraryTreeNode.TermIdKey) }
     public get Concept(): string { return this.get_property_value(LibraryTreeNode.ConceptKey) }
     public get Display(): string { return this.get_property_value(LibraryTreeNode.DisplayKey) }

@@ -1,45 +1,49 @@
 // library.resources.mu — view resources for the Libraries capability panel
 // (LibrariesPanelService). Merged app-global by app.mu. A TreeView of published
 // libraries grouped Library -> Concept -> Class; class leaves are draggable onto
-// the architecture canvas (term payload) and, when selected, expand an inline
-// preview of their mounted visual template.
+// the architecture canvas (term payload). Selecting a class drives a preview pane
+// docked at the BOTTOM of the panel (its mounted visual + concept) — the tree's
+// list rows are fixed-height and can't host tall inline content.
 
 import LibrariesPanelService from "./services/libraries-panel-service.js"
 import LibraryTreeNode from "./services/library-tree-node.js"
 
 resources LibraryResources {
 
-    // One node row + (for a selected class leaf) its inline preview beneath it.
+    // One tree row: a draggable-when-a-class Border with an optional @Libraries
+    // glyph (library nodes only) + the node name. No inline preview — the fixed
+    // row height can't grow, so the preview lives in the panel's bottom pane.
     HierarchicalDataTemplate x:key="LibraryNodeTemplate" [ DataType = LibraryTreeNode, itemsselector = Children ] {
-        StackPanel [ Orientation = Vertical ] {
-            Border [ Background = #00000000, IsDraggable = $IsDraggable, OnDragStart = $BeginKindDragData ] {
-                StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
-                    Shape [ Geometry = @Libraries, Fill = @OnSurfaceVariant, Width = 14, Height = 14,
-                            Margin = (0,0,6,0), VerticalAlignment = Center,
-                            Visibility = $IsLibrary << ToVisibility ]
-                    TextBlock [ Text = $Name, Style = @BodyMedium, Foreground = @OnSurface, VerticalAlignment = Center ]
-                }
-            }
-            Border [ Visibility = $IsPreviewOpen << ToVisibility, Background = @SurfaceContainerHigh,
-                     CornerRadius = 6, Padding = (8,6,8,6), Margin = (18,2,0,4) ] {
-                StackPanel [ Orientation = Vertical ] {
-                    ContentPresenter [ Content = $Data, ContentTemplate = $Template ]
-                    TextBlock [ Text = $Concept, Style = @BodySmall, Foreground = @OnSurfaceVariant, Margin = (0,4,0,0) ]
-                }
+        Border [ Background = #00000000, IsDraggable = $IsDraggable, OnDragStart = $BeginKindDragData ] {
+            StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
+                Shape [ Geometry = @Libraries, Fill = @OnSurfaceVariant, Width = 14, Height = 14,
+                        Margin = (0,0,6,0), VerticalAlignment = Center,
+                        Visibility = $IsLibrary << ToVisibility ]
+                TextBlock [ Text = $Name, Style = @BodyMedium, Foreground = @OnSurface, VerticalAlignment = Center ]
             }
         }
     }
 
     DataTemplate [ DataType = LibrariesPanelService ] {
-        StackPanel [ Orientation = Vertical, Margin = (12,12,12,12) ] {
+        DockPanel [ LastChildFill = true, Margin = (12,12,12,12) ] {
+            // Preview pane — docked at the bottom, shown when a class is selected.
+            Border [ DockPanel.Dock = Bottom, Visibility = $HasPreview << ToVisibility,
+                     Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (8), Margin = (0,8,0,0) ] {
+                StackPanel [ Orientation = Vertical ] {
+                    ContentPresenter [ Content = $PreviewData, ContentTemplate = $PreviewTemplate ]
+                    TextBlock [ Text = $PreviewConcept, Style = @BodySmall, Foreground = @OnSurfaceVariant, Margin = (0,4,0,0) ]
+                }
+            }
+            // Empty state — docked at the top.
+            TextBlock [ DockPanel.Dock = Top, Style = @BodyMedium, Text = "No published libraries yet.",
+                        Foreground = @OnSurfaceVariant, TextWrapping = Wrap,
+                        Visibility = $IsEmpty << ToVisibility ]
+            // The tree fills the remaining space.
             TreeView [ Indent = 14,
                        ItemsSource      = $Roots,
                        ItemTemplate     = @LibraryNodeTemplate,
                        SelectedDataItem = $SelectedNode,
                        SelectionMode    = Single ]
-            TextBlock [ Style = @BodyMedium, Text = "No published libraries yet.",
-                        Foreground = @OnSurfaceVariant, TextWrapping = Wrap,
-                        Visibility = $IsEmpty << ToVisibility ]
         }
     }
 }

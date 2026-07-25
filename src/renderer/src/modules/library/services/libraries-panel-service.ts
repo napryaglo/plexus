@@ -1,5 +1,6 @@
 import { MetaData, Model, ObservableCollection, ServiceBase, ServiceKey, type IServiceProvider, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
 import type { IActivatable } from '@pragmatic-lab/mural/framework'
+import type { DataTemplate } from '@pragmatic-lab/mural/basic'
 
 import { LibraryRegistry } from './library-registry.js'
 import { LibraryTreeNode, LibraryNodeKind } from './library-tree-node.js'
@@ -7,7 +8,9 @@ import { LibraryTreeNode, LibraryNodeKind } from './library-tree-node.js'
 // The Libraries capability's panel content: a TreeView of published libraries
 // grouped Library -> Concept -> Class. Class leaves are draggable onto the
 // architecture canvas (via the term payload on the node) and, when selected,
-// expand an inline preview of their mounted visual.
+// drive a preview pane docked at the bottom of the panel (the class's mounted
+// visual + its concept). The preview is panel-level (not per-row) because the
+// tree's list rows are fixed-height and can't host tall inline content.
 export class LibrariesPanelService extends ServiceBase implements IActivatable
 {
     public static readonly Key = new ServiceKey<LibrariesPanelService>('LibrariesPanelService')
@@ -18,8 +21,15 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
         LibrariesPanelService, 'SelectedNode', undefined, MetaData.None)
     public static readonly IsEmptyKey = Model.RegisterProperty<boolean>(LibrariesPanelService, 'IsEmpty', false, MetaData.None)
 
+    // Bottom preview pane, driven by the selected class leaf.
+    public static readonly PreviewDataKey = Model.RegisterProperty<LibraryTreeNode | undefined>(
+        LibrariesPanelService, 'PreviewData', undefined, MetaData.None)
+    public static readonly PreviewTemplateKey = Model.RegisterProperty<DataTemplate | undefined>(
+        LibrariesPanelService, 'PreviewTemplate', undefined, MetaData.None)
+    public static readonly PreviewConceptKey = Model.RegisterProperty<string>(LibrariesPanelService, 'PreviewConcept', '', MetaData.None)
+    public static readonly HasPreviewKey = Model.RegisterProperty<boolean>(LibrariesPanelService, 'HasPreview', false, MetaData.None)
+
     private reloadSeq = 0
-    private previewNode: LibraryTreeNode | undefined = undefined
 
     constructor(provider: IServiceProvider)
     {
@@ -32,6 +42,10 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
     public get SelectedNode(): LibraryTreeNode | undefined { return this.get_property_value(LibrariesPanelService.SelectedNodeKey) }
     public set SelectedNode(v: LibraryTreeNode | undefined) { this.set_property_value(LibrariesPanelService.SelectedNodeKey, v) }
     public get IsEmpty(): boolean { return this.get_property_value(LibrariesPanelService.IsEmptyKey) }
+    public get PreviewData(): LibraryTreeNode | undefined { return this.get_property_value(LibrariesPanelService.PreviewDataKey) }
+    public get PreviewTemplate(): DataTemplate | undefined { return this.get_property_value(LibrariesPanelService.PreviewTemplateKey) }
+    public get PreviewConcept(): string { return this.get_property_value(LibrariesPanelService.PreviewConceptKey) }
+    public get HasPreview(): boolean { return this.get_property_value(LibrariesPanelService.HasPreviewKey) }
 
     public OnActivated(): void { void this.Reload() }
 
@@ -45,7 +59,7 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
         if (seq !== this.reloadSeq) return
 
         roots.Clear()
-        this.previewNode = undefined
+        this.clearPreview()
         for (const lib of libs) {
             const libNode = LibraryTreeNode.group(`${lib.name}  ·  ${lib.version}`, LibraryNodeKind.Library)
             const byConcept = new Map<string, LibraryTreeNode>()
@@ -65,15 +79,28 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
         this.set_property_value(LibrariesPanelService.IsEmptyKey, roots.Count === 0)
     }
 
-    // Selection drives the inline preview: close the previously-previewed leaf,
-    // open the newly-selected one (only Class leaves preview; a group closes it).
+    // Selection drives the bottom preview pane: a Class leaf populates it with the
+    // class's data + mounted template + concept; any other selection clears it.
     protected override OnPropertyChanged(descriptor: PropertyDescriptor, oldValue: unknown, newValue: unknown): void
     {
         super.OnPropertyChanged(descriptor, oldValue, newValue)
         if (descriptor.Name !== 'SelectedNode') return
-        if (this.previewNode !== undefined) this.previewNode.IsPreviewOpen = false
         const node = newValue instanceof LibraryTreeNode ? newValue : undefined
-        if (node !== undefined && node.Kind === LibraryNodeKind.Class) { node.IsPreviewOpen = true; this.previewNode = node }
-        else this.previewNode = undefined
+        if (node !== undefined && node.Kind === LibraryNodeKind.Class) {
+            this.set_property_value(LibrariesPanelService.PreviewDataKey, node)
+            this.set_property_value(LibrariesPanelService.PreviewTemplateKey, node.Template)
+            this.set_property_value(LibrariesPanelService.PreviewConceptKey, node.Concept)
+            this.set_property_value(LibrariesPanelService.HasPreviewKey, true)
+        } else {
+            this.clearPreview()
+        }
+    }
+
+    private clearPreview(): void
+    {
+        this.set_property_value(LibrariesPanelService.PreviewDataKey, undefined)
+        this.set_property_value(LibrariesPanelService.PreviewTemplateKey, undefined)
+        this.set_property_value(LibrariesPanelService.PreviewConceptKey, '')
+        this.set_property_value(LibrariesPanelService.HasPreviewKey, false)
     }
 }
