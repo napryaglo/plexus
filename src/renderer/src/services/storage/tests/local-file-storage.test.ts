@@ -44,14 +44,42 @@ test('joins against a Windows (backslash) root using backslashes', async () => {
     const { fs, calls } = stubFs()
     const storage = new LocalFileStorage('C:\\Users\\proj', fs)
     await storage.WriteText('sub/x.diagram', 'data')
-    expect(calls).toEqual([['WriteText', 'C:\\Users\\proj\\sub\\x.diagram']])
+    // The parent directory is created first (recursive mkdir), then the file written.
+    expect(calls).toEqual([
+        ['CreateDirectory', 'C:\\Users\\proj\\sub'],
+        ['WriteText', 'C:\\Users\\proj\\sub\\x.diagram'],
+    ])
 })
 
 test('WriteBytes joins the path and delegates to the binary write', async () => {
     const { fs, calls } = stubFs()
     const storage = new LocalFileStorage('/root/proj', fs)
     await storage.WriteBytes('assets/logo.png', new Uint8Array([1, 2, 3]))
-    expect(calls).toEqual([['WriteBytes', '/root/proj/assets/logo.png']])
+    expect(calls).toEqual([
+        ['CreateDirectory', '/root/proj/assets'],
+        ['WriteBytes', '/root/proj/assets/logo.png'],
+    ])
+})
+
+// Regression: publishing a meta-model writes <id>/<version>/model.json to a fresh
+// backend where none of those directories exist. Writing must create the parent
+// tree first (matching FakeStorage, where a nested write always succeeds), or the
+// real-disk backend ENOENTs — the publish bug.
+test('WriteText creates the full parent tree for a deeply-nested new path', async () => {
+    const { fs, calls } = stubFs()
+    const storage = new LocalFileStorage('/data/meta-models', fs)
+    await storage.WriteText('tech-architecture/0.1.0/model.json', '{}')
+    expect(calls).toEqual([
+        ['CreateDirectory', '/data/meta-models/tech-architecture/0.1.0'],
+        ['WriteText', '/data/meta-models/tech-architecture/0.1.0/model.json'],
+    ])
+})
+
+test('a top-level write (no parent segment) skips the mkdir and just writes', async () => {
+    const { fs, calls } = stubFs()
+    const storage = new LocalFileStorage('/root/proj', fs)
+    await storage.WriteText('project.plexus', '{}')
+    expect(calls).toEqual([['WriteText', '/root/proj/project.plexus']])
 })
 
 test('CreateDirectory joins the path and delegates to the backend', async () => {

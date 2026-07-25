@@ -30,13 +30,15 @@ export class LocalFileStorage implements IStorage, ILocalFileAccess
         return this.fs.ReadBytes(this.abs(path))
     }
 
-    public WriteText(path: string, content: string): Promise<void>
+    public async WriteText(path: string, content: string): Promise<void>
     {
+        await this.ensureParent(path)
         return this.fs.WriteText(this.abs(path), content)
     }
 
-    public WriteBytes(path: string, bytes: Uint8Array): Promise<void>
+    public async WriteBytes(path: string, bytes: Uint8Array): Promise<void>
     {
+        await this.ensureParent(path)
         return this.fs.WriteBytes(this.abs(path), bytes)
     }
 
@@ -86,6 +88,19 @@ export class LocalFileStorage implements IStorage, ILocalFileAccess
     public OpenExternal(path: string): Promise<void>
     {
         return this.fs.OpenExternal(this.abs(path))
+    }
+
+    // Ensure a file's parent directory exists before writing it. Node's writeFile
+    // (behind fs.WriteText/WriteBytes) ENOENTs on a missing parent, whereas the
+    // FakeStorage double this code is written against lets a nested write succeed.
+    // Recursive mkdir (idempotent) brings the disk backend in line — so publishing
+    // a meta-model to a fresh <id>/<version>/ path just works. A top-level write
+    // (no parent segment) relies on the root already existing and skips the mkdir.
+    private async ensureParent(path: string): Promise<void>
+    {
+        const segments = path.split(/[\\/]/).filter((s) => s.length > 0)
+        segments.pop()   // drop the file name; what remains is the parent directory
+        if (segments.length > 0) await this.fs.CreateDirectory(this.abs(segments.join('/')))
     }
 
     // Project-relative → absolute OS path. '' (the root) resolves to the root
