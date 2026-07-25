@@ -36,6 +36,17 @@ export default defineConfig({
           find: /^@pragmatic-lab\/todl$/,
           replacement: fileURLToPath(new URL('./node_modules/@pragmatic-lab/todl/dist/index.js', import.meta.url)),
         },
+        // mural's COMPILER (run in-process by LibraryRegistry to compile `.mural`
+        // visual templates at runtime) statically imports `createRequire` from
+        // `node:module`. In the Chromium renderer that specifier externalises to a
+        // proxy that throws on access, crashing the page at module load. Redirect
+        // it to a browser shim (no-op createRequire); the compiler's materialBundle
+        // try/catch tolerates the empty result. Renderer-only — the Node CLI
+        // (`compile:mu`) uses the real builtin.
+        {
+          find: /^node:module$/,
+          replacement: fileURLToPath(new URL('./src/renderer/node-module-shim.mjs', import.meta.url)),
+        },
       ],
     },
     // mural is a `file:../..` linked package under active development. Vite's
