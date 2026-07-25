@@ -29,10 +29,19 @@ the foundation everything downstream reads.
   `base-resolver.ts` reads `model.json` as a `TodlDocument` and TODL
   `checkAgainst` validates a consumer against its bases.
 - **Compiled model shape.** `toJSON(model)` → `TodlDocument = { nodes, edges }`.
-  Each `JsonNode` has `{ id, tier, typeOf, attrs }`, where `tier` is a `Tier`
-  enum name: `"Meta"` (meta-model), `"Ontology"` (a library's taxonomy terms),
-  `"Instance"`. A library's provided concepts are exactly its **`Ontology`-tier
-  nodes** — derivable from `model.json` with no extra parsing.
+  Each `JsonNode` has `{ id, tier, typeOf, attrs }`, where `tier` is the `Tier`
+  enum **member name** (`toJSON` emits enums by name): `"Meta"`, `"Ontology"`,
+  `"Instance"`. **Empirically verified** against the sample taxonomy: the terms an
+  author declares (e.g. `azure`, `azure-openai`) compile to **`Instance`-tier
+  nodes carrying `attrs.class === true`** — clabjects, each simultaneously an
+  instance of a meta concept and a *class* available for further instantiation.
+  Their `id` is the qualified name (`microsoft.azure`), `attrs.id` the local name
+  (`azure`), `attrs.label` the display label, and `typeOf` the meta-model concept
+  they realise (`location`). The `Ontology` tier holds the concept / field /
+  taxonomy *definitions*, not the instantiable terms. So a library's **provided
+  classes** = `nodes.filter(n => n.tier === "Instance" && n.attrs.class === true)`
+  — derivable from `model.json` with no extra parsing. (These classes are the
+  palette items a consumer drags; the visual/doc/thumbnail resources key to them.)
 - **Source collection.** `collectTodlSources(storage)`
   ([todl-sources.ts](../../src/renderer/src/modules/meta-model/services/todl-sources.ts))
   recurses the whole project and returns every `.todl`. Any new `samples/`
@@ -93,30 +102,34 @@ introduces a concept-aware "architecture canvas" document type**.
 
 Reserved top-level folders inside a library project:
 
-| Folder        | Holds                                   | Binding to a concept            |
+| Folder        | Holds                                   | Binding to a class              |
 |---------------|-----------------------------------------|---------------------------------|
-| `visuals/`    | `.mural` templates                      | `visuals/<conceptId>.mural`     |
+| `visuals/`    | `.mural` templates                      | `visuals/<classId>.mural`       |
 | `assets/`     | icons/images referenced by templates    | none (shared)                   |
-| `docs/`       | markdown; optional `README.md`          | `docs/<conceptId>.md`           |
+| `docs/`       | markdown; optional `README.md`          | `docs/<classId>.md`             |
 | `samples/`    | `.todl` example instances               | none — **excluded** from compile|
-| `thumbnails/` | preview images, author-supplied         | `thumbnails/<conceptId>.png`    |
+| `thumbnails/` | preview images, author-supplied         | `thumbnails/<classId>.png`      |
 
-Taxonomy `.todl` lives anywhere **except `samples/`**. Resources bind to
-concepts by **filename convention** (stem = concept id), so Phase 1 never parses
-`.mural`. `<conceptId>` is the TODL node id as emitted in `model.json` (dots in
-qualified names are fine — extension detection uses the last `.`).
+Taxonomy `.todl` lives anywhere **except `samples/`**. Resources bind to a
+library **class** by **filename convention** (stem = the class's qualified id),
+so Phase 1 never parses `.mural`. `<classId>` is the class node id as emitted in
+`model.json` — the qualified name, e.g. `microsoft.azure` (dots are fine —
+extension detection uses the *last* `.`, so `visuals/microsoft.azure.mural` has
+extension `.mural` and stem `microsoft.azure`).
 
 ### Manifest — `library.json`
 
 Written into the bundle root alongside `model.json`. Shape:
 
 ```ts
-interface PublishedConcept {
-    id:         string     // Ontology-tier NodeId
-    label?:     string     // from node attrs.label ?? attrs.name, if present
-    template?:  string     // "visuals/<id>.mural"     — present only if the file exists
-    thumbnail?: string     // "thumbnails/<id>.png"    — present only if the file exists
-    doc?:       string     // "docs/<id>.md"           — present only if the file exists
+interface PublishedClass {
+    id:         string     // qualified class NodeId, e.g. "microsoft.azure"
+    localId?:   string     // attrs.id, the short name, e.g. "azure"
+    label?:     string     // attrs.label, if present, e.g. "Azure"
+    concept:    string     // node.typeOf — the meta-model concept it realises, e.g. "location"
+    template?:  string     // "visuals/<id>.mural"    — present only if the file exists
+    thumbnail?: string     // "thumbnails/<id>.png"   — present only if the file exists
+    doc?:       string     // "docs/<id>.md"          — present only if the file exists
 }
 
 interface LibraryBundleManifest {
@@ -125,14 +138,14 @@ interface LibraryBundleManifest {
     name:        string                 // display name (manifest.name)
     description?: string                // optional, if the project manifest carries one
     metaModel:   { id: string; version: string }   // the BaseRef this library targets
-    concepts:    PublishedConcept[]
+    classes:     PublishedClass[]       // the instantiable classes (palette items)
     assets:      string[]               // every file under assets/ (bundle-relative)
     docs:        string[]               // every file under docs/  (incl README)
     samples:     string[]               // every file under samples/
 }
 ```
 
-The loader (Phase 2) reads `concepts[]` for the palette + render resolver,
+The loader (Phase 2) reads `classes[]` for the palette + render resolver,
 `assets[]` to resolve image references, and `docs[]` / `samples[]` for browsing.
 
 ### Publish flow
@@ -147,15 +160,17 @@ problems are non-blocking warnings.
 3. Collect taxonomy sources **excluding `samples/`** — a new exclude-aware
    collector (see below) — so samples never enter `model.json`.
 4. `checkAgainst(bases, sources)`; block if any `Severity.Error` (exists).
-5. Derive `concepts` from the model: `model.nodes.filter(n => n.tier ===
-   Tier[Tier.Ontology])` → `{ id, label: attrs.label ?? attrs.name }`. Note
-   `JsonNode.tier` is the enum **member name string** (`toJSON` emits enums by
-   name), so the comparison is against `"Ontology"` (via `Tier[Tier.Ontology]`),
-   not the numeric enum value.
-6. Scan the resource folders; for each concept attach `template`/`thumbnail`/
-   `doc` when the conventionally-named file exists; gather `assets` / `docs` /
-   `samples` lists. **Validate:** any `visuals/*` or `thumbnails/*` whose stem is
-   not a provided concept is an **orphan** → collect a warning (does not block).
+5. Derive `classes` from the compiled model:
+   `model.nodes.filter(n => n.tier === "Instance" && n.attrs.class === true)` →
+   `{ id: n.id, localId: n.attrs.id, label: n.attrs.label, concept: n.typeOf }`.
+   (`JsonNode.tier` is the enum **member name string** — `toJSON` emits enums by
+   name — so the comparison is the literal `"Instance"`; `attrs.class` is a
+   boolean scalar.)
+6. Scan the resource folders; for each class attach `template`/`thumbnail`/`doc`
+   when the conventionally-named file (stem = class id) exists; gather `assets` /
+   `docs` / `samples` lists. **Validate:** any `visuals/*` or `thumbnails/*` whose
+   stem is not a provided class id is an **orphan** → collect a warning (does not
+   block).
 7. Assemble `LibraryBundleManifest`.
 8. Write the bundle under `<id>/<libVersion>/`:
    - `model.json` + `src/*.todl` (existing behavior),
@@ -163,29 +178,33 @@ problems are non-blocking warnings.
    - copy through `visuals/`, `assets/`, `docs/`, `samples/`, `thumbnails/`:
      **text** copy (ReadText/WriteText) for `.mural` / `.md` / `.todl`, **bytes**
      copy (ReadBytes/WriteBytes) for everything else (images).
-   Return `PublishResult` summarizing counts (files, concepts, resources) and any
+   Return `PublishResult` summarizing counts (files, classes, resources) and any
    orphan warnings in `message`.
 
 ### New/changed units
 
-- **`todl-sources.ts`** — add `collectTodlSources(storage, { excludeDirs })` (or a
-  sibling `collectTaxonomySources`) that skips a set of top-level folders
-  (default `['samples']`). The existing signature keeps working (empty exclude).
+- **`todl-sources.ts`** — add `collectTaxonomySources(storage, excludeDirs)` that
+  skips a set of top-level folders (default `['samples']`); the existing
+  `collectTodlSources` stays as the unfiltered walk it is today.
 - **`library-bundle.ts`** (new, in the library module) — the manifest types plus
-  pure helpers: `deriveConcepts(model: TodlDocument): PublishedConcept[]` and
-  `scanResources(storage, conceptIds): { concepts, assets, docs, samples,
-  warnings }`. Pure functions of their inputs → unit-testable with `FakeStorage`.
+  pure helpers: `deriveClasses(model: TodlDocument): PublishedClass[]` and
+  `scanResources(storage, classIds): { byClass, assets, docs, samples, warnings }`
+  where `byClass` maps a class id → `{ template?, thumbnail?, doc? }`. Pure
+  functions of their inputs → unit-testable with `FakeStorage`.
 - **`library-project-factory.ts`** — `publish` calls the helpers, assembles
   `library.json`, and copies the resource folders.
 
 ### Testing
 
-Unit tests (`node:test`-free; Vitest + `FakeStorage` + the existing `publishEnv`
-pattern that pre-registers meta-models + libraries backends):
+Unit tests (Vitest + `FakeStorage` + the existing `publishEnv` pattern that
+pre-registers meta-models + libraries backends; the sample `microsoft` taxonomy
+compiles to classes `microsoft.azure` and `microsoft.azure-openai`):
 
-- `deriveConcepts` returns only `Ontology`-tier nodes, with `label` from attrs.
+- `deriveClasses` returns only `Instance`-tier `class===true` nodes — the two
+  `microsoft.*` ids with `localId`/`label`/`concept` — not the `Ontology`-tier
+  concept/field/taxonomy definition nodes.
 - `collectTaxonomySources` excludes `samples/` (a `samples/x.todl` is not returned).
-- Publish writes `library.json` with the right `concepts[]` and per-concept
+- Publish writes `library.json` with the right `classes[]` and per-class
   `template`/`thumbnail`/`doc` paths (present only when the file exists).
 - Publish copies `visuals/ assets/ docs/ samples/ thumbnails/` into the bundle
   (assert the destination `FakeStorage` has the files; images round-trip as bytes).
@@ -194,7 +213,7 @@ pattern that pre-registers meta-models + libraries backends):
 
 ### Out of scope (Phase 1)
 
-- Parsing `.mural` to read an in-file concept target (filename convention instead).
+- Parsing `.mural` to read an in-file class target (filename convention instead).
 - Thumbnail auto-generation (author-supplied only).
 - Any loading / mounting / rendering / palette (Phases 2–3).
 - Diagram or Mural changes.
