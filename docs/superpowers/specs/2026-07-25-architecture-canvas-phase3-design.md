@@ -27,8 +27,8 @@ An architecture project binds a meta-model + libraries and authors instance `.to
 
 ```
 .archdiagram (layout: instanceId → x/y) ┐                    ┌─▶ emitter ─▶ .todl (instances) ─▶ TodlValidationService ─▶ Problems
-.todl (instances) ──────────────────────┴─▶ Repository ◀── Builder ◀── canvas edits (drop / move / set / connect)
-   bases via resolveBases (meta-model+libs) ─▶  │
+.todl (instances) ──────────────────────┴─▶ own TodlDocument ◀── model ops ◀── canvas edits (drop / move / set / connect)
+   bases via resolveBases (meta-model+libs) ─▶ derived Repository (schema queries)
                                                 └─▶ node per own instance ── LibraryRegistry.resolve(classId).Apply(InstanceNodeVM)
 ```
 
@@ -38,25 +38,26 @@ The `Repository` is seeded with the project's **bases** (so class/relationship s
 
 ### A · Instance model service (`architecture-instance-model.ts`, headless)
 
-Owns one `Repository` per open architecture-diagram document.
-- `load(bases: TodlDocument[], instanceSource: string): ArchInstanceModel` — build a `Repository` from `fromJSON(mergedBases)` (or `checkAgainst`) and parse/load the instance `.todl` into it, recording which node ids are **own** (from the instance source) vs **base** (classes/concepts). Exposes `ownInstances(): NodeId[]`.
-- Mutation ops (each a `Builder` batch + `commit`): `createInstance(classId): NodeId` (fresh id; `assertInstance(concept, id)` + `addInstanceOf(id, classId)`), `setField(id, name, value)`, `addRelationship(from, member, to)`, `removeRelationship(from, member, to)`, `remove(id)`.
-- Schema query for connectors: `relationshipCandidates(fromId, toId): RelationshipSchema[]` — relationship members of `fromId`'s class whose target concept `toId` satisfies.
-- `changed: Signal<GraphChangeArgs>` re-exposed for the canvas to react to.
+**JSON-document-backed (TODL's graph is add-only — no node/edge removal — so the mutable store is a `TodlDocument`, not a live `Repository`).** The source of truth is `own: TodlDocument` = `{ nodes, edges }` holding just the project's own instances; a `Repository` is **derived** (`fromJSON(merge(bases, own))`) on demand for schema queries. `JsonNode.tier`/`JsonEdge.kind` are the enum **member-name strings** (`"Instance"`, `"Relationship"`, `"InstanceOf"`).
+- `load(bases: TodlDocument[], instanceSource: string): ArchInstanceModel` — parse the instance `.todl` (`checkAgainst(bases, [source])` then `toJSON`, keeping only the non-base Instance nodes/edges as `own`); an empty source starts with `own = { nodes: [], edges: [] }`.
+- Mutation ops edit `own` directly and fire `changed`: `createInstance(classId): NodeId` (append an `Instance` node `typeOf = concept` + an `InstanceOf` edge to `classId`; `concept` from the class node's `typeOf`), `setField(id, name, value)` (set `node.attrs[name]`), `addRelationship(from, member, to)` (append a `Relationship` edge `via = member`), `removeRelationship(from, member, to)` (filter it), `remove(id)` (filter the node + all its edges).
+- `ownInstances(): NodeId[]` = `own.nodes` with `tier === "Instance"` and not `attrs.class`.
+- `repository(): Repository` — derived (cached, invalidated on mutation) for schema queries; `relationshipCandidates(fromId, toId): RelationshipSchema[]` uses `repository().effectiveSchema(concept).relationships` filtered by target-concept compatibility.
+- `changed: Signal<void>` (own change bus) for the canvas to react to.
 
 ### B · graph→`.todl` emitter (`todl-emitter.ts`, headless) — the new component
 
-`emitInstances(model: ArchInstanceModel, namespace: string): string`. Walks the **own** instances → emits one `namespace <ns> { … }` block, each instance:
-`<concept> <localId> instanceof <classLocalId> { <field> = <value>; <relMember> = &<targetLocalId>; <manyRel> = [&a, &b]; }`
-- `concept` = the meta concept the class realises (`resolve(classOf(i)).typeOf`); `classLocalId` = the class's local name.
-- Scalar fields from the instance's own attrs (not class-fixed inherited values); strings quoted, numbers/bools bare.
-- Relationship edges → `&ref` assignments, single or `[…]` list per the member's cardinality.
-- **Correctness gate:** round-trip test — a sample instance `.todl` → `load` → `emitInstances` → `parse`/`load` again yields an equal graph (compared via `toJSON`).
+`emitInstances(own: TodlDocument, namespace: string): string` — a **pure function of the own document**. Emits one `namespace <ns> { … }` block, each Instance node:
+`<concept> <localId> [instanceof <classLocalId>] { <field> = <value>; <relMember> = &<targetLocalId>; <manyRel> = [&a, &b]; }`
+- `concept` = the node's `typeOf` local name; `classLocalId` = the target of its `InstanceOf` edge (omitted if none); `relMember` = the `via` member's local name; local name = the id's last `.`-segment.
+- Scalar fields from `node.attrs` (excluding the `class`/`id` markers); strings quoted, numbers/bools bare.
+- `Relationship` edges grouped by member → `&ref` single, or `[&a, &b]` when repeated.
+- **Correctness gate:** round-trip test — sample instance `.todl` → `load` → `emitInstances` → `checkAgainst(bases, [emitted])` → `toJSON` equals the original own document (modulo formatting). The exact reference form (local vs qualified/import for cross-namespace library classes) is pinned by making this test pass against real TODL.
 
 ### C · InstanceNodeVM (`instance-node-vm.ts`)
 
-A mural `Model` wrapping one graph instance — the DataContext a class template binds to.
-- DPs: `Display` (label ?? localId ?? id), plus a generic field accessor bound reactively. Field edits call `model.setField`; `Repository.changed` for the node updates the VM (two-way).
+A mural `Model` wrapping one own instance node — the DataContext a class template binds to.
+- DPs: `Display` (label ?? localId ?? id), plus field accessors. Field edits call `model.setField`; the model's `changed` stream refreshes the VM (two-way).
 - `ClassId` + `Concept` exposed so the canvas resolves the template.
 
 ### D · Concept-aware canvas (`arch-diagram.ts` + Figure content template)
@@ -101,5 +102,5 @@ A mural `Model` wrapping one graph instance — the DataContext a class template
 
 1. **Mural connector API** — how `Connectors` are created/observed (`Diagram` connector-drawn event/endpoint shape) and whether connector creation is user-drivable without geometry, to map to relationship edges.
 2. **`Figure` content template** — the exact DP names for binding `Content`/`ContentTemplate` in the overridden template, and that a `ContentPresenter` inside a `Figure` template renders at the figure's box.
-3. **Building a seeded `Repository`** — the exact call to construct a `Repository` from base `TodlDocument`s plus loaded instance source (whether via `fromJSON` + a load-into-existing path, or `checkAgainst` then wrapping) such that class schemas are queryable and own vs base ids are distinguishable.
+3. **Deriving the `Repository`** — confirm `fromJSON(merge(bases, own))` yields a `Repository` whose `effectiveSchema`/`classOf`/`effectiveFields` answer schema queries (vs needing `checkAgainst` on emitted text). The `own` document is authored by `load` = `checkAgainst(bases, [source])` → `toJSON`, keeping non-base Instance nodes/edges.
 4. **`.archdiagram` document plumbing** — reuse of the generic `DiagramDocument` for layout vs a bespoke document model; how the architecture-project document factory routes `.archdiagram` to the canvas editor.
