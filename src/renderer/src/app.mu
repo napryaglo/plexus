@@ -95,6 +95,9 @@ import ProjectExplorerResources from "./modules/project-explorer/project-explore
 // (DataTemplate[MetaModelsService] + MetaModelRow / MetaModelVersionRow rows).
 import MetaModelResources from "./modules/meta-model/meta-model.resources.mu.js"
 
+// Libraries capability panel (DataTemplate[LibrariesPanelService] + rows).
+import LibraryResources from "./modules/library/library.resources.mu.js"
+
 // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
 import AgentChatResources from "./modules/agent-chat/agent-chat.resources.mu.js"
 
@@ -243,6 +246,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
 
         // Meta-models capability panel (DataTemplate[MetaModelsService] + rows).
         merge MetaModelResources
+
+        // Libraries capability panel (DataTemplate[LibrariesPanelService] + rows).
+        merge LibraryResources
 
         // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
         merge AgentChatResources

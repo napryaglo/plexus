@@ -14,11 +14,17 @@
 // the project factory + its `.projectFactories:` routing.
 
 import LibraryProjectFactory from "./services/library-project-factory.js"
+import LibraryRegistry from "./services/library-registry.js"
+import LibrariesPanelService from "./services/libraries-panel-service.js"
 
 module LibraryModule [ Name = "Library" ] {
     .services: {
         LibraryProjectFactory
+        LibraryRegistry
+        LibrariesPanelService
     }
+
+    Capability [ Name = "Libraries", Icon = @Libraries, ServiceKey = LibrariesPanelService ]
 
     .projectFactories: {
         ProjectFactoryDefinition

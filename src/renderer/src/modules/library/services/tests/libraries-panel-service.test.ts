@@ -33,10 +33,10 @@ test('builds a LibraryRow per library with a ClassRow (template resolved) per cl
 
     expect(svc.IsEmpty).toBe(false)
     expect(svc.Libraries.Count).toBe(1)
-    const lib = svc.Libraries.Get(0)
+    const lib = svc.Libraries.Get(0)!
     expect(lib.Name).toContain('Microsoft')
     expect(lib.Classes.Count).toBe(1)
-    const row = lib.Classes.Get(0)
+    const row = lib.Classes.Get(0)!
     expect(row.Data.Display).toBe('Azure')
     expect(typeof row.Template.Apply).toBe('function')
 })

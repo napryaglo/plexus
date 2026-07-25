@@ -62,7 +62,7 @@ export async function loadLibrary(backend: IStorage, id: string, version: string
         if (c.label !== undefined) cls.label = c.label
         for (const [field, path] of [['templatePath', c.template], ['thumbnailPath', c.thumbnail], ['docPath', c.doc]] as const) {
             if (path === undefined) continue
-            if (await backend.Exists(`${base}/${path}`)) (cls as Record<string, unknown>)[field] = path
+            if (await backend.Exists(`${base}/${path}`)) (cls as unknown as Record<string, unknown>)[field] = path
             else problems.push({ severity: 'warning', uri: path, message: `Referenced resource is missing: ${path}` })
         }
         classes.push(cls)
