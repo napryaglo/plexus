@@ -45,17 +45,3 @@ export class ToolBoxService extends PlexusPanelService
         return this.get_property_value(ToolBoxService.ShapesKey);
     }
 }
-
-// Layers — the document's layer stack.
-export class LayersService extends PlexusPanelService
-{
-    public static readonly Key = new ServiceKey<LayersService>('LayersService');
-    constructor(provider: IServiceProvider) { super(provider, []); }
-}
-
-// Outline — a tree of the diagram's nodes.
-export class OutlineService extends PlexusPanelService
-{
-    public static readonly Key = new ServiceKey<OutlineService>('OutlineService');
-    constructor(provider: IServiceProvider) { super(provider, []); }
-}

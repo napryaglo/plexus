@@ -16,15 +16,11 @@
 // one is active. See services/panels/panel-services.ts.
 
 import ToolBoxService from "./services/diagram-panel-services.js"
-import LayersService from "./services/diagram-panel-services.js"
-import OutlineService from "./services/diagram-panel-services.js"
 import DiagramDocumentFactory from "./services/diagram-document-factory.js"
 
 module DiagramModule [ Name = "Diagram" ] {
     .services: {
         ToolBoxService
-        LayersService
-        OutlineService
         DiagramDocumentFactory
     }
 
@@ -335,10 +331,4 @@ module DiagramModule [ Name = "Diagram" ] {
 
     // Shapes â€” the toolbox of shapes to drop onto the canvas.
     Capability [ Name = "Tool Box", Icon = @ToolBox, ServiceKey = ToolBoxService ]
-
-    // Layers â€” the document's layer stack.
-    Capability [ Name = "Layers", Icon = @Layers, ServiceKey = LayersService ]
-
-    // Outline â€” a tree of the diagram's nodes.
-    Capability [ Name = "Outline", Icon = @Outline, ServiceKey = OutlineService ]
 }

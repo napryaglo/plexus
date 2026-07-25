@@ -12,10 +12,7 @@
 
 resources PlexusIcons {
     include "icons/tool-box.svg"                 as ToolBox
-    include "icons/layers.svg"                   as Layers
-    include "icons/outline.svg"                  as Outline
     include "icons/architecture-repository.svg"  as ArchitectureRepository
-    include "icons/technology-library.svg"       as TechnologyLibrary
     include "icons/project-explorer.svg"         as ProjectExplorer
     include "icons/meta-models.svg"              as MetaModels
     include "icons/libraries.svg"                as Libraries
@@ -23,7 +20,8 @@ resources PlexusIcons {
     // Activity-bar footer action (VSCode-style settings gear).
     include "icons/settings.svg"                 as Settings
 
-    // Send affordance for the agent-chat input (up-arrow, Material arrow_upward).
+    // Agent capability nav glyph + the send affordance for its input.
+    include "icons/agent.svg"                    as Agent
     include "icons/arrow-upward.svg"             as ArrowUpward
 
     // Project Explorer command-bar glyphs (Open / New / New File / Save / Publish).
