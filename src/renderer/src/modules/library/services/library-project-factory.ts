@@ -14,7 +14,8 @@ import { resolveBases } from '../../../services/projects/base-resolver.js'
 import { Project, ProjectNode, type ProjectNodeKind } from '../../../services/projects/project.js'
 import { compareStorageEntries, type IStorage } from '../../../services/storage/storage.js'
 import { ensureLibrariesBackend } from './libraries-backend.js'
-import { collectTodlSources, extname, joinRel } from '../../meta-model/services/todl-sources.js'
+import { collectTaxonomySources, extname, joinRel } from '../../meta-model/services/todl-sources.js'
+import { deriveClasses, scanResources, type LibraryBundleManifest } from './library-bundle.js'
 
 // The 'library' project type's factory — the library module's contribution to
 // the generic ProjectExplorerService (declared via `.projectFactories:` and
@@ -29,9 +30,10 @@ import { collectTodlSources, extname, joinRel } from '../../meta-model/services/
 // flows through the project's rooted IStorage (project-relative paths).
 interface LibraryManifest extends ProjectManifestEnvelope
 {
-    id:         string           // stable publish identity, defaults to slugify(name)
-    libVersion: string           // published version, defaults to '0.1.0'
-    metaModel?: BaseRef          // the meta-model this library is authored against
+    id:           string         // stable publish identity, defaults to slugify(name)
+    libVersion:   string         // published version, defaults to '0.1.0'
+    metaModel?:   BaseRef        // the meta-model this library is authored against
+    description?: string         // optional human description, carried into library.json
 }
 
 export class LibraryProjectFactory extends ServiceBase implements IProjectFactory, IPublishableProjectFactory
@@ -73,9 +75,10 @@ export class LibraryProjectFactory extends ServiceBase implements IProjectFactor
         await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
     }
 
-    // Validate every `.todl` against the bound meta-model; if clean, emit the
-    // compiled model + copy the sources into the libraries backend under
-    // `<id>/<libVersion>/`.
+    // Validate every taxonomy `.todl` (samples/ excluded) against the bound
+    // meta-model; if clean, emit model.json + library.json + the sources, and copy
+    // the resource folders (visuals/assets/docs/samples/thumbnails) into the
+    // libraries backend under `<id>/<libVersion>/`.
     public async publish(_project: Project, storage: IStorage, provider: IServiceProvider): Promise<PublishResult>
     {
         const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as LibraryManifest
@@ -85,7 +88,7 @@ export class LibraryProjectFactory extends ServiceBase implements IProjectFactor
         const { bases, problems } = await resolveBases(provider, { metaModel: manifest.metaModel })
         if (problems.length > 0) return { ok: false, message: `Publish blocked: ${problems.join('; ')}.` }
 
-        const sources = await collectTodlSources(storage)
+        const sources = await collectTaxonomySources(storage)
         if (sources.length === 0) return { ok: false, message: 'Nothing to publish — the project has no .todl files.' }
 
         const { model, diagnostics } = checkAgainst(bases, sources)
@@ -93,11 +96,67 @@ export class LibraryProjectFactory extends ServiceBase implements IProjectFactor
         if (errors.length > 0)
             return { ok: false, message: `Publish blocked: ${errors.length} error(s). Fix them first.` }
 
+        const doc = toJSON(model)
+        const classes = deriveClasses(doc)
+        const scanned = await scanResources(storage, classes.map((c) => c.id))
+        for (const c of classes) {
+            const r = scanned.byClass.get(c.id)
+            if (r?.template) c.template = r.template
+            if (r?.thumbnail) c.thumbnail = r.thumbnail
+            if (r?.doc) c.doc = r.doc
+        }
+
+        const bundle: LibraryBundleManifest = {
+            id: manifest.id,
+            version: manifest.libVersion,
+            name: manifest.name ?? manifest.id,
+            ...(manifest.description !== undefined ? { description: manifest.description } : {}),
+            metaModel: manifest.metaModel,
+            classes,
+            assets: scanned.assets,
+            docs: scanned.docs,
+            samples: scanned.samples,
+        }
+
         const dest = ensureLibrariesBackend(provider)
         const base = `${manifest.id}/${manifest.libVersion}`
-        await dest.WriteText(`${base}/model.json`, JSON.stringify(toJSON(model), null, 2))
+        await dest.WriteText(`${base}/model.json`, JSON.stringify(doc, null, 2))
+        await dest.WriteText(`${base}/library.json`, JSON.stringify(bundle, null, 2))
         for (const s of sources) await dest.WriteText(`${base}/src/${s.uri}`, s.text)
-        return { ok: true, message: `Published ${manifest.id}@${manifest.libVersion} (${sources.length} file(s)).` }
+
+        let copied = 0
+        for (const folder of ['visuals', 'assets', 'docs', 'samples', 'thumbnails'])
+            copied += await this.copyResourceFolder(storage, dest, folder, base)
+
+        const warn = scanned.warnings.length > 0
+            ? ` (${scanned.warnings.length} warning(s): ${scanned.warnings.join('; ')})`
+            : ''
+        return {
+            ok: true,
+            message: `Published ${manifest.id}@${manifest.libVersion} — `
+                + `${classes.length} class(es), ${sources.length} source(s), ${copied} resource file(s)${warn}.`,
+        }
+    }
+
+    // Recursively copy one resource folder from the project storage into the
+    // bundle at `<destBase>/<folder>/…`. Text formats (.mural/.md/.todl) copy as
+    // text; everything else (images) as bytes. A missing folder lists as empty, so
+    // this is a no-op when the project doesn't use that folder.
+    private async copyResourceFolder(src: IStorage, dest: IStorage, folder: string, destBase: string): Promise<number>
+    {
+        let count = 0
+        const walk = async (dir: string): Promise<void> => {
+            for (const e of await src.List(dir)) {
+                const rel = `${dir}/${e.Name}`
+                if (e.IsDirectory) { await walk(rel); continue }
+                const destPath = `${destBase}/${rel}`
+                if (isTextResource(e.Name)) await dest.WriteText(destPath, await src.ReadText(rel))
+                else await dest.WriteBytes(destPath, await src.ReadBytes(rel))
+                count++
+            }
+        }
+        await walk(folder)
+        return count
     }
 
     private async buildProject(storage: IStorage, manifest: LibraryManifest): Promise<Project>
@@ -128,6 +187,13 @@ export class LibraryProjectFactory extends ServiceBase implements IProjectFactor
 }
 
 // ── helpers ──
+// Text resource formats copy as text; all others (images) as bytes.
+function isTextResource(name: string): boolean
+{
+    const ext = extname(name)
+    return ext === '.mural' || ext === '.md' || ext === '.todl'
+}
+
 function slugify(name: string): string
 {
     return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'library'
