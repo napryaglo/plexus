@@ -73,7 +73,8 @@ export class ArchTermsPaletteService extends ServiceBase implements IActivatable
     public async Reload(): Promise<void>
     {
         const seq = ++this.reloadSeq
-        const registry = this.Provider.getRequired(LibraryRegistry.Key)
+        const registry = this.Provider.get(LibraryRegistry.Key)
+        if (registry === undefined) return                    // no library backend wired (headless) — empty palette
         const libs = await registry.refresh()
         if (seq !== this.reloadSeq) return
 

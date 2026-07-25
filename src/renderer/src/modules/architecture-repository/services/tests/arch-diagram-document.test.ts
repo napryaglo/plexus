@@ -1,5 +1,6 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { Figure, ConnectorEndpoint } from '@pragmatic-lab/mural/framework'
 import { check, checkAgainst, toJSON } from '@pragmatic-lab/todl'
 
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
@@ -8,6 +9,13 @@ import { META_MODELS_BACKEND_ID } from '../../../meta-model/services/meta-models
 import { LIBRARIES_BACKEND_ID } from '../../../library/services/libraries-backend.js'
 import { ArchDiagramDocumentFactory } from '../arch-diagram-document-factory.js'
 import { ArchDiagramDocument } from '../arch-diagram-document.js'
+import { InstanceNodeVM } from '../instance-node-vm.js'
+
+async function openNew(provider: ServiceProvider, project: FakeStorage): Promise<ArchDiagramDocument> {
+    const f = new ArchDiagramDocumentFactory(provider)
+    const path = await f.newFile(project, 'system')
+    return await f.openFile(project, path) as ArchDiagramDocument
+}
 
 // A provider whose meta-models + libraries backends hold a published EA meta-model
 // and a technology library, plus a project whose manifest binds them.
@@ -52,4 +60,53 @@ test('newFile then Save writes a .archdiagram + sibling .todl; open restores mod
     const reopened = await f.openFile(project, path) as ArchDiagramDocument
     expect(reopened.Model.ownInstances()).toEqual([id])
     expect(reopened.LayoutOf(id)).toEqual({ x: 120, y: 80 })
+})
+
+// ── DiagramMutator: the surface the base Diagram auto-wires from DataContext ──
+
+test('CreateNode drops a term into a positioned concept instance referencing it', async () => {
+    const { provider, project } = env()
+    const doc = await openNew(provider, project)
+
+    const node = doc.CreateNode('stack.azure-openai', 40, 60) as InstanceNodeVM
+    expect(node).toBeInstanceOf(InstanceNodeVM)
+    expect(node.Concept).toBe('component')
+    expect(node.ReferencedTerm).toBe('stack.azure-openai')
+    expect(node.Left).toBe(40)
+    expect(node.Top).toBe(60)
+    expect(doc.Nodes.Count).toBe(1)
+    expect(doc.Model.document.edges.some((e) => e.kind === 'Relationship' && e.from === node.Id && e.to === 'stack.azure-openai')).toBe(true)
+})
+
+test('CreateNode returns null for a term nothing can reference (no node created)', async () => {
+    const { provider, project } = env()
+    const doc = await openNew(provider, project)
+    expect(doc.CreateNode('nonexistent.term', 0, 0)).toBeNull()
+    expect(doc.Nodes.Count).toBe(0)
+})
+
+test('CreateConnector maps endpoint Figures to node ids and sets the reference member', async () => {
+    const { provider, project } = env()
+    const doc = await openNew(provider, project)
+
+    const compId = doc.Model.createInstance('component')
+    const techId = doc.Model.createInstance('technology')
+    const compVm = doc.AddNode(compId)
+    const techVm = doc.AddNode(techId)
+    const src = new Figure(); src.Content = compVm
+    const tgt = new Figure(); tgt.Content = techVm
+
+    doc.CreateConnector(new ConnectorEndpoint({ Node: src }), new ConnectorEndpoint({ Node: tgt }))
+    expect(doc.Model.document.edges.some((e) => e.kind === 'Relationship' && e.from === compId && e.to === techId)).toBe(true)
+})
+
+test('DeleteNodes removes the instance from the model and its node from the canvas', async () => {
+    const { provider, project } = env()
+    const doc = await openNew(provider, project)
+
+    const node = doc.CreateNode('stack.azure-openai', 10, 10) as InstanceNodeVM
+    expect(doc.Nodes.Count).toBe(1)
+    doc.DeleteNodes([node])
+    expect(doc.Nodes.Count).toBe(0)
+    expect(doc.Model.ownInstances()).toEqual([])
 })

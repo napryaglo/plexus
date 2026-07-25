@@ -98,6 +98,9 @@ import MetaModelResources from "./modules/meta-model/meta-model.resources.mu.js"
 // Libraries capability panel (DataTemplate[LibrariesPanelService] + rows).
 import LibraryResources from "./modules/library/library.resources.mu.js"
 
+// Architecture-diagram editor (DataTemplate[ArchDiagramDocument] + node/palette/tile).
+import ArchitectureRepositoryResources from "./modules/architecture-repository/architecture-repository.resources.mu.js"
+
 // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
 import AgentChatResources from "./modules/agent-chat/agent-chat.resources.mu.js"
 
@@ -249,6 +252,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
 
         // Libraries capability panel (DataTemplate[LibrariesPanelService] + rows).
         merge LibraryResources
+
+        // Architecture-diagram editor (DataTemplate[ArchDiagramDocument] + node/palette/tile).
+        merge ArchitectureRepositoryResources
 
         // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
         merge AgentChatResources

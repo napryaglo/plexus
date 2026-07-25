@@ -21,6 +21,18 @@ export class InstanceNodeVM extends Model
     // `DataTemplate[InstanceNodeVM]` binds a ContentPresenter's ContentTemplate to it.
     public static readonly TemplateKey = Model.RegisterProperty<DataTemplate | undefined>(
         InstanceNodeVM, 'Template', undefined, MetaData.None)
+    // Self-reference: the node template presents the vm THROUGH its per-term
+    // Template via `ContentPresenter [ Content = $Data, ContentTemplate = $Template ]`
+    // (mirrors library ClassRow). `$Data` must be a registered property, hence a DP
+    // that holds `this` rather than a plain getter — bindings only walk DPs.
+    public static readonly DataKey = Model.RegisterProperty<InstanceNodeVM>(
+        InstanceNodeVM, 'Data', undefined as unknown as InstanceNodeVM, MetaData.None)
+    // Canvas position. The Diagram's ItemContainerStyle binds the node Figure's
+    // Left/Top to these (the item is the container's DataContext); Figure.Left/Top
+    // is two-way-by-default, so dragging the node writes back here, and Save reads
+    // them. Seeded from the document layout when the container VM is created.
+    public static readonly LeftKey = Model.RegisterProperty<number>(InstanceNodeVM, 'Left', 0, MetaData.None)
+    public static readonly TopKey  = Model.RegisterProperty<number>(InstanceNodeVM, 'Top', 0, MetaData.None)
 
     private readonly unsubscribe: () => void
 
@@ -30,6 +42,7 @@ export class InstanceNodeVM extends Model
     )
     {
         super()
+        this.set_property_value(InstanceNodeVM.DataKey, this)
         this.unsubscribe = model.onChanged(() => this.refresh())
         this.refresh()
     }
@@ -39,6 +52,11 @@ export class InstanceNodeVM extends Model
     public get ReferencedTerm(): string { return this.get_property_value(InstanceNodeVM.ReferencedTermKey) }
     public get Template(): DataTemplate | undefined { return this.get_property_value(InstanceNodeVM.TemplateKey) }
     public set Template(v: DataTemplate | undefined) { this.set_property_value(InstanceNodeVM.TemplateKey, v) }
+    public get Data(): InstanceNodeVM { return this.get_property_value(InstanceNodeVM.DataKey) }
+    public get Left(): number { return this.get_property_value(InstanceNodeVM.LeftKey) }
+    public set Left(v: number) { this.set_property_value(InstanceNodeVM.LeftKey, v) }
+    public get Top(): number { return this.get_property_value(InstanceNodeVM.TopKey) }
+    public set Top(v: number) { this.set_property_value(InstanceNodeVM.TopKey, v) }
 
     // Edit a scalar field; the model fires `changed`, which refreshes this VM.
     public SetField(name: string, value: string | number | boolean): void

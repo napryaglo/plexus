@@ -9,11 +9,25 @@
 
 import ArchitectureRepositoryService from "./services/architecture-repository-service.js"
 import ArchitectureProjectFactory from "./services/architecture-project-factory.js"
+import ArchDiagramDocumentFactory from "./services/arch-diagram-document-factory.js"
 
 module ArchitectureRepositoryModule [ Name = "Architecture Repository" ] {
     .services: {
         ArchitectureRepositoryService
         ArchitectureProjectFactory
+        ArchDiagramDocumentFactory
+    }
+
+    // The `.archdiagram` editor — a concept-aware canvas that drops library terms
+    // as meta-model concept instances and emits a sibling `.todl`. Resolved by the
+    // ProjectExplorerService for open/save/new of any `.archdiagram` file.
+    .documents: {
+        DocumentDefinition
+            [ Type           = "architecture-diagram",
+              Title          = "Architecture Diagram",
+              Description    = "A concept-aware architecture canvas backed by TODL.",
+              FileExtensions = [".archdiagram"],
+              Factory        = ArchDiagramDocumentFactory ]
     }
 
     // The 'architecture' project type — this module owns it (editors own files,
