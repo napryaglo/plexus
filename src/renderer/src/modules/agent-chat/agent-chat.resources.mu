@@ -36,8 +36,10 @@ resources AgentChatResources {
                 }
                 TextBox [ Text = $Draft, IsEnabled = $CanInput ]
             }
-            // Scrolling transcript fills the rest.
-            ScrollViewer [ HorizontalScrollEnabled = false ] {
+            // Scrolling transcript fills the rest. AutoScrollToEnd keeps the
+            // latest message pinned to the bottom while the user is at the end
+            // (sticky — scrolling up to read history is not interrupted).
+            ScrollViewer [ HorizontalScrollEnabled = false, AutoScrollToEnd = true ] {
                 ItemsControl [ ItemsSource = $Transcript, ItemsPanel = @VerticalStackPanel ]
             }
         }
