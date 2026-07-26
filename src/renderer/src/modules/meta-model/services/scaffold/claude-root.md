@@ -24,6 +24,12 @@ Full reference: `.claude/todl-manual.md`. The rules that trip up authors most:
   imports. A missing `;` is the most common syntax error.
 - **Identifiers are lowercase kebab-case**: `app-component`, never `AppComponent`
   or `app_component`. Concept names, field names, and file stems too.
+- **Concepts are singular nouns; their taxonomy is that noun in plural.** A
+  `concept` names a single thing (`technology`, `component`, `location`); the
+  `taxonomy` that enumerates that concept's classes is the **same noun,
+  pluralized**, and `represents` it — e.g.
+  `taxonomy technologies : represents technology { … }`. (Still kebab-case:
+  `access-policy` → `taxonomy access-policies : represents access-policy`.)
 - **References use `&`**: `&location`, `&subnet.default`. The characters `@` and
   `$` are reserved for Mural and are hard syntax errors in TODL.
 - **Cardinality is a suffix on the field's type** — bare = exactly one,

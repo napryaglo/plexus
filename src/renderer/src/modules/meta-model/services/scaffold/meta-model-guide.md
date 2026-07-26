@@ -35,6 +35,12 @@ it's a validated scalar, it's a **primitive**.
 - **Purpose-first naming.** Name a concept for what it *is / does*, not for the
   technology behind it. Bind the technology through a relationship or an
   `implemented-by` field, not the name.
+- **Singular concept, plural taxonomy.** A concept is a **singular** noun
+  (`technology`, `component`, `location`); the taxonomy that enumerates its
+  classes is that **same noun in plural** and `represents` it —
+  `technology` → `taxonomy technologies : represents technology`. (A field-value
+  taxonomy that names a categorization axis rather than a concept's classes —
+  `component-category` — is the exception.)
 - **Fields carry the data; relationships carry the links.** A value that
   *belongs to* the entity is a field; a *reference to another entity* is a
   relationship (`relationship in -> location;`).
