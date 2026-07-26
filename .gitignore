@@ -13,3 +13,7 @@ release/
 # Generated from src/renderer/src/app.mu by `npm run compile:mu` (the mural
 # CLI) before Vite bundles it — a build artifact, not source.
 *.mu.js
+
+# Local performance-trace captures (Chrome DevTools JSON) — debugging
+# artifacts, not source.
+debug/

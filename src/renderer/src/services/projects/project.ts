@@ -47,6 +47,12 @@ export class ProjectNode extends Model
     // it removes the whole selected set.
     static readonly DeleteCommandKey = Model.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'DeleteCommand', undefined, MetaData.None)
+    // Self-reference so a row can hand the whole node to a ContentControl's
+    // Content (`Content = $Data`). The rename editor is stamped lazily through
+    // that ContentControl — see the ProjectNodeTemplate — so the heavy TextBox
+    // only materialises for the one node being renamed, not once per row.
+    static readonly DataKey = Model.RegisterProperty<ProjectNode>(
+        ProjectNode, 'Data', undefined as unknown as ProjectNode, MetaData.None)
 
     constructor(name: string, path: string, kind: ProjectNodeKind)
     {
@@ -55,7 +61,10 @@ export class ProjectNode extends Model
         this.set_property_value(ProjectNode.PathKey, path)
         this.set_property_value(ProjectNode.KindKey, kind)
         this.set_property_value(ProjectNode.ChildrenKey, new ObservableCollection<ProjectNode>())
+        this.set_property_value(ProjectNode.DataKey, this)
     }
+
+    public get Data(): ProjectNode { return this.get_property_value(ProjectNode.DataKey) }
 
     public get Name(): string { return this.get_property_value(ProjectNode.NameKey) }
     public get Path(): string { return this.get_property_value(ProjectNode.PathKey) }

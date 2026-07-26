@@ -74,14 +74,40 @@ resources ProjectExplorerResources {
         on KeyDown { InvokeCommand [ Command = $TreeKeyCommand ] }
     }
 
+    // The empty "off" state for a row's rename slot. Explicit (rather than an
+    // unset ContentTemplate) so the ContentControl never falls back to
+    // type-resolving its ProjectNode Content — which would re-stamp the row
+    // template into itself. A zero-size element: nothing rendered, ~1 node.
+    DataTemplate x:key="EmptyRenameTemplate" [ DataType = ProjectNode ] {
+        Border [ Width = 0, Height = 0 ]
+    }
+
+    // The in-place rename editor, stamped ONLY while a node is being renamed
+    // (the ProjectNodeTemplate's trigger swaps it in). FocusOnVisibleBehavior
+    // focuses + selects the Plain TextBox on attach (it's already visible when
+    // stamped), so lazy materialisation keeps the F2-to-type flow.
+    DataTemplate x:key="RenameEditorTemplate" [ DataType = ProjectNode ] {
+        Border {
+            .Behaviors: { FocusOnVisibleBehavior }
+            TextBox [ Text = $EditingName, Variant = Plain, MinWidth = 80, VerticalAlignment = Center ]
+        }
+    }
+
     // One tree row: a per-kind leading icon (Kind → geometry via KindToGeometry)
     // and the node's name, in a transparent Border that carries the row's
     // right-click NodeContextMenu. `itemsselector = Children` recurses the
     // template down the tree; the framework's default TreeView chrome supplies
     // the chevrons, indent guides, full-row hover, and selection.
+    //
+    // The rename editor is NOT instantiated per row. It lives behind
+    // PART_RenameSlot, a ContentControl whose ContentTemplate is the empty
+    // template until a `when(IsEditing)` trigger swaps in the real editor — so
+    // the heavy Plain TextBox (its own template + caret-blink timer + input
+    // listeners) is materialised only for the single node actually being
+    // renamed, not once for every file/folder in the tree.
     HierarchicalDataTemplate x:key="ProjectNodeTemplate"
         [ DataType = ProjectNode, itemsselector = Children ] {
-        Border [ Background = #00000000, ContextMenuService.ContextMenu = @NodeContextMenu ] {
+        Border x:root [ Background = #00000000, ContextMenuService.ContextMenu = @NodeContextMenu ] {
             .Behaviors: { TreeDragDropBehavior }
             StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
                 Shape [ Geometry = $Kind << KindToGeometry, Fill = @OnSurfaceVariant,
@@ -89,15 +115,15 @@ resources ProjectExplorerResources {
                 // Static label — hidden while the row is in rename mode.
                 TextBlock [ Text = $Name, Style = @BodyMedium, VerticalAlignment = Center,
                             Visibility = $IsEditing << EditingToLabelVisibility ]
-                // In-place rename editor — a Border host (TextBox has no content
-                // model for a Behaviors block) revealed by IsEditing; the behavior
-                // focuses + text-selects the inner Plain TextBox the moment it shows.
-                Border [ Visibility = $IsEditing << ToVisibility ] {
-                    .Behaviors: { FocusOnVisibleBehavior }
-                    TextBox [ Text = $EditingName, Variant = Plain, MinWidth = 80, VerticalAlignment = Center ]
-                }
+                // Lazy rename slot — empty until this row enters edit mode. A
+                // ContentPresenter (not ContentControl) so ContentTemplate is a
+                // real DP the trigger can swap; the explicit empty template keeps
+                // it from type-resolving its ProjectNode Content into the row.
+                ContentPresenter x:name="PART_RenameSlot"
+                    [ Content = $Data, ContentTemplate = @EmptyRenameTemplate, VerticalAlignment = Center ]
             }
         }
+        when ( IsEditing = true ) { PART_RenameSlot.ContentTemplate = @RenameEditorTemplate; }
     }
 
     // Chrome-less host for the header's expand/collapse toggle: no PART_Border /
