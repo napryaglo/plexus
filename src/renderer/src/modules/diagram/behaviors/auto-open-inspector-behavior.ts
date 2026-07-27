@@ -1,4 +1,4 @@
-import { Diagram, DiagramDocument, type InspectorService } from '@pragmatic-lab/mural/framework'
+import { Diagram, DiagramDocument, type PanelDockService } from '@pragmatic-lab/mural/framework'
 
 // Auto-open the document's Format Shape inspector the FIRST time a shape is
 // selected on its canvas. After that first open it does nothing — if the user
@@ -18,7 +18,7 @@ import { Diagram, DiagramDocument, type InspectorService } from '@pragmatic-lab/
 // and publishes itself onto ActiveView, we attach the selection listener then.
 export function attachAutoOpenInspector(
     doc: DiagramDocument,
-    inspectors: InspectorService,
+    dock: PanelDockService,
 ): () => void
 {
     let opened = false
@@ -29,7 +29,7 @@ export function attachAutoOpenInspector(
         if (opened) return
         const view = doc.ActiveView
         if (view === undefined || view.SelectionCount === 0) return
-        inspectors.Add(doc.Inspector)
+        dock.Add(doc.Inspector)
         opened = true
         // One-shot: drop the selection listener so later selections don't re-add
         // (the Add() dedupe would re-surface it anyway, defeating "respect close").

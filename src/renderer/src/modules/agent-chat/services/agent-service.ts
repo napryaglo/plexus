@@ -14,6 +14,7 @@ import {
     type ICommand,
     type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
+import type { IDockPanel } from '@pragmatic-lab/mural/framework'
 import { AgentEventKind, type CreateProjectRequest, type IAgentApi } from '../../../../../shared/agent-api.js'
 import { EnvironmentService } from '../../../services/environment/environment-service.js'
 import { OpenProjectsStore } from '../../../services/projects/open-projects-store.js'
@@ -22,9 +23,15 @@ import type { NewProjectResult } from '../../../services/projects/new-project-di
 import { NewProjectCard } from './new-project-card.js'
 import { TranscriptReducer } from './transcript.js'
 
-export class AgentService extends ServiceBase
+export class AgentService extends ServiceBase implements IDockPanel
 {
     public static readonly Key = new ServiceKey<AgentService>('AgentService')
+
+    // IDockPanel: identify + label the Chat tab in the right panel dock.
+    public static readonly IdKey = Model.RegisterProperty<string>(
+        AgentService, 'Id', 'agent', MetaData.None)
+    public static readonly TitleKey = Model.RegisterProperty<string>(
+        AgentService, 'Title', 'Chat', MetaData.None)
 
     public static readonly TranscriptKey = Model.RegisterProperty<ObservableCollection<Model>>(
         AgentService, 'Transcript', undefined as unknown as ObservableCollection<Model>, MetaData.None)
@@ -109,6 +116,8 @@ export class AgentService extends ServiceBase
     // down; harmless if it isn't).
     public Dispose(): void { this.unsubscribe?.() }
 
+    public get Id(): string { return this.get_property_value(AgentService.IdKey) }
+    public get Title(): string { return this.get_property_value(AgentService.TitleKey) }
     public get Transcript(): ObservableCollection<Model> { return this.get_property_value(AgentService.TranscriptKey) }
     public get Draft(): string { return this.get_property_value(AgentService.DraftKey) }
     public set Draft(value: string) { this.set_property_value(AgentService.DraftKey, value) }

@@ -87,7 +87,6 @@ interface ExplorerPrivates
     moveNodes(op: OpenProject, nodes: readonly ProjectNode[], destParentPath: string): Promise<void>
     moveNodesAcross(source: OpenProject, nodes: readonly ProjectNode[], target: OpenProject, destParentPath: string): Promise<void>
     closeProject(op: OpenProject): Promise<void>
-    saveActive(): Promise<void>
 }
 
 // A fake DialogService: Show records the shown content and resolves the preset
@@ -215,17 +214,6 @@ test('opening a node opens it through the registered document editor', async () 
 
     expect(rec.opened).toEqual(['core.todl'])
     expect(host.OpenDocuments.Count).toBe(1)
-})
-
-test('the active document saves through the registered document editor', async () => {
-    const { host, priv, rec } = makeExplorer()
-    const opA = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), new FakeStorage('C:/a'))
-
-    await priv.openNode(childNode(opA), opA)
-    host.ActiveDocument = host.OpenDocuments.ToArray()[0]
-
-    await priv.saveActive()
-    expect(rec.saved.length).toBe(1)
 })
 
 test('closing a project removes it, closes its tabs, and unpersists it', async () => {

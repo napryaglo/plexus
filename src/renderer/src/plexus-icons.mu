@@ -30,6 +30,7 @@ resources PlexusIcons {
     include "icons/note-add.svg"                 as NoteAdd
     include "icons/upload-file.svg"              as UploadFile
     include "icons/save.svg"                      as Save
+    include "icons/save-all.svg"                 as SaveAll
     include "icons/publish.svg"                  as Publish
 
     // Project-tree leading glyphs, one per ProjectNodeKind (folder reuses

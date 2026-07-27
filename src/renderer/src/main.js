@@ -12,9 +12,11 @@
 import './fonts.css'
 import { app } from './app.mu.js'
 import { HtmlTarget } from '@pragmatic-lab/mural/visual-engine'
-import { ContentHostService, InspectorService } from '@pragmatic-lab/mural/framework'
+import { ContentHostService, PanelDockService } from '@pragmatic-lab/mural/framework'
 import { DiagramWorkspaceService } from './modules/diagram/services/diagram-workspace-service.js'
+import { AgentService } from './modules/agent-chat/services/agent-service.js'
 import { attachAutoOpenInspector } from './modules/diagram/behaviors/auto-open-inspector-behavior.js'
+import { attachSaveShortcuts } from './services/documents/save-shortcuts.js'
 import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'
 import { attachTabSwitchDiagnostics } from './dev/tab-switch-diagnostics.js'
 import { CodeEditorService } from './modules/code-editor/code-editor-service.js'
@@ -56,6 +58,9 @@ try {
     const workspace = app.Services.get(DiagramWorkspaceService.Key)
     if (host !== undefined && workspace !== undefined) host.Open(workspace.Document)
 
+    // Ctrl+S / Ctrl+Shift+S → Save / Save All on the document host.
+    if (host !== undefined) attachSaveShortcuts(host)
+
     // Open a scratch file in the app's storage folder as a Monaco-backed code
     // document (DomHost + Monaco through a document tab). Opened after the
     // diagram so the editor tab is the active one on launch. The file need not
@@ -73,13 +78,15 @@ try {
     const explorer = app.Services.get(ProjectExplorerService.Key)
     if (explorer !== undefined) void explorer.RestoreSession()
 
-    // Auto-open the Format Shape inspector the first time a shape is selected.
-    // Watches the document's ActiveView (published when the canvas mounts), so it
-    // wires up even though the canvas is created later inside a DataTemplate.
-    const inspectors = app.Services.get(InspectorService.Key)
-    if (workspace !== undefined && inspectors !== undefined)
+    // Right panel dock: seed the always-present Chat tab, and auto-open the
+    // Format Shape inspector as a tab the first time a shape is selected (the
+    // behavior watches the document's ActiveView, published when the canvas mounts).
+    const dock = app.Services.get(PanelDockService.Key)
+    const agent = app.Services.get(AgentService.Key)
+    if (dock !== undefined && agent !== undefined) dock.Add(agent)
+    if (workspace !== undefined && dock !== undefined)
     {
-        attachAutoOpenInspector(workspace.Document, inspectors)
+        attachAutoOpenInspector(workspace.Document, dock)
     }
 } catch (err) {
     console.error('[plexus] mount failed:', err)

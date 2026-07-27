@@ -123,7 +123,11 @@ resources ProjectExplorerResources {
                     [ Content = $Data, ContentTemplate = @EmptyRenameTemplate, VerticalAlignment = Center ]
             }
         }
-        when ( IsEditing = true ) { PART_RenameSlot.ContentTemplate = @RenameEditorTemplate; }
+        // Data trigger ($IsEditing, not IsEditing): a DataTemplate `when` fires on
+        // a DATA-context path, not a property of the template's root Border. Without
+        // the `$` the compiler drops it (property-triggers aren't supported in
+        // DataTemplate bodies), so the rename editor never swapped in.
+        when ( $IsEditing = true ) { PART_RenameSlot.ContentTemplate = @RenameEditorTemplate; }
     }
 
     // Chrome-less host for the header's expand/collapse toggle: no PART_Border /
@@ -178,11 +182,8 @@ resources ProjectExplorerResources {
                     PanelButton [ Margin = (0,0,4,0), Command = $OpenProjectCommand ] {
                         Shape [ Geometry = @Folder, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
                     }
-                    PanelButton [ Margin = (0,0,4,0), Command = $NewProjectCommand ] {
+                    PanelButton [ Command = $NewProjectCommand ] {
                         Shape [ Geometry = @NewFolder, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
-                    }
-                    PanelButton [ Command = $SaveActiveCommand ] {
-                        Shape [ Geometry = @Save, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
                     }
                 }
 

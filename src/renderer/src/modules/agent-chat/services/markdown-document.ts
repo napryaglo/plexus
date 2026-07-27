@@ -251,6 +251,9 @@ function tableBlock(header: string[], aligns: TextAlignment[], body: string[][])
 {
     const table = new Table()
     table.Margin = blockGap()
+    // Content-fit (auto) columns, with the last column filling the remaining
+    // width so the table spans the bubble instead of leaving a ragged right edge.
+    table.LastColumnFills = true
     bindTheme(table, Table.BorderBrushKey, 'OutlineVariant')
     bindTheme(table, Table.HeaderBackgroundKey, 'SurfaceContainerHigh')
 

@@ -98,6 +98,23 @@ export class CodeEditor extends DomHost
     protected override CreateHostElement(document: Document): HTMLElement
     {
         const el = super.CreateHostElement(document)
+        // Monaco fully owns keyboard input while focused, so stop key events at
+        // the host boundary. mural's HtmlTarget listens for keydown/keyup on the
+        // SVG root and routes them to its focused Visual — but clicking a DomHost
+        // never moves mural focus (InjectPointerDown doesn't focus the hit; only a
+        // control's own pointer handler does). So mural's focus stays on whatever
+        // was last clicked — e.g. the project explorer, a Selector that treats
+        // Space as "activate" and pulls focus. Without this, a Space (or any key)
+        // typed in the editor bubbles out of the <foreignObject> to that stale
+        // focus and yanks it away. Monaco's own handlers sit on its inner textarea
+        // (deeper in the tree), so they've already run by the time the event
+        // bubbles up to here; stopPropagation only blocks the leak to mural, and
+        // we don't preventDefault, so the editor still inserts the character.
+        // See DomHost's note: a host that must fully own input stops propagation
+        // at its element boundary.
+        const swallowKey = (e: Event): void => e.stopPropagation()
+        el.addEventListener('keydown', swallowKey)
+        el.addEventListener('keyup', swallowKey)
         // Build Monaco's theme from mural's live tokens BEFORE create so the
         // editor never flashes its default palette. We're in the tree by now
         // (MeasureOverride poked us), so TryFindResource resolves app resources.

@@ -116,6 +116,10 @@ import CodeEditorService from "./modules/code-editor/code-editor-service.js"
 // the open-tabs list). No service; view resources only.
 import DocumentTabsResources from "./services/document-tabs/document-tabs.resources.mu.js"
 
+// Right-dock tab strip override — shadows the framework's DataTemplate[PanelDockService]
+// with a title-only header (no per-tab close), a clean navigation-style strip.
+import DockTabsResources from "./services/dock-tabs/dock-tabs.resources.mu.js"
+
 // Shared TODL live-validation service (base-aware): validates any authoring
 // project's .todl files against its declared bases via checkAgainst. Root-scoped
 // like ProjectFactoryRegistry so every module's editor can attach documents.
@@ -179,6 +183,15 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // the root-scoped launcher reaches the same instance the shell uses
         // (otherwise EditorShell registers it shell-scoped, unreachable from root).
         DocumentsContentHostService -> ContentHostService
+        // Right-dock region host — the tabbed panel service. Same root-scope
+        // reason as the content host: main.js seeds the Chat tab (dock.Add(agent))
+        // and routes inspectors here at startup, resolving this instance via
+        // app.Services.get(PanelDockService.Key) from the ROOT. EditorShell
+        // otherwise registers it shell-scoped — unreachable from root — so the
+        // bootstrap gets undefined, no Chat tab is added, and the panel starts
+        // collapsed. Root-registering makes EditorShell's has() guard share this
+        // instance the shell region binds via $service(PanelDockService).
+        PanelDockService
         // Project-type registry (module .projectFactories → factories). Same
         // root-scope reason as the content host: the generic ProjectExplorerService
         // is a module (root-scoped) service, so it must reach the registry from
@@ -268,6 +281,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // overflow dropdown (Close All + open-tabs list). Shadows the framework's
         // DocumentsContentHostService template from Application.Resources.
         merge DocumentTabsResources
+
+        // Right-dock tab strip override: a title-only, close-less navigation strip.
+        // Shadows the framework's DataTemplate[PanelDockService] from Application.Resources.
+        merge DockTabsResources
 
         // The app root — the framework's default EditorShell. All regions are
         // data-driven (services + the active document), so the app declares no

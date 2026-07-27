@@ -8,6 +8,6 @@ module AgentChatModule [ Name = "Agent" ] {
     .services: {
         AgentService
     }
-
-    Capability [ Name = "Agent", Icon = @Agent, ServiceKey = AgentService ]
+    // Agent chat lives in the right panel dock (added at startup in main.js as
+    // the Chat tab), not the left activity rail — so no Capability contribution.
 }

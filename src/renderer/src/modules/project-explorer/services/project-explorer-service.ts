@@ -104,8 +104,6 @@ export class ProjectExplorerService extends ServiceBase
         ProjectExplorerService, 'OpenProjectCommand', undefined as unknown as ICommand, MetaData.None)
     public static readonly NewProjectCommandKey = Model.RegisterProperty<ICommand>(
         ProjectExplorerService, 'NewProjectCommand', undefined as unknown as ICommand, MetaData.None)
-    public static readonly SaveActiveCommandKey = Model.RegisterProperty<ICommand>(
-        ProjectExplorerService, 'SaveActiveCommand', undefined as unknown as ICommand, MetaData.None)
 
     // Which open project each open document belongs to — for save-routing (the
     // active doc saves through its own factory) and close-cleanup.
@@ -121,14 +119,12 @@ export class ProjectExplorerService extends ServiceBase
         this.set_property_value(ProjectExplorerService.OpenProjectsKey, new ObservableCollection<OpenProject>())
         this.set_property_value(ProjectExplorerService.OpenProjectCommandKey, new RelayCommand(() => void this.openProject()))
         this.set_property_value(ProjectExplorerService.NewProjectCommandKey, new RelayCommand(() => void this.newProject()))
-        this.set_property_value(ProjectExplorerService.SaveActiveCommandKey, new RelayCommand(() => void this.saveActive()))
     }
 
     public get OpenProjects(): ObservableCollection<OpenProject> { return this.get_property_value(ProjectExplorerService.OpenProjectsKey) }
     public get Status(): string { return this.get_property_value(ProjectExplorerService.StatusKey) }
     public get OpenProjectCommand(): ICommand { return this.get_property_value(ProjectExplorerService.OpenProjectCommandKey) }
     public get NewProjectCommand(): ICommand { return this.get_property_value(ProjectExplorerService.NewProjectCommandKey) }
-    public get SaveActiveCommand(): ICommand { return this.get_property_value(ProjectExplorerService.SaveActiveCommandKey) }
 
     private set Status(v: string) { this.set_property_value(ProjectExplorerService.StatusKey, v) }
 
@@ -758,23 +754,6 @@ export class ProjectExplorerService extends ServiceBase
             if (p === path && this.docOwners.get(doc) === op) return doc
         }
         return undefined
-    }
-
-    // Save the active document through the editor registered for its extension.
-    private async saveActive(): Promise<void>
-    {
-        const doc: IDocument | undefined = this.host.ActiveDocument
-        const op = doc === undefined ? undefined : this.docOwners.get(doc)
-        const path = doc === undefined ? undefined : this.docPaths.get(doc)
-        if (doc === undefined || op === undefined || path === undefined) { this.Status = 'Nothing to save.'; return }
-        const factory = this.resolveDocumentFactory(extname(path))
-        if (factory === undefined) { this.Status = `Can't save ${doc.Title} — no editor.`; return }
-        try {
-            await factory.saveFile(doc)
-            this.Status = `Saved ${doc.Title}.`
-        } catch (e) {
-            this.Status = `Save failed: ${(e as Error).message}`
-        }
     }
 
     // One selectable choice per registered project-type factory (Title +

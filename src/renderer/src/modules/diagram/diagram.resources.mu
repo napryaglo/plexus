@@ -172,11 +172,11 @@ resources DiagramResources {
 
     // ── Canvas context menu — "Format Shape" ────────────────────────────
     // Right-click the canvas → "Format Shape" adds the document's DiagramInspector
-    // to the InspectorService, opening the Format Shape panel in the shell's
-    // Inspector region (reuse-by-key, so it re-surfaces the one panel). The menu's
-    // logical owner is the Diagram (DataContext = DiagramDocument), so `$Inspector`
-    // resolves the document's inspector and `$service(InspectorService)` the shell-
-    // scoped host. The pane then tracks the live selection through the inspector's
+    // to the PanelDockService, opening the Format Shape tab in the shell's right
+    // panel dock (reuse-by-key, so it re-surfaces the one tab). The menu's logical
+    // owner is the Diagram (DataContext = DiagramDocument), so `$Inspector` resolves
+    // the document's inspector and `$service(PanelDockService)` the shell-scoped
+    // dock host. The tab then tracks the live selection through the inspector's
     // View handle.
     ContextMenu x:key="DiagramContextMenu" {
         // Align + distribute — bound to the live canvas's commands via the
@@ -215,15 +215,15 @@ resources DiagramResources {
         MenuSeparator
         MenuItem
             [ Header           = "Format Shape",
-              Command          = $service(InspectorService).AddInspectorCommand,
+              Command          = $service(PanelDockService).AddPanelCommand,
               CommandParameter = $Inspector ]
         MenuSeparator
-        // Layout — opens the layout-pipeline builder in the Inspector region.
-        // The inspector instance lives on LayoutPipelineService; adding it via
-        // the same AddInspectorCommand surfaces the builder panel.
+        // Layout — opens the layout-pipeline builder as a dock tab. The inspector
+        // instance lives on LayoutPipelineService; adding it via the same
+        // AddPanelCommand surfaces the builder panel.
         MenuItem
             [ Header           = "Layout…",
-              Command          = $service(InspectorService).AddInspectorCommand,
+              Command          = $service(PanelDockService).AddPanelCommand,
               CommandParameter = $service(LayoutPipelineService).Inspector ]
     }
 
