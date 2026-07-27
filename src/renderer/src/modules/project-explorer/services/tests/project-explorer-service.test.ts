@@ -673,3 +673,63 @@ test('moveNodesAcross skips a target collision, leaving source intact', async ()
     expect(await b.ReadText('src/x.todl')).toBe('other')        // untouched
     expect(service.Status).toMatch(/exist/i)
 })
+
+// Build a small tree: root / [ src(folder)/[a.todl], m.todl ] on FakeStorage.
+async function projectTree(folder: string): Promise<{ project: Project; storage: FakeStorage; src: ProjectNode; a: ProjectNode; m: ProjectNode }> {
+    const storage = new FakeStorage(folder)
+    await storage.WriteText('src/a.todl', 'a')
+    await storage.WriteText('m.todl', 'm')
+    const root = new ProjectNode('P', '', 'folder')
+    const src = new ProjectNode('src', 'src', 'folder')
+    const a = new ProjectNode('a.todl', 'src/a.todl', 'todl')
+    src.Children.Add(a)
+    const m = new ProjectNode('m.todl', 'm.todl', 'todl')
+    root.Children.Add(src); root.Children.Add(m)
+    return { project: new Project('meta-model', 'P', folder, root), storage, src, a, m }
+}
+
+test('rename updates the node in place — the tree is NOT rebuilt', async () => {
+    const { priv } = makeExplorer()
+    const { project, storage, src, a } = await projectTree('C:/p')
+    const op = await priv.addOpenProject(project, fakeProjectFactory(), storage)
+
+    const rootBefore = op.Root
+    const childrenBefore = op.Root.Children
+    priv.beginRename(op, src)
+    src.EditingName = 'lib'
+    await priv.commitRename(op, src)
+
+    // No wholesale rebuild: the Root node and its Children collection are the
+    // same object instances (a rescan would have replaced them).
+    expect(op.Root).toBe(rootBefore)
+    expect(op.Root.Children).toBe(childrenBefore)
+    // The renamed node is the SAME object, mutated in place.
+    expect(op.Root.Children.ToArray()).toContain(src)
+    expect(src.Name).toBe('lib')
+    expect(src.Path).toBe('lib')
+    // A folder rename re-prefixes every descendant's path.
+    expect(a.Path).toBe('lib/a.todl')
+    // The rename editor closed.
+    expect(src.IsEditing).toBe(false)
+    // Storage actually moved.
+    expect(await storage.ReadText('lib/a.todl')).toBe('a')
+})
+
+test('rename re-sorts the node within its parent when the position changes', async () => {
+    const { priv } = makeExplorer()
+    const { project, storage, m } = await projectTree('C:/p')
+    const op = await priv.addOpenProject(project, fakeProjectFactory(), storage)
+
+    // 'm.todl' → 'a2.todl' should sort before 'src'? No — folders sort first, so
+    // among the two files/folder it lands after the 'src' folder but the file
+    // order is by name; here only one file exists, so order is [src, a2.todl].
+    // Rename the file 'm.todl' → 'a2.todl' (still a file → stays after the folder).
+    priv.beginRename(op, m)
+    m.EditingName = 'a2.todl'
+    await priv.commitRename(op, m)
+
+    const names = op.Root.Children.ToArray().map((n) => n.Name)
+    // Folders first, then files by name: the folder 'src' stays first.
+    expect(names).toEqual(['src', 'a2.todl'])
+    expect(m.Name).toBe('a2.todl')
+})

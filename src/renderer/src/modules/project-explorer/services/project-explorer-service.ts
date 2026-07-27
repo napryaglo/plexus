@@ -515,10 +515,11 @@ export class ProjectExplorerService extends ServiceBase
         try {
             if (await op.Storage.Exists(dest)) { this.Status = `"${proposed}" already exists.`; this.cancelRename(op, node); return }
             await this.relocatePath(op, node.Path, dest)
+            // Surgical, in-place update — the node object (and the whole tree)
+            // is preserved, so the TreeView keeps its expansion + selection
+            // instead of rebuilding wholesale from a rescan.
+            this.renameNodeInPlace(op, node, proposed, dest)
             op.EditingNode = undefined
-            // Rescan so the renamed node (and, for a folder, its moved contents)
-            // reappear under the new path; re-wire the fresh nodes' commands.
-            await this.rescan(op)
             this.Status = `Renamed to ${proposed}.`
         } catch (e) {
             this.cancelRename(op, node)
@@ -552,7 +553,65 @@ export class ProjectExplorerService extends ServiceBase
         this.repointOpenDocuments(op, fromPath, toPath)
     }
 
-    // Re-scan the project so a structural change (rename/move/new) reappears with
+    // Update a renamed node (and, for a folder, its whole subtree) IN PLACE:
+    // re-prefix descendant paths, set the node's own Name/Path, re-wire the
+    // subtree's path-capturing commands, close the editor, and re-sort it among
+    // its siblings when the new name changes its position. The node objects are
+    // preserved, so the bound TreeView updates the affected rows in place rather
+    // than rebuilding — expansion and selection survive.
+    private renameNodeInPlace(op: OpenProject, node: ProjectNode, newName: string, newPath: string): void
+    {
+        this.reprefixSubtree(node, node.Path, newPath)   // descendants first (uses the OLD prefix)
+        node.Name = newName
+        node.Path = newPath
+        // NewFile/NewFolder commands capture their container path at wire time,
+        // so a path change needs the renamed subtree re-wired.
+        this.wireNodes(node, op)
+        node.IsEditing = false
+        this.resortNode(op, node)
+    }
+
+    // Rewrite every descendant's Path, swapping the old path prefix for the new.
+    // Names are unchanged; only the path (the identity + file-open key) moves.
+    private reprefixSubtree(node: ProjectNode, oldPrefix: string, newPrefix: string): void
+    {
+        for (const child of node.Children.ToArray()) {
+            child.Path = newPrefix + child.Path.slice(oldPrefix.length)
+            this.reprefixSubtree(child, oldPrefix, newPrefix)
+        }
+    }
+
+    // Re-position a node among its siblings to match the factory's order (folders
+    // first, then case-insensitive by name) — but only touch the collection when
+    // the index actually changes, so a rename that keeps its slot disturbs nothing.
+    private resortNode(op: OpenProject, node: ProjectNode): void
+    {
+        const parent = this.findParent(op.Root, node)
+        if (parent === undefined) return
+        const kids = parent.Children
+        const from = kids.IndexOf(node)
+        if (from < 0) return
+        const target = kids.ToArray().slice().sort(compareNodes).indexOf(node)
+        if (target === from) return
+        kids.RemoveAt(from)
+        kids.Insert(target, node)
+    }
+
+    // The node whose Children contains `target`, searched from `root`. undefined
+    // for the root itself or a node not attached under `root`.
+    private findParent(root: ProjectNode, target: ProjectNode): ProjectNode | undefined
+    {
+        for (const child of root.Children.ToArray()) {
+            if (child === target) return root
+            if (child.Kind === 'folder') {
+                const hit = this.findParent(child, target)
+                if (hit !== undefined) return hit
+            }
+        }
+        return undefined
+    }
+
+    // Re-scan the project so a structural change (move/new/delete) reappears with
     // correct paths, and re-wire the fresh nodes' commands.
     private async rescan(op: OpenProject): Promise<void>
     {
@@ -863,6 +922,17 @@ export class ProjectExplorerService extends ServiceBase
 function isRevealable(doc: unknown): doc is { RequestReveal(line: number, column: number): void }
 {
     return typeof (doc as Partial<{ RequestReveal: unknown }>).RequestReveal === 'function'
+}
+
+// Sibling order in the tree: folders before files, then case-insensitive by
+// name with a case-sensitive tiebreak — mirrors compareStorageEntries so an
+// in-place re-sort lands each node where a full rescan would have put it.
+function compareNodes(a: ProjectNode, b: ProjectNode): number
+{
+    const aDir = a.Kind === 'folder', bDir = b.Kind === 'folder'
+    if (aDir !== bDir) return aDir ? -1 : 1
+    const ci = a.Name.toLowerCase().localeCompare(b.Name.toLowerCase())
+    return ci !== 0 ? ci : a.Name.localeCompare(b.Name)
 }
 
 // ── project-relative path helpers (POSIX `/`; the storage backend translates) ──

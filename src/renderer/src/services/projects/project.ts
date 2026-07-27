@@ -67,7 +67,12 @@ export class ProjectNode extends Model
     public get Data(): ProjectNode { return this.get_property_value(ProjectNode.DataKey) }
 
     public get Name(): string { return this.get_property_value(ProjectNode.NameKey) }
+    // Settable so an in-place rename can update the node without rebuilding the
+    // tree (the bound TreeView row re-reads Name; the node object is preserved,
+    // keeping its container's expansion/selection). Path moves in lock-step.
+    public set Name(v: string) { this.set_property_value(ProjectNode.NameKey, v) }
     public get Path(): string { return this.get_property_value(ProjectNode.PathKey) }
+    public set Path(v: string) { this.set_property_value(ProjectNode.PathKey, v) }
     public get Kind(): ProjectNodeKind { return this.get_property_value(ProjectNode.KindKey) }
     public get Children(): ObservableCollection<ProjectNode> { return this.get_property_value(ProjectNode.ChildrenKey) }
     public get OpenCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.OpenCommandKey) }
