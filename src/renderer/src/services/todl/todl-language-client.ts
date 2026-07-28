@@ -9,6 +9,35 @@ import { PROJECT_MANIFEST_FILENAME } from '../projects/project-factory.js'
 import type { BaseBindings } from '../projects/base-binding.js'
 import { DiagnosticsService } from '../diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity, type Diagnostic } from '../diagnostics/diagnostic.js'
+import { lspToMonacoRange, type MonacoRange } from '../../modules/meta-model/todl-lsp/position.js'
+
+// An LSP TextEdit + WorkspaceEdit slice, as returned by rename/code-action.
+interface LspTextEdit { range: { start: { line: number; character: number }; end: { line: number; character: number } }; newText: string }
+interface WorkspaceEditLike { changes?: Record<string, LspTextEdit[]> }
+interface EditableModel { applyEdits(edits: Array<{ range: MonacoRange; text: string }>): void }
+
+// Absolute offset of a 0-based (line, character) position in text.
+function offsetAt(text: string, line: number, character: number): number {
+  let i = 0
+  let curLine = 0
+  while (i < text.length && curLine < line) { if (text[i] === '\n') curLine++; i++ }
+  return i + character
+}
+
+// Apply LSP TextEdits to a string, offset-descending so earlier edits don't
+// shift later offsets. Pure — the closed-file write path and its test rely on it.
+export function applyTextEdits(text: string, edits: readonly LspTextEdit[]): string {
+  const resolved = edits
+    .map((e) => ({
+      start: offsetAt(text, e.range.start.line, e.range.start.character),
+      end: offsetAt(text, e.range.end.line, e.range.end.character),
+      newText: e.newText,
+    }))
+    .sort((a, b) => b.start - a.start)
+  let out = text
+  for (const e of resolved) out = out.slice(0, e.start) + e.newText + out.slice(e.end)
+  return out
+}
 
 // The slice of an LSP diagnostic / publish notification the client maps. LSP
 // positions are 0-based; canonical diagnostics are 1-based with exclusive end.
@@ -77,6 +106,29 @@ export class TodlLanguageClient extends ServiceBase {
   public sendRequest<R>(method: string, params: unknown): Promise<R> {
     if (this.connection === undefined) return Promise.reject(new Error('TODL language client not initialized'))
     return this.connection.sendRequest(method, params) as Promise<R>
+  }
+
+  // How to find an open editor's Monaco model by URI (production wires
+  // monaco.editor.getModel; tests pass a fake). Null ⇒ the file is closed.
+  private findModel: ((uri: string) => EditableModel | null) | undefined
+  public setModelFinder(fn: (uri: string) => EditableModel | null): void { this.findModel = fn }
+
+  // Apply a WorkspaceEdit through one path: open buffers via their Monaco model
+  // (preserving dirty tracking + undo), closed files via storage. Rename and
+  // quick-fixes delegate here rather than letting Monaco apply (which would drop
+  // closed-file edits).
+  public async applyWorkspaceEdit(edit: WorkspaceEditLike): Promise<void> {
+    for (const [uri, edits] of Object.entries(edit.changes ?? {})) {
+      const model = this.findModel?.(uri) ?? null
+      if (model !== null) {
+        model.applyEdits(edits.map((e) => ({ range: lspToMonacoRange(e.range), text: e.newText })))
+        continue
+      }
+      const resolved = this.resolveUri(uri)
+      if (resolved === null) continue
+      const text = await resolved.storage.ReadText(resolved.relpath)
+      await resolved.storage.WriteText(resolved.relpath, applyTextEdits(text, edits))
+    }
   }
 
   private nextVersion(uri: string): number {
