@@ -4,6 +4,7 @@ import type { TodlLanguageClient } from '../../../services/todl/todl-language-cl
 import {
   provideHover, provideCompletion, provideDefinition, provideReferences,
   provideDocumentSymbols, provideFoldingRanges, provideDocumentSemanticTokens, provideSignatureHelp,
+  providePrepareRename, provideRenameEdits, provideCodeActions, provideFormattingEdits,
 } from './providers.js'
 
 // Browser-only: wire the pure adapters (providers.ts) into Monaco. Neutral
@@ -38,6 +39,9 @@ function toMonacoSymbols(syms: Awaited<ReturnType<typeof provideDocumentSymbols>
 
 export function registerTodlProviders(client: TodlLanguageClient): void {
   const lang = TODL_LANGUAGE_ID
+
+  // The unified WorkspaceEdit path needs to find open models by URI.
+  client.setModelFinder((uri) => monaco.editor.getModel(monaco.Uri.parse(uri)))
 
   monaco.languages.registerHoverProvider(lang, {
     provideHover: async (model, position) => (await provideHover(client, model, position)) ?? null,
@@ -95,5 +99,32 @@ export function registerTodlProviders(client: TodlLanguageClient): void {
       const help = await provideSignatureHelp(client, model, position)
       return help !== null ? { value: help, dispose: () => {} } : null
     },
+  })
+
+  monaco.languages.registerRenameProvider(lang, {
+    resolveRenameLocation: async (model, position) => {
+      const prep = await providePrepareRename(client, model, position)
+      return prep !== null ? prep : { range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column), text: '', rejectReason: 'You cannot rename this element.' }
+    },
+    provideRenameEdits: async (model, position, newName) => provideRenameEdits(client, model, position, newName),
+  })
+
+  monaco.languages.registerCodeActionProvider(lang, {
+    provideCodeActions: async (model, range, context) => {
+      const actions = await provideCodeActions(client, model, range, [...context.markers])
+      return {
+        actions: actions.map((a) => ({
+          title: a.title,
+          kind: a.kind ?? 'quickfix',
+          edit: { edits: a.edits.map((e) => ({ resource: monaco.Uri.parse(e.uri), textEdit: { range: e.range, text: e.text }, versionId: undefined })) },
+        })),
+        dispose: () => {},
+      }
+    },
+  })
+
+  monaco.languages.registerDocumentFormattingEditProvider(lang, {
+    provideDocumentFormattingEdits: async (model) =>
+      (await provideFormattingEdits(client, model)).map((e) => ({ range: e.range, text: e.text })),
   })
 }

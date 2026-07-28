@@ -1,5 +1,5 @@
 import {
-  monacoToLspPosition, lspToMonacoRange,
+  monacoToLspPosition, lspToMonacoRange, monacoToLspRange,
   type LspRange, type MonacoRange, type MonacoPosition,
 } from './position.js'
 
@@ -136,6 +136,59 @@ interface LspSignatureHelp {
   signatures: Array<{ label: string; documentation?: string | { value: string }; parameters?: Array<{ label: string | [number, number] }> }>
   activeSignature?: number
   activeParameter?: number
+}
+
+// The write-path adapters need to both request and apply edits.
+export interface LspEditClient extends LspRequester {
+  applyWorkspaceEdit(edit: { changes?: Record<string, LspTextEdit[]> }): Promise<void>
+}
+
+export interface LspTextEdit { range: LspRange; newText: string }
+
+export interface PrepareRenameResult { range: MonacoRange; text: string }
+
+export async function providePrepareRename(req: LspRequester, model: ModelLike, position: MonacoPosition): Promise<PrepareRenameResult | null> {
+  const res = (await req.sendRequest('textDocument/prepareRename', textDocumentParams(model, position))) as
+    { range: LspRange; placeholder?: string } | LspRange | null
+  if (res == null) return null
+  const range = 'range' in res ? res.range : res
+  const text = 'placeholder' in res && res.placeholder !== undefined ? res.placeholder : ''
+  return { range: lspToMonacoRange(range), text }
+}
+
+// Delegate the rename WorkspaceEdit to the client's unified apply path, and
+// return an empty Monaco edit so Monaco applies nothing itself (it would drop
+// closed-file edits). Loses Monaco's native rename preview (flagged, v1).
+export async function provideRenameEdits(client: LspEditClient, model: ModelLike, position: MonacoPosition, newName: string): Promise<{ edits: [] }> {
+  const params = { ...(textDocumentParams(model, position) as object), newName }
+  const edit = (await client.sendRequest('textDocument/rename', params)) as { changes?: Record<string, LspTextEdit[]> } | null
+  if (edit !== null && edit.changes !== undefined) await client.applyWorkspaceEdit(edit)
+  return { edits: [] }
+}
+
+export interface CodeActionResult { title: string; kind?: string; edits: Array<{ uri: string; range: MonacoRange; text: string }> }
+
+interface LspCodeAction { title: string; kind?: string; edit?: { changes?: Record<string, LspTextEdit[]> } }
+
+export async function provideCodeActions(req: LspRequester, model: ModelLike, range: MonacoRange, diagnostics: unknown[]): Promise<CodeActionResult[]> {
+  const params = { textDocument: { uri: model.uri.toString() }, range: monacoToLspRange(range), context: { diagnostics } }
+  const res = (await req.sendRequest('textDocument/codeAction', params)) as LspCodeAction[] | null
+  return (res ?? []).map((a) => {
+    const edits: Array<{ uri: string; range: MonacoRange; text: string }> = []
+    for (const [uri, textEdits] of Object.entries(a.edit?.changes ?? {})) {
+      for (const e of textEdits) edits.push({ uri, range: lspToMonacoRange(e.range), text: e.newText })
+    }
+    const out: CodeActionResult = { title: a.title, edits }
+    if (a.kind !== undefined) out.kind = a.kind
+    return out
+  })
+}
+
+export async function provideFormattingEdits(req: LspRequester, model: ModelLike): Promise<Array<{ range: MonacoRange; text: string }>> {
+  const res = (await req.sendRequest('textDocument/formatting', {
+    textDocument: { uri: model.uri.toString() }, options: { tabSize: 2, insertSpaces: true },
+  })) as LspTextEdit[] | null
+  return (res ?? []).map((e) => ({ range: lspToMonacoRange(e.range), text: e.newText }))
 }
 
 export async function provideSignatureHelp(req: LspRequester, model: ModelLike, position: MonacoPosition): Promise<SignatureHelpResult | null> {
