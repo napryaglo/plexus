@@ -5,6 +5,7 @@ import { registerFileSystemHandlers } from './filesystem.js'
 import { registerEnvironmentHandlers } from './environment.js'
 import { registerSettingsHandlers } from './settings.js'
 import { registerAgentHandlers } from './agent.js'
+import { registerTodlServerHandlers } from './todl/register.js'
 
 // Dev only: disable the renderer's HTTP cache. mural is served LIVE by Vite as
 // a pre-bundle-excluded dep (see electron.vite.config.ts), but Chromium caches
@@ -68,6 +69,10 @@ app.whenReady().then(async () => {
   // pushed event stream (AgentChannel.Event). Awaited so the tool server is
   // listening before the first turn.
   await registerAgentHandlers()
+  // TODL language server: fork the vendored stdio server and relay LSP JSON-RPC
+  // to the renderer. Registered before the window so the ToServer channel is
+  // listening when the renderer builds its connection on load.
+  registerTodlServerHandlers()
 
   createWindow()
 
