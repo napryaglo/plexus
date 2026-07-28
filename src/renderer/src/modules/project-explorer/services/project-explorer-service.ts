@@ -301,7 +301,8 @@ export class ProjectExplorerService extends ServiceBase
     {
         op.NewFileCommand = new RelayCommand(() => void this.newFileIn(op))
         op.NewFolderCommand = new RelayCommand(() => void this.newFolderIn(op))
-        op.AddFileCommand = new RelayCommand(() => void this.addExistingFilesTo(op))
+        op.ImportFileCommand = new RelayCommand(() => void this.importFilesInto(op, ''))
+        op.ImportFolderCommand = new RelayCommand(() => void this.importFolderInto(op, ''))
         op.TreeKeyCommand = new RelayCommand((arg) => this.handleTreeKey(op, arg as KeyEventArgs))
         op.PublishCommand = new RelayCommand(() => void this.publishProject(op), () => isPublishable(op.Factory))
         // Re-resolve the project's declared bases after a base was republished —
@@ -356,20 +357,19 @@ export class ProjectExplorerService extends ServiceBase
         }
     }
 
-    // Add existing file(s) into a project: pick from the OS (multi-select,
-    // binary-safe), copy each into the project's storage under a non-colliding
-    // name (auto-renamed foo → foo-2), then rescan the tree so they appear. The
-    // picker is seeded with the factory's formats but not restricted — any file
-    // can be brought in as an attachment.
-    private async addExistingFilesTo(op: OpenProject): Promise<void>
+    // Import existing file(s) into a project under `target` (project-relative;
+    // '' = the project root): pick from the OS (multi-select, binary-safe), copy
+    // each in under a non-colliding name (foo → foo-2), then rescan so they
+    // appear. The picker is seeded with the factory's formats but not restricted.
+    private async importFilesInto(op: OpenProject, target = ''): Promise<void>
     {
-        const picked = await this.fs.OpenFiles({ Title: `Add files to ${op.Name}`, Filters: importFilters(op.Factory.formats) })
+        const picked = await this.fs.OpenFiles({ Title: `Import files into ${op.Name}`, Filters: importFilters(op.Factory.formats) })
         if (picked === null || picked.length === 0) return
 
         try {
             const added: string[] = []
             for (const file of picked) {
-                const name = await uniqueStorageName(op.Storage, basename(file.Path))
+                const name = await uniqueStorageName(op.Storage, joinRel(target, basename(file.Path)))
                 await op.Storage.WriteBytes(name, file.Bytes)
                 added.push(name)
             }
@@ -377,10 +377,47 @@ export class ProjectExplorerService extends ServiceBase
             op.Adopt(await op.Factory.openProject(op.Storage))
             this.wireNodes(op.Root, op)
             this.Status = added.length === 1
-                ? `Added ${added[0]}.`
+                ? `Added ${basename(added[0]!)}.`
                 : `Added ${added.length} files.`
         } catch (e) {
-            this.Status = `Add failed: ${(e as Error).message}`
+            this.Status = `Import failed: ${(e as Error).message}`
+        }
+    }
+
+    // Import an existing OS folder into the project under `target` (project-
+    // relative; '' = root): pick a directory, then copy its whole subtree in
+    // under a non-colliding TOP-level name (pics → pics-2). Descendants keep
+    // their names. Rescans so the subtree appears.
+    private async importFolderInto(op: OpenProject, target = ''): Promise<void>
+    {
+        const dir = await this.fs.OpenFolder({ Title: `Import folder into ${op.Name}` })
+        if (dir === null) return
+
+        try {
+            const destTop = await uniqueStorageName(op.Storage, joinRel(target, basename(dir)))
+            await this.copyOsFolderInto(dir, destTop, op)
+            op.Adopt(await op.Factory.openProject(op.Storage))
+            this.wireNodes(op.Root, op)
+            this.Status = `Imported ${basename(destTop)}.`
+        } catch (e) {
+            this.Status = `Import failed: ${(e as Error).message}`
+        }
+    }
+
+    // Recursively copy an OS directory subtree (srcAbsDir) into project storage
+    // at destRel. Empty directories are preserved; files copy byte-for-byte.
+    // node fs accepts '/' on Windows, so a plain string join builds child paths.
+    private async copyOsFolderInto(srcAbsDir: string, destRel: string, op: OpenProject): Promise<void>
+    {
+        await op.Storage.CreateDirectory(destRel)
+        for (const entry of await this.fs.ListDirectory(srcAbsDir)) {
+            const childSrc = `${srcAbsDir}/${entry.Name}`
+            const childDest = joinRel(destRel, entry.Name)
+            if (entry.IsDirectory) {
+                await this.copyOsFolderInto(childSrc, childDest, op)
+            } else {
+                await op.Storage.WriteBytes(childDest, await this.fs.ReadBytes(childSrc))
+            }
         }
     }
 
@@ -909,6 +946,8 @@ export class ProjectExplorerService extends ServiceBase
         const container = node.Kind === 'folder' ? node.Path : parentOf(node.Path)
         node.NewFileCommand = new RelayCommand(() => void this.newFileIn(op, container))
         node.NewFolderCommand = new RelayCommand(() => void this.newFolderIn(op, container))
+        node.ImportFileCommand = new RelayCommand(() => void this.importFilesInto(op, container))
+        node.ImportFolderCommand = new RelayCommand(() => void this.importFolderInto(op, container))
         // The root node isn't shown as a row, so it never renames; every other
         // node's context-menu "Rename" opens its in-place editor.
         node.BeginRenameCommand = new RelayCommand(() => this.beginRename(op, node), () => node.Path !== '')

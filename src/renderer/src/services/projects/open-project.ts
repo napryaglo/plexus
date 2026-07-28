@@ -17,8 +17,10 @@ export class OpenProject extends Model
         OpenProject, 'Root', undefined as unknown as ProjectNode, MetaData.None)
     static readonly NewFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'NewFileCommand', undefined, MetaData.None)
-    static readonly AddFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
-        OpenProject, 'AddFileCommand', undefined, MetaData.None)
+    static readonly ImportFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        OpenProject, 'ImportFileCommand', undefined, MetaData.None)
+    static readonly ImportFolderCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        OpenProject, 'ImportFolderCommand', undefined, MetaData.None)
     static readonly NewFolderCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'NewFolderCommand', undefined, MetaData.None)
     // Keyboard handler for the project's TreeView (bound via `on KeyDown`): the
@@ -92,8 +94,10 @@ export class OpenProject extends Model
     public get NewFileCommand(): ICommand | undefined { return this.get_property_value(OpenProject.NewFileCommandKey) }
     public set NewFileCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.NewFileCommandKey, v) }
 
-    public get AddFileCommand(): ICommand | undefined { return this.get_property_value(OpenProject.AddFileCommandKey) }
-    public set AddFileCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.AddFileCommandKey, v) }
+    public get ImportFileCommand(): ICommand | undefined { return this.get_property_value(OpenProject.ImportFileCommandKey) }
+    public set ImportFileCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.ImportFileCommandKey, v) }
+    public get ImportFolderCommand(): ICommand | undefined { return this.get_property_value(OpenProject.ImportFolderCommandKey) }
+    public set ImportFolderCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.ImportFolderCommandKey, v) }
 
     public get NewFolderCommand(): ICommand | undefined { return this.get_property_value(OpenProject.NewFolderCommandKey) }
     public set NewFolderCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.NewFolderCommandKey, v) }

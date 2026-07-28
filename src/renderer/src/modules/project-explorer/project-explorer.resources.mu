@@ -36,9 +36,13 @@ resources ProjectExplorerResources {
               Command = $NewFolderCommand,
               Icon = Shape [ Geometry = @NewFolder, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
         MenuItem
-            [ Header = "Add Existing Files…",
-              Command = $AddFileCommand,
+            [ Header = "Import File…",
+              Command = $ImportFileCommand,
               Icon = Shape [ Geometry = @UploadFile, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuItem
+            [ Header = "Import Folder…",
+              Command = $ImportFolderCommand,
+              Icon = Shape [ Geometry = @Folder, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
         MenuItem
             [ Header = "Publish",
               Command = $PublishCommand,
@@ -61,6 +65,14 @@ resources ProjectExplorerResources {
             [ Header = "New Folder",
               Command = $NewFolderCommand,
               Icon = Shape [ Geometry = @NewFolder, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuItem
+            [ Header = "Import File…",
+              Command = $ImportFileCommand,
+              Icon = Shape [ Geometry = @UploadFile, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuItem
+            [ Header = "Import Folder…",
+              Command = $ImportFolderCommand,
+              Icon = Shape [ Geometry = @Folder, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
         MenuSeparator
         MenuItem [ Header = "Rename", Command = $BeginRenameCommand ]
         MenuItem [ Header = "Delete", Command = $DeleteCommand ]

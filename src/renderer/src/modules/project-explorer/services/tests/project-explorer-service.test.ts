@@ -61,14 +61,33 @@ function projectWith(name: string, folder: string): Project
     return new Project('meta-model', name, folder, root)
 }
 
-function fakeFs(openFiles: Picked[] | null = null): FileSystemService
+// An in-memory OS source tree for folder-import tests: absolute file path →
+// text content. OpenFolder returns `pickedFolder`; ListDirectory/ReadBytes read
+// this map (directory entries derived from path prefixes).
+interface FakeOsTree { pickedFolder: string | null; files: Record<string, string> }
+
+function fakeFs(openFiles: Picked[] | null = null, os: FakeOsTree = { pickedFolder: null, files: {} }): FileSystemService
 {
-    const files = new Map<string, string>()
+    const files = new Map<string, string>()          // storage-side text (unused here)
+    const osFiles = new Map(Object.entries(os.files))
     return {
         Exists: (p: string) => Promise.resolve(files.has(p)),
         ReadText: (p: string) => Promise.resolve(files.get(p) ?? ''),
         WriteText: (p: string, c: string) => { files.set(p, c); return Promise.resolve() },
         OpenFiles: () => Promise.resolve(openFiles),
+        OpenFolder: () => Promise.resolve(os.pickedFolder),
+        ReadBytes: (p: string) => Promise.resolve(bytesOf(osFiles.get(p) ?? '')),
+        ListDirectory: (dir: string) => {
+            const prefix = dir.replace(/[\\/]+$/, '') + '/'
+            const names = new Map<string, boolean>()   // name → isDirectory
+            for (const key of osFiles.keys()) {
+                if (!key.startsWith(prefix)) continue
+                const rest = key.slice(prefix.length)
+                const slash = rest.indexOf('/')
+                names.set(slash === -1 ? rest : rest.slice(0, slash), slash !== -1)
+            }
+            return Promise.resolve([...names].map(([Name, IsDirectory]) => ({ Name, IsDirectory })))
+        },
     } as unknown as FileSystemService
 }
 
@@ -76,7 +95,8 @@ interface ExplorerPrivates
 {
     addOpenProject(p: Project, f: IProjectFactory, s: FakeStorage): Promise<OpenProject>
     openNode(node: ProjectNode, op: OpenProject): Promise<void>
-    addExistingFilesTo(op: OpenProject): Promise<void>
+    importFilesInto(op: OpenProject, target?: string): Promise<void>
+    importFolderInto(op: OpenProject, target?: string): Promise<void>
     newFileIn(op: OpenProject, parentFolder?: string): Promise<void>
     newFolderIn(op: OpenProject, parentFolder?: string): Promise<void>
     beginRename(op: OpenProject, node: ProjectNode): void
@@ -99,7 +119,7 @@ function fakeDialogs(confirm: boolean, shown: unknown[]): DialogService
     } as unknown as DialogService
 }
 
-function makeExplorer(openFiles: Picked[] | null = null, confirm = true): {
+function makeExplorer(openFiles: Picked[] | null = null, confirm = true, os: FakeOsTree = { pickedFolder: null, files: {} }): {
     service: ProjectExplorerService
     host: DocumentsContentHostService
     store: OpenProjectsStore
@@ -113,7 +133,7 @@ function makeExplorer(openFiles: Picked[] | null = null, confirm = true): {
     const provider = new ServiceProvider()
     const host = new DocumentsContentHostService(provider)
     provider.registerInstance(ContentHostService.Key, host)
-    provider.registerInstance(FileSystemService.Key, fakeFs(openFiles))
+    provider.registerInstance(FileSystemService.Key, fakeFs(openFiles, os))
     provider.registerInstance(EnvironmentService.Key, { UserDataDirectory: '/data' } as unknown as EnvironmentService)
     const shownDialogs: unknown[] = []
     provider.registerInstance(DialogService.Key, fakeDialogs(confirm, shownDialogs))
@@ -284,7 +304,7 @@ test('Add Existing Files copies each picked file into the project storage', asyn
     const storage = new FakeStorage('C:/a')
     const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
 
-    await priv.addExistingFilesTo(op)
+    await priv.importFilesInto(op)
 
     expect(await storage.Exists('logo.png')).toBe(true)
     expect(await storage.Exists('notes.txt')).toBe(true)
@@ -298,7 +318,7 @@ test('Add Existing Files auto-renames on a name collision, leaving the original'
     await storage.WriteText('core.todl', 'existing')
     const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
 
-    await priv.addExistingFilesTo(op)
+    await priv.importFilesInto(op)
 
     expect(await storage.Exists('core-2.todl')).toBe(true)   // imported under a fresh name
     expect(await storage.ReadText('core.todl')).toBe('existing')   // original untouched
@@ -310,9 +330,22 @@ test('Add Existing Files is a no-op when the picker is cancelled', async () => {
     const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
     const before = storage.size
 
-    await priv.addExistingFilesTo(op)
+    await priv.importFilesInto(op)
 
     expect(storage.size).toBe(before)
+})
+
+test('Import File targets the given folder', async () => {
+    const picked: Picked[] = [{ Path: 'C:/ext/logo.png', Bytes: bytesOf('PNG') }]
+    const { priv } = makeExplorer(picked)
+    const storage = new FakeStorage('C:/a')
+    await storage.CreateDirectory('src')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
+
+    await priv.importFilesInto(op, 'src')
+
+    expect(await storage.Exists('src/logo.png')).toBe(true)
+    expect(await storage.Exists('logo.png')).toBe(false)
 })
 
 test('uniqueStorageName returns the name when free, else the next stem-N.ext', async () => {
@@ -732,4 +765,67 @@ test('rename re-sorts the node within its parent when the position changes', asy
     // Folders first, then files by name: the folder 'src' stays first.
     expect(names).toEqual(['src', 'a2.todl'])
     expect(m.Name).toBe('a2.todl')
+})
+
+test('Import Folder copies the picked directory subtree into the project', async () => {
+    const os = { pickedFolder: 'C:/ext/pics', files: {
+        'C:/ext/pics/a.png': 'AA',
+        'C:/ext/pics/sub/b.png': 'BB',
+    } }
+    const { priv } = makeExplorer(null, true, os)
+    const storage = new FakeStorage('C:/a')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
+
+    await priv.importFolderInto(op, '')
+
+    expect(await storage.ReadText('pics/a.png')).toBe('AA')
+    expect(await storage.ReadText('pics/sub/b.png')).toBe('BB')
+})
+
+test('Import Folder targets a subfolder', async () => {
+    const os = { pickedFolder: 'C:/ext/pics', files: { 'C:/ext/pics/a.png': 'AA' } }
+    const { priv } = makeExplorer(null, true, os)
+    const storage = new FakeStorage('C:/a')
+    await storage.CreateDirectory('src')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
+
+    await priv.importFolderInto(op, 'src')
+
+    expect(await storage.ReadText('src/pics/a.png')).toBe('AA')
+})
+
+test('Import Folder auto-renames the top folder on a collision', async () => {
+    const os = { pickedFolder: 'C:/ext/pics', files: { 'C:/ext/pics/a.png': 'AA' } }
+    const { priv } = makeExplorer(null, true, os)
+    const storage = new FakeStorage('C:/a')
+    await storage.WriteText('pics/existing.txt', 'x')   // makes 'pics' already exist
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
+
+    await priv.importFolderInto(op, '')
+
+    expect(await storage.ReadText('pics-2/a.png')).toBe('AA')       // imported under a fresh name
+    expect(await storage.ReadText('pics/existing.txt')).toBe('x')   // original untouched
+})
+
+test('Import Folder is a no-op when the picker is cancelled', async () => {
+    const { priv } = makeExplorer(null, true, { pickedFolder: null, files: {} })
+    const storage = new FakeStorage('C:/a')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
+    const before = storage.size
+
+    await priv.importFolderInto(op, '')
+
+    expect(storage.size).toBe(before)
+})
+
+test('Import commands are wired on the project and on each node', async () => {
+    const { priv } = makeExplorer()
+    const storage = new FakeStorage('C:/a')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
+
+    expect(op.ImportFileCommand).toBeDefined()
+    expect(op.ImportFolderCommand).toBeDefined()
+    const child = op.Root.Children.ToArray()[0]!   // the 'core.todl' node
+    expect(child.ImportFileCommand).toBeDefined()
+    expect(child.ImportFolderCommand).toBeDefined()
 })

@@ -30,6 +30,10 @@ export class ProjectNode extends Model
         ProjectNode, 'NewFileCommand', undefined, MetaData.None)
     static readonly NewFolderCommandKey = Model.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'NewFolderCommand', undefined, MetaData.None)
+    static readonly ImportFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        ProjectNode, 'ImportFileCommand', undefined, MetaData.None)
+    static readonly ImportFolderCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        ProjectNode, 'ImportFolderCommand', undefined, MetaData.None)
     // In-place rename state. IsEditing swaps the row's label for a TextBox (see
     // the ProjectNodeTemplate); EditingName is that box's two-way text buffer.
     // BeginRename (context-menu "Rename" / F2) opens the editor; the TreeView's
@@ -83,6 +87,12 @@ export class ProjectNode extends Model
 
     public get NewFolderCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.NewFolderCommandKey) }
     public set NewFolderCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.NewFolderCommandKey, v) }
+
+    public get ImportFileCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.ImportFileCommandKey) }
+    public set ImportFileCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.ImportFileCommandKey, v) }
+
+    public get ImportFolderCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.ImportFolderCommandKey) }
+    public set ImportFolderCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.ImportFolderCommandKey, v) }
 
     public get IsEditing(): boolean { return this.get_property_value(ProjectNode.IsEditingKey) }
     public set IsEditing(v: boolean) { this.set_property_value(ProjectNode.IsEditingKey, v) }
