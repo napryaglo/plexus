@@ -5,7 +5,7 @@ import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../ser
 import type { IStorage } from '../../../services/storage/storage.js'
 import { CodeDocument } from '../../code-editor/code-document.js'
 import { StorageCodeFile } from '../../code-editor/code-file.js'
-import { TodlValidationService } from '../../../services/todl/todl-validation-service.js'
+import { TodlLanguageClient } from '../../../services/todl/todl-language-client.js'
 import { DiagnosticsService } from '../../../services/diagnostics/diagnostics-service.js'
 import { toEditorDiagnostic } from '../../../services/diagnostics/diagnostic.js'
 
@@ -31,10 +31,10 @@ export class TodlDocumentFactory extends ServiceBase implements IDocumentFactory
         // resolves to 'todl' from the extension. The project-relative path is the
         // document's Id — what whole-project validation keys diagnostics by.
         const doc = new CodeDocument(new StorageCodeFile(storage, path))
-        // Register the document + its project storage with the validator so it
-        // gets live squiggles within its own project's file set. Optional (`get`,
-        // not `getRequired`) — absent in unit tests.
-        this.Provider.get(TodlValidationService.Key)?.AttachDocument(doc, storage)
+        // Wire the document to the language client: assigns its stable URI and
+        // forwards edits as didChange. Optional (`get`, not `getRequired`) —
+        // absent in unit tests.
+        this.Provider.get(TodlLanguageClient.Key)?.AttachDocument(doc, storage)
         this.attachDiagnostics(doc)
         this.ensureHostSubscription()
         return doc
@@ -87,6 +87,7 @@ export class TodlDocumentFactory extends ServiceBase implements IDocumentFactory
     public relocateOpenFile(document: IDocument, newPath: string): void
     {
         (document as CodeDocument).Relocate(newPath)
+        this.Provider.get(TodlLanguageClient.Key)?.RelocateDocument(document as CodeDocument, newPath)
         this.attachDiagnostics(document as CodeDocument)   // re-key to the new Id
     }
 
@@ -96,7 +97,7 @@ export class TodlDocumentFactory extends ServiceBase implements IDocumentFactory
     public relocateAcrossStorage(document: IDocument, storage: IStorage, newPath: string): void
     {
         (document as CodeDocument).RelocateTo(storage, newPath)
-        this.Provider.get(TodlValidationService.Key)?.ReattachDocument(document as CodeDocument, storage)
+        this.Provider.get(TodlLanguageClient.Key)?.ReattachDocument(document as CodeDocument, storage)
         this.attachDiagnostics(document as CodeDocument)   // re-key to the new Id
     }
 

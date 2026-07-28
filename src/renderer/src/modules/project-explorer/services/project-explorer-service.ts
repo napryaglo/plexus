@@ -63,7 +63,7 @@ import {
 import type { BaseRef } from '../../../services/projects/base-binding.js'
 import { ensureMetaModelsBackend } from '../../meta-model/services/meta-models-backend.js'
 import { ensureLibrariesBackend } from '../../library/services/libraries-backend.js'
-import { TodlValidationService } from '../../../services/todl/todl-validation-service.js'
+import { TodlLanguageClient } from '../../../services/todl/todl-language-client.js'
 import { ProblemsService } from '../../problems/problems-service.js'
 import { planNodeMoves } from '../../../services/projects/node-move.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
@@ -292,7 +292,7 @@ export class ProjectExplorerService extends ServiceBase
         this.OpenProjects.Add(op)
         // Register the project for whole-project live validation (populates the
         // Problems dock even before any file is opened).
-        this.Provider.get(TodlValidationService.Key)?.AttachProject(op.Project.RootPath, op.Project.Name, op.Storage)
+        void this.Provider.get(TodlLanguageClient.Key)?.AttachProject(op.Project.RootPath, op.Project.Name, op.Storage)
         await this.openStore.Add(op.Folder)
         return op
     }
@@ -668,6 +668,9 @@ export class ProjectExplorerService extends ServiceBase
     {
         op.Adopt(await op.Factory.openProject(op.Storage))
         this.wireNodes(op.Root, op)
+        // Reconcile the language server's open document set with the new tree
+        // (created/deleted/renamed .todl files) so diagnostics stay in sync.
+        void this.Provider.get(TodlLanguageClient.Key)?.ResyncProject(op.Project.RootPath, op.Storage)
     }
 
     // Move the given nodes into destParentPath (project-relative; '' = root),
@@ -749,9 +752,7 @@ export class ProjectExplorerService extends ServiceBase
     {
         if (!isPublishable(op.Factory)) { this.Status = "This project type can't be published."; return }
         // Refresh diagnostics so the Problems dock reflects exactly what publish sees.
-        const validator = this.Provider.get(TodlValidationService.Key)
-        validator?.ClearBaseCache(op.Storage)
-        await validator?.Revalidate()
+        await this.Provider.get(TodlLanguageClient.Key)?.RefreshBases(op.Storage)
         try {
             const result = await op.Factory.publish(op.Project, op.Storage, this.Provider)
             this.Status = result.message
@@ -767,9 +768,7 @@ export class ProjectExplorerService extends ServiceBase
     // the project opened is picked up (its live squiggles re-resolve).
     private refreshBases(op: OpenProject): void
     {
-        const validator = this.Provider.get(TodlValidationService.Key)
-        validator?.ClearBaseCache(op.Storage)
-        void validator?.Revalidate()
+        void this.Provider.get(TodlLanguageClient.Key)?.RefreshBases(op.Storage)
         this.Status = `Refreshed bases for ${op.Name}.`
     }
 
@@ -779,17 +778,14 @@ export class ProjectExplorerService extends ServiceBase
     // folders are skipped. Awaitable so the caller knows validation has settled.
     public async RefreshProjects(folders: readonly string[]): Promise<void>
     {
-        const validator = this.Provider.get(TodlValidationService.Key)
-        let any = false
+        const client = this.Provider.get(TodlLanguageClient.Key)
         for (const folder of folders)
         {
             const op = this.findByFolder(folder)
             if (op === undefined) continue
-            await this.rescan(op)
-            validator?.ClearBaseCache(op.Storage)
-            any = true
+            await this.rescan(op)   // also resyncs the server's document set
+            await client?.RefreshBases(op.Storage)
         }
-        if (any) await validator?.Revalidate()
     }
 
     // Close a project: close its open tabs, drop it from the tree, and forget it
@@ -799,8 +795,8 @@ export class ProjectExplorerService extends ServiceBase
         for (const [doc, owner] of [...this.docOwners]) {
             if (owner === op) { this.host.Close(doc); this.docOwners.delete(doc); this.docPaths.delete(doc) }
         }
-        // Unregister from validation and drop this project's diagnostics.
-        this.Provider.get(TodlValidationService.Key)?.DetachProject(op.Storage)
+        // Unregister from the language client and drop this project's diagnostics.
+        this.Provider.get(TodlLanguageClient.Key)?.DetachProject(op.Storage)
         this.OpenProjects.Remove(op)
         await this.openStore.Remove(op.Folder)
         this.Status = `Closed ${op.Name}.`

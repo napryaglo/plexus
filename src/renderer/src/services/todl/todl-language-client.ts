@@ -329,9 +329,13 @@ export class TodlLanguageClient extends ServiceBase {
     })
   }
 
-  // In-place rename within the same project.
-  public RelocateDocument(doc: CodeDocument, storage: IStorage, newPath: string): void {
-    this.moveDoc(doc, storage, newPath)
+  // In-place rename within the same project; the storage is derived from the
+  // document's current URI.
+  public RelocateDocument(doc: CodeDocument, newPath: string): void {
+    const old = this.docUris.get(doc)
+    const resolved = old !== undefined ? this.resolveUri(old) : null
+    if (resolved === null) return
+    this.moveDoc(doc, resolved.storage, newPath)
   }
 
   // Cross-project move (doc.Id already points at the new path).

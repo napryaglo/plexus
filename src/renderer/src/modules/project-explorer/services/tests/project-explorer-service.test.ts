@@ -14,7 +14,7 @@ import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../../
 import { ConfirmDialogModel } from '../../../../services/dialogs/confirm-dialog-model.js'
 import { ProjectExplorerService, applyPrefill, importFilters, uniqueStorageName } from '../project-explorer-service.js'
 import { NewProjectDialogModel, ProjectTypeChoice } from '../../../../services/projects/new-project-dialog-model.js'
-import { TodlValidationService } from '../../../../services/todl/todl-validation-service.js'
+import { TodlLanguageClient } from '../../../../services/todl/todl-language-client.js'
 
 // A picked file as the OS dialog would hand it back (absolute path + raw bytes).
 type Picked = { Path: string; Bytes: Uint8Array }
@@ -173,17 +173,17 @@ test('opening two projects adds two roots; reopening one dedupes', async () => {
     expect((await store.List()).slice().sort()).toEqual(['C:/a', 'C:/b'])
 })
 
-test('RefreshProjects rescans each named project and revalidates once; unknown folders are skipped', async () => {
+test('RefreshProjects rescans each named project and refreshes its bases; unknown folders are skipped', async () => {
     const { service, priv, provider } = makeExplorer()
     const factory = fakeProjectFactory()
     await priv.addOpenProject(projectWith('A', 'C:/a'), factory, new FakeStorage('C:/a'))
 
-    // A recording validator, registered AFTER open so AttachProject stays skipped.
+    // A recording language client, registered AFTER open so AttachProject stays skipped.
     const calls: string[] = []
-    provider.registerInstance(TodlValidationService.Key, {
-        ClearBaseCache: () => { calls.push('clear') },
-        Revalidate: async () => { calls.push('revalidate') },
-    } as unknown as TodlValidationService)
+    provider.registerInstance(TodlLanguageClient.Key, {
+        RefreshBases: async () => { calls.push('refresh') },
+        ResyncProject: async () => { calls.push('resync') },
+    } as unknown as TodlLanguageClient)
 
     // Count rescans via the factory's openProject.
     let opened = 0
@@ -193,7 +193,7 @@ test('RefreshProjects rescans each named project and revalidates once; unknown f
     await service.RefreshProjects(['C:/a', 'C:/does-not-exist'])
 
     expect(opened).toBe(1)                       // only the known project rescanned
-    expect(calls).toEqual(['clear', 'revalidate']) // cleared its bases, revalidated once
+    expect(calls).toEqual(['resync', 'refresh']) // rescan resyncs the doc set, then bases refresh
 })
 
 function formWith(types: string[]): NewProjectDialogModel {
