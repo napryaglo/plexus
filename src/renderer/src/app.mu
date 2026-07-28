@@ -124,6 +124,7 @@ import DockTabsResources from "./services/dock-tabs/dock-tabs.resources.mu.js"
 // project's .todl files against its declared bases via checkAgainst. Root-scoped
 // like ProjectFactoryRegistry so every module's editor can attach documents.
 import TodlValidationService from "./services/todl/todl-validation-service.js"
+import TodlLanguageClient from "./services/todl/todl-language-client.js"
 import DiagnosticsService from "./services/diagnostics/diagnostics-service.js"
 import WorkspaceRefreshService from "./services/workspace/workspace-refresh-service.js"
 import CodeEditorResources from "./modules/code-editor/code-editor.resources.mu.js"
@@ -214,6 +215,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         DiagnosticsService
         // Shared base-aware TODL validator (meta-model / library / architecture).
         TodlValidationService
+        // Out-of-process TODL language client: owns the LSP connection, the
+        // project source/base feed, diagnostics routing, and Monaco providers.
+        TodlLanguageClient
         // Agent workspace tools: subscribes to the agent event stream and services
         // refresh_project (re-scan + re-validate + reply). Eagerly resolved in
         // main.js so it's listening before the first turn.

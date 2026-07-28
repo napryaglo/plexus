@@ -91,11 +91,39 @@ export class TodlLanguageClient extends ServiceBase {
     this.connection = connection
     connection.onNotification('textDocument/publishDiagnostics', (p) =>
       this.onPublishDiagnostics(p as PublishDiagnosticsParams))
-    const res = (await connection.sendRequest('initialize', {
+    await this.handshake()
+  }
+
+  private async handshake(): Promise<void> {
+    const res = (await this.connection?.sendRequest('initialize', {
       processId: null, rootUri: null, capabilities: {}, initializationOptions: { mode: 'pushed' },
     })) as { capabilities?: { semanticTokensProvider?: { legend?: SemanticLegend } } } | null
     this.semanticLegend = res?.capabilities?.semanticTokensProvider?.legend
-    await connection.sendNotification('initialized', {})
+    await this.connection?.sendNotification('initialized', {})
+  }
+
+  // Recover after a server restart: re-handshake and re-push every project's
+  // bases + open documents to the fresh child.
+  public async Reinitialize(): Promise<void> {
+    await this.handshake()
+    await this.ResyncAll()
+  }
+
+  // Re-push bases + all sources for every registered project (server restart).
+  public async ResyncAll(): Promise<void> {
+    for (const project of [...this.projects.values()]) {
+      const { bases } = await this.basesFor(project.storage)
+      await this.notify('todl/setBases', { rootUri: this.uriFor(project.projectId, ''), bases })
+      const opened = new Set<string>()
+      for (const s of await collectTodlSources(project.storage)) {
+        const uri = this.uriFor(project.projectId, s.uri)
+        opened.add(uri)
+        await this.notify('textDocument/didOpen', {
+          textDocument: { uri, languageId: 'todl', version: this.nextVersion(uri), text: s.text },
+        })
+      }
+      this.openDocs.set(this.projectKeyFor(project.projectId), opened)
+    }
   }
 
   // The semantic-tokens legend advertised by the server, for the Monaco provider.

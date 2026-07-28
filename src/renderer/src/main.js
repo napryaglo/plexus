@@ -24,6 +24,9 @@ import { EnvironmentService } from './services/environment/environment-service.j
 import { ProjectExplorerService } from './modules/project-explorer/services/project-explorer-service.js'
 import { WorkspaceRefreshService } from './services/workspace/workspace-refresh-service.js'
 import { registerTodlLanguage } from './modules/meta-model/todl-language.js'
+import { TodlLanguageClient } from './services/todl/todl-language-client.js'
+import { createTodlLspConnection } from './services/todl/todl-lsp-connection.js'
+import { registerTodlProviders } from './modules/meta-model/todl-lsp/register-providers.js'
 
 // Register the 'todl' Monaco language once, before any editor mounts, so .todl
 // documents get syntax colouring. (Diagnostics/squiggles are independent of it.)
@@ -49,6 +52,17 @@ try {
     // Construct the workspace-refresh service now so it subscribes to agent
     // events before any turn runs (it isn't tied to a visible panel).
     app.Services.get(WorkspaceRefreshService.Key)
+    // Wire the out-of-process TODL language client: build the JSON-RPC connection
+    // over the preload pipe, handshake with the forked server, register the Monaco
+    // provider adapters, and resync every project after a server restart.
+    const todlClient = app.Services.get(TodlLanguageClient.Key)
+    const todlBridge = window.api?.todlLsp
+    if (todlClient !== undefined && todlBridge !== undefined) {
+        const connection = createTodlLspConnection(todlBridge)
+        await todlClient.Initialize(connection)
+        todlBridge.onServerRestart(() => { void todlClient.Reinitialize() })
+        registerTodlProviders(todlClient)
+    }
     // Open the seeded diagram as the initial document. The content region is
     // document-driven (DocumentsContentHostService under ContentHostService.Key),
     // so opening the workspace's document activates it → the canvas renders via
