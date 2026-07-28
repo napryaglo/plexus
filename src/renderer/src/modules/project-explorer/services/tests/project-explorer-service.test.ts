@@ -767,6 +767,26 @@ test('rename re-sorts the node within its parent when the position changes', asy
     expect(m.Name).toBe('a2.todl')
 })
 
+test('delete detaches the node in place — the tree is NOT rebuilt', async () => {
+    const { priv } = makeExplorer()   // confirm defaults to true
+    const { project, storage, src, m } = await projectTree('C:/p')
+    const op = await priv.addOpenProject(project, fakeProjectFactory(), storage)
+
+    const rootBefore = op.Root
+    const childrenBefore = op.Root.Children
+    await priv.deleteNodes(op, [m])
+
+    // No wholesale rebuild: the Root node and its Children collection are the
+    // same object instances (a rescan would have replaced them).
+    expect(op.Root).toBe(rootBefore)
+    expect(op.Root.Children).toBe(childrenBefore)
+    // The surviving sibling is the SAME object, still attached.
+    expect(op.Root.Children.ToArray()).toContain(src)
+    // The deleted node is gone from the tree and from storage.
+    expect(op.Root.Children.ToArray()).not.toContain(m)
+    expect(await storage.Exists('m.todl')).toBe(false)
+})
+
 test('Import Folder copies the picked directory subtree into the project', async () => {
     const os = { pickedFolder: 'C:/ext/pics', files: {
         'C:/ext/pics/a.png': 'AA',

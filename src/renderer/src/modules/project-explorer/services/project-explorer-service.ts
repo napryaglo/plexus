@@ -472,9 +472,9 @@ export class ProjectExplorerService extends ServiceBase
 
     // Delete one or more nodes: confirm once, remove each from storage (a folder
     // takes its contents with it), close any tabs the deletion invalidates, then
-    // rescan the tree. Nodes nested under another selected node are dropped from
-    // the storage pass (their ancestor's delete already removes them). The
-    // project root ('' path) is never deletable and is filtered out.
+    // detach each from its parent in place. Nodes nested under another selected
+    // node are dropped from the pass (their ancestor's delete already removes
+    // them). The project root ('' path) is never deletable and is filtered out.
     private async deleteNodes(op: OpenProject, nodes: readonly ProjectNode[]): Promise<void>
     {
         const targets = nodes.filter((n) => n.Path !== '')
@@ -485,14 +485,28 @@ export class ProjectExplorerService extends ServiceBase
             for (const node of topLevelNodes(targets)) {
                 await op.Storage.Delete(node.Path)
                 this.closeDocumentsUnder(op, node.Path)
+                this.removeNodeInPlace(op, node)
             }
-            op.Adopt(await op.Factory.openProject(op.Storage))
-            this.wireNodes(op.Root, op)
             op.SelectedNodes = []
             this.Status = targets.length === 1 ? `Deleted ${targets[0].Name}.` : `Deleted ${targets.length} items.`
         } catch (e) {
             this.Status = `Delete failed: ${(e as Error).message}`
         }
+    }
+
+    // Detach a node from its parent's Children — the surgical counterpart to a
+    // rescan for deletes. A removal shifts no surviving node's path, so unlike
+    // renameNodeInPlace there's no reprefix or re-sort: the bound TreeView drops
+    // just that row and every other node keeps its object identity (so expansion
+    // and selection survive). Clears SelectedNode if it pointed at the removed
+    // node, leaving no dangling reference to a detached row.
+    private removeNodeInPlace(op: OpenProject, node: ProjectNode): void
+    {
+        const parent = this.findParent(op.Root, node)
+        if (parent === undefined) return
+        const i = parent.Children.IndexOf(node)
+        if (i >= 0) parent.Children.RemoveAt(i)
+        if (op.SelectedNode === node) op.SelectedNode = undefined
     }
 
     // Show the reusable confirm dialog and await the user's choice. The message
