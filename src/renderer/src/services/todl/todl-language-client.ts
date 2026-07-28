@@ -16,6 +16,8 @@ interface LspRangeLike { start: { line: number; character: number }; end: { line
 interface LspDiagnostic { range: LspRangeLike; message: string; severity?: number }
 interface PublishDiagnosticsParams { uri: string; diagnostics: LspDiagnostic[] }
 
+export interface SemanticLegend { tokenTypes: string[]; tokenModifiers: string[] }
+
 const LSP_SEVERITY: Record<number, DiagnosticSeverity> = {
   1: DiagnosticSeverity.Error,
   2: DiagnosticSeverity.Warning,
@@ -44,6 +46,7 @@ export class TodlLanguageClient extends ServiceBase {
   public static readonly Key = new ServiceKey<TodlLanguageClient>('TodlLanguageClient')
 
   private connection: MessageConnection | undefined
+  private semanticLegend: SemanticLegend | undefined
   private readonly projects = new Map<string, RegisteredProject>() // projectKey → project
   // Per-project resolved bases (+ unresolved-base problems), cached so a base
   // set isn't re-read from the backends on every keystroke. Keyed by storage.
@@ -88,10 +91,16 @@ export class TodlLanguageClient extends ServiceBase {
     this.connection = connection
     connection.onNotification('textDocument/publishDiagnostics', (p) =>
       this.onPublishDiagnostics(p as PublishDiagnosticsParams))
-    await connection.sendRequest('initialize', {
+    const res = (await connection.sendRequest('initialize', {
       processId: null, rootUri: null, capabilities: {}, initializationOptions: { mode: 'pushed' },
-    })
+    })) as { capabilities?: { semanticTokensProvider?: { legend?: SemanticLegend } } } | null
+    this.semanticLegend = res?.capabilities?.semanticTokensProvider?.legend
     await connection.sendNotification('initialized', {})
+  }
+
+  // The semantic-tokens legend advertised by the server, for the Monaco provider.
+  public SemanticLegend(): SemanticLegend {
+    return this.semanticLegend ?? { tokenTypes: [], tokenModifiers: [] }
   }
 
   // The opaque, reversible authority segment for a project's URIs.
