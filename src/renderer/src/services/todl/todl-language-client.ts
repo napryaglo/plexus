@@ -2,6 +2,7 @@ import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/m
 import type { MessageConnection } from 'vscode-jsonrpc'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 import type { IStorage } from '../storage/storage.js'
+import { CodeDocument } from '../../modules/code-editor/code-document.js'
 import { collectTodlSources } from '../../modules/meta-model/services/todl-sources.js'
 import { resolveBases } from '../projects/base-resolver.js'
 import { PROJECT_MANIFEST_FILENAME } from '../projects/project-factory.js'
@@ -37,6 +38,9 @@ export class TodlLanguageClient extends ServiceBase {
   private readonly openDocs = new Map<string, Set<string>>()
   // Monotonic didChange version per URI.
   private readonly versions = new Map<string, number>()
+  // Open editor documents → their current server URI, and → the Content unhook.
+  private readonly docUris = new Map<CodeDocument, string>()
+  private readonly docListeners = new Map<CodeDocument, () => void>()
 
   constructor(provider: IServiceProvider) { super(provider) }
 
@@ -146,5 +150,92 @@ export class TodlLanguageClient extends ServiceBase {
     this.baseCache.delete(storage)
     const { bases } = await this.basesFor(storage)
     await this.notify('todl/refreshBases', { rootUri: this.uriFor(found.project.projectId, ''), bases })
+  }
+
+  // Record a document's URI (a real DP write lands in the model-URI layer so the
+  // editor can key its Monaco model on it).
+  private assignUri(doc: CodeDocument, uri: string): void {
+    this.docUris.set(doc, uri)
+  }
+
+  private sendDidChange(uri: string, text: string): void {
+    void this.notify('textDocument/didChange', {
+      textDocument: { uri, version: this.nextVersion(uri) },
+      contentChanges: [{ text }],
+    })
+  }
+
+  // Wire an open editor document to the server: assign its URI, ensure the server
+  // has it open, and forward every Content edit as a full-text didChange (the
+  // server's incremental sync accepts a range-less full replace). Idempotent.
+  public AttachDocument(doc: CodeDocument, storage: IStorage): void {
+    if (this.docListeners.has(doc)) return
+    const found = this.projectByStorage(storage)
+    if (found === null) return
+    const uri = this.uriFor(found.project.projectId, doc.Id)
+    this.assignUri(doc, uri)
+    const opened = this.openDocs.get(found.key)
+    if (opened !== undefined && !opened.has(uri)) {
+      opened.add(uri)
+      void this.notify('textDocument/didOpen', {
+        textDocument: { uri, languageId: 'todl', version: this.nextVersion(uri), text: doc.Content },
+      })
+    }
+    const listener = (): void => {
+      const current = this.docUris.get(doc)
+      if (current !== undefined) this.sendDidChange(current, doc.Content)
+    }
+    doc.AddPropertyChangedListener(CodeDocument.ContentKey, listener)
+    this.docListeners.set(doc, () => doc.RemovePropertyChangedListener(CodeDocument.ContentKey, listener))
+  }
+
+  // Move a document to (storage, relpath): close the old server doc, open the new
+  // one. The Content listener reads the live URI, so it follows automatically.
+  private moveDoc(doc: CodeDocument, storage: IStorage, relpath: string): void {
+    const old = this.docUris.get(doc)
+    if (old !== undefined) {
+      void this.notify('textDocument/didClose', { textDocument: { uri: old } })
+      for (const set of this.openDocs.values()) set.delete(old)
+    }
+    const found = this.projectByStorage(storage)
+    if (found === null) return
+    const uri = this.uriFor(found.project.projectId, relpath)
+    this.assignUri(doc, uri)
+    this.openDocs.get(found.key)?.add(uri)
+    void this.notify('textDocument/didOpen', {
+      textDocument: { uri, languageId: 'todl', version: this.nextVersion(uri), text: doc.Content },
+    })
+  }
+
+  // In-place rename within the same project.
+  public RelocateDocument(doc: CodeDocument, storage: IStorage, newPath: string): void {
+    this.moveDoc(doc, storage, newPath)
+  }
+
+  // Cross-project move (doc.Id already points at the new path).
+  public ReattachDocument(doc: CodeDocument, storage: IStorage): void {
+    this.moveDoc(doc, storage, doc.Id)
+  }
+
+  // Reconcile the server's open set for a project with what is on disk now —
+  // didOpen new files, didChange still-present ones, didClose removed ones.
+  // Covers explorer create/delete/rename with no editor open.
+  public async ResyncProject(projectId: string, storage: IStorage): Promise<void> {
+    const key = this.projectKeyFor(projectId)
+    const prev = this.openDocs.get(key) ?? new Set<string>()
+    const next = new Set<string>()
+    for (const s of await collectTodlSources(storage)) {
+      const uri = this.uriFor(projectId, s.uri)
+      next.add(uri)
+      if (prev.has(uri)) {
+        this.sendDidChange(uri, s.text)
+      } else {
+        void this.notify('textDocument/didOpen', {
+          textDocument: { uri, languageId: 'todl', version: this.nextVersion(uri), text: s.text },
+        })
+      }
+    }
+    for (const uri of prev) if (!next.has(uri)) void this.notify('textDocument/didClose', { textDocument: { uri } })
+    this.openDocs.set(key, next)
   }
 }
