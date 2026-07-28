@@ -13,6 +13,7 @@ import {
 import { EnvironmentChannel, type EnvironmentInfo } from '../shared/environment-api.js'
 import { SettingsChannel, type ISettingsBridge } from '../shared/settings-api.js'
 import { AgentChannel, type AgentEvent, type IAgentApi } from '../shared/agent-api.js'
+import { TodlLspChannel, type ITodlLspApi } from '../shared/todl-lsp-api.js'
 
 // Preload — the ONLY place renderer and main meet, across the context bridge.
 // Exposes Plexus's native surface as a small typed `api`. The renderer wraps
@@ -92,7 +93,24 @@ const agent: IAgentApi = {
   },
 }
 
-const api = { fs, environment, settings, agent }
+// TODL language server pipe. An opaque bridge: send/receive already-framed
+// JSON-RPC message objects (no LSP types), plus a server-restart signal. The
+// renderer builds its vscode-jsonrpc MessageConnection over this.
+const todlLsp: ITodlLspApi = {
+  send: (msg: unknown): void => ipcRenderer.send(TodlLspChannel.ToServer, msg),
+  onMessage: (cb: (msg: unknown) => void): (() => void) => {
+    const listener = (_e: unknown, msg: unknown): void => cb(msg)
+    ipcRenderer.on(TodlLspChannel.FromServer, listener)
+    return () => { ipcRenderer.removeListener(TodlLspChannel.FromServer, listener) }
+  },
+  onServerRestart: (cb: () => void): (() => void) => {
+    const listener = (): void => cb()
+    ipcRenderer.on(TodlLspChannel.ServerRestart, listener)
+    return () => { ipcRenderer.removeListener(TodlLspChannel.ServerRestart, listener) }
+  },
+}
+
+const api = { fs, environment, settings, agent, todlLsp }
 
 if (process.contextIsolated) {
   try {
