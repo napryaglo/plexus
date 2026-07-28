@@ -1,6 +1,11 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import type { MessageConnection } from 'vscode-jsonrpc'
+import type { TodlDocument } from '@pragmatic-lab/todl'
 import type { IStorage } from '../storage/storage.js'
+import { collectTodlSources } from '../../modules/meta-model/services/todl-sources.js'
+import { resolveBases } from '../projects/base-resolver.js'
+import { PROJECT_MANIFEST_FILENAME } from '../projects/project-factory.js'
+import type { BaseBindings } from '../projects/base-binding.js'
 
 // One open project as the client knows it: its identity (projectId =
 // Project.RootPath), display name, and the storage its sources live in. Keyed in
@@ -24,8 +29,26 @@ export class TodlLanguageClient extends ServiceBase {
 
   private connection: MessageConnection | undefined
   private readonly projects = new Map<string, RegisteredProject>() // projectKey → project
+  // Per-project resolved bases (+ unresolved-base problems), cached so a base
+  // set isn't re-read from the backends on every keystroke. Keyed by storage.
+  private readonly baseCache = new Map<IStorage, { bases: TodlDocument[]; problems: string[] }>()
+  // Server documents currently open per project (projectKey → set of URIs), so
+  // edits/structural changes can didChange/didClose the right ones.
+  private readonly openDocs = new Map<string, Set<string>>()
+  // Monotonic didChange version per URI.
+  private readonly versions = new Map<string, number>()
 
   constructor(provider: IServiceProvider) { super(provider) }
+
+  private async notify(method: string, params: unknown): Promise<void> {
+    await this.connection?.sendNotification(method, params)
+  }
+
+  private nextVersion(uri: string): number {
+    const v = (this.versions.get(uri) ?? 0) + 1
+    this.versions.set(uri, v)
+    return v
+  }
 
   // Establish the handshake over an already-listening connection. The publish-
   // diagnostics handler is registered in the diagnostics-routing layer.
@@ -62,5 +85,66 @@ export class TodlLanguageClient extends ServiceBase {
     const entry = this.projects.get(key)
     if (entry === undefined) return null
     return { projectId: entry.projectId, storage: entry.storage, relpath }
+  }
+
+  // Resolve (and cache) a project's declared bases from its manifest. A project
+  // with no manifest / no bindings resolves to []. Mirrors the retired
+  // TodlValidationService.basesFor.
+  private async basesFor(storage: IStorage): Promise<{ bases: TodlDocument[]; problems: string[] }> {
+    const cached = this.baseCache.get(storage)
+    if (cached !== undefined) return cached
+    let bindings: BaseBindings = {}
+    try {
+      const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as BaseBindings
+      bindings = { metaModel: manifest.metaModel, libraries: manifest.libraries }
+    } catch { /* no manifest → no bases */ }
+    const resolved = await resolveBases(this.Provider, bindings)
+    this.baseCache.set(storage, resolved)
+    return resolved
+  }
+
+  private projectByStorage(storage: IStorage): { key: string; project: RegisteredProject } | null {
+    for (const [key, project] of this.projects) if (project.storage === storage) return { key, project }
+    return null
+  }
+
+  // Register a project, push its resolved bases, and didOpen every project .todl
+  // (the whole set — not just the visible tab — so the server can analyze the
+  // project as a whole).
+  public async AttachProject(projectId: string, projectName: string, storage: IStorage): Promise<void> {
+    this.registerProject(projectId, projectName, storage)
+    const { bases } = await this.basesFor(storage)
+    await this.notify('todl/setBases', { rootUri: this.uriFor(projectId, ''), bases })
+    const opened = new Set<string>()
+    for (const s of await collectTodlSources(storage)) {
+      const uri = this.uriFor(projectId, s.uri)
+      opened.add(uri)
+      await this.notify('textDocument/didOpen', {
+        textDocument: { uri, languageId: 'todl', version: this.nextVersion(uri), text: s.text },
+      })
+    }
+    this.openDocs.set(this.projectKeyFor(projectId), opened)
+  }
+
+  // Unregister a project on close: didClose its docs, drop registry + caches.
+  // (Diagnostics clearing is added in the diagnostics-routing layer.)
+  public DetachProject(storage: IStorage): void {
+    const found = this.projectByStorage(storage)
+    if (found === null) return
+    const opened = this.openDocs.get(found.key) ?? new Set<string>()
+    for (const uri of opened) void this.notify('textDocument/didClose', { textDocument: { uri } })
+    this.openDocs.delete(found.key)
+    this.projects.delete(found.key)
+    this.baseCache.delete(storage)
+  }
+
+  // Re-resolve a project's bases after a (re)publish and push them to the server,
+  // which drops the old set and re-analyzes.
+  public async RefreshBases(storage: IStorage): Promise<void> {
+    const found = this.projectByStorage(storage)
+    if (found === null) return
+    this.baseCache.delete(storage)
+    const { bases } = await this.basesFor(storage)
+    await this.notify('todl/refreshBases', { rootUri: this.uriFor(found.project.projectId, ''), bases })
   }
 }
