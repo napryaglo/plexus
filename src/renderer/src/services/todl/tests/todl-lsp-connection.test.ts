@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import { createTodlLspConnection } from '../todl-lsp-connection.js'
-import type { ITodlLspApi } from '../../../../shared/todl-lsp-api.js'
+import type { ITodlLspApi } from '../../../../../shared/todl-lsp-api.js'
 
 // Two bridges cross-wired: whatever A sends, B's onMessage subscribers receive,
 // and vice-versa — a stand-in for the main-process relay between two peers.

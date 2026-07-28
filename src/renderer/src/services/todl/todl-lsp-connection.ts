@@ -2,7 +2,7 @@ import {
   AbstractMessageReader, AbstractMessageWriter, createMessageConnection,
   type MessageConnection, type DataCallback, type Message, type Disposable,
 } from 'vscode-jsonrpc'
-import type { ITodlLspApi } from '../../../shared/todl-lsp-api.js'
+import type { ITodlLspApi } from '../../../../shared/todl-lsp-api.js'
 
 // A JSON-RPC MessageConnection over the opaque preload pipe. Whole message
 // objects cross IPC (the main-process relay already did the stdio Content-Length

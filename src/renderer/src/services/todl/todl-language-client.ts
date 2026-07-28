@@ -7,6 +7,21 @@ import { collectTodlSources } from '../../modules/meta-model/services/todl-sourc
 import { resolveBases } from '../projects/base-resolver.js'
 import { PROJECT_MANIFEST_FILENAME } from '../projects/project-factory.js'
 import type { BaseBindings } from '../projects/base-binding.js'
+import { DiagnosticsService } from '../diagnostics/diagnostics-service.js'
+import { DiagnosticSeverity, type Diagnostic } from '../diagnostics/diagnostic.js'
+
+// The slice of an LSP diagnostic / publish notification the client maps. LSP
+// positions are 0-based; canonical diagnostics are 1-based with exclusive end.
+interface LspRangeLike { start: { line: number; character: number }; end: { line: number; character: number } }
+interface LspDiagnostic { range: LspRangeLike; message: string; severity?: number }
+interface PublishDiagnosticsParams { uri: string; diagnostics: LspDiagnostic[] }
+
+const LSP_SEVERITY: Record<number, DiagnosticSeverity> = {
+  1: DiagnosticSeverity.Error,
+  2: DiagnosticSeverity.Warning,
+  3: DiagnosticSeverity.Info,
+  4: DiagnosticSeverity.Hint,
+}
 
 // One open project as the client knows it: its identity (projectId =
 // Project.RootPath), display name, and the storage its sources live in. Keyed in
@@ -41,8 +56,15 @@ export class TodlLanguageClient extends ServiceBase {
   // Open editor documents → their current server URI, and → the Content unhook.
   private readonly docUris = new Map<CodeDocument, string>()
   private readonly docListeners = new Map<CodeDocument, () => void>()
+  // Latest diagnostics per project (projectId → relpath → canonical), so a
+  // per-URI publish can be flattened into the whole-project slice the store wants.
+  private readonly diagsByProject = new Map<string, Map<string, Diagnostic[]>>()
 
   constructor(provider: IServiceProvider) { super(provider) }
+
+  private get diagnostics(): DiagnosticsService | undefined {
+    return this.Provider.get(DiagnosticsService.Key)
+  }
 
   private async notify(method: string, params: unknown): Promise<void> {
     await this.connection?.sendNotification(method, params)
@@ -58,6 +80,8 @@ export class TodlLanguageClient extends ServiceBase {
   // diagnostics handler is registered in the diagnostics-routing layer.
   public async Initialize(connection: MessageConnection): Promise<void> {
     this.connection = connection
+    connection.onNotification('textDocument/publishDiagnostics', (p) =>
+      this.onPublishDiagnostics(p as PublishDiagnosticsParams))
     await connection.sendRequest('initialize', {
       processId: null, rootUri: null, capabilities: {}, initializationOptions: { mode: 'pushed' },
     })
@@ -140,6 +164,8 @@ export class TodlLanguageClient extends ServiceBase {
     this.openDocs.delete(found.key)
     this.projects.delete(found.key)
     this.baseCache.delete(storage)
+    this.diagsByProject.delete(found.project.projectId)
+    this.diagnostics?.ClearProject(found.project.projectId)
   }
 
   // Re-resolve a project's bases after a (re)publish and push them to the server,
@@ -237,5 +263,47 @@ export class TodlLanguageClient extends ServiceBase {
     }
     for (const uri of prev) if (!next.has(uri)) void this.notify('textDocument/didClose', { textDocument: { uri } })
     this.openDocs.set(key, next)
+  }
+
+  // Route a server publishDiagnostics into the canonical store. The store wants
+  // the whole project slice at once, so accumulate per-URI then flatten.
+  private onPublishDiagnostics(params: PublishDiagnosticsParams): void {
+    const key = params.uri.startsWith('todl://') ? params.uri.slice('todl://'.length).split('/')[0] : undefined
+    const entry = key !== undefined ? this.projects.get(key) : undefined
+    const resolved = this.resolveUri(params.uri)
+    if (entry === undefined || resolved === null) return
+    const canon = params.diagnostics.map((d): Diagnostic => ({
+      owner: 'todl', projectId: entry.projectId, projectName: entry.projectName, uri: resolved.relpath,
+      message: d.message,
+      severity: LSP_SEVERITY[d.severity ?? 1] ?? DiagnosticSeverity.Error,
+      span: {
+        startLine: d.range.start.line + 1, startColumn: d.range.start.character + 1,
+        endLine: d.range.end.line + 1, endColumn: d.range.end.character + 1,
+      },
+    }))
+    let byUri = this.diagsByProject.get(entry.projectId)
+    if (byUri === undefined) { byUri = new Map(); this.diagsByProject.set(entry.projectId, byUri) }
+    byUri.set(resolved.relpath, canon)
+    this.publishProject(entry.projectId)
+  }
+
+  // Flatten a project's per-URI diagnostics (plus any unresolved-base problems)
+  // and replace its slice in the store.
+  private publishProject(projectId: string): void {
+    const byUri = this.diagsByProject.get(projectId) ?? new Map<string, Diagnostic[]>()
+    const flat: Diagnostic[] = []
+    for (const list of byUri.values()) flat.push(...list)
+    const project = [...this.projects.values()].find((p) => p.projectId === projectId)
+    if (project !== undefined) {
+      const problems = this.baseCache.get(project.storage)?.problems ?? []
+      if (problems.length > 0) {
+        flat.push({
+          owner: 'todl', projectId, projectName: project.projectName, uri: null,
+          message: `Unresolved base: ${problems.join('; ')}.`,
+          severity: DiagnosticSeverity.Error, span: null,
+        })
+      }
+    }
+    this.diagnostics?.Publish('todl', projectId, flat)
   }
 }
