@@ -70,6 +70,12 @@ export class TodlLanguageClient extends ServiceBase {
     await this.connection?.sendNotification(method, params)
   }
 
+  // Issue an LSP request to the server. Used by the Monaco provider adapters.
+  public sendRequest<R>(method: string, params: unknown): Promise<R> {
+    if (this.connection === undefined) return Promise.reject(new Error('TODL language client not initialized'))
+    return this.connection.sendRequest(method, params) as Promise<R>
+  }
+
   private nextVersion(uri: string): number {
     const v = (this.versions.get(uri) ?? 0) + 1
     this.versions.set(uri, v)
