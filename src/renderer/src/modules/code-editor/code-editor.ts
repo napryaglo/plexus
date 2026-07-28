@@ -37,6 +37,12 @@ export class CodeEditor extends DomHost
     public static readonly LanguageKey = Model.RegisterProperty<string>(
         CodeEditor, 'Language', 'plaintext', MetaData.None)
 
+    // Stable model URI (bound from the document's $Uri). When set, the Monaco
+    // model is created/looked up by this URI so language-server providers,
+    // diagnostics, and edits key on it. Empty ⇒ anonymous model (back-compat).
+    public static readonly ModelUriKey = Model.RegisterProperty<string>(
+        CodeEditor, 'ModelUri', '', MetaData.None)
+
     // Diagnostics against the text — the document binds its Diagnostics channel
     // here; we render them as Monaco markers. It is one ObservableCollection
     // instance whose CONTENTS change (Clear/Add) rather than being replaced, so
@@ -50,6 +56,9 @@ export class CodeEditor extends DomHost
         CodeEditor, 'RevealRequest', undefined, MetaData.None)
 
     private editor: monaco.editor.IStandaloneCodeEditor | undefined
+    // True when we created the editor's model from a stable URI (so we own its
+    // disposal — URI-keyed models persist in Monaco's registry otherwise).
+    private ownsModel = false
     // True while WE push a change across the Monaco↔DP boundary, so the
     // resulting echo on the other side is ignored (no feedback loop).
     private updating = false
@@ -72,6 +81,8 @@ export class CodeEditor extends DomHost
             CodeEditor.TextKey, DataContextBinding(this, 'Content') as unknown as string)
         this.set_property_value(
             CodeEditor.LanguageKey, DataContextBinding(this, 'Language') as unknown as string)
+        this.set_property_value(
+            CodeEditor.ModelUriKey, DataContextBinding(this, 'Uri') as unknown as string)
         this.set_property_value(
             CodeEditor.DiagnosticsKey,
             DataContextBinding(this, 'Diagnostics') as unknown as ObservableCollection<EditorDiagnostic>)
@@ -119,13 +130,18 @@ export class CodeEditor extends DomHost
         // editor never flashes its default palette. We're in the tree by now
         // (MeasureOverride poked us), so TryFindResource resolves app resources.
         const theme = this.defineMuralTheme()
-        this.editor = monaco.editor.create(el, {
-            value:           this.Text,
-            language:        this.Language,
-            theme,
-            automaticLayout: true,
-            minimap:         { enabled: false },
-        })
+        // When the document carries a stable URI, create (or reuse) a URI-keyed
+        // Monaco model so language-server providers/diagnostics/edits map back to
+        // the file. Otherwise fall back to an anonymous model (non-.todl editors).
+        const modelUri = this.get_property_value(CodeEditor.ModelUriKey) as string
+        const model = modelUri
+            ? (monaco.editor.getModel(monaco.Uri.parse(modelUri))
+                ?? monaco.editor.createModel(this.Text, this.Language, monaco.Uri.parse(modelUri)))
+            : undefined
+        this.ownsModel = model !== undefined
+        this.editor = monaco.editor.create(el, model
+            ? { model, theme, automaticLayout: true, minimap: { enabled: false } }
+            : { value: this.Text, language: this.Language, theme, automaticLayout: true, minimap: { enabled: false } })
         // Monaco → DP: push user edits into Text (ignored when WE set the value).
         this.editor.onDidChangeModelContent(() =>
         {
@@ -232,7 +248,9 @@ export class CodeEditor extends DomHost
     {
         this.diagUnsub?.()
         this.diagUnsub = undefined
+        const model = this.ownsModel ? this.editor?.getModel() : undefined
         this.editor?.dispose()
+        model?.dispose()
         this.editor = undefined
     }
 

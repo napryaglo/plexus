@@ -42,6 +42,12 @@ export class CodeDocument extends Model implements IDocument
     public static readonly IdKey = Model.RegisterProperty<string>(
         CodeDocument, 'Id', '', MetaData.None)
 
+    // A stable, project-scoped document URI (todl://<projectKey>/<relpath>) the
+    // editor keys its Monaco model on, so language-server requests, diagnostics,
+    // and edits all map back to this file. Empty ⇒ anonymous model (non-.todl).
+    public static readonly UriKey = Model.RegisterProperty<string>(
+        CodeDocument, 'Uri', '', MetaData.None)
+
     public static readonly TitleKey = Model.RegisterProperty<string>(
         CodeDocument, 'Title', '', MetaData.None)
 
@@ -88,6 +94,9 @@ export class CodeDocument extends Model implements IDocument
     }
 
     public get Id(): string { return this.get_property_value(CodeDocument.IdKey) }
+
+    public get Uri(): string { return this.get_property_value(CodeDocument.UriKey) }
+    public set Uri(v: string) { this.set_property_value(CodeDocument.UriKey, v) }
 
     public get Title(): string { return this.get_property_value(CodeDocument.TitleKey) }
 

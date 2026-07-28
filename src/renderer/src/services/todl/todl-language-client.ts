@@ -178,10 +178,11 @@ export class TodlLanguageClient extends ServiceBase {
     await this.notify('todl/refreshBases', { rootUri: this.uriFor(found.project.projectId, ''), bases })
   }
 
-  // Record a document's URI (a real DP write lands in the model-URI layer so the
-  // editor can key its Monaco model on it).
+  // Record a document's URI and publish it on the document so the editor keys its
+  // Monaco model on it.
   private assignUri(doc: CodeDocument, uri: string): void {
     this.docUris.set(doc, uri)
+    doc.Uri = uri
   }
 
   private sendDidChange(uri: string, text: string): void {
