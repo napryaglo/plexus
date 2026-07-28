@@ -27,9 +27,8 @@ test('a notification over the pipe reaches the peer', async () => {
   const [a, b] = loopback()
   const ca = createTodlLspConnection(a)
   const cb = createTodlLspConnection(b)
-  let seen: unknown
-  cb.onNotification('note', (p: unknown) => { seen = p })
+  // Await the handler firing rather than a fixed delay — delivery is async.
+  const received = new Promise<unknown>((resolve) => cb.onNotification('note', (p: unknown) => resolve(p)))
   await ca.sendNotification('note', { hi: true })
-  await new Promise((r) => setTimeout(r, 0))
-  expect(seen).toEqual({ hi: true })
+  expect(await received).toEqual({ hi: true })
 })
