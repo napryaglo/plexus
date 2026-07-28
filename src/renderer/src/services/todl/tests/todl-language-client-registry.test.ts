@@ -23,3 +23,13 @@ test('resolveUri returns null for an unknown project', () => {
   const client = new TodlLanguageClient(new ServiceProvider())
   expect(client.resolveUri('todl://nope/x.todl')).toBeNull()
 })
+
+test('projectKey is lowercase hex so it survives Monaco Uri normalization', () => {
+  // Monaco lowercases + percent-decodes a URI authority; a key with any other
+  // character would make model.uri.toString() differ from the didOpen URI and
+  // break every request (hover/definition/completion). Guard against regressing
+  // to encodeURIComponent, whose `%3A`/`:` get mangled.
+  const client = new TodlLanguageClient(new ServiceProvider())
+  const key = client.projectKeyFor('C:\\Users\\Eugene\\proj')
+  expect(key).toMatch(/^[0-9a-f]+$/)
+})

@@ -183,8 +183,17 @@ export class TodlLanguageClient extends ServiceBase {
     return this.semanticLegend ?? { tokenTypes: [], tokenModifiers: [] }
   }
 
-  // The opaque, reversible authority segment for a project's URIs.
-  public projectKeyFor(projectId: string): string { return encodeURIComponent(projectId) }
+  // The opaque authority segment for a project's URIs. MUST be lowercase-hex
+  // (no chars Monaco's Uri would decode/lowercase): Monaco normalizes a URI's
+  // authority (lowercases it, decodes %XX), so `model.uri.toString()` sent on
+  // requests must equal the string we didOpen. encodeURIComponent(RootPath)
+  // fails this (its `%3A`/`:` get mangled) — hex round-trips identically. The
+  // registry maps the key back to the project, so it needn't be human-readable.
+  public projectKeyFor(projectId: string): string {
+    let hex = ''
+    for (let i = 0; i < projectId.length; i++) hex += projectId.charCodeAt(i).toString(16).padStart(2, '0')
+    return hex
+  }
 
   // A document URI: todl://<projectKey>/<relpath>. An empty relpath yields the
   // project rootUri (the server partitions projects by this prefix).
