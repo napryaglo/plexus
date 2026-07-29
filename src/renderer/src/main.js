@@ -27,6 +27,7 @@ import { registerTodlLanguage } from './modules/meta-model/todl-language.js'
 import { TodlLanguageClient } from './services/todl/todl-language-client.js'
 import { createTodlLspConnection } from './services/todl/todl-lsp-connection.js'
 import { registerTodlProviders } from './modules/meta-model/todl-lsp/register-providers.js'
+import { setCrossFileOpener } from './modules/code-editor/cross-file-open.js'
 
 // Register the 'todl' Monaco language once, before any editor mounts, so .todl
 // documents get syntax colouring. (Diagnostics/squiggles are independent of it.)
@@ -62,6 +63,16 @@ try {
         await todlClient.Initialize(connection)
         todlBridge.onServerRestart(() => { void todlClient.Reinitialize() })
         registerTodlProviders(todlClient)
+        // Cross-file go-to-definition: resolve a todl:// target back to its
+        // (project, path) and open it in a tab + reveal, so navigation reaches
+        // files that aren't already open. Non-todl URIs fall through to Monaco.
+        setCrossFileOpener((uri, selection) => {
+            const r = todlClient.resolveUri(uri)
+            if (r === null) return false
+            void app.Services.get(ProjectExplorerService.Key)?.OpenFileInProject(
+                r.projectId, r.relpath, selection?.startLineNumber ?? 1, selection?.startColumn ?? 1)
+            return true
+        })
     }
     // Open the seeded diagram as the initial document. The content region is
     // document-driven (DocumentsContentHostService under ContentHostService.Key),

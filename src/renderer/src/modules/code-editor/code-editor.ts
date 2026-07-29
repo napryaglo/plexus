@@ -4,6 +4,7 @@ import { DomHost } from '@pragmatic-lab/mural/basic'
 import { Color, DataContextBinding, Model, MetaData, ObservableCollection, Size, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
 import { SolidColorBrush } from '@pragmatic-lab/mural/visual-engine'
 import { toMarkers, type EditorDiagnostic } from './editor-diagnostic.js'
+import { handleCrossFileOpen, type CrossFileSelection } from './cross-file-open.js'
 
 // The Monaco theme name this control defines from mural's resolved tokens.
 const MURAL_THEME = 'mural'
@@ -142,6 +143,9 @@ export class CodeEditor extends DomHost
         this.editor = monaco.editor.create(el, model
             ? { model, theme, automaticLayout: true, minimap: { enabled: false } }
             : { value: this.Text, language: this.Language, theme, automaticLayout: true, minimap: { enabled: false } })
+        // Route Monaco's cross-file go-to-definition (into a document not open in
+        // a tab) to the host app — bare Monaco can't navigate to an unloaded model.
+        this.installCrossFileNavigation()
         // Monaco → DP: push user edits into Text (ignored when WE set the value).
         this.editor.onDidChangeModelContent(() =>
         {
@@ -162,6 +166,37 @@ export class CodeEditor extends DomHost
             this.revealSpan(line, column)
         }
         return el
+    }
+
+    // Monaco resolves go-to-definition/references navigation through a shared
+    // ICodeEditorService.openCodeEditor, which in the bare standalone setup only
+    // handles targets already loaded as models. Register an open-handler (public
+    // API; ours runs first via unshift) that, when the target differs from the
+    // initiating editor's model, hands the URI to the host to open in a tab +
+    // reveal. Returning null lets Monaco's default handle same-file navigation
+    // in place; installed once — the service is a standalone singleton.
+    private static crossFileInstalled = false
+    private installCrossFileNavigation(): void
+    {
+        if (CodeEditor.crossFileInstalled) return
+        const svc = (this.editor as unknown as {
+            _codeEditorService?: {
+                registerCodeEditorOpenHandler?: (
+                    h: (
+                        input: { resource?: { toString(): string }; options?: { selection?: CrossFileSelection } },
+                        source?: { getModel(): { uri: { toString(): string } } | null } | null,
+                    ) => Promise<unknown>,
+                ) => unknown
+            }
+        })._codeEditorService
+        if (svc?.registerCodeEditorOpenHandler === undefined) return
+        CodeEditor.crossFileInstalled = true
+        svc.registerCodeEditorOpenHandler(async (input, source) => {
+            const target = input.resource?.toString()
+            const current = source?.getModel()?.uri.toString()
+            if (target !== undefined && target !== current) handleCrossFileOpen(target, input.options?.selection)
+            return null
+        })
     }
 
     // (Re)subscribe to a bound Diagnostics collection and render it. The document
