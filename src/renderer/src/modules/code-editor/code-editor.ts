@@ -127,6 +127,29 @@ export class CodeEditor extends DomHost
         const swallowKey = (e: Event): void => e.stopPropagation()
         el.addEventListener('keydown', swallowKey)
         el.addEventListener('keyup', swallowKey)
+        // Same boundary problem for pointer events: mural's HtmlTarget focuses its
+        // SVG host on every pointerdown (handlePointer → host.focus()). Monaco's
+        // context menu / overlay widgets render INSIDE this editor's DOM (a shadow
+        // root under div.monaco-editor), so pressing a menu item bubbles a
+        // pointerdown up to mural, which yanks focus to the SVG host and dismisses
+        // the menu before the click lands — every menu item silently no-ops. When a
+        // pointer event targets a Monaco popup (menu/context-view/suggest/hover/find
+        // overlays — all marked with the shadow-root-host container or these
+        // classes), stop it at the boundary so mural never steals focus. The menu
+        // lives within the editor's widget, so its own handlers (deeper) still run
+        // and widget focus stays with the editor. Normal text-area clicks are left
+        // to propagate exactly as before.
+        const shieldOverlayPointer = (e: Event): void =>
+        {
+            const path = e.composedPath() as HTMLElement[]
+            if (path.some((n) => n.classList?.contains?.('shadow-root-host')
+                || n.classList?.contains?.('monaco-menu') || n.classList?.contains?.('context-view')))
+            {
+                e.stopPropagation()
+            }
+        }
+        el.addEventListener('pointerdown', shieldOverlayPointer)
+        el.addEventListener('pointerup', shieldOverlayPointer)
         // Build Monaco's theme from mural's live tokens BEFORE create so the
         // editor never flashes its default palette. We're in the tree by now
         // (MeasureOverride poked us), so TryFindResource resolves app resources.
