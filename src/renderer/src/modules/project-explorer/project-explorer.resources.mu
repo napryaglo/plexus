@@ -101,7 +101,8 @@ resources ProjectExplorerResources {
     DataTemplate x:key="RenameEditorTemplate" [ DataType = ProjectNode ] {
         Border {
             .Behaviors: { FocusOnVisibleBehavior }
-            TextBox [ Text = $EditingName, Variant = Plain, MinWidth = 80, VerticalAlignment = Center ]
+            TextBox [ Text = $EditingName, Variant = Plain, MinWidth = 80, VerticalAlignment = Center,
+                      SelectionBrush = @TextSelectionBrush ]
         }
     }
 
