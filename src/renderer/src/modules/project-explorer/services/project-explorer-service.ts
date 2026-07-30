@@ -41,6 +41,7 @@ import { FileSystemService } from '../../../services/file-system/file-system-ser
 import {
     PROJECT_MANIFEST_FILENAME,
     isPublishable,
+    canGeneratePresentation,
     type IProjectFactory,
     type ProjectFileFormat,
     type ProjectManifestEnvelope,
@@ -305,6 +306,8 @@ export class ProjectExplorerService extends ServiceBase
         op.ImportFolderCommand = new RelayCommand(() => void this.importFolderInto(op, ''))
         op.TreeKeyCommand = new RelayCommand((arg) => this.handleTreeKey(op, arg as KeyEventArgs))
         op.PublishCommand = new RelayCommand(() => void this.publishProject(op), () => isPublishable(op.Factory))
+        op.GeneratePresentationCommand = new RelayCommand(
+            () => void this.generatePresentation(op), () => canGeneratePresentation(op.Factory))
         // Re-resolve the project's declared bases after a base was republished —
         // only meaningful for a type that binds one (library/architecture).
         op.RefreshBasesCommand = new RelayCommand(
@@ -760,6 +763,21 @@ export class ProjectExplorerService extends ServiceBase
         } catch (e) {
             this.Status = `Publish failed: ${(e as Error).message}`
             this.Provider.get(ProblemsService.Key)?.Expand()
+        }
+    }
+
+    // (Re)generate the project's presentation dictionary through its factory, then
+    // rescan so the generated file appears in the tree. Menu item is disabled for
+    // factories that don't support it, but guard anyway.
+    private async generatePresentation(op: OpenProject): Promise<void>
+    {
+        if (!canGeneratePresentation(op.Factory)) { this.Status = 'This project type has no presentation.'; return }
+        try {
+            await op.Factory.regeneratePresentation(op.Storage)
+            await this.rescan(op)
+            this.Status = 'Presentation regenerated.'
+        } catch (e) {
+            this.Status = `Generate presentation failed: ${(e as Error).message}`
         }
     }
 

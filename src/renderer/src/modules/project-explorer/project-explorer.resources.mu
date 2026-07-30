@@ -47,6 +47,7 @@ resources ProjectExplorerResources {
             [ Header = "Publish",
               Command = $PublishCommand,
               Icon = Shape [ Geometry = @Publish, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuItem [ Header = "Generate Presentation", Command = $GeneratePresentationCommand ]
         MenuItem [ Header = "Refresh Bases", Command = $RefreshBasesCommand ]
         MenuSeparator
         MenuItem [ Header = "Close Project", Command = $CloseCommand ]

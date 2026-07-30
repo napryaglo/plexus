@@ -30,6 +30,10 @@ export class OpenProject extends Model
         OpenProject, 'TreeKeyCommand', undefined, MetaData.None)
     static readonly PublishCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'PublishCommand', undefined, MetaData.None)
+    // (Re)generate the project's presentation resource dictionary — enabled only
+    // for factories that support it (meta-model today).
+    static readonly GeneratePresentationCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        OpenProject, 'GeneratePresentationCommand', undefined, MetaData.None)
     // Re-resolve the project's declared bases (drop the validator's per-storage
     // cache + revalidate) — picks up a republished meta-model/library.
     static readonly RefreshBasesCommandKey = Model.RegisterProperty<ICommand | undefined>(
@@ -118,6 +122,8 @@ export class OpenProject extends Model
 
     public get PublishCommand(): ICommand | undefined { return this.get_property_value(OpenProject.PublishCommandKey) }
     public set PublishCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.PublishCommandKey, v) }
+    public get GeneratePresentationCommand(): ICommand | undefined { return this.get_property_value(OpenProject.GeneratePresentationCommandKey) }
+    public set GeneratePresentationCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.GeneratePresentationCommandKey, v) }
 
     public get RefreshBasesCommand(): ICommand | undefined { return this.get_property_value(OpenProject.RefreshBasesCommandKey) }
     public set RefreshBasesCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.RefreshBasesCommandKey, v) }

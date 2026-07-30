@@ -9,7 +9,7 @@ import { StorageProviderRegistry } from '../../../../services/storage/storage-pr
 import { Project, ProjectNode } from '../../../../services/projects/project.js'
 import { OpenProject } from '../../../../services/projects/open-project.js'
 import { OpenProjectsStore } from '../../../../services/projects/open-projects-store.js'
-import { PROJECT_MANIFEST_FILENAME, type IProjectFactory, type IPublishableProjectFactory } from '../../../../services/projects/project-factory.js'
+import { PROJECT_MANIFEST_FILENAME, type IProjectFactory, type IPublishableProjectFactory, type IPresentationProjectFactory } from '../../../../services/projects/project-factory.js'
 import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../../services/documents/document-factory.js'
 import { ConfirmDialogModel } from '../../../../services/dialogs/confirm-dialog-model.js'
 import { ProjectExplorerService, applyPrefill, importFilters, uniqueStorageName } from '../project-explorer-service.js'
@@ -162,6 +162,22 @@ function childNode(op: OpenProject): ProjectNode
 {
     return op.Root.Children.ToArray()[0]!
 }
+
+test('a presentation-capable factory gets an enabled Generate Presentation command; others get it disabled', async () => {
+    const { service, priv } = makeExplorer()
+    const presFactory: IProjectFactory & IPresentationProjectFactory = {
+        ...fakeProjectFactory(),
+        regeneratePresentation: async () => {},
+    }
+    await priv.addOpenProject(projectWith('A', 'C:/a'), presFactory, new FakeStorage('C:/a'))
+    await priv.addOpenProject(projectWith('B', 'C:/b'), fakeProjectFactory(), new FakeStorage('C:/b'))
+
+    const a = service.OpenProjects.Get(0)!
+    const b = service.OpenProjects.Get(1)!
+    expect(a.GeneratePresentationCommand).toBeDefined()
+    expect(a.GeneratePresentationCommand!.CanExecute()).toBe(true)
+    expect(b.GeneratePresentationCommand!.CanExecute()).toBe(false)   // plain factory: no presentation
+})
 
 test('opening two projects adds two roots; reopening one dedupes', async () => {
     const { service, priv, store } = makeExplorer()
