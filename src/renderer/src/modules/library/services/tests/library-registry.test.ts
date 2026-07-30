@@ -45,6 +45,21 @@ test('mounts a class template so resolve returns it, and the default otherwise',
     expect(fallback).toBe(reg.resolve('also.missing', 'x'))   // the single shared default
 })
 
+test('delete removes the library from the backend and clears its Problems slice', async () => {
+    const { provider, diagnostics } = env((b) => {
+        void b.WriteText('microsoft/0.1.0/library.json', manifest('microsoft'))
+        void b.WriteText('microsoft/0.1.0/visuals/microsoft.azure.mural', 'not valid mural [[[')   // seeds an error diag
+    })
+    const reg = new LibraryRegistry(provider)
+    await reg.refresh()
+    expect([...diagnostics.All].some((d) => d.projectId === 'library:microsoft@0.1.0')).toBe(true)
+
+    await reg.delete('microsoft', '0.1.0')
+
+    expect(await reg.refresh()).toEqual([])   // gone from the backend
+    expect([...diagnostics.All].some((d) => d.projectId === 'library:microsoft@0.1.0')).toBe(false)
+})
+
 test('a class template that fails to compile falls back to default and reports an error to the Problems store', async () => {
     const { provider, diagnostics } = env((b) => {
         void b.WriteText('microsoft/0.1.0/library.json', manifest('microsoft'))

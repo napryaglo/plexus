@@ -100,3 +100,36 @@ test('IsEmpty is true when nothing is published', async () => {
     expect(svc.IsEmpty).toBe(true)
     expect(svc.Roots.Count).toBe(0)
 })
+
+test('a Library node carries a Delete command that uninstalls it; Concept/Class nodes do not', async () => {
+    const provider = providerWith((b) => {
+        void b.WriteText('microsoft/0.1.0/library.json', JSON.stringify({
+            id: 'microsoft', version: '0.1.0', name: 'Microsoft', metaModel: { id: 'ea', version: '5' },
+            classes: [{ id: 'microsoft.azure', localId: 'azure', label: 'Azure', concept: 'location', template: 'visuals/a.mural' }],
+            assets: [], docs: [], samples: [],
+        }))
+        void b.WriteText('microsoft/0.1.0/visuals/a.mural', 'TextBlock [ Text = $Display ]')
+    })
+    const svc = new LibrariesPanelService(provider)
+    await svc.Reload()
+
+    const lib = svc.Roots.Get(0)!
+    expect(lib.Kind).toBe(LibraryNodeKind.Library)
+    expect(lib.LibId).toBe('microsoft')
+    expect(lib.LibVersion).toBe('0.1.0')
+    // Concept / Class rows get no uninstall command.
+    const concept = lib.Children.Get(0)!
+    expect(concept.DeleteCommand).toBeUndefined()
+    expect(concept.Children.Get(0)!.DeleteCommand).toBeUndefined()
+
+    // The Library node's command uninstalls via the registry (no DialogService in
+    // this headless provider, so the confirm is skipped). deleteLibrary calls
+    // registry.delete synchronously before its first await, so we can assert now.
+    const registry = provider.getRequired(LibraryRegistry.Key)
+    let deleted: { id: string; version: string } | undefined
+    ;(registry as unknown as { delete: (id: string, v: string) => Promise<void> }).delete =
+        (id, version) => { deleted = { id, version }; return Promise.resolve() }
+    expect(lib.DeleteCommand).toBeDefined()
+    lib.DeleteCommand!.Execute()
+    expect(deleted).toEqual({ id: 'microsoft', version: '0.1.0' })
+})

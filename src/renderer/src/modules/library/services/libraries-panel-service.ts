@@ -1,9 +1,10 @@
-import { MetaData, Model, ObservableCollection, ServiceBase, ServiceKey, type IServiceProvider, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
-import type { IActivatable } from '@pragmatic-lab/mural/framework'
+import { MetaData, Model, ObservableCollection, RelayCommand, ServiceBase, ServiceKey, type IServiceProvider, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { DialogService, type IActivatable } from '@pragmatic-lab/mural/framework'
 import type { DataTemplate } from '@pragmatic-lab/mural/basic'
 
 import { LibraryRegistry } from './library-registry.js'
 import { LibraryTreeNode, LibraryNodeKind } from './library-tree-node.js'
+import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
 
 // The Libraries capability's panel content: a TreeView of published libraries
 // grouped Library -> Concept -> Class. Class leaves are draggable onto the
@@ -49,6 +50,24 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
 
     public OnActivated(): void { void this.Reload() }
 
+    // Uninstall a library after a confirm, then reload so its row disappears. When
+    // no DialogService is registered (headless), skips the confirm and proceeds.
+    private async deleteLibrary(node: LibraryTreeNode): Promise<void>
+    {
+        const registry = this.Provider.get(LibraryRegistry.Key)
+        if (registry === undefined) return
+        const dialogs = this.Provider.get(DialogService.Key)
+        if (dialogs !== undefined) {
+            const vm = new ConfirmDialogModel(
+                `Delete library "${node.Name}"? This removes it from your installed libraries.`,
+                'Delete', (r) => dialogs.Close(r))
+            const ok = await dialogs.Show<boolean>({ Title: 'Delete Library', Content: vm, Width: 420 })
+            if (ok !== true) return
+        }
+        await registry.delete(node.LibId, node.LibVersion)
+        await this.Reload()
+    }
+
     public async Reload(): Promise<void>
     {
         const seq = ++this.reloadSeq
@@ -61,7 +80,8 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
         roots.Clear()
         this.clearPreview()
         for (const lib of libs) {
-            const libNode = LibraryTreeNode.group(`${lib.name}  ·  ${lib.version}`, LibraryNodeKind.Library)
+            const libNode = LibraryTreeNode.library(`${lib.name}  ·  ${lib.version}`, lib.id, lib.version)
+            libNode.DeleteCommand = new RelayCommand(() => void this.deleteLibrary(libNode))
             const byConcept = new Map<string, LibraryTreeNode>()
             const sorted = [...lib.classes].sort((x, y) => (x.label ?? x.localId ?? x.id).localeCompare(y.label ?? y.localId ?? y.id))
             for (const cls of sorted) {

@@ -61,6 +61,17 @@ export class LibraryRegistry extends ServiceBase
         return libs
     }
 
+    // Uninstall a published library: remove its <id>/<version> folder from the
+    // backend and clear its Problems slice (keyed as publish() does). The panel
+    // reloads afterwards so the row disappears. Does not touch any authored library
+    // *project* on disk — only the installed copy in the local libraries store.
+    public async delete(id: string, version: string): Promise<void>
+    {
+        const backend = ensureLibrariesBackend(this.Provider)
+        await backend.Delete(`${id}/${version}`)
+        this.Provider.get(DiagnosticsService.Key)?.Publish(OWNER, `library:${id}@${version}`, [])
+    }
+
     // Merge the library-visuals dictionary into the app resources once (guarded:
     // Application.current may be absent in headless tests, where resolve() still
     // works off the owned dictionary).

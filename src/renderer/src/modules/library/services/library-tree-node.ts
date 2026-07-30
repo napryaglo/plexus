@@ -1,4 +1,4 @@
-import { DataObject, DragDropEffects, MetaData, Model, ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { DataObject, DragDropEffects, MetaData, Model, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
 import { TOOLBOX_NODE_KIND_FORMAT } from '@pragmatic-lab/mural/framework'
 import type { DataTemplate } from '@pragmatic-lab/mural/basic'
 
@@ -20,6 +20,13 @@ export class LibraryTreeNode extends Model
         LibraryTreeNode, 'Children', undefined as unknown as ObservableCollection<LibraryTreeNode>, MetaData.None)
     public static readonly IsLibraryKey = Model.RegisterProperty<boolean>(LibraryTreeNode, 'IsLibrary', false, MetaData.None)
     public static readonly IsDraggableKey = Model.RegisterProperty<boolean>(LibraryTreeNode, 'IsDraggable', false, MetaData.None)
+
+    // Library-node identity (id/version of the installed library) + the uninstall
+    // command the row's context menu invokes. Set only on Library nodes.
+    public static readonly LibIdKey = Model.RegisterProperty<string>(LibraryTreeNode, 'LibId', '', MetaData.None)
+    public static readonly LibVersionKey = Model.RegisterProperty<string>(LibraryTreeNode, 'LibVersion', '', MetaData.None)
+    public static readonly DeleteCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        LibraryTreeNode, 'DeleteCommand', undefined, MetaData.None)
 
     // Class-leaf render surface + drag payload.
     public static readonly TermIdKey = Model.RegisterProperty<string>(LibraryTreeNode, 'TermId', '', MetaData.None)
@@ -44,6 +51,10 @@ export class LibraryTreeNode extends Model
     public get Children(): ObservableCollection<LibraryTreeNode> { return this.get_property_value(LibraryTreeNode.ChildrenKey) }
     public get IsLibrary(): boolean { return this.get_property_value(LibraryTreeNode.IsLibraryKey) }
     public get IsDraggable(): boolean { return this.get_property_value(LibraryTreeNode.IsDraggableKey) }
+    public get LibId(): string { return this.get_property_value(LibraryTreeNode.LibIdKey) }
+    public get LibVersion(): string { return this.get_property_value(LibraryTreeNode.LibVersionKey) }
+    public get DeleteCommand(): ICommand | undefined { return this.get_property_value(LibraryTreeNode.DeleteCommandKey) }
+    public set DeleteCommand(v: ICommand | undefined) { this.set_property_value(LibraryTreeNode.DeleteCommandKey, v) }
     public get TermId(): string { return this.get_property_value(LibraryTreeNode.TermIdKey) }
     public get Concept(): string { return this.get_property_value(LibraryTreeNode.ConceptKey) }
     public get Display(): string { return this.get_property_value(LibraryTreeNode.DisplayKey) }
@@ -62,6 +73,16 @@ export class LibraryTreeNode extends Model
         n.set_property_value(LibraryTreeNode.NameKey, name)
         n.set_property_value(LibraryTreeNode.KindKey, kind)
         n.set_property_value(LibraryTreeNode.IsLibraryKey, kind === LibraryNodeKind.Library)
+        return n
+    }
+
+    // A Library group node: a named group that also carries its installed id/version
+    // so the row's context menu can uninstall it.
+    public static library(name: string, id: string, version: string): LibraryTreeNode
+    {
+        const n = LibraryTreeNode.group(name, LibraryNodeKind.Library)
+        n.set_property_value(LibraryTreeNode.LibIdKey, id)
+        n.set_property_value(LibraryTreeNode.LibVersionKey, version)
         return n
     }
 

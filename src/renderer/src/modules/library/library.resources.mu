@@ -10,9 +10,19 @@ import LibraryTreeNode from "./services/library-tree-node.js"
 
 resources LibraryResources {
 
+    // Right-click menu for a Library row: uninstall it from the local libraries
+    // store. Attached only to Library nodes (see the LibraryNodeTemplate trigger),
+    // so Concept/Class rows get no menu. $DeleteCommand resolves against the row's
+    // LibraryTreeNode DataContext.
+    ContextMenu x:key="LibraryContextMenu" {
+        MenuItem [ Header = "Delete", Command = $DeleteCommand ]
+    }
+
     // One tree row: a draggable-when-a-class Border with an optional @Libraries
     // glyph (library nodes only) + the node name. No inline preview — the fixed
-    // row height can't grow, so the preview lives in the panel's bottom pane.
+    // row height can't grow, so the preview lives in the panel's bottom pane. A
+    // `when($IsLibrary)` trigger attaches the right-click uninstall menu to
+    // Library rows only.
     HierarchicalDataTemplate x:key="LibraryNodeTemplate" [ DataType = LibraryTreeNode, itemsselector = Children ] {
         Border [ Background = #00000000, IsDraggable = $IsDraggable, OnDragStart = $BeginKindDragData ] {
             StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
@@ -22,6 +32,7 @@ resources LibraryResources {
                 TextBlock [ Text = $Name, Style = @BodyMedium, Foreground = @OnSurface, VerticalAlignment = Center ]
             }
         }
+        when ( $IsLibrary = true ) { ContextMenuService.ContextMenu = @LibraryContextMenu; }
     }
 
     DataTemplate [ DataType = LibrariesPanelService ] {
