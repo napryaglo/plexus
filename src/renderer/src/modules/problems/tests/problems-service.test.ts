@@ -71,6 +71,25 @@ test('IsOpen starts closed; Expand() forces the popup open', () => {
     expect(problems.IsOpen).toBe(true)
 })
 
+test('a single Publish of many diagnostics rebuilds the rows once, not once per diagnostic', () => {
+    // Regression: DiagnosticsService.All fires one collection-change event PER
+    // item (Clear + N Adds). Subscribing to that stream made ProblemsService do a
+    // full O(N) regroup + non-virtualized row re-materialization on every event —
+    // O(N^2), which froze the app on a project with hundreds of diagnostics. The
+    // store must signal "changed" once per Publish, so the rows rebuild once.
+    const { store, problems } = env()
+    const many = Array.from({ length: 50 }, (_, i) => diag({ uri: `f${i}.todl`, message: `m${i}` }))
+    // Warm the rows so a subsequent rebuild's rows.Clear() actually fires.
+    store.Publish('todl', '/p', many)
+    let clears = 0
+    problems.Rows.Subscribe((c) => { if (c.kind === 'cleared') clears += 1 })
+    // A second publish of the whole set must rebuild the rows exactly once — not
+    // once per diagnostic (pre-fix: ~N clears from N+1 store events).
+    store.Publish('todl', '/p', many)
+    expect(clears).toBe(1)
+    expect([...problems.Rows].length).toBe(50)
+})
+
 test('SummaryText reflects the counts', () => {
     const { store, problems } = env()
     expect(problems.SummaryText).toBe('No problems')

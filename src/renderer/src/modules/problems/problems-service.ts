@@ -91,7 +91,10 @@ export class ProblemsService extends ServiceBase
         super(provider)
         this.set_property_value(ProblemsService.RowsKey, new ObservableCollection<ProblemsRow>())
         const store = provider.get(DiagnosticsService.Key)
-        store?.All.Subscribe(() => this.rebuild())
+        // Subscribe to the store's coalesced change signal (once per Publish), NOT
+        // to All's per-item collection events — the latter fires N+1 times per
+        // publish and made this O(N) rebuild run per-item (O(N^2), froze the app).
+        store?.Subscribe(() => this.rebuild())
         this.rebuild()
     }
 

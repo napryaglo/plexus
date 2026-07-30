@@ -17,10 +17,24 @@ export class DiagnosticsService extends ServiceBase
     private readonly slices = new Map<string, Diagnostic[]>()
     private readonly all = new ObservableCollection<Diagnostic>()
     private readonly uriListeners = new Map<string, Set<(d: Diagnostic[]) => void>>()
+    // Store-level "something changed" listeners, fired ONCE per rebuild. Consumers
+    // that recompute a whole view (the Problems dock) subscribe here rather than to
+    // `All`'s per-item collection events — `All` fires N+1 times per Publish (Clear
+    // + N Adds), and a full O(N) rebuild on each was O(N^2), freezing the app on a
+    // project with hundreds of diagnostics.
+    private readonly changedListeners = new Set<() => void>()
 
     constructor(provider: IServiceProvider) { super(provider) }
 
     public get All(): ObservableCollection<Diagnostic> { return this.all }
+
+    // Subscribe to store changes, fired once per Publish/ClearProject (not once
+    // per diagnostic). Returns an unsubscribe thunk.
+    public Subscribe(listener: () => void): () => void
+    {
+        this.changedListeners.add(listener)
+        return () => this.changedListeners.delete(listener)
+    }
 
     private static sliceKey(owner: string, projectId: string): string { return `${owner} ${projectId}` }
 
@@ -76,5 +90,6 @@ export class DiagnosticsService extends ServiceBase
             const snapshot = this.ForUri(uri)
             for (const l of set) l(snapshot)
         }
+        for (const l of this.changedListeners) l()
     }
 }
