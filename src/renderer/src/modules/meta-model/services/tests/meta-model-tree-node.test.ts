@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 
-import { MetaModelTreeNode, MetaModelNodeKind } from '../meta-model-tree-node.js'
+import { MetaModelTreeNode, MetaModelNodeKind, type EntityRef } from '../meta-model-tree-node.js'
 
 test('leaf() has the given kind + label and no children', () => {
     const n = MetaModelTreeNode.leaf(MetaModelNodeKind.Model, 'tech-architecture')
@@ -44,4 +44,17 @@ test('OnExpand replaces the sentinel with an error leaf when the loader rejects'
 
     expect(n.Children.Count).toBe(1)
     expect(n.Children.Get(0)!.Label).toBe('Failed to load model.json')
+})
+
+test('an entity node calls activate(ref) on OnActivate', () => {
+    const ref: EntityRef = { modelId: 'tech-architecture', version: '0.1.0', id: 'application' }
+    let got: EntityRef | undefined
+    const node = MetaModelTreeNode.entity('Application', ref, (r) => { got = r })
+    node.OnActivate()
+    expect(got).toEqual(ref)
+})
+
+test('a non-entity leaf node does nothing on OnActivate', () => {
+    const node = MetaModelTreeNode.leaf(MetaModelNodeKind.Group, 'Concepts')
+    expect(() => node.OnActivate()).not.toThrow()
 })
