@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
-import { iconKey, humanize, ontologyEntities, distinctIcons } from '../presentation-generator.js'
+import { iconKey, humanize, ontologyEntities, distinctIcons, generatePresentationMu } from '../presentation-generator.js'
 
 function doc(nodes: TodlDocument['nodes']): TodlDocument { return { nodes, edges: [] } }
 
@@ -37,4 +37,44 @@ test('distinctIcons collects distinct attrs.icon across ALL nodes, sorted', () =
         { id: 'd', tier: 'Ontology', typeOf: 'concept', attrs: {} },
     ])
     expect(distinctIcons(m)).toEqual(['resources/a.svg', 'resources/b.svg'])
+})
+
+test('generatePresentationMu emits includes, one keyed template per ontology entity, and author merges', () => {
+    const m = doc([
+        { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} },                                          // label-only
+        { id: 'gateway', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'resources/gw.svg', label: 'API Gateway' } }, // icon+label
+        { id: 'app.name', tier: 'Ontology', typeOf: 'field', attrs: {} },                                         // excluded
+        { id: 'actors.internal', tier: 'Instance', typeOf: 'actor', attrs: { icon: 'resources/int.svg' } },       // icon source only
+    ])
+    const out = generatePresentationMu(m, ['MetaModelPresentationCustom'])
+
+    // one include per distinct icon (gw + int)
+    expect(out).toContain('include "resources/gw.svg" as mm_icon_gw')
+    expect(out).toContain('include "resources/int.svg" as mm_icon_int')
+
+    // exactly two entity templates (actor, gateway); the field + instance excluded
+    expect(out.match(/DataTemplate x:key="mm:/g)?.length).toBe(2)
+    expect(out).toContain('DataTemplate x:key="mm:actor"')
+    expect(out).toContain('DataTemplate x:key="mm:gateway"')
+
+    // label: attrs.label wins, else humanized id
+    expect(out).toContain('Text = "API Gateway"')
+    expect(out).toContain('Text = "Actor"')
+
+    // gateway (has icon) renders an icon Shape; author merge trails
+    expect(out).toContain('Geometry = @mm_icon_gw')
+    expect(out).toContain('merge MetaModelPresentationCustom')
+})
+
+test('generatePresentationMu: no author dicts → no merge line; deterministic', () => {
+    const m = doc([{ id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} }])
+    const a = generatePresentationMu(m, [])
+    const b = generatePresentationMu(m, [])
+    expect(a).toBe(b)
+    expect(a).not.toContain('merge ')
+})
+
+test('generatePresentationMu escapes quotes/backslashes in a label', () => {
+    const m = doc([{ id: 'x', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'A "quoted" \\ name' } }])
+    expect(generatePresentationMu(m, [])).toContain('Text = "A \\"quoted\\" \\\\ name"')
 })
