@@ -24,6 +24,7 @@ import { EnvironmentService } from './services/environment/environment-service.j
 import { ProjectExplorerService } from './modules/project-explorer/services/project-explorer-service.js'
 import { WorkspaceRefreshService } from './services/workspace/workspace-refresh-service.js'
 import { registerTodlLanguage } from './modules/meta-model/todl-language.js'
+import { registerMuralLanguage } from './modules/code-editor/mural-language.js'
 import { TodlLanguageClient } from './services/todl/todl-language-client.js'
 import { createTodlLspConnection } from './services/todl/todl-lsp-connection.js'
 import { registerTodlProviders } from './modules/meta-model/todl-lsp/register-providers.js'
@@ -32,6 +33,8 @@ import { setCrossFileOpener } from './modules/code-editor/cross-file-open.js'
 // Register the 'todl' Monaco language once, before any editor mounts, so .todl
 // documents get syntax colouring. (Diagnostics/squiggles are independent of it.)
 registerTodlLanguage()
+// Register the 'mural' Monaco language so .mu/.mural files get syntax colouring.
+registerMuralLanguage()
 
 // Surface any uncaught error prominently (a swallowed mount throw shows as a
 // blank white window otherwise).
