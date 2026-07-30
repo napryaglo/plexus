@@ -91,8 +91,8 @@ import LayoutInspectorResources from "./modules/diagram/layout/layout-inspector.
 // (DataTemplate[ProjectExplorerService] + recursive DataTemplate[ProjectNode]).
 import ProjectExplorerResources from "./modules/project-explorer/project-explorer.resources.mu.js"
 
-// Meta-models capability panel: the published-meta-models tree
-// (DataTemplate[MetaModelsService] + MetaModelRow / MetaModelVersionRow rows).
+// Meta-models capability panel: the published-meta-models virtualized tree
+// (DataTemplate[MetaModelsService] + HierarchicalDataTemplate[MetaModelTreeNode]).
 import MetaModelResources from "./modules/meta-model/meta-model.resources.mu.js"
 
 // Libraries capability panel (DataTemplate[LibrariesPanelService] + rows).
