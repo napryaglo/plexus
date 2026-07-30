@@ -13,14 +13,20 @@ import MetaModelKindToGeometry from "./services/meta-model-node-icon.js"
 
 resources MetaModelResources {
     // The panel body: a virtualized tree of the published models, plus an
-    // empty-state line shown only while nothing has been published.
+    // empty-state line shown only while nothing has been published. A DockPanel
+    // (not a vertical StackPanel) so the TreeView, as the LastChildFill, inherits
+    // the pane's bounded height and fills it — a StackPanel would measure the
+    // tree with infinite height, collapsing the virtualizing panel to a thin
+    // strip. The empty-state text docks above; it's collapsed while non-empty,
+    // so the tree then fills the whole pane.
     DataTemplate [ DataType = MetaModelsService ] {
-        StackPanel [ Orientation = Vertical, Margin = (12,12,12,12) ] {
-            TreeView [ Indent = 14, IsVirtualizing = true,
-                       ItemsSource = $Nodes, ItemTemplate = @MetaModelNodeTemplate ]
-            TextBlock [ Style = @BodyMedium, Text = "No published meta-models yet.",
+        DockPanel [ LastChildFill = true, Margin = (12,12,12,12) ] {
+            TextBlock [ DockPanel.Dock = Top, Style = @BodyMedium,
+                        Text = "No published meta-models yet.",
                         Foreground = @OnSurfaceVariant, TextWrapping = Wrap,
                         Visibility = $IsEmpty << ToVisibility ]
+            TreeView [ Indent = 14, IsVirtualizing = true,
+                       ItemsSource = $Nodes, ItemTemplate = @MetaModelNodeTemplate ]
         }
     }
 
