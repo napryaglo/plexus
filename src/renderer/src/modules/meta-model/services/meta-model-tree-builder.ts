@@ -1,7 +1,7 @@
 import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
 
 import type { IStorage } from '../../../services/storage/storage.js'
-import { MetaModelTreeNode, MetaModelNodeKind } from './meta-model-tree-node.js'
+import { MetaModelTreeNode, MetaModelNodeKind, type EntityRef } from './meta-model-tree-node.js'
 import { ontologyEntities, humanize, OntologyKind } from './presentation-generator.js'
 
 // A published meta-model as plain data: its id and the versions found under it.
@@ -25,7 +25,9 @@ export async function scanPublishedModels(storage: IStorage): Promise<PublishedM
 
 // Build the catalog layer: one Model node per published id, each with lazy
 // Version children whose entities load from model.json on first expand.
-export async function buildCatalog(storage: IStorage): Promise<MetaModelTreeNode[]>
+export async function buildCatalog(
+    storage: IStorage, activate: (ref: EntityRef) => void,
+): Promise<MetaModelTreeNode[]>
 {
     const published = await scanPublishedModels(storage)
     return published.map((p) =>
@@ -35,7 +37,7 @@ export async function buildCatalog(storage: IStorage): Promise<MetaModelTreeNode
         {
             model.Children.Add(MetaModelTreeNode.lazy(
                 MetaModelNodeKind.Version, version,
-                () => loadVersionEntities(storage, p.id, version),
+                () => loadVersionEntities(storage, p.id, version, activate),
             ))
         }
         return model
@@ -55,7 +57,7 @@ const GROUPS: ReadonlyArray<{ kind: OntologyKind; label: string }> = [
 // "No entities" leaf; a missing/malformed model.json yields "Failed to load
 // model.json".
 export async function loadVersionEntities(
-    storage: IStorage, id: string, version: string,
+    storage: IStorage, id: string, version: string, activate: (ref: EntityRef) => void,
 ): Promise<MetaModelTreeNode[]>
 {
     let doc: TodlDocument
@@ -71,7 +73,11 @@ export async function loadVersionEntities(
         const inGroup = entities.filter((n) => n.typeOf === g.kind)
         if (inGroup.length === 0) continue
         const group = MetaModelTreeNode.leaf(MetaModelNodeKind.Group, g.label)
-        for (const n of inGroup) group.Children.Add(MetaModelTreeNode.leaf(MetaModelNodeKind.Entity, entityLabel(n)))
+        for (const n of inGroup)
+        {
+            const ref: EntityRef = { modelId: id, version, id: n.id }
+            group.Children.Add(MetaModelTreeNode.entity(entityLabel(n), ref, activate))
+        }
         out.push(group)
     }
     return out
