@@ -133,3 +133,47 @@ test('publish is blocked and writes nothing when a source has an error', async (
     expect(result.message).toMatch(/error/i)
     expect(dest.size).toBe(0)                           // nothing written
 })
+
+test('regeneratePresentation writes presentation.generated.mu with a template per entity + author merge', async () => {
+    const storage = new FakeStorage('fake://Acme')
+    const f = factory()
+    await f.createProject(storage, 'Acme')
+    await storage.WriteText('concepts.todl', CONCEPTS)
+    // an author override dictionary under presentation/
+    await storage.WriteText('presentation/custom.mu', 'resources MetaModelPresentationCustom { }')
+
+    await f.regeneratePresentation(storage)
+
+    const out = await storage.ReadText('presentation.generated.mu')
+    expect(out).toContain('resources MetaModelPresentation {')
+    expect(out).toContain('DataTemplate x:key="mm:model"')
+    expect(out).toContain('DataTemplate x:key="mm:component"')
+    expect(out).toContain('DataTemplate x:key="mm:location"')
+    expect(out).toContain('merge MetaModelPresentationCustom')
+})
+
+test('regeneratePresentation is a no-op when the project has no .todl sources', async () => {
+    const storage = new FakeStorage('fake://Empty')
+    const f = factory()
+    await f.createProject(storage, 'Empty')
+
+    await f.regeneratePresentation(storage)
+
+    expect(await storage.Exists('presentation.generated.mu')).toBe(false)
+})
+
+test('publish also (re)writes presentation.generated.mu into the project', async () => {
+    const storage = new FakeStorage('fake://Acme')
+    const f = factory()
+    await f.createProject(storage, 'Acme')
+    await storage.WriteText('concepts.todl', CONCEPTS)
+    await storage.WriteText('ea.todl', EA)
+
+    const { provider } = publishEnv()
+    const project = await f.openProject(storage)
+    const result = await f.publish(project, storage, provider)
+
+    expect(result.ok).toBe(true)
+    expect(await storage.Exists('presentation.generated.mu')).toBe(true)
+    expect(await storage.ReadText('presentation.generated.mu')).toContain('DataTemplate x:key="mm:model"')
+})
