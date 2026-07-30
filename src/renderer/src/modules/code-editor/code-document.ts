@@ -16,6 +16,7 @@ const LANGUAGE_BY_EXT: Record<string, string> = {
     ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript',
     json: 'json', md: 'markdown', css: 'css', html: 'html', xml: 'xml',
     py: 'python', yaml: 'yaml', yml: 'yaml', todl: 'todl',
+    mu: 'mural', mural: 'mural',   // mural view/resource files (registerMuralLanguage)
 }
 
 function languageForPath(path: string): string
