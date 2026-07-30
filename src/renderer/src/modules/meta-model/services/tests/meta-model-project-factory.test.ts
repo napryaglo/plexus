@@ -177,3 +177,31 @@ test('publish also (re)writes presentation.generated.mu into the project', async
     expect(await storage.Exists('presentation.generated.mu')).toBe(true)
     expect(await storage.ReadText('presentation.generated.mu')).toContain('DataTemplate x:key="mm:model"')
 })
+
+test('publish ships the presentation payload into the backend', async () => {
+    const storage = new FakeStorage('fake://Acme')
+    const f = factory()
+    await f.createProject(storage, 'Acme')
+    await storage.WriteText('concepts.todl', CONCEPTS)
+    await storage.WriteText('ea.todl', EA)
+    // an author override dictionary under presentation/
+    await storage.WriteText('presentation/custom.mu', 'resources MetaModelPresentationCustom { }')
+
+    const { provider, dest } = publishEnv()
+    const project = await f.openProject(storage)
+    const result = await f.publish(project, storage, provider)
+
+    expect(result.ok).toBe(true)
+    // Generated dictionary shipped to the backend with the per-entity templates.
+    const src = await dest.ReadText('acme/0.1.0/presentation/presentation.generated.mu')
+    expect(src).toContain('DataTemplate x:key="mm:model"')
+    expect(src).toContain('merge MetaModelPresentationCustom')
+    // Author override copied under overrides/.
+    expect(await dest.ReadText('acme/0.1.0/presentation/overrides/custom.mu'))
+        .toBe('resources MetaModelPresentationCustom { }')
+    // Result message reports the presentation counts.
+    expect(result.message).toMatch(/presentation:/)
+    // Existing contract intact.
+    expect(await dest.Exists('acme/0.1.0/model.json')).toBe(true)
+    expect(await dest.Exists('acme/0.1.0/src/concepts.todl')).toBe(true)
+})
