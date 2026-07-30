@@ -1,0 +1,84 @@
+import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
+
+import type { IStorage } from '../../../services/storage/storage.js'
+import { MetaModelTreeNode, MetaModelNodeKind } from './meta-model-tree-node.js'
+import { ontologyEntities, humanize, OntologyKind } from './presentation-generator.js'
+
+// A published meta-model as plain data: its id and the versions found under it.
+export interface PublishedModel { id: string; versions: string[] }
+
+// Scan the meta-models backend for published models. Layout on disk is
+// `<id>/<modelVersion>/…`, so the root's directories are ids and each id's
+// directories are versions. Sorted numeric-aware so 0.9.0 precedes 0.10.0.
+export async function scanPublishedModels(storage: IStorage): Promise<PublishedModel[]>
+{
+    const byName = (a: string, b: string): number => a.localeCompare(b, undefined, { numeric: true })
+    const ids = (await storage.List('')).filter((e) => e.IsDirectory).map((e) => e.Name).sort(byName)
+    const out: PublishedModel[] = []
+    for (const id of ids)
+    {
+        const versions = (await storage.List(id)).filter((e) => e.IsDirectory).map((e) => e.Name).sort(byName)
+        out.push({ id, versions })
+    }
+    return out
+}
+
+// Build the catalog layer: one Model node per published id, each with lazy
+// Version children whose entities load from model.json on first expand.
+export async function buildCatalog(storage: IStorage): Promise<MetaModelTreeNode[]>
+{
+    const published = await scanPublishedModels(storage)
+    return published.map((p) =>
+    {
+        const model = MetaModelTreeNode.leaf(MetaModelNodeKind.Model, p.id)
+        for (const version of p.versions)
+        {
+            model.Children.Add(MetaModelTreeNode.lazy(
+                MetaModelNodeKind.Version, version,
+                () => loadVersionEntities(storage, p.id, version),
+            ))
+        }
+        return model
+    })
+}
+
+// The ontology kinds presented as groups, in fixed display order.
+const GROUPS: ReadonlyArray<{ kind: OntologyKind; label: string }> = [
+    { kind: OntologyKind.Concept, label: 'Concepts' },
+    { kind: OntologyKind.Relationship, label: 'Relationships' },
+    { kind: OntologyKind.Taxonomy, label: 'Taxonomies' },
+    { kind: OntologyKind.Primitive, label: 'Primitives' },
+]
+
+// Read a version's model.json and outline its ontology entities as Group → Entity
+// nodes. Empty groups are omitted; a model with no entities yields a single
+// "No entities" leaf; a missing/malformed model.json yields "Failed to load
+// model.json".
+export async function loadVersionEntities(
+    storage: IStorage, id: string, version: string,
+): Promise<MetaModelTreeNode[]>
+{
+    let doc: TodlDocument
+    try { doc = JSON.parse(await storage.ReadText(`${id}/${version}/model.json`)) as TodlDocument }
+    catch { return [MetaModelTreeNode.leaf(MetaModelNodeKind.Entity, 'Failed to load model.json')] }
+
+    const entities = ontologyEntities(doc)
+    if (entities.length === 0) return [MetaModelTreeNode.leaf(MetaModelNodeKind.Entity, 'No entities')]
+
+    const out: MetaModelTreeNode[] = []
+    for (const g of GROUPS)
+    {
+        const inGroup = entities.filter((n) => n.typeOf === g.kind)
+        if (inGroup.length === 0) continue
+        const group = MetaModelTreeNode.leaf(MetaModelNodeKind.Group, g.label)
+        for (const n of inGroup) group.Children.Add(MetaModelTreeNode.leaf(MetaModelNodeKind.Entity, entityLabel(n)))
+        out.push(group)
+    }
+    return out
+}
+
+// An entity's row label: attrs.label when a string, else humanize(id).
+function entityLabel(n: JsonNode): string
+{
+    return typeof n.attrs['label'] === 'string' ? String(n.attrs['label']) : humanize(n.id)
+}
