@@ -16,6 +16,7 @@ import { ensureMetaModelsBackend } from './meta-models-backend.js'
 import { ensureScaffold } from './meta-model-scaffold.js'
 import { collectTodlSources, extname, joinRel } from './todl-sources.js'
 import { generatePresentationMu } from './presentation-generator.js'
+import { publishPresentation } from './presentation-publisher.js'
 
 // The 'meta-model' project type's factory — the meta-model module's contribution
 // to the generic ProjectExplorerService (declared via `.projectFactories:` and
@@ -104,7 +105,15 @@ export class MetaModelProjectFactory extends ServiceBase
         for (const s of sources) await dest.WriteText(`${base}/src/${s.uri}`, s.text)
         // Keep the project's presentation dictionary current with what was published.
         await this.writePresentation(storage, doc)
-        return { ok: true, message: `Published ${manifest.id}@${manifest.modelVersion} (${sources.length} file(s)).` }
+        // Ship a self-contained presentation payload into the backend so a
+        // consumer can instantiate the entity templates (sub-project B).
+        const authorDicts = await this.scanAuthorDicts(storage)
+        const pres = await publishPresentation(storage, dest, base, doc, authorDicts)
+        return {
+            ok: true,
+            message: `Published ${manifest.id}@${manifest.modelVersion} (${sources.length} file(s), `
+                + `presentation: ${pres.templates} template(s), ${pres.icons} icon(s)).`,
+        }
     }
 
     // Capability entry point (the "Generate Presentation" command): compile the
