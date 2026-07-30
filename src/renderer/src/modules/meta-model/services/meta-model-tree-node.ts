@@ -18,6 +18,9 @@ export enum MetaModelNodeKind
     Entity = 'entity',
 }
 
+// Identifies a published ontology entity so a tree row can open its drawer.
+export interface EntityRef { modelId: string; version: string; id: string }
+
 export class MetaModelTreeNode extends Model
 {
     public static readonly KindKey = Model.RegisterProperty<MetaModelNodeKind>(
@@ -33,6 +36,10 @@ export class MetaModelTreeNode extends Model
     // Lazy machinery (view-invisible → plain fields). Only lazy() sets a loader.
     private loader?: () => Promise<MetaModelTreeNode[]>
     private loaded = false
+
+    // Entity activation (view-invisible → plain fields). Only entity() sets these.
+    private ref?: EntityRef
+    private activate?: (ref: EntityRef) => void
 
     private constructor(kind: MetaModelNodeKind, label: string)
     {
@@ -55,6 +62,17 @@ export class MetaModelTreeNode extends Model
         return new MetaModelTreeNode(kind, label)
     }
 
+    // An entity leaf that opens its drawer on double-click activation.
+    public static entity(
+        label: string, ref: EntityRef, activate: (ref: EntityRef) => void,
+    ): MetaModelTreeNode
+    {
+        const node = new MetaModelTreeNode(MetaModelNodeKind.Entity, label)
+        node.ref = ref
+        node.activate = activate
+        return node
+    }
+
     // A lazy node: seeded with a "Loading…" sentinel; loader runs on first expand.
     public static lazy(
         kind: MetaModelNodeKind, label: string,
@@ -74,6 +92,13 @@ export class MetaModelTreeNode extends Model
         if (this.loaded || this.loader === undefined) return
         this.loaded = true
         void this.runLoader(this.loader)
+    }
+
+    // Called by the mural TreeViewItem on a row double-click. Entity nodes open
+    // their drawer; every other node is inert.
+    public OnActivate(): void
+    {
+        if (this.ref !== undefined && this.activate !== undefined) this.activate(this.ref)
     }
 
     private async runLoader(loader: () => Promise<MetaModelTreeNode[]>): Promise<void>

@@ -1,8 +1,10 @@
 import { test, expect } from 'vitest'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
-import { MetaModelNodeKind } from '../meta-model-tree-node.js'
+import { MetaModelNodeKind, type EntityRef } from '../meta-model-tree-node.js'
 import { scanPublishedModels, buildCatalog, loadVersionEntities } from '../meta-model-tree-builder.js'
+
+const NO_ACTIVATE = (): void => {}
 
 function backendWith(entries: Array<[string, string]>): FakeStorage
 {
@@ -34,7 +36,7 @@ test('scanPublishedModels groups by id and sorts versions numeric-aware', async 
 
 test('buildCatalog yields Model nodes with lazy Version children', async () => {
     const storage = backendWith([['tech/0.1.0/model.json', MODEL_JSON]])
-    const nodes = await buildCatalog(storage)
+    const nodes = await buildCatalog(storage, NO_ACTIVATE)
 
     expect(nodes).toHaveLength(1)
     expect(nodes[0].Kind).toBe(MetaModelNodeKind.Model)
@@ -48,7 +50,7 @@ test('buildCatalog yields Model nodes with lazy Version children', async () => {
 
 test('loadVersionEntities groups entities by kind, non-empty groups only, labelled', async () => {
     const storage = backendWith([['tech/0.1.0/model.json', MODEL_JSON]])
-    const groups = await loadVersionEntities(storage, 'tech', '0.1.0')
+    const groups = await loadVersionEntities(storage, 'tech', '0.1.0', NO_ACTIVATE)
 
     // Concepts + Relationships present; Taxonomies + Primitives omitted (empty).
     expect(groups.map((g) => g.Label)).toEqual(['Concepts', 'Relationships'])
@@ -63,14 +65,24 @@ test('loadVersionEntities groups entities by kind, non-empty groups only, labell
 test('loadVersionEntities returns a "No entities" leaf for a model with none', async () => {
     const empty = JSON.stringify({ nodes: [], edges: [] })
     const storage = backendWith([['tech/0.1.0/model.json', empty]])
-    const groups = await loadVersionEntities(storage, 'tech', '0.1.0')
+    const groups = await loadVersionEntities(storage, 'tech', '0.1.0', NO_ACTIVATE)
     expect(groups).toHaveLength(1)
     expect(groups[0].Label).toBe('No entities')
 })
 
 test('loadVersionEntities returns a "Failed to load model.json" leaf on bad json', async () => {
     const storage = backendWith([['tech/0.1.0/model.json', 'not json']])
-    const groups = await loadVersionEntities(storage, 'tech', '0.1.0')
+    const groups = await loadVersionEntities(storage, 'tech', '0.1.0', NO_ACTIVATE)
     expect(groups).toHaveLength(1)
     expect(groups[0].Label).toBe('Failed to load model.json')
+})
+
+test('entity leaves carry an EntityRef wired to the activate callback', async () => {
+    const storage = backendWith([['tech/0.1.0/model.json', MODEL_JSON]])
+    const calls: EntityRef[] = []
+    const groups = await loadVersionEntities(storage, 'tech', '0.1.0', (r) => calls.push(r))
+    const concepts = groups.find((g) => g.Label === 'Concepts')!
+    const actorNode = concepts.Children.Get(0)!   // 'Actor'
+    actorNode.OnActivate()
+    expect(calls).toEqual([{ modelId: 'tech', version: '0.1.0', id: 'actor' }])
 })

@@ -10,6 +10,9 @@
 import MetaModelsService from "./services/meta-models-service.js"
 import MetaModelTreeNode from "./services/meta-model-tree-node.js"
 import MetaModelKindToGeometry from "./services/meta-model-node-icon.js"
+import MetaModelEntity from "./services/meta-model-entity.js"
+import MetaModelField from "./services/meta-model-entity.js"
+import IsNullToVisibility from "./services/meta-model-converters.js"
 
 resources MetaModelResources {
     // The panel body: a virtualized tree of the published models, plus an
@@ -25,8 +28,41 @@ resources MetaModelResources {
                         Text = "No published meta-models yet.",
                         Foreground = @OnSurfaceVariant, TextWrapping = Wrap,
                         Visibility = $IsEmpty << ToVisibility ]
+            // The entity drawer. Modal → out of flow (mounts on the overlay when
+            // open), so it measures to zero here; docking it Top keeps it target-
+            // attached (needed for IsOpen to mount) without disturbing the tree,
+            // which stays the LastChildFill.
+            SideSheet [ DockPanel.Dock = Top, Variant = Modal, SheetSize = 360,
+                        IsOpen = $IsDrawerOpen ] {
+                ContentPresenter [ Content = $DrawerEntity, ContentTemplate = @MetaModelEntityDetail ]
+            }
             TreeView [ Indent = 14, IsVirtualizing = true,
                        ItemsSource = $Nodes, ItemTemplate = @MetaModelNodeTemplate ]
+        }
+    }
+
+    // The drawer body: the entity's mm:<id> presentation (header) over its
+    // identity + resolved fields. Presentation is undefined when the published
+    // dictionary is unavailable — a note shows in its place.
+    DataTemplate x:key="MetaModelEntityDetail" [ DataType = MetaModelEntity ] {
+        StackPanel [ Orientation = Vertical, Margin = (16,16,16,16) ] {
+            ContentControl [ Content = $Presentation, Margin = (0,0,0,12) ]
+            TextBlock [ Text = "Presentation unavailable — republish the meta-model.",
+                        Style = @BodySmall, Foreground = @OnSurfaceVariant, TextWrapping = Wrap,
+                        Visibility = $Presentation << IsNullToVisibility, Margin = (0,0,0,12) ]
+            TextBlock [ Text = $TypeOf, Style = @LabelSmall, Foreground = @OnSurfaceVariant ]
+            TextBlock [ Text = $Label, Style = @TitleMedium, Foreground = @OnSurface, Margin = (0,0,0,8) ]
+            TextBlock [ Text = "Fields", Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
+            ItemsControl [ ItemsSource = $Fields, ItemTemplate = @MetaModelFieldTemplate ]
+        }
+    }
+
+    // One field row in the drawer's detail list: name : type.
+    DataTemplate x:key="MetaModelFieldTemplate" [ DataType = MetaModelField ] {
+        StackPanel [ Orientation = Horizontal, Margin = (0,2,0,2) ] {
+            TextBlock [ Text = $Name, Style = @BodyMedium, Foreground = @OnSurface ]
+            TextBlock [ Text = " : ", Style = @BodyMedium, Foreground = @OnSurfaceVariant ]
+            TextBlock [ Text = $Type, Style = @BodyMedium, Foreground = @OnSurfaceVariant ]
         }
     }
 
