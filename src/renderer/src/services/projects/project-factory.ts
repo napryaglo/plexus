@@ -84,3 +84,20 @@ export function isPublishable(factory: IProjectFactory): factory is IProjectFact
 {
     return typeof (factory as Partial<IPublishableProjectFactory>).publish === 'function'
 }
+
+// Optional capability a factory MAY also implement: (re)generating a presentation
+// resource dictionary into the project from its compiled model. The explorer
+// feature-tests with canGeneratePresentation before offering its Generate
+// Presentation command — same pattern as isPublishable.
+export interface IPresentationProjectFactory
+{
+    regeneratePresentation(storage: IStorage): Promise<void>
+}
+
+// Type guard: can this factory (re)generate a presentation?
+export function canGeneratePresentation(
+    factory: IProjectFactory,
+): factory is IProjectFactory & IPresentationProjectFactory
+{
+    return typeof (factory as Partial<IPresentationProjectFactory>).regeneratePresentation === 'function'
+}
