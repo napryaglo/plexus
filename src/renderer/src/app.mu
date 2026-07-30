@@ -40,6 +40,7 @@ import MetaModelModule from "./modules/meta-model/meta-model.module.mu.js"
 import LibraryModule from "./modules/library/library.module.mu.js"
 import AgentChatModule from "./modules/agent-chat/agent-chat.module.mu.js"
 import ProblemsModule from "./modules/problems/problems.module.mu.js"
+import CodeEditorModule from "./modules/code-editor/code-editor.module.mu.js"
 
 // Shared icon dictionary — one Geometry per capability, merged into the app's
 // Resources (via `merge` below) so each module's `Icon = @<Key>` resolves.
@@ -230,6 +231,7 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         LibraryModule
         AgentChatModule
         ProblemsModule
+        CodeEditorModule
     }
 
     resources: {
