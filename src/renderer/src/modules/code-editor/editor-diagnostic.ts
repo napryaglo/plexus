@@ -50,3 +50,16 @@ export function toMarkers(diags: readonly EditorDiagnostic[]): monaco.editor.IMa
         endColumn:       d.endColumn,
     }))
 }
+
+// A stable, order-independent fingerprint of a diagnostics set. Setting Monaco
+// markers forces a decoration re-render (a CPU hotspot when a project rescan
+// re-publishes the SAME diagnostics), so the editor compares this signature and
+// skips setModelMarkers when nothing actually changed. Order-independent because
+// producers may re-emit the same set in a different order.
+export function markerSignature(diags: readonly EditorDiagnostic[]): string
+{
+    return diags
+        .map((d) => `${d.severity}:${d.startLine}:${d.startColumn}:${d.endLine}:${d.endColumn}:${d.message}`)
+        .sort()
+        .join('\n')
+}

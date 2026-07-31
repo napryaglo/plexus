@@ -3,7 +3,7 @@ import './monaco-env.js'
 import { DomHost } from '@pragmatic-lab/mural/basic'
 import { Color, DataContextBinding, Model, MetaData, ObservableCollection, Size, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
 import { SolidColorBrush } from '@pragmatic-lab/mural/visual-engine'
-import { toMarkers, type EditorDiagnostic } from './editor-diagnostic.js'
+import { toMarkers, markerSignature, type EditorDiagnostic } from './editor-diagnostic.js'
 import { handleCrossFileOpen, type CrossFileSelection } from './cross-file-open.js'
 
 // The Monaco theme name this control defines from mural's resolved tokens.
@@ -65,6 +65,12 @@ export class CodeEditor extends DomHost
     private updating = false
     // Unsubscribe from the currently-bound Diagnostics collection.
     private diagUnsub: (() => void) | undefined
+    // Coalesces bursts of diagnostics changes into one marker update, and the
+    // signature of the last-applied marker set so an unchanged re-publish (a
+    // common project-rescan case) skips setModelMarkers entirely — each apply
+    // forces a Monaco decoration re-render, a measured CPU hotspot.
+    private markerTimer: ReturnType<typeof setTimeout> | undefined
+    private lastMarkerSig: string | undefined
 
     // The editor is declared bare in DataTemplate[CodeDocument] and binds itself
     // to its DataContext (the document) here. This is exactly what markup
@@ -228,15 +234,36 @@ export class CodeEditor extends DomHost
     private bindDiagnostics(collection: ObservableCollection<EditorDiagnostic> | undefined): void
     {
         this.diagUnsub?.()
-        this.diagUnsub = collection?.Subscribe(() => this.applyMarkers())
-        this.applyMarkers()
+        // New binding target ⇒ force the next apply (don't skip on a stale sig).
+        this.lastMarkerSig = undefined
+        this.diagUnsub = collection?.Subscribe(() => this.scheduleMarkers())
+        this.scheduleMarkers()
+    }
+
+    // Debounce marker application: a burst of Clear/Add mutations (or repeated
+    // rescans) collapses to one apply ~60ms later. Leading-window coalescing —
+    // the first change arms the timer; changes within the window are absorbed and
+    // picked up when it fires, so continuous validation can't starve the update.
+    private scheduleMarkers(): void
+    {
+        if (this.markerTimer !== undefined) return
+        this.markerTimer = setTimeout(() =>
+        {
+            this.markerTimer = undefined
+            this.applyMarkers()
+        }, 60)
     }
 
     private applyMarkers(): void
     {
         const model = this.editor?.getModel()
         if (model === null || model === undefined) return
-        monaco.editor.setModelMarkers(model, MARKER_OWNER, toMarkers(this.Diagnostics?.ToArray() ?? []))
+        const diags = this.Diagnostics?.ToArray() ?? []
+        // Skip the decoration re-render when the set is byte-for-byte unchanged.
+        const sig = markerSignature(diags)
+        if (sig === this.lastMarkerSig) return
+        this.lastMarkerSig = sig
+        monaco.editor.setModelMarkers(model, MARKER_OWNER, toMarkers(diags))
     }
 
     // A reveal requested before the editor mounted, replayed once it exists.
@@ -306,6 +333,7 @@ export class CodeEditor extends DomHost
     {
         this.diagUnsub?.()
         this.diagUnsub = undefined
+        if (this.markerTimer !== undefined) { clearTimeout(this.markerTimer); this.markerTimer = undefined }
         const model = this.ownsModel ? this.editor?.getModel() : undefined
         this.editor?.dispose()
         model?.dispose()

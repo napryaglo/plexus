@@ -1,6 +1,23 @@
 import { test, expect } from 'vitest'
 
-import { EditorSeverity, toMarkers, type EditorDiagnostic } from '../editor-diagnostic.js'
+import { EditorSeverity, toMarkers, markerSignature, type EditorDiagnostic } from '../editor-diagnostic.js'
+
+const mkDiag = (over: Partial<EditorDiagnostic> = {}): EditorDiagnostic => ({
+    severity: EditorSeverity.Error, message: 'm', startLine: 1, startColumn: 1, endLine: 1, endColumn: 2, ...over,
+})
+
+test('markerSignature is equal for the same set in a different order', () => {
+    const a = mkDiag({ message: 'a' })
+    const b = mkDiag({ message: 'b', startLine: 3 })
+    expect(markerSignature([a, b])).toBe(markerSignature([b, a]))
+})
+
+test('markerSignature differs when a diagnostic changes', () => {
+    const base = markerSignature([mkDiag({ message: 'a' })])
+    expect(markerSignature([mkDiag({ message: 'a', endColumn: 5 })])).not.toBe(base)
+    expect(markerSignature([mkDiag({ message: 'a', severity: EditorSeverity.Warning })])).not.toBe(base)
+    expect(markerSignature([])).not.toBe(base)
+})
 
 test('toMarkers maps each severity to its Monaco value', () => {
     const diag = (severity: EditorSeverity): EditorDiagnostic => ({
