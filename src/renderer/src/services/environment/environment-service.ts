@@ -1,6 +1,7 @@
 import { ServiceBase, ServiceKey } from '@pragmatic-lab/mural/runtime'
 import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { EnvironmentInfo, OperatingSystem } from '../../../../shared/environment-api.js'
+import type { EnvironmentInfo } from '../../../../shared/environment-api.js'
+import { OperatingSystem } from '../../../../shared/environment-api.js'
 
 // EnvironmentService — the renderer-side, app-facing view of the static host
 // environment (working/app directories, platform, versions, runtime flags).
@@ -46,6 +47,9 @@ export class EnvironmentService extends ServiceBase
     public get Platform():      OperatingSystem { return this.info.Platform; }
     public get Architecture():  string          { return this.info.Architecture; }
     public get PathSeparator(): string          { return this.info.PathSeparator; }
+    // True on Windows — used for case-insensitive path comparison (Windows
+    // filesystems are case-insensitive; POSIX ones are not).
+    public get IsWindows():     boolean         { return this.info.Platform === OperatingSystem.Windows; }
 
     // ── Versions ──
     public get AppVersion():      string { return this.info.AppVersion; }

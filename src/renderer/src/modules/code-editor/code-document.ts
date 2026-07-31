@@ -156,6 +156,13 @@ export class CodeDocument extends Model implements IDocument
         this.set_property_value(CodeDocument.IsDirtyKey, false)
     }
 
+    // Re-read the buffer from disk (external change). Discards any in-memory edits
+    // — callers gate on IsDirty and prompt first when that matters.
+    public async Reload(): Promise<void>
+    {
+        await this.load()
+    }
+
     // Seed Content from the file (empty on miss / error). The write goes through
     // the DP so a bound editor picks it up; savedContent is set so this initial
     // fill reads as clean, not a user edit.

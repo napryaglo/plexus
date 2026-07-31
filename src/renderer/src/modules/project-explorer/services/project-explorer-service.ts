@@ -69,6 +69,9 @@ import { ProblemsService } from '../../problems/problems-service.js'
 import { planNodeMoves } from '../../../services/projects/node-move.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
 import { RecentProjectsService } from '../../../services/projects/recent-projects-service.js'
+import { CodeDocument } from '../../code-editor/code-document.js'
+import { EnvironmentService } from '../../../services/environment/environment-service.js'
+import { samePath } from '../../../services/file-watch/path-utils.js'
 import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'
 import { isLocalFileAccess, type IStorage } from '../../../services/storage/storage.js'
 import type { CreateProjectPrefill, CreateProjectResult } from '../../../../../shared/agent-api.js'
@@ -113,6 +116,23 @@ export class ProjectExplorerService extends ServiceBase
     // re-point the tab (via the factory's relocateOpenFile) instead of leaving
     // it stale.
     private readonly docPaths = new Map<IDocument, string>()
+
+    // The open code-document whose resolved OS path matches `absPath`, if any —
+    // for the file-watch editor-reload consumer. Matches a watcher-reported
+    // absolute path against each open project document's ResolveOsPath, narrowing
+    // to CodeDocument (only code buffers can be reloaded from disk).
+    public FindOpenCodeDocByOsPath(absPath: string): CodeDocument | undefined
+    {
+        const ci = this.Provider.getRequired(EnvironmentService.Key).IsWindows
+        for (const [doc, rel] of this.docPaths)
+        {
+            if (!(doc instanceof CodeDocument)) continue
+            const storage = this.docOwners.get(doc)?.Storage
+            if (storage === undefined || !isLocalFileAccess(storage)) continue
+            if (samePath(storage.ResolveOsPath(rel), absPath, ci)) return doc
+        }
+        return undefined
+    }
 
     constructor(provider: IServiceProvider)
     {

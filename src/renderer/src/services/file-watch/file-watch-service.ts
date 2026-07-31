@@ -6,14 +6,6 @@ import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/m
 import { type FileChangeEvent, type IFileWatchApi } from '../../../../shared/file-watch-api.js'
 import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'
 
-// Absolute-path compare that tolerates separator + case differences (Windows).
-export function samePath(a: string, b: string, caseInsensitive: boolean): boolean
-{
-    const norm = (p: string): string =>
-        (caseInsensitive ? p.toLowerCase() : p).replace(/[\\/]+/g, '/').replace(/\/+$/, '')
-    return norm(a) === norm(b)
-}
-
 export class FileWatchService extends ServiceBase
 {
     public static readonly Key = new ServiceKey<FileWatchService>('FileWatchService')

@@ -2,6 +2,8 @@ import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/m
 import { ContentHostService } from '@pragmatic-lab/mural/framework'
 import type { DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
 import { FileSystemService } from '../../services/file-system/file-system-service.js'
+import { EnvironmentService } from '../../services/environment/environment-service.js'
+import { samePath } from '../../services/file-watch/path-utils.js'
 import { CodeDocument } from './code-document.js'
 import { FileSystemCodeFile } from './code-file.js'
 
@@ -36,5 +38,15 @@ export class CodeEditorService extends ServiceBase
             this.open.set(path, doc)
         }
         this.host.Open(doc)
+    }
+
+    // The open out-of-project document whose absolute path matches `absPath`, if
+    // any. Used by the file-watch editor-reload consumer to reload on external
+    // change. The `open` map is keyed by the absolute path passed to OpenFile.
+    public FindOpenByOsPath(absPath: string): CodeDocument | undefined
+    {
+        const ci = this.Provider.getRequired(EnvironmentService.Key).IsWindows
+        for (const [key, doc] of this.open) if (samePath(key, absPath, ci)) return doc
+        return undefined
     }
 }
