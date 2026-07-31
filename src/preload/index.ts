@@ -14,6 +14,7 @@ import { EnvironmentChannel, type EnvironmentInfo } from '../shared/environment-
 import { SettingsChannel, type ISettingsBridge } from '../shared/settings-api.js'
 import { AgentChannel, type AgentEvent, type IAgentApi } from '../shared/agent-api.js'
 import { TodlLspChannel, type ITodlLspApi } from '../shared/todl-lsp-api.js'
+import { FileWatchChannel, type FileChangeEvent, type IFileWatchApi } from '../shared/file-watch-api.js'
 
 // Preload — the ONLY place renderer and main meet, across the context bridge.
 // Exposes Plexus's native surface as a small typed `api`. The renderer wraps
@@ -110,7 +111,20 @@ const todlLsp: ITodlLspApi = {
   },
 }
 
-const api = { fs, environment, settings, agent, todlLsp }
+// External file-change watcher bridge. watch/unwatch are invoke round-trips;
+// onChanged subscribes to the pushed FileWatchChannel.Changed stream and returns
+// an unsubscribe — same shape as agent.onEvent.
+const fileWatch: IFileWatchApi = {
+  watch: (root: string): Promise<void> => ipcRenderer.invoke(FileWatchChannel.Watch, root),
+  unwatch: (root: string): Promise<void> => ipcRenderer.invoke(FileWatchChannel.Unwatch, root),
+  onChanged: (cb: (e: FileChangeEvent) => void): (() => void) => {
+    const listener = (_e: unknown, event: FileChangeEvent): void => cb(event)
+    ipcRenderer.on(FileWatchChannel.Changed, listener)
+    return () => { ipcRenderer.removeListener(FileWatchChannel.Changed, listener) }
+  },
+}
+
+const api = { fs, environment, settings, agent, todlLsp, fileWatch }
 
 if (process.contextIsolated) {
   try {

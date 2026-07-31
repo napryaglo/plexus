@@ -10,6 +10,7 @@ import {
   type OpenFolderOptions,
   type SaveFileOptions,
 } from '../shared/file-system-api.js'
+import { noteInternalWrite } from './file-watcher-core.js'
 
 // Main-process file-system capability. Owns node:fs and the native open/save
 // dialogs, exposed to the renderer as ipcMain handlers keyed by
@@ -96,6 +97,7 @@ export function registerFileSystemHandlers(): void {
         ? await dialog.showSaveDialog(win, dialogOptions)
         : await dialog.showSaveDialog(dialogOptions)
       if (result.canceled || !result.filePath) return null
+      noteInternalWrite(result.filePath)
       await writeFile(result.filePath, content, 'utf8')
       return result.filePath
     },
@@ -114,6 +116,7 @@ export function registerFileSystemHandlers(): void {
   ipcMain.handle(
     FileSystemChannel.WriteText,
     async (_e, path: string, content: string): Promise<void> => {
+      noteInternalWrite(path)
       await writeFile(path, content, 'utf8')
     },
   )
@@ -121,6 +124,7 @@ export function registerFileSystemHandlers(): void {
   ipcMain.handle(
     FileSystemChannel.WriteBytes,
     async (_e, path: string, bytes: Uint8Array): Promise<void> => {
+      noteInternalWrite(path)
       await writeFile(path, Buffer.from(bytes))
     },
   )
@@ -137,6 +141,7 @@ export function registerFileSystemHandlers(): void {
   ipcMain.handle(FileSystemChannel.Delete, async (_e, path: string): Promise<void> => {
     // recursive so deleting a project folder removes its contents too (rm on a
     // non-empty directory throws otherwise); force ignores a missing path.
+    noteInternalWrite(path)
     await rm(path, { force: true, recursive: true })
   })
 
@@ -145,6 +150,7 @@ export function registerFileSystemHandlers(): void {
   })
 
   ipcMain.handle(FileSystemChannel.Rename, async (_e, from: string, to: string): Promise<void> => {
+    noteInternalWrite(to)
     await rename(from, to)
   })
 

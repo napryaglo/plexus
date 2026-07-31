@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerFileSystemHandlers } from './filesystem.js'
+import { registerFileWatchHandlers } from './file-watcher.js'
 import { registerEnvironmentHandlers } from './environment.js'
 import { registerSettingsHandlers } from './settings.js'
 import { registerAgentHandlers } from './agent.js'
@@ -58,6 +59,7 @@ app.whenReady().then(async () => {
   // Native file-system capability (open/save dialogs, read/write, listing),
   // consumed in the renderer through the injected FileSystemService.
   registerFileSystemHandlers()
+  registerFileWatchHandlers()
   // Static host environment snapshot (dirs, platform, versions, flags),
   // consumed in the renderer through the injected EnvironmentService.
   registerEnvironmentHandlers()
