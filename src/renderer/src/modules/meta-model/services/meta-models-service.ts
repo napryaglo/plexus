@@ -127,9 +127,18 @@ export class MetaModelsService extends ServiceBase implements IActivatable
             {
                 const tmpl = dict.Resolve(key)
                 if (tmpl instanceof DataTemplate) entity.Presentation = tmpl.Apply(entity) as Visual
+                else console.warn(`[meta-model] ${key} resolved to a non-DataTemplate:`, tmpl)
+            }
+            else
+            {
+                console.warn(`[meta-model] ${key} not found in the presentation dictionary for ${base}`)
             }
         }
-        catch { /* presentation unavailable — degrade to detail-only */ }
+        catch (err)
+        {
+            // Presentation unavailable — degrade to detail-only, but surface why.
+            console.warn(`[meta-model] presentation load failed for ${base}:`, err)
+        }
 
         this.set_property_value(MetaModelsService.DrawerEntityKey, entity)
         this.set_property_value(MetaModelsService.IsDrawerOpenKey, true)

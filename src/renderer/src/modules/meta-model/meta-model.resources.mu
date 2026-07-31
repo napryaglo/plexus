@@ -10,7 +10,6 @@
 import MetaModelsService from "./services/meta-models-service.js"
 import MetaModelTreeNode from "./services/meta-model-tree-node.js"
 import MetaModelKindToGeometry from "./services/meta-model-node-icon.js"
-import MetaModelEntity from "./services/meta-model-entity.js"
 import MetaModelField from "./services/meta-model-entity.js"
 import IsNullToVisibility from "./services/meta-model-converters.js"
 
@@ -32,28 +31,27 @@ resources MetaModelResources {
             // open), so it measures to zero here; docking it Top keeps it target-
             // attached (needed for IsOpen to mount) without disturbing the tree,
             // which stays the LastChildFill.
+            // The entity drawer. The body's DataContext binds to $DrawerEntity so
+            // every inner binding re-resolves when a different entity is opened —
+            // binding a ContentPresenter's Content directly to $DrawerEntity does
+            // NOT re-render on change, but a DataContext rebind does (and works
+            // through the Modal overlay). Presentation is the applied mm:<id>
+            // template (undefined when unavailable → the note shows instead).
             SideSheet [ DockPanel.Dock = Top, Variant = Modal, SheetSize = 360,
                         IsOpen = $IsDrawerOpen ] {
-                ContentPresenter [ Content = $DrawerEntity, ContentTemplate = @MetaModelEntityDetail ]
+                StackPanel [ DataContext = $DrawerEntity, Orientation = Vertical, Margin = (16,16,16,16) ] {
+                    ContentPresenter [ Content = $Presentation, Margin = (0,0,0,12) ]
+                    TextBlock [ Text = "Presentation unavailable — republish the meta-model.",
+                                Style = @BodySmall, Foreground = @OnSurfaceVariant, TextWrapping = Wrap,
+                                Visibility = $Presentation << IsNullToVisibility, Margin = (0,0,0,12) ]
+                    TextBlock [ Text = $TypeOf, Style = @LabelSmall, Foreground = @OnSurfaceVariant ]
+                    TextBlock [ Text = $Label, Style = @TitleMedium, Foreground = @OnSurface, Margin = (0,0,0,8) ]
+                    TextBlock [ Text = "Fields", Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
+                    ItemsControl [ ItemsSource = $Fields, ItemTemplate = @MetaModelFieldTemplate ]
+                }
             }
             TreeView [ Indent = 14, IsVirtualizing = true,
                        ItemsSource = $Nodes, ItemTemplate = @MetaModelNodeTemplate ]
-        }
-    }
-
-    // The drawer body: the entity's mm:<id> presentation (header) over its
-    // identity + resolved fields. Presentation is undefined when the published
-    // dictionary is unavailable — a note shows in its place.
-    DataTemplate x:key="MetaModelEntityDetail" [ DataType = MetaModelEntity ] {
-        StackPanel [ Orientation = Vertical, Margin = (16,16,16,16) ] {
-            ContentControl [ Content = $Presentation, Margin = (0,0,0,12) ]
-            TextBlock [ Text = "Presentation unavailable — republish the meta-model.",
-                        Style = @BodySmall, Foreground = @OnSurfaceVariant, TextWrapping = Wrap,
-                        Visibility = $Presentation << IsNullToVisibility, Margin = (0,0,0,12) ]
-            TextBlock [ Text = $TypeOf, Style = @LabelSmall, Foreground = @OnSurfaceVariant ]
-            TextBlock [ Text = $Label, Style = @TitleMedium, Foreground = @OnSurface, Margin = (0,0,0,8) ]
-            TextBlock [ Text = "Fields", Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
-            ItemsControl [ ItemsSource = $Fields, ItemTemplate = @MetaModelFieldTemplate ]
         }
     }
 
