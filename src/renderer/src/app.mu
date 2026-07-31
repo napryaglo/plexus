@@ -128,6 +128,7 @@ import TodlLanguageClient from "./services/todl/todl-language-client.js"
 import DiagnosticsService from "./services/diagnostics/diagnostics-service.js"
 import WorkspaceRefreshService from "./services/workspace/workspace-refresh-service.js"
 import FileWatchService from "./services/file-watch/file-watch-service.js"
+import EditorReloadService from "./services/file-watch/editor-reload-service.js"
 import CodeEditorResources from "./modules/code-editor/code-editor.resources.mu.js"
 
 
@@ -225,6 +226,8 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // External file-change watcher: watches open project roots and broadcasts
         // changes. Eagerly resolved in main.js so it listens from boot.
         FileWatchService
+        // Reloads editor buffers on external change (prompts on dirty conflict).
+        EditorReloadService
     }
 
     .modules: {
