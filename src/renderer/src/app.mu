@@ -129,6 +129,7 @@ import DiagnosticsService from "./services/diagnostics/diagnostics-service.js"
 import WorkspaceRefreshService from "./services/workspace/workspace-refresh-service.js"
 import FileWatchService from "./services/file-watch/file-watch-service.js"
 import EditorReloadService from "./services/file-watch/editor-reload-service.js"
+import ProjectRescanService from "./services/file-watch/project-rescan-service.js"
 import CodeEditorResources from "./modules/code-editor/code-editor.resources.mu.js"
 
 
@@ -228,6 +229,8 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         FileWatchService
         // Reloads editor buffers on external change (prompts on dirty conflict).
         EditorReloadService
+        // Re-scans + re-validates the owning project on external change (debounced).
+        ProjectRescanService
     }
 
     .modules: {
