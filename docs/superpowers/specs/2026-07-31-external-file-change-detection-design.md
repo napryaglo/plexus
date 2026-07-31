@@ -138,10 +138,15 @@ alongside `registerFileSystemHandlers`. On app quit, close all watchers.
   - dirty buffer → show `ConfirmDialogModel("<name> changed on disk. Reload and
     lose your unsaved edits?", "Reload", close)` via `DialogService`; on
     confirm, reload; on cancel, keep the buffer (leave `IsDirty`).
-- **Panel rescan** — `MetaModelsService`, `LibrariesPanelService`,
-  `ArchTermsPaletteService` subscribe and call their existing `Reload()`,
-  debounced (~250 ms) per service so a burst of file events collapses to one
-  rescan.
+- **Project rescan** — the owning open project is re-scanned + re-validated via
+  `ProjectExplorerService.RefreshProjects([folder])`, debounced (~250 ms) per
+  folder so a burst of file events collapses to one rescan. This is the same
+  path the agent's `refresh_project` tool uses (`WorkspaceRefreshService`), and
+  it repopulates `DiagnosticsService` — so an external `.todl` edit re-runs
+  project validation (surfacing `reference.undefined` etc.). **Note:** the panel
+  services (`MetaModelsService`/`LibrariesPanelService`/`ArchTermsPaletteService`)
+  are NOT the target — they read global userData/registry backends, not project
+  sources, so their `Reload()` would not reflect a project-file edit.
 
 ## Error handling
 
