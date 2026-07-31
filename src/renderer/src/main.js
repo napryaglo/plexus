@@ -18,7 +18,6 @@ import { AgentService } from './modules/agent-chat/services/agent-service.js'
 import { attachAutoOpenInspector } from './modules/diagram/behaviors/auto-open-inspector-behavior.js'
 import { attachSaveShortcuts } from './services/documents/save-shortcuts.js'
 import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'
-import { attachTabSwitchDiagnostics } from './dev/tab-switch-diagnostics.js'
 import { CodeEditorService } from './modules/code-editor/code-editor-service.js'
 import { EnvironmentService } from './services/environment/environment-service.js'
 import { ProjectExplorerService } from './modules/project-explorer/services/project-explorer-service.js'
@@ -50,8 +49,6 @@ await document.fonts.load('24px "Material Symbols Outlined"')
 try {
     const renderTarget = new HtmlTarget(document.getElementById('app'))
     app.initialize(renderTarget)
-    // TEMPORARY: tab→canvas swap diagnostic (remove once root-caused).
-    attachTabSwitchDiagnostics(app, renderTarget)
     // Contribute the right-aligned status-bar colour-scheme picker (a service-
     // bound shell control) before opening the first document, so the toolbar
     // service surfaces it on the document-open rebuild.
