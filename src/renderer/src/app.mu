@@ -127,6 +127,7 @@ import DockTabsResources from "./services/dock-tabs/dock-tabs.resources.mu.js"
 import TodlLanguageClient from "./services/todl/todl-language-client.js"
 import DiagnosticsService from "./services/diagnostics/diagnostics-service.js"
 import WorkspaceRefreshService from "./services/workspace/workspace-refresh-service.js"
+import FileWatchService from "./services/file-watch/file-watch-service.js"
 import CodeEditorResources from "./modules/code-editor/code-editor.resources.mu.js"
 
 
@@ -221,6 +222,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // refresh_project (re-scan + re-validate + reply). Eagerly resolved in
         // main.js so it's listening before the first turn.
         WorkspaceRefreshService
+        // External file-change watcher: watches open project roots and broadcasts
+        // changes. Eagerly resolved in main.js so it listens from boot.
+        FileWatchService
     }
 
     .modules: {

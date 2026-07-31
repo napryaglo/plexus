@@ -23,6 +23,7 @@ import { CodeEditorService } from './modules/code-editor/code-editor-service.js'
 import { EnvironmentService } from './services/environment/environment-service.js'
 import { ProjectExplorerService } from './modules/project-explorer/services/project-explorer-service.js'
 import { WorkspaceRefreshService } from './services/workspace/workspace-refresh-service.js'
+import { FileWatchService } from './services/file-watch/file-watch-service.js'
 import { registerTodlLanguage } from './modules/meta-model/todl-language.js'
 import { registerMuralLanguage } from './modules/code-editor/mural-language.js'
 import { TodlLanguageClient } from './services/todl/todl-language-client.js'
@@ -56,6 +57,9 @@ try {
     // Construct the workspace-refresh service now so it subscribes to agent
     // events before any turn runs (it isn't tied to a visible panel).
     app.Services.get(WorkspaceRefreshService.Key)
+    // Construct the file-watch service now so it watches open project roots from
+    // boot (it isn't tied to a visible panel); its consumers resolve it too.
+    app.Services.get(FileWatchService.Key)
     // Wire the out-of-process TODL language client: build the JSON-RPC connection
     // over the preload pipe, handshake with the forked server, register the Monaco
     // provider adapters, and resync every project after a server restart.
