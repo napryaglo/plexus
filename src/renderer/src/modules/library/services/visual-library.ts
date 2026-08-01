@@ -2,7 +2,7 @@ import { instantiate } from '@pragmatic-lab/mural/compiler'
 import * as muralRuntime from '@pragmatic-lab/mural/runtime'
 import * as muralBasic from '@pragmatic-lab/mural/basic'
 import * as muralEngine from '@pragmatic-lab/mural/visual-engine'
-import { DataTemplate, type DataTemplateFactory } from '@pragmatic-lab/mural/basic'
+import { DataTemplate, type DataTemplateFactory, Icon, type IconDefinition } from '@pragmatic-lab/mural/basic'
 import type { Visual } from '@pragmatic-lab/mural/runtime'
 
 // The runtime symbol table instantiate() destructures the fragment's referenced
@@ -37,4 +37,39 @@ const DEFAULT_SOURCE =
 export function buildDefaultTemplate(ctx: Record<string, unknown>): DataTemplate
 {
     return compileTemplate(DEFAULT_SOURCE, ctx)
+}
+
+// An icon+label template for a class with an `icon` annotation but no authored
+// `.mural`. The chrome + `$Display` label compile through the same fragment path
+// as the default; the parsed IconDefinition (fixed per class) is set onto the one
+// Icon element after the tree is built (found by a visual-tree walk), so no
+// per-instance binding is needed for it.
+const ICON_SOURCE =
+      'Border [ Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (10,6,10,6) ] {'
+    + ' StackPanel [ Orientation = Horizontal ] {'
+    + '  Icon [ Foreground = @OnSurface, Width = 16, Height = 16, Margin = (0,0,6,0) ]'
+    + '  TextBlock [ Text = $Display, Foreground = @OnSurface ] } }'
+
+export function buildIconTemplate(iconDef: IconDefinition, ctx: Record<string, unknown>): DataTemplate
+{
+    const factory = instantiate(ICON_SOURCE, ctx) as () => Visual
+    const wrapped: DataTemplateFactory = (data) => {
+        const v = factory() as Visual & { DataContext: unknown }
+        v.DataContext = data
+        const icon = findIcon(v)
+        if (icon !== undefined) icon.Source = iconDef
+        return v
+    }
+    return new DataTemplate(wrapped)
+}
+
+// First Icon in the visual tree (depth-first over logical + visual children).
+function findIcon(v: Visual): Icon | undefined
+{
+    if (v instanceof Icon) return v
+    for (const c of [...v.logicalChildren, ...v.visualChildren]) {
+        const f = findIcon(c)
+        if (f !== undefined) return f
+    }
+    return undefined
 }

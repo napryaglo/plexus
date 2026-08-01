@@ -2,8 +2,9 @@ import { Application, ResourceDictionary, ServiceBase, ServiceKey, type IService
 import type { DataTemplate } from '@pragmatic-lab/mural/basic'
 
 import { ensureLibrariesBackend } from './libraries-backend.js'
-import { discoverLibraries, readTemplateSource, type LoadedLibrary, type LoadProblem } from './library-loader.js'
-import { buildCtx, compileTemplate, buildDefaultTemplate } from './visual-library.js'
+import { discoverLibraries, readTemplateSource, readIconSource, type LoadedLibrary, type LoadProblem } from './library-loader.js'
+import { buildCtx, compileTemplate, buildDefaultTemplate, buildIconTemplate } from './visual-library.js'
+import { parseSvgIcon } from '@pragmatic-lab/mural/basic'
 import { DiagnosticsService } from '../../../services/diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity, type Diagnostic } from '../../../services/diagnostics/diagnostic.js'
 
@@ -48,12 +49,27 @@ export class LibraryRegistry extends ServiceBase
             const problems: LoadProblem[] = [...lib.problems]
             for (const cls of lib.classes) {
                 const source = await readTemplateSource(backend, lib, cls)
-                if (source === undefined) continue
-                try {
-                    this.libraryVisuals.Set(cls.id, compileTemplate(source, this.ctx))
-                } catch (e) {
-                    problems.push({ severity: 'error', uri: cls.templatePath ?? null,
-                                    message: `Template for ${cls.id} failed to compile: ${(e as Error).message}` })
+                if (source !== undefined) {
+                    try {
+                        this.libraryVisuals.Set(cls.id, compileTemplate(source, this.ctx))
+                    } catch (e) {
+                        problems.push({ severity: 'error', uri: cls.templatePath ?? null,
+                                        message: `Template for ${cls.id} failed to compile: ${(e as Error).message}` })
+                    }
+                    continue
+                }
+                if (cls.icon !== undefined) {
+                    const svg = await readIconSource(backend, lib, cls)
+                    if (svg === undefined) {
+                        problems.push({ severity: 'warning', uri: cls.icon, message: `Icon asset is missing: ${cls.icon}` })
+                        continue
+                    }
+                    try {
+                        this.libraryVisuals.Set(cls.id, buildIconTemplate(parseSvgIcon(svg), this.ctx))
+                    } catch (e) {
+                        problems.push({ severity: 'warning', uri: cls.icon,
+                                        message: `Icon ${cls.icon} failed to parse: ${(e as Error).message}` })
+                    }
                 }
             }
             this.publish(lib, problems)
