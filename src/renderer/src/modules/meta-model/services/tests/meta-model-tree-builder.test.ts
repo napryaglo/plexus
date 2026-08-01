@@ -111,3 +111,28 @@ test('entity leaves carry an EntityRef wired to the activate callback', async ()
     actorNode.OnActivate()
     expect(calls).toEqual([{ modelId: 'tech', version: '0.1.0', id: 'actor' }])
 })
+
+test('a taxonomy row nests its terms as child entity rows', async () => {
+    const model = JSON.stringify({
+        nodes: [
+            { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} },
+            { id: 'actors', tier: 'Ontology', typeOf: 'taxonomy', attrs: { label: 'Actors' } },
+            { id: 'actors.internal', tier: 'Instance', typeOf: 'actor', attrs: { class: true, id: 'internal', label: 'Internal' } },
+        ],
+        edges: [
+            { kind: 'Contains', via: null, from: 'actors', to: 'actors.internal' },
+        ],
+    })
+    const storage = backendWith([['tech/0.1.0/model.json', model]])
+
+    const calls: EntityRef[] = []
+    const groups = await loadVersionEntities(storage, 'tech', '0.1.0', (r) => calls.push(r))
+
+    const taxGroup = groups.find((g) => g.Label === 'Taxonomies')!
+    const taxRow = taxGroup.Children.Get(0)!            // the `actors` taxonomy row
+    expect(taxRow.Label).toBe('Actors')
+    const termRow = taxRow.Children.Get(0)!             // its nested term
+    expect(termRow.Label).toBe('Internal')
+    termRow.OnActivate()
+    expect(calls).toEqual([{ modelId: 'tech', version: '0.1.0', id: 'actors.internal' }])
+})
