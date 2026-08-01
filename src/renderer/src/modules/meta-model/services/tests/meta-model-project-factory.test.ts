@@ -7,6 +7,7 @@ import { StorageProviderRegistry } from '../../../../services/storage/storage-pr
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { MetaModelProjectFactory } from '../meta-model-project-factory.js'
 import { META_MODELS_BACKEND_ID } from '../meta-models-backend.js'
+import { loadMetaModelManifest } from '../meta-model-manifest-loader.js'
 
 function factory(): MetaModelProjectFactory
 {
@@ -31,6 +32,8 @@ const CONCEPTS = 'namespace d { concept model { label : string; } concept compon
 const EA = 'namespace d { meta-model enterprise-architecture { name = "EA"; version = 5; root-concept = model; top-level-concepts = [ component, location ]; } }'
 // A missing concept name is a syntax error.
 const BAD = 'namespace d { concept { label : string; } }'
+// A clean package with a declared annotation applied at package level (0.5.0).
+const PKG_ANN = 'namespace d { annotation author { name : string; } package { annotate author { name = "Acme Corp"; } } concept widget { label : string; } }'
 
 test('createProject writes a meta-model manifest with a publish identity', async () => {
     const storage = new FakeStorage('fake://Acme')
@@ -117,6 +120,42 @@ test('publish writes compiled model + sources for a clean project', async () => 
     expect(() => fromJSON(doc)).not.toThrow()          // compiled artifact round-trips
     expect(await dest.Exists('acme/0.1.0/src/concepts.todl')).toBe(true)
     expect(await dest.Exists('acme/0.1.0/src/ea.todl')).toBe(true)
+})
+
+test('publish writes a manifest.json with identity + package annotations', async () => {
+    const storage = new FakeStorage('fake://Acme')
+    const f = factory()
+    await f.createProject(storage, 'Acme')
+    await storage.WriteText('defs.todl', PKG_ANN)
+
+    const { provider, dest } = publishEnv()
+    const project = await f.openProject(storage)
+    const result = await f.publish(project, storage, provider)
+
+    expect(result.ok).toBe(true)
+    expect(await dest.Exists('acme/0.1.0/manifest.json')).toBe(true)
+
+    const m = await loadMetaModelManifest(dest, 'acme', '0.1.0')
+    expect(m.id).toBe('acme')
+    expect(m.version).toBe('0.1.0')
+    expect(m.name).toBe('Acme')
+    expect(m.annotations).toEqual({ author: { name: 'Acme Corp' } })
+    expect(m.problems).toEqual([])
+})
+
+test('publish writes a manifest with empty annotations for a package-less model', async () => {
+    const storage = new FakeStorage('fake://Acme')
+    const f = factory()
+    await f.createProject(storage, 'Acme')
+    await storage.WriteText('concepts.todl', CONCEPTS)   // plain concepts, no package block
+
+    const { provider, dest } = publishEnv()
+    const project = await f.openProject(storage)
+    await f.publish(project, storage, provider)
+
+    const m = await loadMetaModelManifest(dest, 'acme', '0.1.0')
+    expect(m.annotations).toEqual({})
+    expect(m.problems).toEqual([])
 })
 
 test('publish is blocked and writes nothing when a source has an error', async () => {

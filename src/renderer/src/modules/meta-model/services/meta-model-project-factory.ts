@@ -17,6 +17,8 @@ import { ensureScaffold } from './meta-model-scaffold.js'
 import { collectTodlSources, extname, joinRel } from './todl-sources.js'
 import { generatePresentationMu } from './presentation-generator.js'
 import { publishPresentation } from './presentation-publisher.js'
+import { projectAnnotations } from './annotation-projection.js'
+import type { MetaModelManifestFile } from './meta-model-manifest-loader.js'
 
 // The 'meta-model' project type's factory — the meta-model module's contribution
 // to the generic ProjectExplorerService (declared via `.projectFactories:` and
@@ -103,6 +105,14 @@ export class MetaModelProjectFactory extends ServiceBase
         const base = `${manifest.id}/${manifest.modelVersion}`
         await dest.WriteText(`${base}/model.json`, JSON.stringify(doc, null, 2))
         for (const s of sources) await dest.WriteText(`${base}/src/${s.uri}`, s.text)
+        // Ship a thin package descriptor (identity + package-level annotations) so
+        // Plexus can understand the package without parsing model.json.
+        const PACKAGE_NODE = 'package'
+        const manifestFile: MetaModelManifestFile = {
+            id: manifest.id, version: manifest.modelVersion, name: manifest.name ?? manifest.id,
+            annotations: projectAnnotations(doc, PACKAGE_NODE),
+        }
+        await dest.WriteText(`${base}/manifest.json`, JSON.stringify(manifestFile, null, 2))
         // Keep the project's presentation dictionary current with what was published.
         await this.writePresentation(storage, doc)
         // Ship a self-contained presentation payload into the backend so a
