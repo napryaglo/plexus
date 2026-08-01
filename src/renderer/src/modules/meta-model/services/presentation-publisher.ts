@@ -1,68 +1,67 @@
 import type { TodlDocument } from '@pragmatic-lab/todl'
+import {
+    compile, DEFAULT_SYMBOLS, svgToGeometryJs,
+    type IncludeResolver, type IncludeResolution,
+} from '@pragmatic-lab/mural/compiler'
 
-import type { IStorage, StorageEntry } from '../../../services/storage/storage.js'
+import type { IStorage } from '../../../services/storage/storage.js'
 import { generatePresentationMu, distinctIcons, ontologyEntities } from './presentation-generator.js'
 
-// The project folder holding author-written override dictionaries; copied
-// verbatim into the backend so the generated `merge <Name>` lines resolve.
-const OVERRIDES_SRC_DIR = 'presentation'
-// The self-contained presentation folder written into the backend base.
 const PRESENTATION_DIR = 'presentation'
-const GENERATED_FILE = 'presentation.generated.mu'
-const OVERRIDES_DEST_DIR = 'overrides'
+const COMPILED_FILE = 'presentation.compiled.json'
+const VISUAL_ENGINE = '@pragmatic-lab/mural/visual-engine'
 
-export interface PresentationPublishStats { templates: number; icons: number }
+// The self-contained, evaluable presentation payload written into the backend.
+// `body` is the compiled resources class (geometry inlined, imports stripped);
+// `symbols` are the names the loader destructures from its ctx; `className` is
+// the resources block to instantiate.
+export interface CompiledPresentation { body: string; symbols: string[]; className: string }
 
-// Write a published model's presentation payload into `dest` under
-// `<base>/presentation/`: the generated dictionary source, the project's
-// override tree, and each declared icon SVG (path preserved). Pure I/O over two
-// IStorages — no renderer, no compilation. `authorDicts` are the override
-// `resources <Name>` identifiers the generated source should `merge`.
+export type PublishPresentationResult =
+    | { ok: true; templates: number; icons: number }
+    | { ok: false; missing: string[] }
+
+// Compile the meta-model's presentation once and write it into `dest` under
+// `<base>/presentation/presentation.compiled.json`. Icon SVGs are read from the
+// project and baked into the compiled body via svgToGeometryJs — the artifact
+// has no external file dependency. A referenced icon with no project file blocks
+// the publish (nothing is written). Author overrides are intentionally ignored
+// (the compiled artifact merges nothing).
 export async function publishPresentation(
-    project: IStorage, dest: IStorage, base: string,
-    doc: TodlDocument, authorDicts: readonly string[],
-): Promise<PresentationPublishStats>
+    project: IStorage, dest: IStorage, base: string, doc: TodlDocument,
+): Promise<PublishPresentationResult>
 {
-    const root = `${base}/${PRESENTATION_DIR}`
+    // Pre-read every referenced icon SVG (compiler include resolution is sync).
+    const svgByPath = new Map<string, string>()
+    const missing: string[] = []
+    for (const path of distinctIcons(doc)) {
+        try { svgByPath.set(path, await project.ReadText(path)) }
+        catch { missing.push(path) }
+    }
+    if (missing.length > 0) return { ok: false, missing }
 
-    // 1. Generated dictionary source (identical to the project-side output).
-    const source = generatePresentationMu(doc, authorDicts)
-    await dest.WriteText(`${root}/${GENERATED_FILE}`, source)
+    const source = generatePresentationMu(doc, [])   // no author-override merges
 
-    // 2. Author overrides tree (verbatim). Missing folder → nothing copied.
-    await copyTree(project, OVERRIDES_SRC_DIR, dest, `${root}/${OVERRIDES_DEST_DIR}`)
-
-    // 3. Icons — copy each declared SVG, preserving its project-relative path so
-    //    an include-resolver rooted at `<root>` finds it. A missing file is an
-    //    authoring gap: skip it (non-fatal) and leave it out of the count.
-    let icons = 0
-    for (const iconPath of distinctIcons(doc))
-    {
-        try
-        {
-            const svg = await project.ReadText(iconPath)
-            await dest.WriteText(`${root}/${iconPath}`, svg)
-            icons++
+    const include: IncludeResolver = (path, ctx): IncludeResolution => {
+        const text = svgByPath.get(path)
+        if (text === undefined) throw new Error(`presentation include not pre-read: ${path}`)
+        const { valueJs, names } = svgToGeometryJs(text)
+        return {
+            entries: [{ key: ctx.key ?? path, valueJs }],
+            imports: [{ module: VISUAL_ENGINE, names: [...names] }],
         }
-        catch { /* missing asset — skip */ }
     }
+    const symbols = new Map([...DEFAULT_SYMBOLS, ['MetaModelEntity', './meta-model-entity.js']])
+    const result = compile(source, { include, symbols })
 
-    return { templates: ontologyEntities(doc).length, icons }
-}
+    const names = new Set<string>()
+    for (const set of result.imports.values()) for (const n of set) names.add(n)
+    const className = result.resourcesBlocks?.[0]?.name
+    if (className === undefined) throw new Error('presentation compile produced no resources block')
 
-// Recursively copy every file under `srcDir` in `from` to `destDir` in `to`,
-// preserving structure. A missing `srcDir` (List throws) copies nothing.
-// Text copy suffices — presentation assets are .mu / .svg (UTF-8).
-async function copyTree(from: IStorage, srcDir: string, to: IStorage, destDir: string): Promise<void>
-{
-    let entries: readonly StorageEntry[]
-    try { entries = await from.List(srcDir) }
-    catch { return }
-    for (const e of entries)
-    {
-        const srcPath = srcDir === '' ? e.Name : `${srcDir}/${e.Name}`
-        const destPath = `${destDir}/${e.Name}`
-        if (e.IsDirectory) await copyTree(from, srcPath, to, destPath)
-        else await to.WriteText(destPath, await from.ReadText(srcPath))
-    }
+    const body = result.js.split('\n').filter((l) => !/^import\b.*\bfrom\b/.test(l)).join('\n').trim()
+    const artifact: CompiledPresentation = { body, symbols: [...names].sort(), className }
+    await dest.WriteText(`${base}/${PRESENTATION_DIR}/${COMPILED_FILE}`, JSON.stringify(artifact))
+
+    return { ok: true, templates: ontologyEntities(doc).length, icons: svgByPath.size }
 }
