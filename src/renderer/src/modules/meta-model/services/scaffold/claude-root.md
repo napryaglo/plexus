@@ -9,8 +9,7 @@ meta-models backend, where other projects consume it as `<id>@<modelVersion>`.
 ## What you edit
 
 `.todl` files. Each file is one `namespace <dotted.path> { … }` holding
-`primitive` / `concept` / `taxonomy` declarations, plus — once per project — the
-`meta-model` descriptor record. Plexus validates **every `.todl` in the project
+`primitive` / `concept` / `taxonomy` declarations. Plexus validates **every `.todl` in the project
 together**, live: diagnostics appear in the **Problems** panel at the bottom of
 the window. **Publishing is blocked while any error remains.**
 
@@ -66,7 +65,6 @@ forks, not for confirmations you can infer or trivial defaults.
 - `.claude/todl-manual.md` — the full language reference (declarations,
   cardinality, values, edges, diagnostics), grounded in the current parser.
 - `.claude/meta-model-guide.md` — how to shape a meta-model: concepts vs
-  taxonomies vs primitives, the `meta-model` descriptor record, invariants, and
-  the publish contract.
+  taxonomies vs primitives, invariants, and the publish contract.
 - `/new-concept <name>` — scaffold a concept skeleton
   (`.claude/commands/new-concept.md`).

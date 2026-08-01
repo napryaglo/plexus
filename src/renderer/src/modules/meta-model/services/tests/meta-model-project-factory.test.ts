@@ -29,7 +29,6 @@ function publishEnv(): { provider: ServiceProvider; dest: FakeStorage }
 // Verified-clean TODL (see the empirical probe): concepts in one file, a
 // meta-model referencing them in another — check() returns zero diagnostics.
 const CONCEPTS = 'namespace d { concept model { label : string; } concept component { label : string; } concept location { label : string; } }'
-const EA = 'namespace d { meta-model enterprise-architecture { name = "EA"; version = 5; root-concept = model; top-level-concepts = [ component, location ]; } }'
 // A missing concept name is a syntax error.
 const BAD = 'namespace d { concept { label : string; } }'
 // A clean package with a declared annotation applied at package level (0.5.0).
@@ -106,7 +105,6 @@ test('publish writes compiled model + sources for a clean project', async () => 
     const f = factory()
     await f.createProject(storage, 'Acme')
     await storage.WriteText('concepts.todl', CONCEPTS)
-    await storage.WriteText('ea.todl', EA)
 
     const { provider, dest } = publishEnv()
     const project = await f.openProject(storage)
@@ -119,7 +117,6 @@ test('publish writes compiled model + sources for a clean project', async () => 
     expect(doc.nodes.length).toBeGreaterThan(0)
     expect(() => fromJSON(doc)).not.toThrow()          // compiled artifact round-trips
     expect(await dest.Exists('acme/0.1.0/src/concepts.todl')).toBe(true)
-    expect(await dest.Exists('acme/0.1.0/src/ea.todl')).toBe(true)
 })
 
 test('publish writes a manifest.json with identity + package annotations', async () => {
@@ -206,7 +203,6 @@ test('publish also (re)writes presentation.generated.mu into the project', async
     const f = factory()
     await f.createProject(storage, 'Acme')
     await storage.WriteText('concepts.todl', CONCEPTS)
-    await storage.WriteText('ea.todl', EA)
 
     const { provider } = publishEnv()
     const project = await f.openProject(storage)
@@ -222,7 +218,6 @@ test('publish ships the presentation payload into the backend', async () => {
     const f = factory()
     await f.createProject(storage, 'Acme')
     await storage.WriteText('concepts.todl', CONCEPTS)
-    await storage.WriteText('ea.todl', EA)
     // an author override dictionary under presentation/
     await storage.WriteText('presentation/custom.mu', 'resources MetaModelPresentationCustom { }')
 
