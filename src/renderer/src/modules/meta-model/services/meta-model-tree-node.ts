@@ -43,6 +43,14 @@ export class MetaModelTreeNode extends Model
     public static readonly DeleteCommandKey = Model.RegisterProperty<ICommand | undefined>(
         MetaModelTreeNode, 'DeleteCommand', undefined, MetaData.None)
 
+    // Whether this row can be deleted (Model / Version only). A registered
+    // property — NOT a plain getter — because `.mu` bindings on a Model resolve
+    // only against the property table (see the `when ($IsDeletable)` trigger in
+    // meta-model.resources.mu); a plain getter binds to undefined and the menu
+    // never attaches. Set once at construction from Kind.
+    public static readonly IsDeletableKey = Model.RegisterProperty<boolean>(
+        MetaModelTreeNode, 'IsDeletable', false, MetaData.None)
+
     // Lazy machinery (view-invisible → plain fields). Only lazy() sets a loader.
     private loader?: () => Promise<MetaModelTreeNode[]>
     private loaded = false
@@ -57,6 +65,8 @@ export class MetaModelTreeNode extends Model
         this.set_property_value(MetaModelTreeNode.KindKey, kind)
         this.set_property_value(MetaModelTreeNode.LabelKey, label)
         this.set_property_value(MetaModelTreeNode.ChildrenKey, new ObservableCollection<MetaModelTreeNode>())
+        this.set_property_value(MetaModelTreeNode.IsDeletableKey,
+            kind === MetaModelNodeKind.Model || kind === MetaModelNodeKind.Version)
     }
 
     public get Kind(): MetaModelNodeKind { return this.get_property_value(MetaModelTreeNode.KindKey) }
@@ -74,11 +84,8 @@ export class MetaModelTreeNode extends Model
     public set DeleteCommand(v: ICommand | undefined) { this.set_property_value(MetaModelTreeNode.DeleteCommandKey, v) }
 
     // Only Model (id) and Version (<id>/<version>) rows can be deleted; Group /
-    // Entity rows get no context menu.
-    public get IsDeletable(): boolean
-    {
-        return this.Kind === MetaModelNodeKind.Model || this.Kind === MetaModelNodeKind.Version
-    }
+    // Entity rows get no context menu. Reads the property set at construction.
+    public get IsDeletable(): boolean { return this.get_property_value(MetaModelTreeNode.IsDeletableKey) }
 
     // A non-lazy node: children (if any) are added by the caller.
     public static leaf(kind: MetaModelNodeKind, label: string): MetaModelTreeNode
