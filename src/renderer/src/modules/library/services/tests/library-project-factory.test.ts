@@ -63,6 +63,20 @@ test('publish validates against the bound meta-model and writes the compiled lib
   expect(await libs.Exists('microsoft/0.1.0/src/microsoft.todl')).toBe(true)
 })
 
+test('publish copies the resources/ folder into the bundle', async () => {
+  const storage = new FakeStorage('fake://Acme')
+  const f = factory()
+  await f.createProject(storage, 'microsoft', { metaModel: { id: 'ea', version: '5' } })
+  await storage.WriteText('microsoft.todl', LIB)
+  await storage.WriteText('resources/azure.svg', '<svg viewBox="0 0 10 10"><path d="M0 0 L10 0 L10 10 Z"/></svg>')
+  const { provider, meta, libs } = publishEnv()
+  await seedMeta(meta)
+
+  const result = await f.publish(await f.openProject(storage), storage, provider)
+  expect(result.ok).toBe(true)
+  expect(await libs.Exists('microsoft/0.1.0/resources/azure.svg')).toBe(true)
+})
+
 test('publish is blocked when the bound meta-model is not published', async () => {
   const storage = new FakeStorage('fake://Acme')
   const f = factory()

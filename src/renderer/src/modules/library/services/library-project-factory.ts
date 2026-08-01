@@ -125,7 +125,7 @@ export class LibraryProjectFactory extends ServiceBase implements IProjectFactor
         for (const s of sources) await dest.WriteText(`${base}/src/${s.uri}`, s.text)
 
         let copied = 0
-        for (const folder of ['visuals', 'assets', 'docs', 'samples', 'thumbnails'])
+        for (const folder of ['visuals', 'assets', 'docs', 'samples', 'thumbnails', 'resources'])
             copied += await this.copyResourceFolder(storage, dest, folder, base)
 
         const warn = scanned.warnings.length > 0

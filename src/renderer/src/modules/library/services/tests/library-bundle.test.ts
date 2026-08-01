@@ -34,6 +34,21 @@ test('ignores Ontology-tier definitions and non-class instances', () => {
     expect(deriveClasses(model)).toEqual([])
 })
 
+test('derives the icon path from a class node icon annotation', () => {
+    const model: TodlDocument = {
+        nodes: [
+            { id: 'location', tier: 'Ontology', typeOf: 'concept', attrs: {} },
+            { id: 'microsoft', tier: 'Ontology', typeOf: 'taxonomy', attrs: {} },
+            { id: 'microsoft.azure', tier: 'Instance', typeOf: 'location', attrs: { class: true, id: 'azure', label: 'Azure' } },
+            { id: 'microsoft.azure@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'resources/azure.svg' } },
+        ],
+        edges: [{ kind: 'Annotated', via: null, from: 'microsoft.azure', to: 'microsoft.azure@icon' }],
+    }
+    expect(deriveClasses(model)[0]).toEqual({
+        id: 'microsoft.azure', localId: 'azure', label: 'Azure', concept: 'location', icon: 'resources/azure.svg',
+    })
+})
+
 test('binds resource files to classes by filename and lists bundle folders', async () => {
     const s = new FakeStorage('fake://lib')
     await s.WriteText('visuals/microsoft.azure.mural', '<template/>')

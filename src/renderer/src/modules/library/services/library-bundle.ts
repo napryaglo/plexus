@@ -1,6 +1,7 @@
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
 import type { IStorage } from '../../../services/storage/storage.js'
+import { projectAnnotations } from '../../meta-model/services/annotation-projection.js'
 
 // One instantiable class a published library provides — a palette item. Derived
 // from the compiled model's Instance-tier clabjects; resource paths are attached
@@ -10,6 +11,7 @@ export interface PublishedClass
     id:         string     // qualified class NodeId, e.g. "microsoft.azure"
     localId?:   string     // attrs.id, the short name, e.g. "azure"
     label?:     string     // attrs.label, if present, e.g. "Azure"
+    icon?:      string     // annotation icon path, e.g. "resources/azure.svg" (bundle-relative)
     concept:    string     // node.typeOf — the meta-model concept it realises, e.g. "location"
     template?:  string     // "visuals/<id>.mural"    — present only if the file exists
     thumbnail?: string     // "thumbnails/<id>.png"   — present only if the file exists
@@ -45,6 +47,8 @@ export function deriveClasses(model: TodlDocument): PublishedClass[]
         const cls: PublishedClass = { id: n.id, concept: n.typeOf }
         if (typeof n.attrs.id === 'string') cls.localId = n.attrs.id
         if (typeof n.attrs.label === 'string') cls.label = n.attrs.label
+        const iconPath = projectAnnotations(model, n.id).icon?.path
+        if (typeof iconPath === 'string') cls.icon = iconPath
         out.push(cls)
     }
     return out
