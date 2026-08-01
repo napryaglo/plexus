@@ -51,16 +51,16 @@ function literal(v: unknown): string
     return typeof v === 'string' ? JSON.stringify(v) : String(v)
 }
 
-export function emitInstances(own: TodlDocument, namespace: string): string
+export function emitInstances(own: TodlDocument, namespace: string, bindings: ModelBindings): string
 {
-    // Every own Instance-tier node — both locally-declared classes (`class …`,
-    // emitted first so `instanceof` targets exist) and leaf instances. Base
-    // library taxonomy terms are not in `own`, so they aren't re-emitted.
+    // Every own Instance-tier node. Locally-declared classes (`class …`) are
+    // orphan-exempt and the `model` body rejects `class`, so they stay at top level
+    // (emitted first, so `instanceof` targets exist). Concrete instances must live
+    // inside a `model` block. Base library taxonomy terms are not in `own`, so they
+    // aren't re-emitted.
     const instances = own.nodes.filter((n) => n.tier === 'Instance')
-    const ordered = [
-        ...instances.filter((n) => (n.attrs as Record<string, unknown>).class === true),
-        ...instances.filter((n) => (n.attrs as Record<string, unknown>).class !== true),
-    ]
+    const classes = instances.filter((n) => (n.attrs as Record<string, unknown>).class === true)
+    const concrete = instances.filter((n) => (n.attrs as Record<string, unknown>).class !== true)
 
     // Index the own edges by source node.
     const instanceOf = new Map<string, string>()                        // from → class id
@@ -76,8 +76,14 @@ export function emitInstances(own: TodlDocument, namespace: string): string
     }
 
     const lines: string[] = [`namespace ${namespace}`, '{']
-    for (const n of ordered) {
-        lines.push(...emitOne(n, instanceOf.get(n.id), rels.get(n.id) ?? []))
+    for (const n of classes) lines.push(...emitOne(n, instanceOf.get(n.id), rels.get(n.id) ?? []))
+    if (concrete.length > 0) {
+        const uses = bindings.uses.length > 0 ? ` uses ${bindings.uses.join(', ')}` : ''
+        lines.push(`  model ${namespace}-model : ${bindings.metaModel}${uses} {`)
+        for (const n of concrete) {
+            for (const l of emitOne(n, instanceOf.get(n.id), rels.get(n.id) ?? [])) lines.push(`  ${l}`)
+        }
+        lines.push('  }')
     }
     lines.push('}')
     return lines.join('\n') + '\n'
