@@ -1,6 +1,8 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import type { TodlDocument } from '@pragmatic-lab/todl'
 
+import { publishPresentation } from '../presentation-publisher.js'
 import { MetaModelNodeKind } from '../meta-model-tree-node.js'
 import { buildCatalog } from '../meta-model-tree-builder.js'
 import { MetaModelsService, dependentLibraryNames } from '../meta-models-service.js'
@@ -95,13 +97,19 @@ const MODEL_JSON = JSON.stringify({
     edges: [{ kind: 'HasField', via: null, from: 'application', to: 'application.kind' }],
 })
 
-const GENERATED = [
-    'resources MetaModelPresentation {',
-    '    DataTemplate x:key="mm:application" [ DataType = MetaModelEntity ] {',
-    '        TextBlock [ Text = "Application" ]',
-    '    }',
-    '}',
-].join('\n')
+// Produce the compiled presentation artifact the loader consumes (the same
+// self-contained JSON publish writes), for a doc carrying the `application`
+// concept — no icon, so no SVG is needed.
+async function compiledPresentation(): Promise<string> {
+    const doc = {
+        nodes: [{ id: 'application', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'Application' } }],
+        edges: [],
+    } as unknown as TodlDocument
+    const tmp = new FakeStorage('fake://tmp')
+    const res = await publishPresentation(new FakeStorage('fake://proj'), tmp, 'tech-architecture/0.1.0', doc)
+    expect(res.ok).toBe(true)
+    return tmp.ReadText('tech-architecture/0.1.0/presentation/presentation.compiled.json')
+}
 
 // A MetaModelsService over a fake meta-models backend seeded with `files`.
 function serviceOver(files: Array<[string, string]>): MetaModelsService {
@@ -117,7 +125,7 @@ function serviceOver(files: Array<[string, string]>): MetaModelsService {
 test('openEntity loads the dict, builds the entity, fills Presentation, and opens', async () => {
     const svc = serviceOver([
         ['tech-architecture/0.1.0/model.json', MODEL_JSON],
-        ['tech-architecture/0.1.0/presentation/presentation.generated.mu', GENERATED],
+        ['tech-architecture/0.1.0/presentation/presentation.compiled.json', await compiledPresentation()],
     ])
     await svc.openEntity({ modelId: 'tech-architecture', version: '0.1.0', id: 'application' })
 

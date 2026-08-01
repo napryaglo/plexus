@@ -103,6 +103,13 @@ export class MetaModelProjectFactory extends ServiceBase
         const doc = toJSON(model)
         const dest = ensureMetaModelsBackend(provider)
         const base = `${manifest.id}/${manifest.modelVersion}`
+
+        // Compile the presentation first — a missing icon blocks the publish
+        // before anything is written to the backend.
+        const pres = await publishPresentation(storage, dest, base, doc)
+        if (!pres.ok)
+            return { ok: false, message: `Publish blocked: missing icon file(s): ${pres.missing.join(', ')}.` }
+
         await dest.WriteText(`${base}/model.json`, JSON.stringify(doc, null, 2))
         for (const s of sources) await dest.WriteText(`${base}/src/${s.uri}`, s.text)
         // Ship a thin package descriptor (identity + package-level annotations) so
@@ -115,10 +122,6 @@ export class MetaModelProjectFactory extends ServiceBase
         await dest.WriteText(`${base}/manifest.json`, JSON.stringify(manifestFile, null, 2))
         // Keep the project's presentation dictionary current with what was published.
         await this.writePresentation(storage, doc)
-        // Ship a self-contained presentation payload into the backend so a
-        // consumer can instantiate the entity templates (sub-project B).
-        const authorDicts = await this.scanAuthorDicts(storage)
-        const pres = await publishPresentation(storage, dest, base, doc, authorDicts)
         return {
             ok: true,
             message: `Published ${manifest.id}@${manifest.modelVersion} (${sources.length} file(s), `

@@ -226,13 +226,9 @@ test('publish ships the presentation payload into the backend', async () => {
     const result = await f.publish(project, storage, provider)
 
     expect(result.ok).toBe(true)
-    // Generated dictionary shipped to the backend with the per-entity templates.
-    const src = await dest.ReadText('acme/0.1.0/presentation/presentation.generated.mu')
-    expect(src).toContain('DataTemplate x:key="mm:model"')
-    expect(src).toContain('merge MetaModelPresentationCustom')
-    // Author override copied under overrides/.
-    expect(await dest.ReadText('acme/0.1.0/presentation/overrides/custom.mu'))
-        .toBe('resources MetaModelPresentationCustom { }')
+    // Compiled presentation shipped to the backend (self-contained, no raw .mu).
+    expect(await dest.Exists('acme/0.1.0/presentation/presentation.compiled.json')).toBe(true)
+    expect(await dest.Exists('acme/0.1.0/presentation/presentation.generated.mu')).toBe(false)
     // Result message reports the presentation counts.
     expect(result.message).toMatch(/presentation:/)
     // Existing contract intact.
