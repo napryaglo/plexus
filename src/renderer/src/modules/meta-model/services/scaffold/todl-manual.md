@@ -184,8 +184,10 @@ Declare an annotation type like a concept, with typed params:
     annotation category { name : string; order : integer ?; }
     annotation author   { name : string; email : string ?; }
 
-Apply it with `annotate` — legal **only inside a concept body** or a `package { }`
-block — giving each param a fixed value:
+Apply it with `annotate` — legal inside a `concept` body, a taxonomy `term` body,
+a `class` declaration, or a `package { }` block (annotations are type-level; a
+concrete instance carrying `annotate` is `annotation.invalid-target`) — giving
+each param a fixed value:
 
     concept actor
     {
