@@ -19,12 +19,16 @@ import {
     type ResourceDictionary,
     type Visual,
 } from '@pragmatic-lab/mural/runtime'
-import type { IActivatable } from '@pragmatic-lab/mural/framework'
+import { DialogService, type IActivatable } from '@pragmatic-lab/mural/framework'
 import { DataTemplate } from '@pragmatic-lab/mural/basic'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
+import type { IStorage } from '../../../services/storage/storage.js'
+import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
+import { ensureLibrariesBackend } from '../../library/services/libraries-backend.js'
+import { discoverLibraries, type LoadedLibrary } from '../../library/services/library-loader.js'
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
-import { buildCatalog } from './meta-model-tree-builder.js'
+import { buildCatalog, type DeleteTarget } from './meta-model-tree-builder.js'
 import { loadPresentation } from './presentation-loader.js'
 import { buildEntity } from './meta-model-entity-builder.js'
 import { MetaModelEntity } from './meta-model-entity.js'
@@ -84,13 +88,73 @@ export class MetaModelsService extends ServiceBase implements IActivatable
         const seq = ++this.reloadSeq
         this.dictCache.clear()
         const backend = ensureMetaModelsBackend(this.Provider)
-        const built = await buildCatalog(backend, (ref) => { void this.openEntity(ref) })
+        const built = await buildCatalog(
+            backend,
+            (ref) => { void this.openEntity(ref) },
+            (t) => { void this.deleteTarget(t) },
+        )
         if (seq !== this.reloadSeq) return   // a newer reload superseded this one
 
         const nodes = this.Nodes
         nodes.Clear()
         for (const n of built) nodes.Add(n)
         this.set_property_value(MetaModelsService.IsEmptyKey, built.length === 0)
+    }
+
+    // Delete a published meta-model — one version (`<id>/<version>`) or a whole id
+    // (all versions). Warns in the confirm about installed libraries that bind it;
+    // headless (no DialogService) proceeds. Cleans an emptied id folder, then
+    // reloads so the row disappears.
+    public async deleteTarget(target: DeleteTarget): Promise<void>
+    {
+        const backend = ensureMetaModelsBackend(this.Provider)
+        const dialogs = this.Provider.get(DialogService.Key)
+        if (dialogs !== undefined)
+        {
+            const deps = await this.dependentLibraries(target.id, target.version)
+            const message = await this.confirmMessage(backend, target, deps)
+            const vm = new ConfirmDialogModel(message, 'Delete', (r) => dialogs.Close(r))
+            const ok = await dialogs.Show<boolean>({ Title: 'Delete Meta-Model', Content: vm, Width: 440 })
+            if (ok !== true) return
+        }
+
+        const path = target.version !== undefined ? `${target.id}/${target.version}` : target.id
+        await backend.Delete(path)
+        if (target.version !== undefined)
+        {
+            const remaining = (await backend.List(target.id)).filter((e) => e.IsDirectory)
+            if (remaining.length === 0) await backend.Delete(target.id)
+        }
+        await this.reload()
+    }
+
+    // Installed libraries bound to this meta-model, by name. Degrades to [] if the
+    // libraries store is unavailable.
+    private async dependentLibraries(id: string, version?: string): Promise<string[]>
+    {
+        try
+        {
+            const libs = await discoverLibraries(ensureLibrariesBackend(this.Provider))
+            return dependentLibraryNames(libs, id, version)
+        }
+        catch { return [] }
+    }
+
+    private async confirmMessage(backend: IStorage, target: DeleteTarget, deps: string[]): Promise<string>
+    {
+        let base: string
+        if (target.version !== undefined)
+        {
+            base = `Delete meta-model "${target.id} ${target.version}"? This removes the published copy.`
+        }
+        else
+        {
+            const n = (await backend.List(target.id)).filter((e) => e.IsDirectory).length
+            base = `Delete all ${n} version(s) of meta-model "${target.id}"? This removes every published copy.`
+        }
+        if (deps.length === 0) return base
+        return `${base}\n\n${deps.length} installed library(ies) bind to it: ${deps.join(', ')}. `
+            + `They'll fail to resolve until rebound. (Architecture projects that bind it aren't tracked here.)`
     }
 
     // Open the drawer for a double-clicked entity: load-or-cache the version's
@@ -143,4 +207,14 @@ export class MetaModelsService extends ServiceBase implements IActivatable
         this.set_property_value(MetaModelsService.DrawerEntityKey, entity)
         this.set_property_value(MetaModelsService.IsDrawerOpenKey, true)
     }
+}
+
+// The names of installed libraries that bind the given meta-model — all versions
+// when `version` is omitted, else the exact version. Pure over already-loaded
+// libraries.
+export function dependentLibraryNames(libs: readonly LoadedLibrary[], id: string, version?: string): string[]
+{
+    return libs
+        .filter((l) => l.metaModel.id === id && (version === undefined || l.metaModel.version === version))
+        .map((l) => l.name)
 }

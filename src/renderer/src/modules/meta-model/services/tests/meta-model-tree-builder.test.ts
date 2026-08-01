@@ -2,9 +2,10 @@ import { test, expect } from 'vitest'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { MetaModelNodeKind, type EntityRef } from '../meta-model-tree-node.js'
-import { scanPublishedModels, buildCatalog, loadVersionEntities } from '../meta-model-tree-builder.js'
+import { scanPublishedModels, buildCatalog, loadVersionEntities, type DeleteTarget } from '../meta-model-tree-builder.js'
 
 const NO_ACTIVATE = (): void => {}
+const NO_DELETE = (): void => {}
 
 function backendWith(entries: Array<[string, string]>): FakeStorage
 {
@@ -36,7 +37,7 @@ test('scanPublishedModels groups by id and sorts versions numeric-aware', async 
 
 test('buildCatalog yields Model nodes with lazy Version children', async () => {
     const storage = backendWith([['tech/0.1.0/model.json', MODEL_JSON]])
-    const nodes = await buildCatalog(storage, NO_ACTIVATE)
+    const nodes = await buildCatalog(storage, NO_ACTIVATE, NO_DELETE)
 
     expect(nodes).toHaveLength(1)
     expect(nodes[0].Kind).toBe(MetaModelNodeKind.Model)
@@ -46,6 +47,30 @@ test('buildCatalog yields Model nodes with lazy Version children', async () => {
     expect(version.Label).toBe('0.1.0')
     // Lazy → the version starts with its "Loading…" sentinel.
     expect(version.Children.Get(0)!.Label).toBe('Loading…')
+})
+
+test('buildCatalog wires ModelId/ModelVersion + DeleteCommand on Model and Version nodes', async () => {
+    const storage = backendWith([
+        ['a/1.0.0/model.json', '{"nodes":[],"edges":[]}'],
+        ['a/1.1.0/model.json', '{"nodes":[],"edges":[]}'],
+        ['b/1.0.0/model.json', '{"nodes":[],"edges":[]}'],
+    ])
+
+    const calls: DeleteTarget[] = []
+    const nodes = await buildCatalog(storage, NO_ACTIVATE, (t) => calls.push(t))
+
+    const a = nodes.find((n) => n.Label === 'a')!
+    expect(a.ModelId).toBe('a')
+    expect(a.DeleteCommand).toBeDefined()
+    a.DeleteCommand!.Execute()
+    expect(calls).toContainEqual({ id: 'a' })
+
+    const v = a.Children.ToArray().find((c) => c.Label === '1.0.0')!
+    expect(v.ModelId).toBe('a')
+    expect(v.ModelVersion).toBe('1.0.0')
+    expect(v.DeleteCommand).toBeDefined()
+    v.DeleteCommand!.Execute()
+    expect(calls).toContainEqual({ id: 'a', version: '1.0.0' })
 })
 
 test('loadVersionEntities groups entities by kind, non-empty groups only, labelled', async () => {

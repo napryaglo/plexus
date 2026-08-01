@@ -1,4 +1,5 @@
 import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
+import { RelayCommand } from '@pragmatic-lab/mural/runtime'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import { MetaModelTreeNode, MetaModelNodeKind, type EntityRef } from './meta-model-tree-node.js'
@@ -6,6 +7,9 @@ import { ontologyEntities, humanize, OntologyKind } from './presentation-generat
 
 // A published meta-model as plain data: its id and the versions found under it.
 export interface PublishedModel { id: string; versions: string[] }
+
+// A delete request from a tree row: a whole model (id only) or one version.
+export interface DeleteTarget { id: string; version?: string }
 
 // Scan the meta-models backend for published models. Layout on disk is
 // `<id>/<modelVersion>/…`, so the root's directories are ids and each id's
@@ -26,19 +30,27 @@ export async function scanPublishedModels(storage: IStorage): Promise<PublishedM
 // Build the catalog layer: one Model node per published id, each with lazy
 // Version children whose entities load from model.json on first expand.
 export async function buildCatalog(
-    storage: IStorage, activate: (ref: EntityRef) => void,
+    storage: IStorage,
+    activate: (ref: EntityRef) => void,
+    onDelete: (target: DeleteTarget) => void,
 ): Promise<MetaModelTreeNode[]>
 {
     const published = await scanPublishedModels(storage)
     return published.map((p) =>
     {
         const model = MetaModelTreeNode.leaf(MetaModelNodeKind.Model, p.id)
+        model.ModelId = p.id
+        model.DeleteCommand = new RelayCommand(() => onDelete({ id: p.id }))
         for (const version of p.versions)
         {
-            model.Children.Add(MetaModelTreeNode.lazy(
+            const vnode = MetaModelTreeNode.lazy(
                 MetaModelNodeKind.Version, version,
                 () => loadVersionEntities(storage, p.id, version, activate),
-            ))
+            )
+            vnode.ModelId = p.id
+            vnode.ModelVersion = version
+            vnode.DeleteCommand = new RelayCommand(() => onDelete({ id: p.id, version }))
+            model.Children.Add(vnode)
         }
         return model
     })
