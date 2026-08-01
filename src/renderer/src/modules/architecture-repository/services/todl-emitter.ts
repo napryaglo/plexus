@@ -15,6 +15,28 @@ import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
 // attrs carried on an instance node that are markers, not authored fields.
 const MARKER_ATTRS = new Set(['id', 'class'])
 
+export interface ModelBindings { metaModel: string; uses: string[] }
+
+// Derive a model's bindings from the compiled bases + the project namespace.
+// metaModel = the first (sorted) distinct `namespace` attr across the BASE nodes;
+// uses = the remaining base namespaces plus the project namespace (so local `class`
+// constructors stay in scope), sorted, minus the meta-model slot. Validity only
+// requires every bound name to be present in the merged doc — validateModel makes
+// no meta-model/library distinction.
+export function deriveBindings(bases: readonly TodlDocument[], namespace: string): ModelBindings
+{
+    const baseNs = new Set<string>()
+    for (const b of bases) for (const n of b.nodes) {
+        const ns = (n.attrs as Record<string, unknown>)['namespace']
+        if (typeof ns === 'string' && ns.length > 0) baseNs.add(ns)
+    }
+    const sortedBase = [...baseNs].sort()
+    const metaModel = sortedBase[0] ?? namespace
+    const usesSet = new Set<string>([...sortedBase.slice(1), namespace])
+    usesSet.delete(metaModel)
+    return { metaModel, uses: [...usesSet].sort() }
+}
+
 // The bare local name of an id (drops any dotting) — used for the instance's own
 // id, its concept, and an instanceof class. Reference TARGETS keep their full
 // dotted id (that is how a taxonomy term is addressed).
@@ -29,16 +51,16 @@ function literal(v: unknown): string
     return typeof v === 'string' ? JSON.stringify(v) : String(v)
 }
 
-export function emitInstances(own: TodlDocument, namespace: string): string
+export function emitInstances(own: TodlDocument, namespace: string, bindings: ModelBindings): string
 {
-    // Every own Instance-tier node — both locally-declared classes (`class …`,
-    // emitted first so `instanceof` targets exist) and leaf instances. Base
-    // library taxonomy terms are not in `own`, so they aren't re-emitted.
+    // Every own Instance-tier node. Locally-declared classes (`class …`) are
+    // orphan-exempt and the `model` body rejects `class`, so they stay at top level
+    // (emitted first, so `instanceof` targets exist). Concrete instances must live
+    // inside a `model` block. Base library taxonomy terms are not in `own`, so they
+    // aren't re-emitted.
     const instances = own.nodes.filter((n) => n.tier === 'Instance')
-    const ordered = [
-        ...instances.filter((n) => (n.attrs as Record<string, unknown>).class === true),
-        ...instances.filter((n) => (n.attrs as Record<string, unknown>).class !== true),
-    ]
+    const classes = instances.filter((n) => (n.attrs as Record<string, unknown>).class === true)
+    const concrete = instances.filter((n) => (n.attrs as Record<string, unknown>).class !== true)
 
     // Index the own edges by source node.
     const instanceOf = new Map<string, string>()                        // from → class id
@@ -54,8 +76,14 @@ export function emitInstances(own: TodlDocument, namespace: string): string
     }
 
     const lines: string[] = [`namespace ${namespace}`, '{']
-    for (const n of ordered) {
-        lines.push(...emitOne(n, instanceOf.get(n.id), rels.get(n.id) ?? []))
+    for (const n of classes) lines.push(...emitOne(n, instanceOf.get(n.id), rels.get(n.id) ?? []))
+    if (concrete.length > 0) {
+        const uses = bindings.uses.length > 0 ? ` uses ${bindings.uses.join(', ')}` : ''
+        lines.push(`  model ${namespace}-model : ${bindings.metaModel}${uses} {`)
+        for (const n of concrete) {
+            for (const l of emitOne(n, instanceOf.get(n.id), rels.get(n.id) ?? [])) lines.push(`  ${l}`)
+        }
+        lines.push('  }')
     }
     lines.push('}')
     return lines.join('\n') + '\n'

@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import { check, checkAgainst, toJSON, type TodlDocument } from '@pragmatic-lab/todl'
 
-import { emitInstances } from '../todl-emitter.js'
+import { emitInstances, deriveBindings } from '../todl-emitter.js'
 
 // Bases: a meta-model (component references a technology) + a library taxonomy of
 // technologies. Reused across the round-trip assertions.
@@ -27,11 +27,14 @@ function baseIds(bs: TodlDocument[]): Set<string> {
     return s
 }
 
-// Extract the own instance sub-document from a full compiled model.
+// Extract the own instance sub-document from a full compiled model: drop the base
+// nodes AND the synthesized model container node (typeOf 'model') + its edges, so
+// the comparison sees only instances + local classes.
 function ownOf(full: TodlDocument, ids: Set<string>): TodlDocument {
+    const modelIds = new Set(full.nodes.filter((n) => n.typeOf === 'model').map((n) => n.id))
     return {
-        nodes: full.nodes.filter((n) => !ids.has(n.id)),
-        edges: full.edges.filter((e) => !ids.has(String(e.from))),
+        nodes: full.nodes.filter((n) => !ids.has(n.id) && !modelIds.has(n.id)),
+        edges: full.edges.filter((e) => !ids.has(String(e.from)) && !modelIds.has(String(e.from))),
     }
 }
 
@@ -49,12 +52,21 @@ function ownFrom(bs: TodlDocument[], source: string): TodlDocument {
     return ownOf(toJSON(r.model), baseIds(bs))
 }
 
+test('deriveBindings: meta-model is the first sorted base namespace; uses adds the rest + self', () => {
+    expect(deriveBindings(bases(), 'app')).toEqual({ metaModel: 'ea', uses: ['app', 'ms'] })
+})
+
+test('deriveBindings: no bases binds the project namespace alone', () => {
+    expect(deriveBindings([], 'app')).toEqual({ metaModel: 'app', uses: [] })
+})
+
 test('round-trips a concept instance with a scalar field and a single reference', () => {
     const bs = bases()
-    const src = `namespace app { component gw { label = "Gateway"; realised-by = &stack.azure-openai; } }`
+    const src = `namespace app { model app-model : ea uses ms { component gw { label = "Gateway"; realised-by = &stack.azure-openai; } } }`
     const own = ownFrom(bs, src)
 
-    const emitted = emitInstances(own, 'app')
+    const emitted = emitInstances(own, 'app', deriveBindings(bs, 'app'))
+    expect(emitted).toContain('model app-model : ea')
     const own2 = ownFrom(bs, emitted)
 
     expect(normal(own2)).toEqual(normal(own))
@@ -64,11 +76,15 @@ test('round-trips a many-valued reference (list) and an instanceof class', () =>
     const bs = bases()
     const src = `namespace app {
       class component web-tier { realised-by = &stack.azure-func; }
-      component api instanceof web-tier { label = "API"; deployed-to = [stack.azure-openai, stack.azure-func]; }
+      model app-model : ea uses ms, app {
+        component api instanceof web-tier { label = "API"; deployed-to = [stack.azure-openai, stack.azure-func]; }
+      }
     }`
     const own = ownFrom(bs, src)
 
-    const emitted = emitInstances(own, 'app')
+    const emitted = emitInstances(own, 'app', deriveBindings(bs, 'app'))
+    expect(emitted).toContain('model app-model : ea')
+    expect(emitted).toMatch(/^\s*class component web-tier/m)   // local class stays top-level
     const own2 = ownFrom(bs, emitted)
 
     expect(normal(own2)).toEqual(normal(own))

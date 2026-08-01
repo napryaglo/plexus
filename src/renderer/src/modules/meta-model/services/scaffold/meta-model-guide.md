@@ -55,21 +55,11 @@ it's a validated scalar, it's a **primitive**.
   technology supports") belongs in an `invariant`, in prose at minimum. The
   validator surfaces the prose when the rule is violated.
 
-## The descriptor record
+## Publishing identity
 
-Every project has exactly one `meta-model` record (see the manual §7). It sets
-the identity used when publishing:
-
-    meta-model my-mm
-    {
-        name = "…";
-        version = 1;               // bump on a breaking change
-        root-concept = model;      // the concept that IS "the model"
-        top-level-concepts = [ … ];
-    }
-
-The project manifest (`project.json`) also carries an `id` and `modelVersion`;
-those form the published coordinate `<id>@<modelVersion>`.
+The project manifest (`project.json`) carries the `id` and `modelVersion` that
+form the published coordinate `<id>@<modelVersion>`; there is no separate
+descriptor record to author.
 
 ## Validate, then publish
 

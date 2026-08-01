@@ -209,31 +209,13 @@ Connectors and steps can be written as edges:
   attributes; otherwise end with `;`.
 - Inside an `application-connectors { … }` block, list bare `&a --> &b` edges.
 
-## 7. The `meta-model` descriptor
-
-Once per project, declare the meta-model record. It names the model, its
-version, its root concept, and the concepts that appear at the top level. Note
-that `root-concept` and `top-level-concepts` take **bare concept names** (not
-`&` references):
-
-    meta-model acme-ea
-    {
-        name = "Acme Enterprise Architecture";
-        version = 1;
-        root-concept = model;
-        top-level-concepts = [ component, location, technology ];
-    }
-
-`version` is bumped on breaking changes; it (with the project id) forms the
-published `<id>@<modelVersion>` coordinate.
-
-## 8. Modifiers
+## 7. Modifiers
 
 `internal` and `sealed` may prefix a declaration
 (`internal concept …`, `sealed concept …`) to mark visibility / finality. They
 are optional; omit them unless a rule calls for them.
 
-## 9. Diagnostics you'll see
+## 8. Diagnostics you'll see
 
 The Problems panel reports these families (code → meaning):
 
@@ -255,7 +237,7 @@ The Problems panel reports these families (code → meaning):
 Fix errors from the top down — a syntax error early in a file can cascade into
 spurious later diagnostics. Re-check after each fix.
 
-## 10. Quick reference
+## 9. Quick reference
 
     namespace a.b.c { … }                       // one per file
     import a.b.d;                                // first in the body
@@ -274,11 +256,3 @@ spurious later diagnostics. Re-check after each fix.
     }
 
     taxonomy some-taxonomy : represents thing { term a { label = "A"; } }
-
-    meta-model my-mm
-    {
-        name = "My Meta-Model";
-        version = 1;
-        root-concept = model;
-        top-level-concepts = [ thing ];
-    }

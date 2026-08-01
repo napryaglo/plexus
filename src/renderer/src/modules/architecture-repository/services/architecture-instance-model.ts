@@ -1,6 +1,6 @@
 import { checkAgainst, fromJSON, toJSON, type TodlDocument, type JsonNode, type Repository, type FieldSchema } from '@pragmatic-lab/todl'
 
-import { emitInstances } from './todl-emitter.js'
+import { emitInstances, deriveBindings } from './todl-emitter.js'
 
 // The editable instance model behind an architecture-diagram document.
 //
@@ -34,9 +34,13 @@ export class ArchInstanceModel
         let own: TodlDocument = { nodes: [], edges: [] }
         if (instanceSource.trim().length > 0) {
             const full = toJSON(checkAgainst([...bases], [{ uri: `${namespace}.todl`, text: instanceSource }]).model)
+            // The synthesized `model` container node (typeOf 'model') is a
+            // serialization artifact, not an editable instance — strip it (and its
+            // Contains edges) so `own` stays instances + local classes as before.
+            const modelIds = new Set(full.nodes.filter((n) => n.typeOf === 'model').map((n) => n.id))
             own = {
-                nodes: full.nodes.filter((n) => !baseIds.has(n.id)),
-                edges: full.edges.filter((e) => !baseIds.has(String(e.from))),
+                nodes: full.nodes.filter((n) => !baseIds.has(n.id) && !modelIds.has(n.id)),
+                edges: full.edges.filter((e) => !baseIds.has(String(e.from)) && !modelIds.has(String(e.from))),
             }
         }
         return new ArchInstanceModel(own, bases, baseIds, namespace)
@@ -126,7 +130,7 @@ export class ArchInstanceModel
         return repo.effectiveSchema(fromConcept).fields.filter((f) => compatible.has(f.type))
     }
 
-    public emit(): string { return emitInstances(this.own, this.namespace) }
+    public emit(): string { return emitInstances(this.own, this.namespace, deriveBindings(this.bases, this.namespace)) }
 
     public onChanged(listener: () => void): () => void
     {
