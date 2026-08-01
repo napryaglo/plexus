@@ -64,6 +64,14 @@ resources MetaModelResources {
         }
     }
 
+    // Right-click menu for a published meta-model row: delete it. Attached only to
+    // Model / Version nodes (see the MetaModelNodeTemplate trigger), so Group /
+    // Entity rows get no menu. $DeleteCommand resolves against the row's
+    // MetaModelTreeNode DataContext.
+    ContextMenu x:key="MetaModelContextMenu" {
+        MenuItem [ Header = "Delete", Command = $DeleteCommand ]
+    }
+
     // One tree row (any level): the per-kind leading icon + the node's label.
     // `itemsselector = Children` recurses the template down the tree; the
     // framework's TreeView chrome supplies chevrons, indent, hover, selection.
@@ -74,5 +82,7 @@ resources MetaModelResources {
                     Width = 16, Height = 16, Margin = (0,0,6,0), VerticalAlignment = Center ]
             TextBlock [ Text = $Label, Style = @BodyMedium, VerticalAlignment = Center ]
         }
+        // Only Model (id) and Version rows carry a delete command / context menu.
+        when ( $IsDeletable = true ) { ContextMenuService.ContextMenu = @MetaModelContextMenu; }
     }
 }
