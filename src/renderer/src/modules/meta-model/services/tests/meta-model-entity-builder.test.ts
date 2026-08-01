@@ -48,4 +48,22 @@ describe('buildEntity', () => {
     expect(buildEntity(annotated, 'actor').Annotations).toEqual({ icon: { path: 'icons/actor.svg' } })
     expect(buildEntity(annotated, 'plain').Annotations).toEqual({})
   })
+
+  it('resolves Label from an annotate label when attrs.label is absent; attr still wins', () => {
+    const annotated: TodlDocument = {
+      nodes: [
+        { id: 'actor',        tier: 'Ontology', typeOf: 'concept', attrs: {} },
+        { id: 'actor@label',  tier: 'Ontology', typeOf: 'label',   attrs: { text: 'Human Actor' } },
+        { id: 'widget',       tier: 'Ontology', typeOf: 'concept', attrs: { label: 'Attr Label' } },
+        { id: 'widget@label', tier: 'Ontology', typeOf: 'label',   attrs: { text: 'Ann Label' } },
+      ],
+      edges: [
+        { kind: 'Annotated', via: null, from: 'actor',  to: 'actor@label' },
+        { kind: 'Annotated', via: null, from: 'widget', to: 'widget@label' },
+      ],
+    } as unknown as TodlDocument
+
+    expect(buildEntity(annotated, 'actor').Label).toBe('Human Actor')  // annotation fallback
+    expect(buildEntity(annotated, 'widget').Label).toBe('Attr Label')  // attr wins
+  })
 })

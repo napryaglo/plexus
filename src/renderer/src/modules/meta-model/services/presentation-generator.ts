@@ -4,6 +4,8 @@
 
 import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
 
+import { projectAnnotations } from './annotation-projection.js'
+
 // The ontology-tier typeOf values presented as first-class entities. `field`
 // (concept attributes) is intentionally excluded.
 export enum OntologyKind
@@ -32,6 +34,12 @@ export function distinctIcons(model: TodlDocument): string[]
     for (const n of model.nodes) {
         const icon = n.attrs['icon']
         if (typeof icon === 'string' && icon.length > 0) set.add(icon)
+        // Annotation-sourced icon: a `<x>@icon` application node (typeOf 'icon')
+        // carries the path on its `path` attr.
+        if (n.typeOf === 'icon') {
+            const path = n.attrs['path']
+            if (typeof path === 'string' && path.length > 0) set.add(path)
+        }
     }
     return [...set].sort()
 }
@@ -43,7 +51,7 @@ export function distinctIcons(model: TodlDocument): string[]
 export function generatePresentationMu(model: TodlDocument, authorOverrideDicts: readonly string[]): string
 {
     const includes = distinctIcons(model).map((p) => `    include "${p}" as ${iconKey(p)}`)
-    const templates = ontologyEntities(model).map(entityTemplate)
+    const templates = ontologyEntities(model).map((n) => entityTemplate(model, n))
     const merges = authorOverrideDicts.map((d) => `    merge ${d}`)
 
     const lines: string[] = [
@@ -65,16 +73,16 @@ export function generatePresentationMu(model: TodlDocument, authorOverrideDicts:
     return lines.join('\n')
 }
 
-// One entity's DataTemplate. Icon + label when the node carries an attrs.icon,
-// else a label-only box. Label = attrs.label ?? humanize(id). Keyed "mm:<id>" so
-// a consumer resolves an entity to its template by id.
-function entityTemplate(n: JsonNode): string
+// One entity's DataTemplate. Icon + label when the entity resolves an icon, else
+// a label-only box. Icon/label resolve attr-primary, annotation-fallback via
+// resolveFacets (attrs.icon ?? icon.path; attrs.label ?? label.text ?? humanize).
+// Keyed "mm:<id>" so a consumer resolves an entity to its template by id.
+function entityTemplate(doc: TodlDocument, n: JsonNode): string
 {
-    const icon = n.attrs['icon']
-    const label = typeof n.attrs['label'] === 'string' ? String(n.attrs['label']) : humanize(n.id)
+    const { icon, label } = resolveFacets(n, projectAnnotations(doc, n.id))
     const labelBlock = `TextBlock [ Text = "${escapeMu(label)}", Style = @BodyMedium, Foreground = @OnSurface ]`
 
-    const body = (typeof icon === 'string' && icon.length > 0)
+    const body = (icon !== undefined)
         ? [
             `            StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {`,
             `                Shape [ Geometry = @${iconKey(icon)}, Fill = @OnSurfaceVariant, Width = 16, Height = 16, Margin = (0,0,6,0) ]`,
@@ -113,4 +121,27 @@ export function humanize(id: string): string
     return id.split(/[-._]/).filter(Boolean)
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(' ')
+}
+
+export interface PresentationFacets { icon?: string; label: string }
+
+// Attr-primary, annotation-fallback resolution of the well-known presentation
+// facets for a node. `annotations` is the SP2 projected bag for that node
+// (projectAnnotations output). Only a non-empty string counts as an icon; the
+// label falls back through the annotation to humanize(id).
+export function resolveFacets(node: JsonNode, annotations: Record<string, Record<string, unknown>>): PresentationFacets
+{
+    const attrIcon = node.attrs['icon']
+    const annIcon = annotations['icon']?.['path']
+    const icon = (typeof attrIcon === 'string' && attrIcon.length > 0) ? attrIcon
+        : (typeof annIcon === 'string' && annIcon.length > 0) ? annIcon
+            : undefined
+
+    const attrLabel = node.attrs['label']
+    const annLabel = annotations['label']?.['text']
+    const label = typeof attrLabel === 'string' ? attrLabel
+        : typeof annLabel === 'string' ? annLabel
+            : humanize(node.id)
+
+    return { icon, label }
 }

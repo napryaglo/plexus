@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
-import { iconKey, humanize, ontologyEntities, distinctIcons, generatePresentationMu } from '../presentation-generator.js'
+import { iconKey, humanize, ontologyEntities, distinctIcons, generatePresentationMu, resolveFacets } from '../presentation-generator.js'
 
 function doc(nodes: TodlDocument['nodes']): TodlDocument { return { nodes, edges: [] } }
 
@@ -77,4 +77,59 @@ test('generatePresentationMu: no author dicts → no merge line; deterministic',
 test('generatePresentationMu escapes quotes/backslashes in a label', () => {
     const m = doc([{ id: 'x', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'A "quoted" \\ name' } }])
     expect(generatePresentationMu(m, [])).toContain('Text = "A \\"quoted\\" \\\\ name"')
+})
+
+test('resolveFacets: attr wins over annotation for icon and label', () => {
+    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'a.svg', label: 'Attr' } } as unknown as import('@pragmatic-lab/todl').JsonNode
+    expect(resolveFacets(node, { icon: { path: 'ann.svg' }, label: { text: 'Ann' } })).toEqual({ icon: 'a.svg', label: 'Attr' })
+})
+
+test('resolveFacets: annotation fallback when no attr present', () => {
+    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} } as unknown as import('@pragmatic-lab/todl').JsonNode
+    expect(resolveFacets(node, { icon: { path: 'ann.svg' }, label: { text: 'Ann' } })).toEqual({ icon: 'ann.svg', label: 'Ann' })
+})
+
+test('resolveFacets: humanize label and no icon when neither present', () => {
+    const node = { id: 'app-component', tier: 'Ontology', typeOf: 'concept', attrs: {} } as unknown as import('@pragmatic-lab/todl').JsonNode
+    expect(resolveFacets(node, {})).toEqual({ icon: undefined, label: 'App Component' })
+})
+
+test('distinctIcons unions attrs.icon and annotation icon-application paths, sorted', () => {
+    const m = {
+        nodes: [
+            { id: 'a', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'resources/a.svg' } },
+            { id: 'b@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'resources/b.svg' } },
+            { id: 'b@icon-dup', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'resources/a.svg' } }, // dup
+        ],
+        edges: [],
+    } as unknown as TodlDocument
+    expect(distinctIcons(m)).toEqual(['resources/a.svg', 'resources/b.svg'])
+})
+
+test('generatePresentationMu bakes annotation-sourced icon/label, attr still wins', () => {
+    const m = {
+        nodes: [
+            { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} },
+            { id: 'actor@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'resources/actor.svg' } },
+            { id: 'actor@label', tier: 'Ontology', typeOf: 'label', attrs: { text: 'Human Actor' } },
+            { id: 'gateway', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'resources/gw.svg', label: 'API Gateway' } },
+            { id: 'gateway@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'resources/ann-gw.svg' } },
+        ],
+        edges: [
+            { kind: 'Annotated', via: null, from: 'actor', to: 'actor@icon' },
+            { kind: 'Annotated', via: null, from: 'actor', to: 'actor@label' },
+            { kind: 'Annotated', via: null, from: 'gateway', to: 'gateway@icon' },
+        ],
+    } as unknown as TodlDocument
+    const out = generatePresentationMu(m, [])
+
+    // actor: annotation icon + label baked into its template
+    expect(out).toContain('include "resources/actor.svg" as mm_icon_actor')
+    expect(out).toContain('Geometry = @mm_icon_actor')
+    expect(out).toContain('Text = "Human Actor"')
+
+    // gateway: attr wins for both; annotation icon still included by the union
+    expect(out).toContain('Geometry = @mm_icon_gw')
+    expect(out).toContain('Text = "API Gateway"')
+    expect(out).toContain('include "resources/ann-gw.svg" as mm_icon_ann_gw')
 })
