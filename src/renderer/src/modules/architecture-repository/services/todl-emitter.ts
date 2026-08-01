@@ -15,6 +15,28 @@ import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
 // attrs carried on an instance node that are markers, not authored fields.
 const MARKER_ATTRS = new Set(['id', 'class'])
 
+export interface ModelBindings { metaModel: string; uses: string[] }
+
+// Derive a model's bindings from the compiled bases + the project namespace.
+// metaModel = the first (sorted) distinct `namespace` attr across the BASE nodes;
+// uses = the remaining base namespaces plus the project namespace (so local `class`
+// constructors stay in scope), sorted, minus the meta-model slot. Validity only
+// requires every bound name to be present in the merged doc — validateModel makes
+// no meta-model/library distinction.
+export function deriveBindings(bases: readonly TodlDocument[], namespace: string): ModelBindings
+{
+    const baseNs = new Set<string>()
+    for (const b of bases) for (const n of b.nodes) {
+        const ns = (n.attrs as Record<string, unknown>)['namespace']
+        if (typeof ns === 'string' && ns.length > 0) baseNs.add(ns)
+    }
+    const sortedBase = [...baseNs].sort()
+    const metaModel = sortedBase[0] ?? namespace
+    const usesSet = new Set<string>([...sortedBase.slice(1), namespace])
+    usesSet.delete(metaModel)
+    return { metaModel, uses: [...usesSet].sort() }
+}
+
 // The bare local name of an id (drops any dotting) — used for the instance's own
 // id, its concept, and an instanceof class. Reference TARGETS keep their full
 // dotted id (that is how a taxonomy term is addressed).

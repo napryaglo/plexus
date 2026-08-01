@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import { check, checkAgainst, toJSON, type TodlDocument } from '@pragmatic-lab/todl'
 
-import { emitInstances } from '../todl-emitter.js'
+import { emitInstances, deriveBindings } from '../todl-emitter.js'
 
 // Bases: a meta-model (component references a technology) + a library taxonomy of
 // technologies. Reused across the round-trip assertions.
@@ -48,6 +48,14 @@ function ownFrom(bs: TodlDocument[], source: string): TodlDocument {
     expect(r.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
     return ownOf(toJSON(r.model), baseIds(bs))
 }
+
+test('deriveBindings: meta-model is the first sorted base namespace; uses adds the rest + self', () => {
+    expect(deriveBindings(bases(), 'app')).toEqual({ metaModel: 'ea', uses: ['app', 'ms'] })
+})
+
+test('deriveBindings: no bases binds the project namespace alone', () => {
+    expect(deriveBindings([], 'app')).toEqual({ metaModel: 'app', uses: [] })
+})
 
 test('round-trips a concept instance with a scalar field and a single reference', () => {
     const bs = bases()
