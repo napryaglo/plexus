@@ -60,6 +60,37 @@ test('delete removes the library from the backend and clears its Problems slice'
     expect([...diagnostics.All].some((d) => d.projectId === 'library:microsoft@0.1.0')).toBe(false)
 })
 
+const SVG = '<svg viewBox="0 0 10 10"><path d="M0 0 L10 0 L10 10 Z"/></svg>'
+
+function iconManifest(icon: string, template?: string): string {
+    const cls: Record<string, unknown> = { id: 'microsoft.azure', localId: 'azure', label: 'Azure', concept: 'location', icon }
+    if (template !== undefined) cls.template = template
+    return JSON.stringify({ id: 'microsoft', version: '0.1.0', name: 'microsoft', metaModel: { id: 'ea', version: '5' }, classes: [cls], assets: [], docs: [], samples: [] })
+}
+
+test('a class with an icon annotation and no template mounts an icon template (non-default)', async () => {
+    const { provider } = env((b) => {
+        void b.WriteText('microsoft/0.1.0/library.json', iconManifest('resources/azure.svg'))
+        void b.WriteText('microsoft/0.1.0/resources/azure.svg', SVG)
+    })
+    const reg = new LibraryRegistry(provider)
+    await reg.refresh()
+    expect(reg.resolve('microsoft.azure', 'location')).not.toBe(reg.resolve('missing', 'x'))
+})
+
+test('an authored template wins over an icon annotation', async () => {
+    const { provider, diagnostics } = env((b) => {
+        void b.WriteText('microsoft/0.1.0/library.json', iconManifest('resources/broken.svg', 'visuals/microsoft.azure.mural'))
+        void b.WriteText('microsoft/0.1.0/visuals/microsoft.azure.mural', 'TextBlock [ Text = $Display ]')
+        void b.WriteText('microsoft/0.1.0/resources/broken.svg', 'not an svg')
+    })
+    const reg = new LibraryRegistry(provider)
+    await reg.refresh()
+    // authored path taken → non-default, and the broken icon was never parsed (no warning about it)
+    expect(reg.resolve('microsoft.azure', 'location')).not.toBe(reg.resolve('missing', 'x'))
+    expect([...diagnostics.All].some((d) => d.uri === 'resources/broken.svg')).toBe(false)
+})
+
 test('a class template that fails to compile falls back to default and reports an error to the Problems store', async () => {
     const { provider, diagnostics } = env((b) => {
         void b.WriteText('microsoft/0.1.0/library.json', manifest('microsoft'))

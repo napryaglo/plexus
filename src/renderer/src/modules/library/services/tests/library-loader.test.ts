@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
-import { discoverLibraries, loadLibrary } from '../library-loader.js'
+import { discoverLibraries, loadLibrary, readIconSource } from '../library-loader.js'
 
 function manifest(id: string): string {
     return JSON.stringify({
@@ -10,6 +10,24 @@ function manifest(id: string): string {
         assets: [], docs: [], samples: [],
     })
 }
+
+test('a class icon path surfaces on the LoadedClass', async () => {
+    const s = new FakeStorage('fake://libraries')
+    await s.WriteText('microsoft/0.1.0/library.json', JSON.stringify({
+        id: 'microsoft', version: '0.1.0', name: 'microsoft', metaModel: { id: 'ea', version: '5' },
+        classes: [{ id: 'microsoft.azure', concept: 'location', icon: 'resources/azure.svg' }],
+    }))
+    const lib = await loadLibrary(s, 'microsoft', '0.1.0')
+    expect(lib.classes[0]!.icon).toBe('resources/azure.svg')
+})
+
+test('readIconSource reads a class icon SVG, undefined when absent', async () => {
+    const s = new FakeStorage('fake://libraries')
+    await s.WriteText('microsoft/0.1.0/resources/azure.svg', '<svg/>')
+    const lib = { id: 'microsoft', version: '0.1.0', name: 'm', metaModel: { id: 'ea', version: '5' }, classes: [], problems: [] }
+    expect(await readIconSource(s, lib, { id: 'microsoft.azure', concept: 'location', icon: 'resources/azure.svg' })).toBe('<svg/>')
+    expect(await readIconSource(s, lib, { id: 'x', concept: 'location' })).toBeUndefined()
+})
 
 test('discovers every published <id>/<version> and loads its classes', async () => {
     const b = new FakeStorage('fake://libraries')
