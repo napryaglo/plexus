@@ -6,6 +6,7 @@ import type { TodlDocument } from '@pragmatic-lab/todl'
 
 import { MetaModelEntity, MetaModelField } from './meta-model-entity.js'
 import { humanize } from './presentation-generator.js'
+import { projectAnnotations } from './annotation-projection.js'
 
 const HAS_FIELD = 'HasField'
 
@@ -31,5 +32,6 @@ export function buildEntity(doc: TodlDocument, entityId: string): MetaModelEntit
         field.Cardinality = typeof fa['cardinality'] === 'number' ? (fa['cardinality'] as number) : 0
         entity.Fields.Add(field)
     }
+    entity.Annotations = projectAnnotations(doc, entityId)
     return entity
 }
