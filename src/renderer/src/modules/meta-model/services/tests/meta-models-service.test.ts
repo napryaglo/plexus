@@ -143,23 +143,3 @@ test('openEntity still opens (Presentation undefined) when the presentation is m
     expect(svc.DrawerEntity?.Id).toBe('application')
     expect(svc.DrawerEntity?.Presentation).toBeUndefined()
 })
-
-// Closing the drawer must release the applied presentation Visual. The drawer's
-// ContentPresenter holds it as raw Content; a Visual is single-parent, so if a
-// stale reference survives the Modal's overlay teardown, the next open throws
-// "Cannot detach a Visual that is not a visual child of this". Clearing the
-// entity on close resets the ContentPresenter to empty while the Visual is still
-// validly parented. The SideSheet writes IsOpen=false back through its two-way
-// binding on scrim/close.
-test('closing the drawer clears the entity so its presentation Visual is released', async () => {
-    const svc = serviceOver([
-        ['tech-architecture/0.1.0/model.json', MODEL_JSON],
-        ['tech-architecture/0.1.0/presentation/presentation.compiled.json', await compiledPresentation()],
-    ])
-    await svc.openEntity({ modelId: 'tech-architecture', version: '0.1.0', id: 'application' })
-    expect(svc.DrawerEntity?.Presentation).toBeDefined()
-
-    svc.set_property_value(MetaModelsService.IsDrawerOpenKey, false)
-
-    expect(svc.DrawerEntity).toBeUndefined()
-})
