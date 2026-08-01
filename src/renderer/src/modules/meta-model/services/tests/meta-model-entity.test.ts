@@ -15,6 +15,6 @@ describe('MetaModelEntity', () => {
     expect(e.Attrs.label).toBe('Application')
     expect(e.Fields.Count).toBe(1)
     expect(e.Fields.Get(0)!.Name).toBe('kind')
-    expect(e.Presentation).toBeUndefined()
+    expect(e.UITemplate).toBeUndefined()
   })
 })

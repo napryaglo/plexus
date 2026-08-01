@@ -1,9 +1,12 @@
 // meta-model-entity.ts — the data object a double-clicked ontology entity is
 // projected into for the drawer. MetaModelEntity is BOTH the `instantiate` ctx
 // symbol the generated presentation references (DataType = MetaModelEntity) AND
-// the DataType the drawer's detail template binds. Presentation holds the applied
-// mm:<id> template (filled by the service; undefined when unavailable).
-import { MetaData, Model, ObservableCollection, type Visual } from '@pragmatic-lab/mural/runtime'
+// the DataType the drawer's detail template binds. UITemplate holds the RESOLVED
+// mm:<id> DataTemplate (filled by the service; undefined when unavailable); the
+// drawer's ContentPresenter applies it (Content = entity, ContentTemplate =
+// UITemplate) — the presenter owns the built visual, so nothing here is a Visual.
+import { MetaData, Model, ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { DataTemplate } from '@pragmatic-lab/mural/basic'
 
 export class MetaModelField extends Model
 {
@@ -35,8 +38,8 @@ export class MetaModelEntity extends Model
     public static readonly FieldsKey = Model.RegisterProperty<ObservableCollection<MetaModelField>>(
         MetaModelEntity, 'Fields',
         undefined as unknown as ObservableCollection<MetaModelField>, MetaData.None)
-    public static readonly PresentationKey = Model.RegisterProperty<Visual | undefined>(
-        MetaModelEntity, 'Presentation', undefined, MetaData.None)
+    public static readonly UITemplateKey = Model.RegisterProperty<DataTemplate | undefined>(
+        MetaModelEntity, 'UITemplate', undefined, MetaData.None)
     public static readonly AnnotationsKey = Model.RegisterProperty<Record<string, Record<string, unknown>>>(
         MetaModelEntity, 'Annotations', {}, MetaData.None)
 
@@ -55,8 +58,8 @@ export class MetaModelEntity extends Model
     public get Attrs(): Record<string, unknown> { return this.get_property_value(MetaModelEntity.AttrsKey) }
     public set Attrs(v: Record<string, unknown>) { this.set_property_value(MetaModelEntity.AttrsKey, v) }
     public get Fields(): ObservableCollection<MetaModelField> { return this.get_property_value(MetaModelEntity.FieldsKey) }
-    public get Presentation(): Visual | undefined { return this.get_property_value(MetaModelEntity.PresentationKey) }
-    public set Presentation(v: Visual | undefined) { this.set_property_value(MetaModelEntity.PresentationKey, v) }
+    public get UITemplate(): DataTemplate | undefined { return this.get_property_value(MetaModelEntity.UITemplateKey) }
+    public set UITemplate(v: DataTemplate | undefined) { this.set_property_value(MetaModelEntity.UITemplateKey, v) }
     public get Annotations(): Record<string, Record<string, unknown>> { return this.get_property_value(MetaModelEntity.AnnotationsKey) }
     public set Annotations(v: Record<string, Record<string, unknown>>) { this.set_property_value(MetaModelEntity.AnnotationsKey, v) }
 }

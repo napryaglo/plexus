@@ -1,5 +1,6 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { DataTemplate } from '@pragmatic-lab/mural/basic'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
 import { publishPresentation } from '../presentation-publisher.js'
@@ -122,7 +123,7 @@ function serviceOver(files: Array<[string, string]>): MetaModelsService {
     return new MetaModelsService(provider)
 }
 
-test('openEntity loads the dict, builds the entity, fills Presentation, and opens', async () => {
+test('openEntity loads the dict, builds the entity, resolves UITemplate, and opens', async () => {
     const svc = serviceOver([
         ['tech-architecture/0.1.0/model.json', MODEL_JSON],
         ['tech-architecture/0.1.0/presentation/presentation.compiled.json', await compiledPresentation()],
@@ -132,14 +133,14 @@ test('openEntity loads the dict, builds the entity, fills Presentation, and open
     expect(svc.IsDrawerOpen).toBe(true)
     expect(svc.DrawerEntity?.Id).toBe('application')
     expect(svc.DrawerEntity?.Fields.Count).toBe(1)
-    expect(svc.DrawerEntity?.Presentation).toBeDefined()   // mm:application resolved + applied
+    expect(svc.DrawerEntity?.UITemplate).toBeInstanceOf(DataTemplate)   // mm:application resolved
 })
 
-test('openEntity still opens (Presentation undefined) when the presentation is missing', async () => {
+test('openEntity still opens (UITemplate undefined) when the presentation is missing', async () => {
     const svc = serviceOver([['tech-architecture/0.1.0/model.json', MODEL_JSON]])
     await svc.openEntity({ modelId: 'tech-architecture', version: '0.1.0', id: 'application' })
 
     expect(svc.IsDrawerOpen).toBe(true)
     expect(svc.DrawerEntity?.Id).toBe('application')
-    expect(svc.DrawerEntity?.Presentation).toBeUndefined()
+    expect(svc.DrawerEntity?.UITemplate).toBeUndefined()
 })

@@ -21,42 +21,74 @@ resources MetaModelResources {
     // tree with infinite height, collapsing the virtualizing panel to a thin
     // strip. The empty-state text docks above; it's collapsed while non-empty,
     // so the tree then fills the whole pane.
-    DataTemplate [ DataType = MetaModelsService ] {
+    DataTemplate [DataType = MetaModelsService] {
         DockPanel [ LastChildFill = true, Margin = (12,12,12,12) ] {
-            TextBlock [ DockPanel.Dock = Top, Style = @BodyMedium,
-                        Text = "No published meta-models yet.",
-                        Foreground = @OnSurfaceVariant, TextWrapping = Wrap,
-                        Visibility = $IsEmpty << ToVisibility ]
+            TextBlock
+                [ DockPanel.Dock = Top,
+                  Style          = @BodyMedium,
+                  Text           = "No published meta-models yet.",
+                  Foreground     = @OnSurfaceVariant,
+                  TextWrapping   = Wrap,
+                  Visibility     = $IsEmpty << ToVisibility ]
             // The entity drawer. Modal → out of flow (mounts on the overlay when
             // open), so it measures to zero here; docking it Top keeps it target-
             // attached (needed for IsOpen to mount) without disturbing the tree,
             // which stays the LastChildFill.
-            // The entity drawer. The body's DataContext binds to $DrawerEntity so
-            // every inner binding re-resolves when a different entity is opened —
-            // binding a ContentPresenter's Content directly to $DrawerEntity does
-            // NOT re-render on change, but a DataContext rebind does (and works
-            // through the Modal overlay). Presentation is the applied mm:<id>
-            // template (undefined when unavailable → the note shows instead).
-            SideSheet [ DockPanel.Dock = Top, Variant = Modal, SheetSize = 360,
-                        IsOpen = $IsDrawerOpen ] {
-                StackPanel [ DataContext = $DrawerEntity, Orientation = Vertical, Margin = (16,16,16,16) ] {
-                    ContentPresenter [ Content = $Presentation, Margin = (0,0,0,12) ]
-                    TextBlock [ Text = "Presentation unavailable — republish the meta-model.",
-                                Style = @BodySmall, Foreground = @OnSurfaceVariant, TextWrapping = Wrap,
-                                Visibility = $Presentation << IsNullToVisibility, Margin = (0,0,0,12) ]
-                    TextBlock [ Text = $TypeOf, Style = @LabelSmall, Foreground = @OnSurfaceVariant ]
-                    TextBlock [ Text = $Label, Style = @TitleMedium, Foreground = @OnSurface, Margin = (0,0,0,8) ]
-                    TextBlock [ Text = "Fields", Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
+            // The body's DataContext binds to $DrawerEntity so the detail bindings
+            // ($TypeOf/$Label/$Fields) re-resolve when a different entity is opened.
+            // The presentation ContentPresenter, however, OWNS the applied visual
+            // (Content = the entity, ContentTemplate = its resolved mm:<id> template)
+            // — so its two bindings must NOT be DataContext-relative: a
+            // ContentPresenter reassigns its own DataContext to the slotted content,
+            // which would freeze a DataContext-relative Content binding after the
+            // first open. Bind them to the service instead ($service(...)), a fixed
+            // source that stays reactive across opens and through the Modal overlay.
+            SideSheet
+                [ DockPanel.Dock = Top,
+                  Variant        = Modal,
+                  SheetSize      = 360,
+                  IsOpen         = $IsDrawerOpen ] {
+                StackPanel
+                    [ DataContext = $DrawerEntity,
+                      Orientation = Vertical,
+                      Margin      = (16,16,16,16) ] {
+                    ContentPresenter
+                        [ Content         = $service(MetaModelsService).DrawerEntity,
+                          ContentTemplate = $service(MetaModelsService).DrawerEntity.UITemplate,
+                          Margin          = (0,0,0,12) ]
+                    TextBlock
+                        [ Text         = "Presentation unavailable — republish the meta-model.",
+                          Style        = @BodySmall,
+                          Foreground   = @OnSurfaceVariant,
+                          TextWrapping = Wrap,
+                          Visibility   = $UITemplate << IsNullToVisibility,
+                          Margin       = (0,0,0,12) ]
+                    TextBlock
+                        [ Text       = $TypeOf,
+                          Style      = @LabelSmall,
+                          Foreground = @OnSurfaceVariant ]
+                    TextBlock
+                        [ Text       = $Label,
+                          Style      = @TitleMedium,
+                          Foreground = @OnSurface,
+                          Margin     = (0,0,0,8) ]
+                    TextBlock
+                        [ Text       = "Fields",
+                          Style      = @LabelMedium,
+                          Foreground = @OnSurfaceVariant ]
                     ItemsControl [ ItemsSource = $Fields, ItemTemplate = @MetaModelFieldTemplate ]
                 }
             }
-            TreeView [ Indent = 14, IsVirtualizing = true,
-                       ItemsSource = $Nodes, ItemTemplate = @MetaModelNodeTemplate ]
+            TreeView
+                [ Indent         = 14,
+                  IsVirtualizing = true,
+                  ItemsSource    = $Nodes,
+                  ItemTemplate   = @MetaModelNodeTemplate ]
         }
     }
 
     // One field row in the drawer's detail list: name : type.
-    DataTemplate x:key="MetaModelFieldTemplate" [ DataType = MetaModelField ] {
+    DataTemplate x:key="MetaModelFieldTemplate" [DataType = MetaModelField] {
         StackPanel [ Orientation = Horizontal, Margin = (0,2,0,2) ] {
             TextBlock [ Text = $Name, Style = @BodyMedium, Foreground = @OnSurface ]
             TextBlock [ Text = " : ", Style = @BodyMedium, Foreground = @OnSurfaceVariant ]
@@ -75,11 +107,15 @@ resources MetaModelResources {
     // One tree row (any level): the per-kind leading icon + the node's label.
     // `itemsselector = Children` recurses the template down the tree; the
     // framework's TreeView chrome supplies chevrons, indent, hover, selection.
-    HierarchicalDataTemplate x:key="MetaModelNodeTemplate"
-        [ DataType = MetaModelTreeNode, itemsselector = Children ] {
+    HierarchicalDataTemplate x:key="MetaModelNodeTemplate" [DataType = MetaModelTreeNode, itemsselector = Children] {
         StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
-            Shape [ Geometry = $Kind << MetaModelKindToGeometry, Fill = @OnSurfaceVariant,
-                    Width = 16, Height = 16, Margin = (0,0,6,0), VerticalAlignment = Center ]
+            Shape
+                [ Geometry          = $Kind << MetaModelKindToGeometry,
+                  Fill              = @OnSurfaceVariant,
+                  Width             = 16,
+                  Height            = 16,
+                  Margin            = (0,0,6,0),
+                  VerticalAlignment = Center ]
             TextBlock [ Text = $Label, Style = @BodyMedium, VerticalAlignment = Center ]
         }
         // Only Model (id) and Version rows carry a delete command / context menu.

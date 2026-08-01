@@ -17,7 +17,6 @@ import {
     ServiceKey,
     type IServiceProvider,
     type ResourceDictionary,
-    type Visual,
 } from '@pragmatic-lab/mural/runtime'
 import { DialogService, type IActivatable } from '@pragmatic-lab/mural/framework'
 import { DataTemplate } from '@pragmatic-lab/mural/basic'
@@ -158,9 +157,11 @@ export class MetaModelsService extends ServiceBase implements IActivatable
     }
 
     // Open the drawer for a double-clicked entity: load-or-cache the version's
-    // presentation dictionary, build the entity from model.json, resolve + apply
-    // its mm:<id> template, and open. A load/resolve failure still opens the
-    // drawer (Presentation undefined → the template shows a note).
+    // presentation dictionary, build the entity from model.json, resolve its
+    // mm:<id> template onto the entity, and open. The drawer's ContentPresenter
+    // applies the template (Content = entity, ContentTemplate = UITemplate) — the
+    // presenter owns the built visual, so we never Apply here. A load/resolve
+    // failure still opens the drawer (UITemplate undefined → the note shows).
     public async openEntity(ref: EntityRef): Promise<void>
     {
         const backend = ensureMetaModelsBackend(this.Provider)
@@ -190,7 +191,7 @@ export class MetaModelsService extends ServiceBase implements IActivatable
             if (dict.CanResolve(key))
             {
                 const tmpl = dict.Resolve(key)
-                if (tmpl instanceof DataTemplate) entity.Presentation = tmpl.Apply(entity) as Visual
+                if (tmpl instanceof DataTemplate) entity.UITemplate = tmpl
                 else console.warn(`[meta-model] ${key} resolved to a non-DataTemplate:`, tmpl)
             }
             else
