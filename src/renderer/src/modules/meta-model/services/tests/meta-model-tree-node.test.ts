@@ -1,4 +1,5 @@
 import { test, expect } from 'vitest'
+import { RelayCommand } from '@pragmatic-lab/mural/runtime'
 
 import { MetaModelTreeNode, MetaModelNodeKind, type EntityRef } from '../meta-model-tree-node.js'
 
@@ -57,4 +58,22 @@ test('an entity node calls activate(ref) on OnActivate', () => {
 test('a non-entity leaf node does nothing on OnActivate', () => {
     const node = MetaModelTreeNode.leaf(MetaModelNodeKind.Group, 'Concepts')
     expect(() => node.OnActivate()).not.toThrow()
+})
+
+test('IsDeletable is true for Model and Version, false for Group and Entity', () => {
+    expect(MetaModelTreeNode.leaf(MetaModelNodeKind.Model, 'a').IsDeletable).toBe(true)
+    expect(MetaModelTreeNode.leaf(MetaModelNodeKind.Version, '1.0.0').IsDeletable).toBe(true)
+    expect(MetaModelTreeNode.leaf(MetaModelNodeKind.Group, 'Concepts').IsDeletable).toBe(false)
+    expect(MetaModelTreeNode.leaf(MetaModelNodeKind.Entity, 'x').IsDeletable).toBe(false)
+})
+
+test('ModelId / ModelVersion / DeleteCommand round-trip', () => {
+    const n = MetaModelTreeNode.leaf(MetaModelNodeKind.Version, '1.0.0')
+    n.ModelId = 'a'
+    n.ModelVersion = '1.0.0'
+    const cmd = new RelayCommand(() => {})
+    n.DeleteCommand = cmd
+    expect(n.ModelId).toBe('a')
+    expect(n.ModelVersion).toBe('1.0.0')
+    expect(n.DeleteCommand).toBe(cmd)
 })

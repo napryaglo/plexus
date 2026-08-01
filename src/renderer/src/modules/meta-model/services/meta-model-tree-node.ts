@@ -1,4 +1,4 @@
-import { MetaData, Model, ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
 
 // A uniform tree node for the Meta-models panel — one type for every level
 // (model id, version, kind group, entity) so a single HierarchicalDataTemplate
@@ -33,6 +33,16 @@ export class MetaModelTreeNode extends Model
         MetaModelTreeNode, 'Children',
         undefined as unknown as ObservableCollection<MetaModelTreeNode>, MetaData.None)
 
+    // Delete wiring — set on Model and Version nodes by buildCatalog. ModelId is
+    // the published id; ModelVersion is the version (empty on a Model node);
+    // DeleteCommand removes the target (see MetaModelsService.deleteTarget).
+    public static readonly ModelIdKey = Model.RegisterProperty<string>(
+        MetaModelTreeNode, 'ModelId', '', MetaData.None)
+    public static readonly ModelVersionKey = Model.RegisterProperty<string>(
+        MetaModelTreeNode, 'ModelVersion', '', MetaData.None)
+    public static readonly DeleteCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        MetaModelTreeNode, 'DeleteCommand', undefined, MetaData.None)
+
     // Lazy machinery (view-invisible → plain fields). Only lazy() sets a loader.
     private loader?: () => Promise<MetaModelTreeNode[]>
     private loaded = false
@@ -54,6 +64,20 @@ export class MetaModelTreeNode extends Model
     public get Children(): ObservableCollection<MetaModelTreeNode>
     {
         return this.get_property_value(MetaModelTreeNode.ChildrenKey)
+    }
+
+    public get ModelId(): string { return this.get_property_value(MetaModelTreeNode.ModelIdKey) }
+    public set ModelId(v: string) { this.set_property_value(MetaModelTreeNode.ModelIdKey, v) }
+    public get ModelVersion(): string { return this.get_property_value(MetaModelTreeNode.ModelVersionKey) }
+    public set ModelVersion(v: string) { this.set_property_value(MetaModelTreeNode.ModelVersionKey, v) }
+    public get DeleteCommand(): ICommand | undefined { return this.get_property_value(MetaModelTreeNode.DeleteCommandKey) }
+    public set DeleteCommand(v: ICommand | undefined) { this.set_property_value(MetaModelTreeNode.DeleteCommandKey, v) }
+
+    // Only Model (id) and Version (<id>/<version>) rows can be deleted; Group /
+    // Entity rows get no context menu.
+    public get IsDeletable(): boolean
+    {
+        return this.Kind === MetaModelNodeKind.Model || this.Kind === MetaModelNodeKind.Version
     }
 
     // A non-lazy node: children (if any) are added by the caller.
