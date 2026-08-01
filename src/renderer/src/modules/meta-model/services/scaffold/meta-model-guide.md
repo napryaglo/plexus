@@ -55,6 +55,29 @@ it's a validated scalar, it's a **primitive**.
   technology supports") belongs in an `invariant`, in prose at minimum. The
   validator surfaces the prose when the rule is violated.
 
+## Presentation metadata — annotations
+
+Decorate a concept with **annotations** to control how it is presented and to
+attach typed metadata a tool can read. Declare the annotation type once, then
+`annotate` the concept (see the manual §6):
+
+    annotation icon { path : string; }
+
+    concept component
+    {
+        annotate icon  { path = "resources/component.svg"; }
+        annotate label { text = "Component"; }
+        …
+    }
+
+- **`icon` and `label` are well-known** — the generated presentation reads them to
+  draw each concept's chip (a raw `icon =` / `label =` attribute, where present,
+  still wins). Put the concept's SVG under `presentation/` and point `path` at it.
+- **Custom annotations** (`category`, `owner`, …) are your own typed metadata;
+  they ride along in the published model and are bindable from author presentation
+  overrides.
+- Package-level facts (author, license) go in a `package { annotate … }` block.
+
 ## Publishing identity
 
 The project manifest (`project.json`) carries the `id` and `modelVersion` that
