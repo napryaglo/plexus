@@ -5,7 +5,7 @@
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
 import { MetaModelEntity, MetaModelField } from './meta-model-entity.js'
-import { humanize } from './presentation-generator.js'
+import { humanize, resolveFacets } from './presentation-generator.js'
 import { projectAnnotations } from './annotation-projection.js'
 
 const HAS_FIELD = 'HasField'
@@ -18,7 +18,8 @@ export function buildEntity(doc: TodlDocument, entityId: string): MetaModelEntit
     entity.TypeOf = node?.typeOf ?? ''
     const attrs = (node?.attrs ?? {}) as Record<string, unknown>
     entity.Attrs = attrs
-    entity.Label = typeof attrs['label'] === 'string' ? String(attrs['label']) : humanize(entityId)
+    entity.Annotations = projectAnnotations(doc, entityId)
+    entity.Label = node !== undefined ? resolveFacets(node, entity.Annotations).label : humanize(entityId)
 
     for (const edge of doc.edges)
     {
@@ -32,6 +33,5 @@ export function buildEntity(doc: TodlDocument, entityId: string): MetaModelEntit
         field.Cardinality = typeof fa['cardinality'] === 'number' ? (fa['cardinality'] as number) : 0
         entity.Fields.Add(field)
     }
-    entity.Annotations = projectAnnotations(doc, entityId)
     return entity
 }
