@@ -171,14 +171,52 @@ A concept referencing it:
 and an instance picks a term by name: `category = ai-agent;`. A `|`-composed set
 of terms is allowed where the field is a flag set: `traits = physical | managed;`.
 
-## 6. Instances, classes, containment
+## 6. `annotation` — typed metadata on concepts and the package
+
+An **annotation** is typed, author-declared metadata attached to a concept or to
+the package as a whole. It is **static / type-level** — it carries no per-instance
+data; the compiler validates it and downstream tools read it (Plexus's
+presentation generator and the package manifest).
+
+Declare an annotation type like a concept, with typed params:
+
+    annotation icon     { path : string; }
+    annotation category { name : string; order : integer ?; }
+    annotation author   { name : string; email : string ?; }
+
+Apply it with `annotate` — legal **only inside a concept body** or a `package { }`
+block — giving each param a fixed value:
+
+    concept actor
+    {
+        annotate icon     { path = "resources/actor.svg"; }
+        annotate category { name = "actors"; order = 1; }
+
+        label : label;
+    }
+
+    package
+    {
+        annotate author { name = "Acme Corp"; email = "eng@acme.io"; }
+    }
+
+- Names are lowercase kebab-case, like every other identifier.
+- Each annotation applies **at most once per target**; a repeat is an error.
+- Params are **scalar** (string / integer / boolean). A required param must be
+  given; an undeclared param is rejected.
+- **Well-known annotations drive presentation.** `annotate icon { path = "…"; }`
+  and `annotate label { text = "…"; }` on a concept feed the generated presentation
+  (a raw `icon =` / `label =` attribute, where present, still takes precedence).
+  Custom annotations are queryable and bindable in author presentation overrides.
+
+## 7. Instances, classes, containment
 
 Meta-model authors mostly write concepts/primitives/taxonomies; the *data*
 (instances) is authored in architecture projects. You'll still read and
 occasionally write instances:
 
-    // <concept> <id> [: <meta-model>] { assignments; nested records }
-    model acme : acme-ea
+    // model <id> : <meta-model> [uses <library> , … ] { concrete instances }
+    model acme : acme-ea uses azure-catalog
     {
         component business-agent
         {
@@ -190,12 +228,17 @@ occasionally write instances:
         location azure-westeurope { label = "Azure West Europe"; }
     }
 
+- **A concrete instance must live inside a `model` block.** A `model <id> :
+  <meta-model> [uses <library>, …] { … }` is the sole carrier of instances; the
+  `:` names the meta-model and `uses` lists the libraries it draws terms from
+  (both are **namespace names** that must be in scope). A concrete instance
+  declared at top level is an error (`instance.orphan`).
 - A nested record inside a body expresses **containment** (the `component` lives
   in the `model`).
 - `<id>` is a bare identifier or a quoted string.
-- `: <meta-model>` on a container binds it to a meta-model by name.
 - `class <concept> <id> { … }` declares a **class** (a partial, fixed-value
-  definition). A leaf can point at one with `instanceof`:
+  definition). Classes are **exempt** from the model rule — they may sit at top
+  level. A leaf points at one with `instanceof`:
   `component x instanceof web-app { … }`.
 
 ### Edge shorthand
@@ -209,13 +252,13 @@ Connectors and steps can be written as edges:
   attributes; otherwise end with `;`.
 - Inside an `application-connectors { … }` block, list bare `&a --> &b` edges.
 
-## 7. Modifiers
+## 8. Modifiers
 
 `internal` and `sealed` may prefix a declaration
 (`internal concept …`, `sealed concept …`) to mark visibility / finality. They
 are optional; omit them unless a rule calls for them.
 
-## 8. Diagnostics you'll see
+## 9. Diagnostics you'll see
 
 The Problems panel reports these families (code → meaning):
 
@@ -233,19 +276,31 @@ The Problems panel reports these families (code → meaning):
   term, or a term names a concept the taxonomy doesn't represent.
 - `instance.ambiguous-field-binding` — an assignment can't be matched to a single
   field.
+- `instance.orphan` — a concrete instance is declared outside a `model` block.
+- `model.binding-undefined` — a `model`'s `: <meta-model>` or a `uses` entry names
+  a namespace no loaded module provides.
+- `constructor.out-of-scope` — an instance's concept or class comes from a
+  namespace the enclosing `model` doesn't bind (via `:` or `uses`).
+- `annotation.unknown-param` / `annotation.duplicate` — an `annotate` gives a param
+  the annotation didn't declare, or the same annotation is applied twice to one
+  target. (An unknown annotation name is `reference.undefined`; a missing required
+  param is `cardinality.required-missing`.)
 
 Fix errors from the top down — a syntax error early in a file can cascade into
 spurious later diagnostics. Re-check after each fix.
 
-## 9. Quick reference
+## 10. Quick reference
 
     namespace a.b.c { … }                       // one per file
     import a.b.d;                                // first in the body
 
     primitive id : string { description = "…"; regex = "…"; }
 
+    annotation icon { path : string; }          // typed metadata type
+
     concept thing : parent
     {
+        annotate icon { path = "resources/thing.svg"; }   // decorate the concept
         description = """ … """;
         name  : label;              // exactly one
         tags  : some-taxonomy [];   // many
@@ -256,3 +311,7 @@ spurious later diagnostics. Re-check after each fix.
     }
 
     taxonomy some-taxonomy : represents thing { term a { label = "A"; } }
+
+    package { annotate author { name = "…"; } }  // package-level metadata
+
+    model m : a.b.c uses lib { thing t { … } }   // instances live in a model
