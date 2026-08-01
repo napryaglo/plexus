@@ -25,6 +25,14 @@ export function ontologyEntities(model: TodlDocument): JsonNode[]
     return model.nodes.filter((n) => n.tier === 'Ontology' && ONTOLOGY_KINDS.has(n.typeOf))
 }
 
+// Instance-tier `class` nodes — a taxonomy term (staged with `class: true`) or a
+// `class` declaration. Presented as first-class templates so a term's annotation
+// icon/label renders. In model order.
+export function classEntities(model: TodlDocument): JsonNode[]
+{
+    return model.nodes.filter((n) => n.tier === 'Instance' && n.attrs['class'] === true)
+}
+
 // Distinct `attrs.icon` values across every node (Ontology + Instance), sorted —
 // the SVGs the generated dictionary `include`s so they are available as geometry
 // resources to generated templates and author templates alike.
@@ -51,7 +59,8 @@ export function distinctIcons(model: TodlDocument): string[]
 export function generatePresentationMu(model: TodlDocument, authorOverrideDicts: readonly string[]): string
 {
     const includes = distinctIcons(model).map((p) => `    include "${p}" as ${iconKey(p)}`)
-    const templates = ontologyEntities(model).map((n) => entityTemplate(model, n))
+    const entities = [...ontologyEntities(model), ...classEntities(model)]
+    const templates = entities.map((n) => entityTemplate(model, n))
     const merges = authorOverrideDicts.map((d) => `    merge ${d}`)
 
     const lines: string[] = [

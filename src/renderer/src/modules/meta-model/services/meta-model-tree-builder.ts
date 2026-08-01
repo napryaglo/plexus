@@ -5,6 +5,18 @@ import type { IStorage } from '../../../services/storage/storage.js'
 import { MetaModelTreeNode, MetaModelNodeKind, type EntityRef } from './meta-model-tree-node.js'
 import { ontologyEntities, humanize, OntologyKind } from './presentation-generator.js'
 
+// A term is a taxonomy's `Contains` target that is a class node.
+const CONTAINS = 'Contains'
+
+// The term nodes of a taxonomy: its `Contains` targets with `attrs.class === true`.
+export function termsOf(doc: TodlDocument, taxonomyId: string): JsonNode[]
+{
+    const targets = new Set(
+        doc.edges.filter((e) => e.kind === CONTAINS && e.from === taxonomyId).map((e) => e.to),
+    )
+    return doc.nodes.filter((n) => targets.has(n.id) && n.attrs['class'] === true)
+}
+
 // A published meta-model as plain data: its id and the versions found under it.
 export interface PublishedModel { id: string; versions: string[] }
 
@@ -88,7 +100,16 @@ export async function loadVersionEntities(
         for (const n of inGroup)
         {
             const ref: EntityRef = { modelId: id, version, id: n.id }
-            group.Children.Add(MetaModelTreeNode.entity(entityLabel(n), ref, activate))
+            const entityNode = MetaModelTreeNode.entity(entityLabel(n), ref, activate)
+            if (g.kind === OntologyKind.Taxonomy)
+            {
+                for (const term of termsOf(doc, n.id))
+                {
+                    const termRef: EntityRef = { modelId: id, version, id: term.id }
+                    entityNode.Children.Add(MetaModelTreeNode.entity(entityLabel(term), termRef, activate))
+                }
+            }
+            group.Children.Add(entityNode)
         }
         out.push(group)
     }

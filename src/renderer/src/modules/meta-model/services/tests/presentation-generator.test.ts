@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
-import { iconKey, humanize, ontologyEntities, distinctIcons, generatePresentationMu, resolveFacets } from '../presentation-generator.js'
+import { iconKey, humanize, ontologyEntities, classEntities, distinctIcons, generatePresentationMu, resolveFacets } from '../presentation-generator.js'
 
 function doc(nodes: TodlDocument['nodes']): TodlDocument { return { nodes, edges: [] } }
 
@@ -132,4 +132,43 @@ test('generatePresentationMu bakes annotation-sourced icon/label, attr still win
     expect(out).toContain('Geometry = @mm_icon_gw')
     expect(out).toContain('Text = "API Gateway"')
     expect(out).toContain('include "resources/ann-gw.svg" as mm_icon_ann_gw')
+})
+
+test('classEntities returns Instance-tier class nodes only', () => {
+    const m = doc([
+        { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} },
+        { id: 'actors.internal', tier: 'Instance', typeOf: 'actor', attrs: { class: true, id: 'internal' } },
+        { id: 'web-app', tier: 'Instance', typeOf: 'component', attrs: { class: true, id: 'web-app' } },
+        { id: 'storefront', tier: 'Instance', typeOf: 'component', attrs: {} },   // concrete, not a class
+    ])
+    expect(classEntities(m).map((n) => n.id)).toEqual(['actors.internal', 'web-app'])
+})
+
+test('generatePresentationMu emits an mm:<term> template with the term icon annotation', () => {
+    const m: TodlDocument = {
+        nodes: [
+            { id: 'actors', tier: 'Ontology', typeOf: 'taxonomy', attrs: {} },
+            { id: 'actors.internal', tier: 'Instance', typeOf: 'actor', attrs: { class: true, id: 'internal', label: 'Internal' } },
+            { id: 'actors.internal@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'resources/int.svg' } },
+        ],
+        edges: [
+            { kind: 'Annotated', via: null, from: 'actors.internal', to: 'actors.internal@icon' },
+        ],
+    }
+    const out = generatePresentationMu(m, [])
+
+    expect(out).toContain('include "resources/int.svg" as mm_icon_int')
+    expect(out).toContain('DataTemplate x:key="mm:actors.internal"')
+    expect(out).toContain('Shape [ Geometry = @mm_icon_int')
+})
+
+test('a term without an icon annotation emits a label-only mm:<term> template', () => {
+    const m = doc([
+        { id: 'actors', tier: 'Ontology', typeOf: 'taxonomy', attrs: {} },
+        { id: 'actors.partner', tier: 'Instance', typeOf: 'actor', attrs: { class: true, id: 'partner' } },
+    ])
+    const out = generatePresentationMu(m, [])
+    expect(out).toContain('DataTemplate x:key="mm:actors.partner"')
+    // no icon annotation → label-only; label falls back to humanize(full id)
+    expect(out).toContain('Actors Partner')
 })
