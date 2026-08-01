@@ -55,6 +55,22 @@ test('referenceMembers returns the concept-typed fields whose type the target sa
     expect(names).toEqual(['deployed-to', 'realised-by'])
 })
 
+test('load strips the model container node; ownInstances excludes it', () => {
+    const src = `namespace app { model app-model : ea uses ms { component gw { label = "Gateway"; } } }`
+    const model = ArchInstanceModel.load(bases(), src, 'app')
+    expect(model.ownInstances()).toEqual(['gw'])   // 'app-model' container excluded
+})
+
+test('emit wraps concrete instances in a model block bound to the meta-model', () => {
+    const model = ArchInstanceModel.load(bases(), '', 'app')
+    const id = model.createInstance('component')
+    model.setField(id, 'label', 'API')
+
+    const emitted = model.emit()
+    expect(emitted).toContain('model app-model : ea')
+    expect(emitted).toContain(`component ${id}`)
+})
+
 test('changed fires on every mutation', () => {
     const model = ArchInstanceModel.load(bases(), '', 'app')
     let n = 0
