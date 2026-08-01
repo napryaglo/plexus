@@ -37,6 +37,8 @@ export class MetaModelEntity extends Model
         undefined as unknown as ObservableCollection<MetaModelField>, MetaData.None)
     public static readonly PresentationKey = Model.RegisterProperty<Visual | undefined>(
         MetaModelEntity, 'Presentation', undefined, MetaData.None)
+    public static readonly AnnotationsKey = Model.RegisterProperty<Record<string, Record<string, unknown>>>(
+        MetaModelEntity, 'Annotations', {}, MetaData.None)
 
     public constructor()
     {
@@ -55,4 +57,6 @@ export class MetaModelEntity extends Model
     public get Fields(): ObservableCollection<MetaModelField> { return this.get_property_value(MetaModelEntity.FieldsKey) }
     public get Presentation(): Visual | undefined { return this.get_property_value(MetaModelEntity.PresentationKey) }
     public set Presentation(v: Visual | undefined) { this.set_property_value(MetaModelEntity.PresentationKey, v) }
+    public get Annotations(): Record<string, Record<string, unknown>> { return this.get_property_value(MetaModelEntity.AnnotationsKey) }
+    public set Annotations(v: Record<string, Record<string, unknown>>) { this.set_property_value(MetaModelEntity.AnnotationsKey, v) }
 }

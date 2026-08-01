@@ -32,4 +32,20 @@ describe('buildEntity', () => {
     expect(e.Label).toBe('Human Actor')
     expect(e.Fields.Count).toBe(0)
   })
+
+  it('projects a concept\'s annotations into a nested Annotations bag, stripping namespace', () => {
+    const annotated: TodlDocument = {
+      nodes: [
+        { id: 'actor',      tier: 'Ontology', typeOf: 'concept',  attrs: { label: 'Human Actor' } },
+        { id: 'actor@icon', tier: 'Ontology', typeOf: 'icon',     attrs: { path: 'icons/actor.svg', namespace: 'acme' } },
+        { id: 'plain',      tier: 'Ontology', typeOf: 'concept',  attrs: {} },
+      ],
+      edges: [
+        { kind: 'Annotated', via: null, from: 'actor', to: 'actor@icon' },
+      ],
+    } as unknown as TodlDocument
+
+    expect(buildEntity(annotated, 'actor').Annotations).toEqual({ icon: { path: 'icons/actor.svg' } })
+    expect(buildEntity(annotated, 'plain').Annotations).toEqual({})
+  })
 })
