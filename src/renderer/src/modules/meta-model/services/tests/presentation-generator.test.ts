@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
-import { iconKey, humanize, ontologyEntities, distinctIcons, generatePresentationMu } from '../presentation-generator.js'
+import { iconKey, humanize, ontologyEntities, distinctIcons, generatePresentationMu, resolveFacets } from '../presentation-generator.js'
 
 function doc(nodes: TodlDocument['nodes']): TodlDocument { return { nodes, edges: [] } }
 
@@ -77,4 +77,19 @@ test('generatePresentationMu: no author dicts → no merge line; deterministic',
 test('generatePresentationMu escapes quotes/backslashes in a label', () => {
     const m = doc([{ id: 'x', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'A "quoted" \\ name' } }])
     expect(generatePresentationMu(m, [])).toContain('Text = "A \\"quoted\\" \\\\ name"')
+})
+
+test('resolveFacets: attr wins over annotation for icon and label', () => {
+    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'a.svg', label: 'Attr' } } as unknown as import('@pragmatic-lab/todl').JsonNode
+    expect(resolveFacets(node, { icon: { path: 'ann.svg' }, label: { text: 'Ann' } })).toEqual({ icon: 'a.svg', label: 'Attr' })
+})
+
+test('resolveFacets: annotation fallback when no attr present', () => {
+    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} } as unknown as import('@pragmatic-lab/todl').JsonNode
+    expect(resolveFacets(node, { icon: { path: 'ann.svg' }, label: { text: 'Ann' } })).toEqual({ icon: 'ann.svg', label: 'Ann' })
+})
+
+test('resolveFacets: humanize label and no icon when neither present', () => {
+    const node = { id: 'app-component', tier: 'Ontology', typeOf: 'concept', attrs: {} } as unknown as import('@pragmatic-lab/todl').JsonNode
+    expect(resolveFacets(node, {})).toEqual({ icon: undefined, label: 'App Component' })
 })

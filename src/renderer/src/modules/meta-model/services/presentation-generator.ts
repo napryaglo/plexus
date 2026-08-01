@@ -114,3 +114,26 @@ export function humanize(id: string): string
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(' ')
 }
+
+export interface PresentationFacets { icon?: string; label: string }
+
+// Attr-primary, annotation-fallback resolution of the well-known presentation
+// facets for a node. `annotations` is the SP2 projected bag for that node
+// (projectAnnotations output). Only a non-empty string counts as an icon; the
+// label falls back through the annotation to humanize(id).
+export function resolveFacets(node: JsonNode, annotations: Record<string, Record<string, unknown>>): PresentationFacets
+{
+    const attrIcon = node.attrs['icon']
+    const annIcon = annotations['icon']?.['path']
+    const icon = (typeof attrIcon === 'string' && attrIcon.length > 0) ? attrIcon
+        : (typeof annIcon === 'string' && annIcon.length > 0) ? annIcon
+            : undefined
+
+    const attrLabel = node.attrs['label']
+    const annLabel = annotations['label']?.['text']
+    const label = typeof attrLabel === 'string' ? attrLabel
+        : typeof annLabel === 'string' ? annLabel
+            : humanize(node.id)
+
+    return { icon, label }
+}
