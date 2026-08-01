@@ -16,6 +16,7 @@ import {
     ServiceBase,
     ServiceKey,
     type IServiceProvider,
+    type PropertyDescriptor,
     type ResourceDictionary,
     type Visual,
 } from '@pragmatic-lab/mural/runtime'
@@ -80,6 +81,20 @@ export class MetaModelsService extends ServiceBase implements IActivatable
 
     // IActivatable: re-scan whenever this panel becomes the active capability.
     public OnActivated(): void { void this.reload() }
+
+    // When the drawer closes (the Modal SideSheet writes IsOpen=false back through
+    // its two-way binding), drop the shown entity. The drawer's ContentPresenter
+    // holds the applied presentation as a raw Visual; a Visual is single-parent, so
+    // a reference retained past the overlay's teardown makes the next open throw
+    // "Cannot detach a Visual that is not a visual child of this". Clearing the
+    // entity here re-slots the ContentPresenter to empty while the Visual is still
+    // validly parented, so every open starts clean.
+    protected override OnPropertyChanged(descriptor: PropertyDescriptor, oldValue: unknown, newValue: unknown): void
+    {
+        super.OnPropertyChanged(descriptor, oldValue, newValue)
+        if (descriptor.Name === 'IsDrawerOpen' && newValue === false)
+            this.set_property_value(MetaModelsService.DrawerEntityKey, undefined)
+    }
 
     // Re-read the backend and rebuild the node tree in place (the bound
     // ObservableCollection updates the panel reactively).
