@@ -7,6 +7,7 @@ export interface LoadedClass
     id:            string
     localId?:      string
     label?:        string
+    icon?:         string
     concept:       string
     templatePath?: string
     thumbnailPath?: string
@@ -46,7 +47,7 @@ export async function loadLibrary(backend: IStorage, id: string, version: string
     let manifest: {
         id: string; version: string; name: string
         metaModel: { id: string; version: string }
-        classes: Array<{ id: string; localId?: string; label?: string; concept: string; template?: string; thumbnail?: string; doc?: string }>
+        classes: Array<{ id: string; localId?: string; label?: string; concept: string; template?: string; thumbnail?: string; doc?: string; icon?: string }>
     }
     try {
         manifest = JSON.parse(await backend.ReadText(`${base}/library.json`))
@@ -60,6 +61,7 @@ export async function loadLibrary(backend: IStorage, id: string, version: string
         const cls: LoadedClass = { id: c.id, concept: c.concept }
         if (c.localId !== undefined) cls.localId = c.localId
         if (c.label !== undefined) cls.label = c.label
+        if (c.icon !== undefined) cls.icon = c.icon
         for (const [field, path] of [['templatePath', c.template], ['thumbnailPath', c.thumbnail], ['docPath', c.doc]] as const) {
             if (path === undefined) continue
             if (await backend.Exists(`${base}/${path}`)) (cls as unknown as Record<string, unknown>)[field] = path
@@ -75,5 +77,13 @@ export async function readTemplateSource(backend: IStorage, lib: LoadedLibrary, 
 {
     if (cls.templatePath === undefined) return undefined
     try { return await backend.ReadText(`${lib.id}/${lib.version}/${cls.templatePath}`) }
+    catch { return undefined }
+}
+
+// Read a class's icon SVG source on demand; undefined if absent/unreadable.
+export async function readIconSource(backend: IStorage, lib: LoadedLibrary, cls: LoadedClass): Promise<string | undefined>
+{
+    if (cls.icon === undefined) return undefined
+    try { return await backend.ReadText(`${lib.id}/${lib.version}/${cls.icon}`) }
     catch { return undefined }
 }
