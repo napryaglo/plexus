@@ -16,8 +16,6 @@ export class OpenProject extends Model
     static readonly NameKey = Model.RegisterProperty<string>(OpenProject, 'Name', '', MetaData.None)
     static readonly RootKey = Model.RegisterProperty<ProjectNode>(
         OpenProject, 'Root', undefined as unknown as ProjectNode, MetaData.None)
-    static readonly NewFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
-        OpenProject, 'NewFileCommand', undefined, MetaData.None)
     // The "Add New" submenu's choices — one per the factory's declared formats,
     // set by the host (ProjectExplorerService.wireProjectCommands).
     static readonly NewItemChoicesKey = Model.RegisterProperty<ObservableCollection<NewItemChoice>>(
@@ -99,9 +97,6 @@ export class OpenProject extends Model
 
     public get Name(): string { return this.get_property_value(OpenProject.NameKey) }
     public get Root(): ProjectNode { return this.get_property_value(OpenProject.RootKey) }
-
-    public get NewFileCommand(): ICommand | undefined { return this.get_property_value(OpenProject.NewFileCommandKey) }
-    public set NewFileCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.NewFileCommandKey, v) }
 
     public get NewItemChoices(): ObservableCollection<NewItemChoice> { return this.get_property_value(OpenProject.NewItemChoicesKey) }
     public set NewItemChoices(v: ObservableCollection<NewItemChoice>) { this.set_property_value(OpenProject.NewItemChoicesKey, v) }

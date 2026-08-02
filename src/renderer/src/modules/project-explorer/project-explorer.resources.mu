@@ -21,16 +21,25 @@ import RecentProjectItem from "../../services/projects/open-project-dialog-model
 import ConfirmDialogModel from "../../services/dialogs/confirm-dialog-model.js"
 import TreeSelectionBehavior from "../../services/projects/tree-selection-behavior.js"
 import TreeDragDropBehavior from "../../services/projects/tree-drag-drop-behavior.js"
+import NewItemChoice from "../../services/projects/new-item-choice.js"
 
 resources ProjectExplorerResources {
+
+    // One row in an "Add New" submenu: a MenuItem whose Header/Command bind the
+    // NewItemChoice. MenuItem is an ItemsControl, so the parent "Add New" item's
+    // ItemsSource generates one of these per available project format.
+    DataTemplate x:key="NewItemChoiceTemplate" [ DataType = NewItemChoice ] {
+        MenuItem [ Header = $Label, Command = $Command ]
+    }
 
     // The project-specific actions — a shared context menu opened on a project's
     // header row. Its Command bindings resolve against that row's OpenProject.
     ContextMenu x:key="ProjectContextMenu" {
         MenuItem
-            [ Header = "New File",
-              Command = $NewFileCommand,
-              Icon = Shape [ Geometry = @NoteAdd, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+            [ Header = "Add New",
+              Icon = Shape [ Geometry = @NoteAdd, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ],
+              ItemsControl.ItemsSource  = $NewItemChoices,
+              ItemsControl.ItemTemplate = @NewItemChoiceTemplate ]
         MenuItem
             [ Header = "New Folder",
               Command = $NewFolderCommand,
@@ -59,9 +68,10 @@ resources ProjectExplorerResources {
     // ProjectNode DataContext.
     ContextMenu x:key="NodeContextMenu" {
         MenuItem
-            [ Header = "New File",
-              Command = $NewFileCommand,
-              Icon = Shape [ Geometry = @NoteAdd, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+            [ Header = "Add New",
+              Icon = Shape [ Geometry = @NoteAdd, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ],
+              ItemsControl.ItemsSource  = $NewItemChoices,
+              ItemsControl.ItemTemplate = @NewItemChoiceTemplate ]
         MenuItem
             [ Header = "New Folder",
               Command = $NewFolderCommand,

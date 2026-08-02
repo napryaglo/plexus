@@ -24,14 +24,9 @@ export class ProjectNode extends Model
     // without threading the node through a CommandParameter.
     static readonly OpenCommandKey = Model.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'OpenCommand', undefined, MetaData.None)
-    // Create a new file / subfolder in this node's containing folder (a folder
-    // node creates inside itself; a file node creates beside itself). Set by the
-    // host (ProjectExplorerService.wireNodes) so a row's context menu can bind
-    // `Command = $NewFileCommand` / `$NewFolderCommand` with no parameter.
-    static readonly NewFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
-        ProjectNode, 'NewFileCommand', undefined, MetaData.None)
     // The "Add New" submenu's choices for this node's container — one per the
     // factory's declared formats, set by the host (ProjectExplorerService.wireNodes).
+    // A folder node creates inside itself; a file node beside itself.
     static readonly NewItemChoicesKey = Model.RegisterProperty<ObservableCollection<NewItemChoice>>(
         ProjectNode, 'NewItemChoices', undefined as unknown as ObservableCollection<NewItemChoice>, MetaData.None)
     static readonly NewFolderCommandKey = Model.RegisterProperty<ICommand | undefined>(
@@ -87,9 +82,6 @@ export class ProjectNode extends Model
     public get Children(): ObservableCollection<ProjectNode> { return this.get_property_value(ProjectNode.ChildrenKey) }
     public get OpenCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.OpenCommandKey) }
     public set OpenCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.OpenCommandKey, v) }
-
-    public get NewFileCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.NewFileCommandKey) }
-    public set NewFileCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.NewFileCommandKey, v) }
 
     public get NewItemChoices(): ObservableCollection<NewItemChoice> { return this.get_property_value(ProjectNode.NewItemChoicesKey) }
     public set NewItemChoices(v: ObservableCollection<NewItemChoice>) { this.set_property_value(ProjectNode.NewItemChoicesKey, v) }

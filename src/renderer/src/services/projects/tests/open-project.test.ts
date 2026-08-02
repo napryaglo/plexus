@@ -26,12 +26,12 @@ test('exposes Name/Root/Folder from the project and the given factory/storage', 
 
 test('command DPs are settable and gettable', () => {
     const op = new OpenProject(project(), fakeFactory, fakeStorage)
-    expect(op.NewFileCommand).toBeUndefined()
+    expect(op.NewFolderCommand).toBeUndefined()
     const cmd = new RelayCommand(() => {})
-    op.NewFileCommand = cmd
+    op.NewFolderCommand = cmd
     op.PublishCommand = cmd
     op.CloseCommand = cmd
-    expect(op.NewFileCommand).toBe(cmd)
+    expect(op.NewFolderCommand).toBe(cmd)
     expect(op.PublishCommand).toBe(cmd)
     expect(op.CloseCommand).toBe(cmd)
 })

@@ -321,7 +321,6 @@ export class ProjectExplorerService extends ServiceBase
 
     private wireProjectCommands(op: OpenProject): void
     {
-        op.NewFileCommand = new RelayCommand(() => void this.newFileIn(op))
         op.NewItemChoices = this.newItemChoices(op, '')
         op.NewFolderCommand = new RelayCommand(() => void this.newFolderIn(op))
         op.ImportFileCommand = new RelayCommand(() => void this.importFilesInto(op, ''))
@@ -1005,7 +1004,6 @@ export class ProjectExplorerService extends ServiceBase
         // The folder a node's context-menu creations land in: a folder node
         // creates inside itself; a file node creates beside itself (VSCode-style).
         const container = node.Kind === 'folder' ? node.Path : parentOf(node.Path)
-        node.NewFileCommand = new RelayCommand(() => void this.newFileIn(op, container))
         node.NewItemChoices = this.newItemChoices(op, container)
         node.NewFolderCommand = new RelayCommand(() => void this.newFolderIn(op, container))
         node.ImportFileCommand = new RelayCommand(() => void this.importFilesInto(op, container))
