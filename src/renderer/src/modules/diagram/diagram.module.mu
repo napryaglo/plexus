@@ -15,12 +15,12 @@
 // `DataTemplate [DataType = PlexusPanelService]` (in panels.resources.mu) renders whichever
 // one is active. See services/panels/panel-services.ts.
 
-import ToolBoxService from "./services/diagram-panel-services.js"
+import ToolboxService from "./services/diagram-panel-services.js"
 import DiagramDocumentFactory from "./services/diagram-document-factory.js"
 
 module DiagramModule [ Name = "Diagram" ] {
     .services: {
-        ToolBoxService
+        ToolboxService
         DiagramDocumentFactory
     }
 
@@ -330,5 +330,5 @@ module DiagramModule [ Name = "Diagram" ] {
     }
 
     // Shapes â€” the toolbox of shapes to drop onto the canvas.
-    Capability [ Name = "Tool Box", Icon = @ToolBox, ServiceKey = ToolBoxService ]
+    Capability [ Name = "Tool Box", Icon = @ToolBox, ServiceKey = ToolboxService ]
 }
