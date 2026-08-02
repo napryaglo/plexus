@@ -46,9 +46,25 @@ test('applyTermDrop creates a concept instance referencing the term, positioned 
     expect(d.Model.emit()).toContain('realised-by = &stack.azure-openai;')
 })
 
-test('applyTermDrop is unresolved when no concept can reference the term', async () => {
+test('applyTermDrop is unresolved and mutates nothing when no concept can reference the term', async () => {
     const d = await doc()
     expect(applyTermDrop(d, 'unknown.term', 0, 0)).toEqual({ unresolved: true })
+    expect(d.Model.ownInstances()).toEqual([])   // no instance created
+    expect(d.Nodes.Count).toBe(0)                 // no node added
+})
+
+test('CreateNode on an out-of-scope term returns null and warns (graceful no-op)', async () => {
+    const d = await doc()
+    const warnings: string[] = []
+    const original = console.warn
+    console.warn = (...args: unknown[]): void => { warnings.push(String(args[0])) }
+    try {
+        expect(d.CreateNode('unknown.term', 0, 0)).toBe(null)
+    } finally {
+        console.warn = original
+    }
+    expect(d.Nodes.Count).toBe(0)
+    expect(warnings.some((w) => w.includes('unknown.term') && w.includes('scope'))).toBe(true)
 })
 
 test('applyConnect sets the reference member linking two nodes', () => {

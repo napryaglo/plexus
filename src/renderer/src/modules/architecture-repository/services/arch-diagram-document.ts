@@ -101,7 +101,13 @@ export class ArchDiagramDocument extends Model implements IDocument, DiagramMuta
     public CreateNode(kind: string, x: number, y: number): unknown | null
     {
         const r = applyTermDrop(this, kind, x, y)
-        if (!('created' in r)) return null
+        if (!('created' in r)) {
+            // Global toolbox: a dropped term may belong to a source this document
+            // doesn't bind. No mutation happened (applyTermDrop is a no-op when
+            // unresolved) — surface why the drop did nothing instead of silence.
+            console.warn(`[arch] term "${kind}" isn't in scope for this document — add its library/meta-model binding`)
+            return null
+        }
         return this.Nodes.ToArray().find((v) => v.Id === r.created) ?? null
     }
 
