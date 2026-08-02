@@ -7,7 +7,6 @@ import type { IStorage } from '../../../services/storage/storage.js'
 import type { LibraryRegistry } from '../../library/services/library-registry.js'
 import type { ArchInstanceModel } from './architecture-instance-model.js'
 import { InstanceNodeVM } from './instance-node-vm.js'
-import type { ArchTermsPaletteService } from './arch-terms-palette-service.js'
 import { applyTermDrop, applyConnect } from './arch-canvas-ops.js'
 
 // The on-disk shape of a `.archdiagram` file: the layout (positions) + the
@@ -31,12 +30,11 @@ export interface ArchLayout
 export class ArchDiagramDocument extends Model implements IDocument, DiagramMutator
 {
     public static readonly TitleKey = Model.RegisterProperty<string>(ArchDiagramDocument, 'Title', '', MetaData.None)
-    // Node VMs + palette are DPs (not plain fields) so the editor DataTemplate can
-    // bind `ItemsSource = $Nodes` and `Content = $Palette` — bindings only walk DPs.
+    // Node VMs are a DP (not a plain field) so the editor DataTemplate can bind
+    // `ItemsSource = $Nodes` — bindings only walk DPs. The palette is the global
+    // Toolbox now (ToolboxService), not a per-document embed.
     public static readonly NodesKey = Model.RegisterProperty<ObservableCollection<InstanceNodeVM>>(
         ArchDiagramDocument, 'Nodes', undefined as unknown as ObservableCollection<InstanceNodeVM>, MetaData.None)
-    public static readonly PaletteKey = Model.RegisterProperty<ArchTermsPaletteService | undefined>(
-        ArchDiagramDocument, 'Palette', undefined, MetaData.None)
     // Empty in v1 — reference edges live in the emitted `.todl`, not as drawn
     // connectors. Bound so the canvas's connector-interaction behavior always has a
     // valid collection; deriving visual connectors from model edges is a follow-up.
@@ -54,13 +52,11 @@ export class ArchDiagramDocument extends Model implements IDocument, DiagramMuta
         layout: Record<string, { x: number; y: number }>,
         title: string,
         private readonly registry?: LibraryRegistry,
-        palette?: ArchTermsPaletteService,
     )
     {
         super()
         this.set_property_value(ArchDiagramDocument.TitleKey, title)
         this.set_property_value(ArchDiagramDocument.NodesKey, new ObservableCollection<InstanceNodeVM>())
-        this.set_property_value(ArchDiagramDocument.PaletteKey, palette)
         this.set_property_value(ArchDiagramDocument.ConnectorsKey, new ObservableCollection<Connector>())
         for (const [id, p] of Object.entries(layout)) this.positions.set(id, p)
         for (const id of Model.ownInstances()) this.AddNode(id)
@@ -70,7 +66,6 @@ export class ArchDiagramDocument extends Model implements IDocument, DiagramMuta
     public get Title(): string { return this.get_property_value(ArchDiagramDocument.TitleKey) }
     public get IsDirty(): boolean { return this.dirty }
     public get Nodes(): ObservableCollection<InstanceNodeVM> { return this.get_property_value(ArchDiagramDocument.NodesKey) }
-    public get Palette(): ArchTermsPaletteService | undefined { return this.get_property_value(ArchDiagramDocument.PaletteKey) }
     public get Connectors(): ObservableCollection<Connector> { return this.get_property_value(ArchDiagramDocument.ConnectorsKey) }
 
     // The visual template for a node — its referenced term's template (else its

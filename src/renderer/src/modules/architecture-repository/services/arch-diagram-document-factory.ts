@@ -9,7 +9,6 @@ import { resolveBases } from '../../../services/projects/base-resolver.js'
 import { LibraryRegistry } from '../../library/services/library-registry.js'
 import { ArchInstanceModel } from './architecture-instance-model.js'
 import { ArchDiagramDocument, type ArchLayout } from './arch-diagram-document.js'
-import { ArchTermsPaletteService } from './arch-terms-palette-service.js'
 
 // The `.archdiagram` editor: an architecture-diagram file pairs a layout sidecar
 // (positions) with a sibling `.todl` (the emitted instance semantics). Open loads
@@ -29,8 +28,7 @@ export class ArchDiagramDocumentFactory extends ServiceBase implements IDocument
         const source = (await storage.Exists(layoutDoc.todlFile)) ? await storage.ReadText(layoutDoc.todlFile) : ''
         const model = ArchInstanceModel.load(bases, source, layoutDoc.namespace)
         const registry = this.Provider.get(LibraryRegistry.Key)
-        const palette = new ArchTermsPaletteService(this.Provider)
-        return new ArchDiagramDocument(path, model, storage, layoutDoc.todlFile, layoutDoc.layout ?? {}, basename(path), registry, palette)
+        return new ArchDiagramDocument(path, model, storage, layoutDoc.todlFile, layoutDoc.layout ?? {}, basename(path), registry)
     }
 
     public async saveFile(document: IDocument): Promise<void>
