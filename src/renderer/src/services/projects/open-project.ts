@@ -1,8 +1,9 @@
-import { MetaData, Model, type ICommand, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, ObservableCollection, type ICommand, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
 
 import type { IProjectFactory } from './project-factory.js'
 import type { IStorage } from '../storage/storage.js'
 import { ProjectNode, type Project } from './project.js'
+import { NewItemChoice } from './new-item-choice.js'
 
 // One open project in the explorer — the VM the tree renders as a collapsible
 // root. It bundles the project's model (Name + file tree) with the factory and
@@ -17,6 +18,10 @@ export class OpenProject extends Model
         OpenProject, 'Root', undefined as unknown as ProjectNode, MetaData.None)
     static readonly NewFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'NewFileCommand', undefined, MetaData.None)
+    // The "Add New" submenu's choices — one per the factory's declared formats,
+    // set by the host (ProjectExplorerService.wireProjectCommands).
+    static readonly NewItemChoicesKey = Model.RegisterProperty<ObservableCollection<NewItemChoice>>(
+        OpenProject, 'NewItemChoices', undefined as unknown as ObservableCollection<NewItemChoice>, MetaData.None)
     static readonly ImportFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'ImportFileCommand', undefined, MetaData.None)
     static readonly ImportFolderCommandKey = Model.RegisterProperty<ICommand | undefined>(
@@ -97,6 +102,9 @@ export class OpenProject extends Model
 
     public get NewFileCommand(): ICommand | undefined { return this.get_property_value(OpenProject.NewFileCommandKey) }
     public set NewFileCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.NewFileCommandKey, v) }
+
+    public get NewItemChoices(): ObservableCollection<NewItemChoice> { return this.get_property_value(OpenProject.NewItemChoicesKey) }
+    public set NewItemChoices(v: ObservableCollection<NewItemChoice>) { this.set_property_value(OpenProject.NewItemChoicesKey, v) }
 
     public get ImportFileCommand(): ICommand | undefined { return this.get_property_value(OpenProject.ImportFileCommandKey) }
     public set ImportFileCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.ImportFileCommandKey, v) }

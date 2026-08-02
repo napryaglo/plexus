@@ -1,5 +1,7 @@
 import { MetaData, Model, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
 
+import { NewItemChoice } from './new-item-choice.js'
+
 // A project and its file tree — the generic, host-owned model a project
 // factory populates. `Project` and `ProjectNode` are Models so the explorer's
 // TreeView binds them directly (Name/Kind per item, Children for expansion).
@@ -28,6 +30,10 @@ export class ProjectNode extends Model
     // `Command = $NewFileCommand` / `$NewFolderCommand` with no parameter.
     static readonly NewFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'NewFileCommand', undefined, MetaData.None)
+    // The "Add New" submenu's choices for this node's container — one per the
+    // factory's declared formats, set by the host (ProjectExplorerService.wireNodes).
+    static readonly NewItemChoicesKey = Model.RegisterProperty<ObservableCollection<NewItemChoice>>(
+        ProjectNode, 'NewItemChoices', undefined as unknown as ObservableCollection<NewItemChoice>, MetaData.None)
     static readonly NewFolderCommandKey = Model.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'NewFolderCommand', undefined, MetaData.None)
     static readonly ImportFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
@@ -84,6 +90,9 @@ export class ProjectNode extends Model
 
     public get NewFileCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.NewFileCommandKey) }
     public set NewFileCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.NewFileCommandKey, v) }
+
+    public get NewItemChoices(): ObservableCollection<NewItemChoice> { return this.get_property_value(ProjectNode.NewItemChoicesKey) }
+    public set NewItemChoices(v: ObservableCollection<NewItemChoice>) { this.set_property_value(ProjectNode.NewItemChoicesKey, v) }
 
     public get NewFolderCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.NewFolderCommandKey) }
     public set NewFolderCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.NewFolderCommandKey, v) }

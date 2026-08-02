@@ -51,6 +51,7 @@ import { copyTree } from '../../../services/storage/copy-tree.js'
 import type { FileFilter } from '../../../../../shared/file-system-api.js'
 import type { Project, ProjectNode } from '../../../services/projects/project.js'
 import { OpenProject } from '../../../services/projects/open-project.js'
+import { NewItemChoice } from '../../../services/projects/new-item-choice.js'
 import { OpenProjectsStore } from '../../../services/projects/open-projects-store.js'
 import {
     NewProjectDialogModel,
@@ -321,6 +322,7 @@ export class ProjectExplorerService extends ServiceBase
     private wireProjectCommands(op: OpenProject): void
     {
         op.NewFileCommand = new RelayCommand(() => void this.newFileIn(op))
+        op.NewItemChoices = this.newItemChoices(op, '')
         op.NewFolderCommand = new RelayCommand(() => void this.newFolderIn(op))
         op.ImportFileCommand = new RelayCommand(() => void this.importFilesInto(op, ''))
         op.ImportFolderCommand = new RelayCommand(() => void this.importFolderInto(op, ''))
@@ -344,9 +346,8 @@ export class ProjectExplorerService extends ServiceBase
     // Create a new file of the project's primary format inside `parentFolder`
     // (project-relative; '' = the project root) and open it. The name is the
     // format kind, auto-numbered to dodge collisions (foo → foo-2).
-    private async newFileIn(op: OpenProject, parentFolder = ''): Promise<void>
+    private async newFileIn(op: OpenProject, parentFolder = '', format: ProjectFileFormat | undefined = op.Factory.formats[0]): Promise<void>
     {
-        const format = op.Factory.formats[0]
         if (format === undefined) { this.Status = 'This project type has no file format.'; return }
         const factory = this.resolveDocumentFactory(format.extension)
         if (factory === undefined) { this.Status = `No editor for ${format.extension}.`; return }
@@ -361,6 +362,18 @@ export class ProjectExplorerService extends ServiceBase
         } catch (e) {
             this.Status = `New file failed: ${(e as Error).message}`
         }
+    }
+
+    // One NewItemChoice per declared format, each creating that format in
+    // `container` (project-relative; '' = root) and opening it. Bound by the
+    // "Add New" submenu on a project header (container '') or a node (its folder).
+    private newItemChoices(op: OpenProject, container: string): ObservableCollection<NewItemChoice>
+    {
+        const choices = new ObservableCollection<NewItemChoice>()
+        for (const format of op.Factory.formats) {
+            choices.Add(new NewItemChoice(format.displayName, new RelayCommand(() => void this.newFileIn(op, container, format))))
+        }
+        return choices
     }
 
     // Create a subfolder ("New Folder", auto-numbered on collision) inside
@@ -993,6 +1006,7 @@ export class ProjectExplorerService extends ServiceBase
         // creates inside itself; a file node creates beside itself (VSCode-style).
         const container = node.Kind === 'folder' ? node.Path : parentOf(node.Path)
         node.NewFileCommand = new RelayCommand(() => void this.newFileIn(op, container))
+        node.NewItemChoices = this.newItemChoices(op, container)
         node.NewFolderCommand = new RelayCommand(() => void this.newFolderIn(op, container))
         node.ImportFileCommand = new RelayCommand(() => void this.importFilesInto(op, container))
         node.ImportFolderCommand = new RelayCommand(() => void this.importFolderInto(op, container))

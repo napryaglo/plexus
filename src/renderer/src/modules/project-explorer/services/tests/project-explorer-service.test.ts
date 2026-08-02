@@ -9,7 +9,7 @@ import { StorageProviderRegistry } from '../../../../services/storage/storage-pr
 import { Project, ProjectNode } from '../../../../services/projects/project.js'
 import { OpenProject } from '../../../../services/projects/open-project.js'
 import { OpenProjectsStore } from '../../../../services/projects/open-projects-store.js'
-import { PROJECT_MANIFEST_FILENAME, type IProjectFactory, type IPublishableProjectFactory, type IPresentationProjectFactory } from '../../../../services/projects/project-factory.js'
+import { PROJECT_MANIFEST_FILENAME, type IProjectFactory, type IPublishableProjectFactory, type IPresentationProjectFactory, type ProjectFileFormat } from '../../../../services/projects/project-factory.js'
 import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../../services/documents/document-factory.js'
 import { ConfirmDialogModel } from '../../../../services/dialogs/confirm-dialog-model.js'
 import { ProjectExplorerService, applyPrefill, importFilters, uniqueStorageName } from '../project-explorer-service.js'
@@ -34,7 +34,7 @@ function fakeDocFactory(rec: Rec): IDocumentFactory & IRelocatableDocumentFactor
     return {
         openFile: async (_s, path) => { rec.opened.push(path); return doc(path) },
         saveFile: async (d) => { rec.saved.push(d) },
-        newFile: async (_s, name) => (name.endsWith('.todl') ? name : `${name}.todl`),
+        newFile: async (_s, name) => name,
         relocateOpenFile: (d, newPath) => { rec.relocated.push([d, newPath]) },
     }
 }
@@ -97,7 +97,7 @@ interface ExplorerPrivates
     openNode(node: ProjectNode, op: OpenProject): Promise<void>
     importFilesInto(op: OpenProject, target?: string): Promise<void>
     importFolderInto(op: OpenProject, target?: string): Promise<void>
-    newFileIn(op: OpenProject, parentFolder?: string): Promise<void>
+    newFileIn(op: OpenProject, parentFolder?: string, format?: ProjectFileFormat): Promise<void>
     newFolderIn(op: OpenProject, parentFolder?: string): Promise<void>
     beginRename(op: OpenProject, node: ProjectNode): void
     commitRename(op: OpenProject, node: ProjectNode): Promise<void>
@@ -152,7 +152,7 @@ function makeExplorer(openFiles: Picked[] | null = null, confirm = true, os: Fak
     const rec: Rec = { opened: [], saved: [], relocated: [] }
     provider.registerInstance(ServiceProvider.tokenFor(TodlDocFactoryToken), fakeDocFactory(rec))
     provider.registerInstance(DocumentTypeRegistry.Key, {
-        GetByExtension: (ext: string) => (ext === '.todl' ? { Factory: TodlDocFactoryToken } : undefined),
+        GetByExtension: (ext: string) => ((ext === '.todl' || ext === '.archdiagram') ? { Factory: TodlDocFactoryToken } : undefined),
     } as unknown as DocumentTypeRegistry)
     const service = new ProjectExplorerService(provider)
     return { service, host, store, priv: service as unknown as ExplorerPrivates, provider, shownDialogs, rec, occupied }
@@ -409,6 +409,43 @@ test('New File in a subfolder is created and opened under that folder', async ()
 
     await priv.newFileIn(op, 'src')
     expect(rec.opened).toEqual(['src/todl.todl'])
+})
+
+// A factory declaring two formats (diagram primary, todl second) — for the
+// "Add New" submenu path: one choice per format, each creating THAT format.
+function twoFormatFactory(): IProjectFactory
+{
+    return {
+        formats: [
+            { extension: '.archdiagram', kind: 'diagram', displayName: 'Architecture Diagram' },
+            { extension: '.todl',        kind: 'todl',    displayName: 'TODL Definition' },
+        ],
+        createProject: async (_s, name) => projectWith(name, 'C:/x'),
+        openProject: async () => projectWith('P', 'C:/x'),
+        saveProject: async () => {},
+    }
+}
+
+test('a two-format project builds one Add-New choice per format on the project and each node', async () => {
+    const { priv } = makeExplorer()
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), twoFormatFactory(), new FakeStorage('C:/a'))
+
+    expect(op.NewItemChoices.ToArray().map((c) => c.Label)).toEqual(['Architecture Diagram', 'TODL Definition'])
+    const child = op.Root.Children.ToArray()[0]!
+    expect(child.NewItemChoices.ToArray().map((c) => c.Label)).toEqual(['Architecture Diagram', 'TODL Definition'])
+})
+
+test('a New choice creates and opens a file of THAT format, not just the primary', async () => {
+    const { priv, rec } = makeExplorer()
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), twoFormatFactory(), new FakeStorage('C:/a'))
+
+    op.NewItemChoices.ToArray()[1]!.Command!.Execute(undefined)     // the TODL choice
+    await new Promise((r) => setTimeout(r, 0))
+    expect(rec.opened).toContain('todl.todl')
+
+    op.NewItemChoices.ToArray()[0]!.Command!.Execute(undefined)     // the Diagram choice
+    await new Promise((r) => setTimeout(r, 0))
+    expect(rec.opened).toContain('diagram.archdiagram')
 })
 
 test('a folder node is wired to create inside itself (container-aware)', async () => {
