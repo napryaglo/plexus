@@ -9,7 +9,9 @@
 // itself — a `DataTemplate[DataType=DiagramDocument]` the content host presents
 // for the active diagram document (materializing the Diagram control in-tree).
 
-import ToolBoxService from "./services/diagram-panel-services.js"
+import ToolboxService from "./services/diagram-panel-services.js"
+import ToolboxPage from "./services/toolbox-page.js"
+import TermTile from "./services/toolbox-page.js"
 import LayoutPipelineService from "./layout/layout-pipeline-service.js"
 
 resources DiagramResources {
@@ -266,29 +268,47 @@ resources DiagramResources {
 
     // ── ToolBox capability panel — the shapes palette in the left pane.
     // Overrides the generic `DataTemplate [DataType = PlexusPanelService]` for
-    // the ToolBoxService subtype (exact-type match wins), rendering the live
-    // $Shapes through the toolbox tile. ──
-    DataTemplate [DataType = ToolBoxService] {
+    // the ToolboxService subtype (exact-type match wins). The unified toolbox
+    // presents $Pages as a TabControl: a built-in Shapes page plus one page per
+    // visible taxonomy. ItemsControl.ItemTemplate templates each tab HEADER; the
+    // tab BODY dispatches by DataType to `DataTemplate [DataType = ToolboxPage]`. ──
+    DataTemplate [DataType = ToolboxService] {
         Border [ Padding = (8) ] {
-            // No explicit Width — the shell's side pane now has a definite Width and
-            // a Star content column (see @PlexusSideContentPane), so this content
-            // measures against the pane width and the WrapPanel wraps to it.
-            DockPanel {
-                TextBlock
-                    [ DockPanel.Dock = Top,
-                      Text           = "Shapes",
-                      Style          = @LabelMedium,
-                      Foreground     = @OnSurfaceVariant,
-                      Margin         = (2,0,0,8) ]
-                // HorizontalScrollEnabled = false so the ScrollViewer measures
-                // its content at the viewport width instead of +Infinity —
-                // otherwise the WrapPanel gets unbounded width and never wraps
-                // (overflow becomes horizontal scroll). The palette only scrolls
-                // vertically.
-                ScrollViewer [ IsAutoHideScrollBars = false, HorizontalScrollEnabled = false ] {
-                    ItemsControl [ ItemsSource = $Shapes, ItemsPanel = @DiagramToolboxPanel ]
-                }
-            }
+            TabControl
+                [ ItemsControl.ItemsSource  = $Pages,
+                  ItemsControl.ItemTemplate = @ToolboxTabHeader ]
+        }
+    }
+
+    // Tab header for a toolbox page — just its title.
+    DataTemplate x:key="ToolboxTabHeader" [DataType = ToolboxPage] {
+        TextBlock [ Text = $Title, Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
+    }
+
+    // One toolbox page body: the page's tiles in the uniform wrap grid. No
+    // ItemTemplate — each item dispatches by DataType (ToolboxShape → the shape
+    // tile above; TermTile → the term tile below). HorizontalScrollEnabled = false
+    // so the WrapPanel wraps to the pane width instead of scrolling horizontally.
+    DataTemplate [DataType = ToolboxPage] {
+        ScrollViewer [ IsAutoHideScrollBars = false, HorizontalScrollEnabled = false ] {
+            ItemsControl [ ItemsSource = $Items, ItemsPanel = @DiagramToolboxPanel ]
+        }
+    }
+
+    // One draggable term tile (a taxonomy term). Dragging emits the term id under
+    // the canvas-drop format; dropping on the arch canvas fires CreateNode →
+    // applyTermDrop. Mirrors the ToolboxShape tile's drag wiring.
+    DataTemplate [DataType = TermTile] {
+        Border x:root
+            [ IsDraggable     = true,
+              OnDragStart     = $BeginKindDragData,
+              Background      = @Surface,
+              BorderBrush     = @OutlineVariant,
+              BorderThickness = (1),
+              CornerRadius    = 4,
+              Padding         = (8,6,8,6),
+              Margin          = (2,0,2,4) ] {
+            TextBlock [ Text = $Display, FontSize = 12, Foreground = @OnSurface ]
         }
     }
 }
