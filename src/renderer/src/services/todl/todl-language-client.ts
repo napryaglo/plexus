@@ -4,9 +4,7 @@ import type { TodlDocument } from '@pragmatic-lab/todl'
 import type { IStorage } from '../storage/storage.js'
 import { CodeDocument } from '../../modules/code-editor/code-document.js'
 import { collectTodlSources } from '../../modules/meta-model/services/todl-sources.js'
-import { resolveBases } from '../projects/base-resolver.js'
-import { PROJECT_MANIFEST_FILENAME } from '../projects/project-factory.js'
-import type { BaseBindings } from '../projects/base-binding.js'
+import { WorkspaceBaseResolver } from '../projects/workspace-base-resolver.js'
 import { DiagnosticsService } from '../diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity, type Diagnostic } from '../diagnostics/diagnostic.js'
 import { lspToMonacoRange, type MonacoRange } from '../../modules/meta-model/todl-lsp/position.js'
@@ -219,18 +217,13 @@ export class TodlLanguageClient extends ServiceBase {
     return { projectId: entry.projectId, storage: entry.storage, relpath }
   }
 
-  // Resolve (and cache) a project's declared bases from its manifest. A project
-  // with no manifest / no bindings resolves to []. Mirrors the retired
-  // TodlValidationService.basesFor.
+  // Resolve (and cache) a project's declared bases, preferring an open sibling
+  // producer's live source over the published artifact (WorkspaceBaseResolver).
+  // Cache is per-storage; RefreshBases drops it to pick up producer edits.
   private async basesFor(storage: IStorage): Promise<{ bases: TodlDocument[]; problems: string[] }> {
     const cached = this.baseCache.get(storage)
     if (cached !== undefined) return cached
-    let bindings: BaseBindings = {}
-    try {
-      const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as BaseBindings
-      bindings = { metaModel: manifest.metaModel, libraries: manifest.libraries }
-    } catch { /* no manifest → no bases */ }
-    const resolved = await resolveBases(this.Provider, bindings)
+    const resolved = await this.Provider.getRequired(WorkspaceBaseResolver.Key).ResolveForStorage(storage)
     this.baseCache.set(storage, resolved)
     return resolved
   }

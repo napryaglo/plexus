@@ -3,9 +3,7 @@ import type { IDocument } from '@pragmatic-lab/mural/framework'
 
 import type { IDocumentFactory } from '../../../services/documents/document-factory.js'
 import type { IStorage } from '../../../services/storage/storage.js'
-import { PROJECT_MANIFEST_FILENAME } from '../../../services/projects/project-factory.js'
-import type { BaseBindings } from '../../../services/projects/base-binding.js'
-import { resolveBases } from '../../../services/projects/base-resolver.js'
+import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base-resolver.js'
 import { LibraryRegistry } from '../../library/services/library-registry.js'
 import { ArchInstanceModel } from './architecture-instance-model.js'
 import { ArchDiagramDocument, type ArchLayout } from './arch-diagram-document.js'
@@ -24,7 +22,7 @@ export class ArchDiagramDocumentFactory extends ServiceBase implements IDocument
     public async openFile(storage: IStorage, path: string): Promise<IDocument>
     {
         const layoutDoc = JSON.parse(await storage.ReadText(path)) as ArchLayout
-        const { bases } = await resolveBases(this.Provider, await this.bindings(storage))
+        const { bases } = await this.Provider.getRequired(WorkspaceBaseResolver.Key).ResolveForStorage(storage)
         const source = (await storage.Exists(layoutDoc.todlFile)) ? await storage.ReadText(layoutDoc.todlFile) : ''
         const model = ArchInstanceModel.load(bases, source, layoutDoc.namespace)
         const registry = this.Provider.get(LibraryRegistry.Key)
@@ -44,14 +42,6 @@ export class ArchDiagramDocumentFactory extends ServiceBase implements IDocument
         await storage.WriteText(path, JSON.stringify(layout, null, 2))
         await storage.WriteText(layout.todlFile, `namespace ${base}\n{\n}\n`)
         return path
-    }
-
-    private async bindings(storage: IStorage): Promise<BaseBindings>
-    {
-        try {
-            const m = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as BaseBindings
-            return { metaModel: m.metaModel, libraries: m.libraries }
-        } catch { return {} }
     }
 }
 

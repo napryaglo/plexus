@@ -1,6 +1,7 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { TodlLanguageClient } from '../todl-language-client.js'
+import { WorkspaceBaseResolver } from '../../projects/workspace-base-resolver.js'
 import { DiagnosticsService } from '../../diagnostics/diagnostics-service.js'
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
 
@@ -22,6 +23,9 @@ function fakeConn() {
 
 async function setup() {
   const provider = new ServiceProvider()
+  provider.registerInstance(WorkspaceBaseResolver.Key, {
+    ResolveForStorage: async () => ({ bases: [], problems: [] }),
+  } as unknown as WorkspaceBaseResolver)
   const diagnostics = new DiagnosticsService(provider)
   provider.registerInstance(DiagnosticsService.Key, diagnostics)
   const storage = new FakeStorage('proj')

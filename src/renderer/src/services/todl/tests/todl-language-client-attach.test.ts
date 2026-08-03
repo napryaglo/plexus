@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { TodlLanguageClient } from '../todl-language-client.js'
+import { providerWithFakeResolver } from './fake-resolver.js'
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
 
 function fakeConn() {
@@ -20,7 +20,7 @@ test('AttachProject sets bases then didOpens every project .todl', async () => {
   const storage = new FakeStorage('proj')
   await storage.WriteText('a.todl', 'namespace demo {\n}')
   await storage.WriteText('sub/b.todl', 'namespace two {\n}')
-  const client = new TodlLanguageClient(new ServiceProvider())
+  const client = new TodlLanguageClient(providerWithFakeResolver())
   const { conn, notes } = fakeConn()
   await client.Initialize(conn as never)
   await client.AttachProject('C:\\proj', 'Proj', storage)
@@ -36,7 +36,7 @@ test('AttachProject sets bases then didOpens every project .todl', async () => {
 test('DetachProject didCloses the project docs and drops the registry', async () => {
   const storage = new FakeStorage('proj')
   await storage.WriteText('a.todl', 'namespace demo {\n}')
-  const client = new TodlLanguageClient(new ServiceProvider())
+  const client = new TodlLanguageClient(providerWithFakeResolver())
   const { conn, notes } = fakeConn()
   await client.Initialize(conn as never)
   await client.AttachProject('C:\\proj', 'Proj', storage)
@@ -51,7 +51,7 @@ test('DetachProject didCloses the project docs and drops the registry', async ()
 test('RefreshBases re-sends bases via todl/refreshBases', async () => {
   const storage = new FakeStorage('proj')
   await storage.WriteText('a.todl', 'namespace demo {\n}')
-  const client = new TodlLanguageClient(new ServiceProvider())
+  const client = new TodlLanguageClient(providerWithFakeResolver())
   const { conn, notes } = fakeConn()
   await client.Initialize(conn as never)
   await client.AttachProject('C:\\proj', 'Proj', storage)

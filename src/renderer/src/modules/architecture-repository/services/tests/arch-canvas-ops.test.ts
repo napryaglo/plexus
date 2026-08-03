@@ -1,11 +1,13 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ObservableCollection, ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { check, checkAgainst, toJSON } from '@pragmatic-lab/todl'
 
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { META_MODELS_BACKEND_ID } from '../../../meta-model/services/meta-models-backend.js'
 import { LIBRARIES_BACKEND_ID } from '../../../library/services/libraries-backend.js'
+import { ProjectExplorerService } from '../../../project-explorer/services/project-explorer-service.js'
+import { WorkspaceBaseResolver } from '../../../../services/projects/workspace-base-resolver.js'
 import { ArchDiagramDocumentFactory } from '../arch-diagram-document-factory.js'
 import { ArchDiagramDocument } from '../arch-diagram-document.js'
 import { ArchInstanceModel } from '../architecture-instance-model.js'
@@ -25,6 +27,10 @@ function env(): { provider: ServiceProvider; project: FakeStorage } {
     void libs.WriteText('ms/1/model.json', JSON.stringify(libDoc))
     const project = new FakeStorage('fake://proj')
     void project.WriteText('project.plexus', JSON.stringify({ type: 'architecture', name: 'Proj', metaModel: { id: 'ea', version: '1' }, libraries: [{ id: 'ms', version: '1' }] }))
+    // No producer projects are open, so the resolver falls back to the published
+    // backends set up above (its behavior when nothing local matches).
+    provider.registerInstance(ProjectExplorerService.Key, { OpenProjects: new ObservableCollection() } as unknown as ProjectExplorerService)
+    provider.registerInstance(WorkspaceBaseResolver.Key, new WorkspaceBaseResolver(provider))
     return { provider, project }
 }
 
