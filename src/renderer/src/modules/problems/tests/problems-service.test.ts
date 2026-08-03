@@ -2,6 +2,8 @@ import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { DiagnosticsService } from '../../../services/diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity, type Diagnostic } from '../../../services/diagnostics/diagnostic.js'
+import { ClipboardService } from '../../../services/clipboard/clipboard-service.js'
+import { ViewportService, type IViewportSource } from '../../../services/viewport/viewport-service.js'
 import { ProblemsService, ProblemRowKind } from '../problems-service.js'
 
 function diag(over: Partial<Diagnostic>): Diagnostic
@@ -13,13 +15,31 @@ function diag(over: Partial<Diagnostic>): Diagnostic
     }
 }
 
-function env(): { store: DiagnosticsService; problems: ProblemsService }
+function fakeViewport(initial: number): IViewportSource & { push(h: number): void }
+{
+    let h = initial
+    const cbs = new Set<() => void>()
+    return {
+        height: () => h,
+        subscribe: (cb) => { cbs.add(cb); return () => cbs.delete(cb) },
+        push: (next: number) => { h = next; for (const cb of cbs) cb() },
+    }
+}
+
+function env(height = 1000): {
+    store: DiagnosticsService; problems: ProblemsService
+    clipped: string[]; viewport: IViewportSource & { push(h: number): void }
+}
 {
     const provider = new ServiceProvider()
     const store = new DiagnosticsService(provider)
     provider.registerInstance(DiagnosticsService.Key, store)
+    const clipped: string[] = []
+    provider.registerInstance(ClipboardService.Key, new ClipboardService(provider, async (t) => { clipped.push(t) }))
+    const viewport = fakeViewport(height)
+    provider.registerInstance(ViewportService.Key, new ViewportService(provider, viewport))
     const problems = new ProblemsService(provider)
-    return { store, problems }
+    return { store, problems, clipped, viewport }
 }
 
 test('counts errors and warnings across the store', () => {
@@ -98,4 +118,42 @@ test('SummaryText reflects the counts', () => {
         diag({ uri: 'a.todl', severity: DiagnosticSeverity.Warning }),
     ])
     expect(problems.SummaryText).toBe('1 error, 1 warning')
+})
+
+test('ShowErrors=false hides error rows but keeps warnings; counts stay full totals', () => {
+    const { store, problems } = env()
+    store.Publish('todl', '/p', [
+        diag({ uri: 'a.todl', message: 'e1', severity: DiagnosticSeverity.Error }),
+        diag({ uri: 'a.todl', message: 'w1', severity: DiagnosticSeverity.Warning }),
+    ])
+    problems.ShowErrors = false
+    const labels = [...problems.Rows].filter((r) => r.Kind === ProblemRowKind.Diagnostic).map((r) => r.Label)
+    expect(labels).toEqual(['w1'])
+    // Counts are unfiltered totals (they label the toggles).
+    expect(problems.ErrorCount).toBe(1)
+    expect(problems.WarningCount).toBe(1)
+})
+
+test('FilterText matches message and file name, case-insensitively', () => {
+    const { store, problems } = env()
+    store.Publish('todl', '/p', [
+        diag({ uri: 'alpha.todl', message: 'boom' }),
+        diag({ uri: 'beta.todl', message: 'quiet' }),
+    ])
+    problems.FilterText = 'BOOM'   // matches message
+    expect([...problems.Rows].map((r) => r.Label)).toEqual(['boom'])
+    problems.FilterText = 'beta'   // matches file name
+    expect([...problems.Rows].map((r) => r.Label)).toEqual(['quiet'])
+})
+
+test('severity and text filters intersect', () => {
+    const { store, problems } = env()
+    store.Publish('todl', '/p', [
+        diag({ uri: 'a.todl', message: 'boom', severity: DiagnosticSeverity.Error }),
+        diag({ uri: 'a.todl', message: 'boom', severity: DiagnosticSeverity.Warning }),
+    ])
+    problems.FilterText = 'boom'
+    problems.ShowWarnings = false
+    const rows = [...problems.Rows].filter((r) => r.Kind === ProblemRowKind.Diagnostic)
+    expect(rows.length).toBe(1)   // only the error 'boom' survives both filters
 })

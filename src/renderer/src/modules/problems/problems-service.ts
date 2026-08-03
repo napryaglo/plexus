@@ -1,6 +1,6 @@
 import {
     Model, MetaData, ObservableCollection, ServiceBase, ServiceKey, RelayCommand,
-    type ICommand, type IServiceProvider,
+    type ICommand, type IServiceProvider, type PropertyDescriptor,
 } from '@pragmatic-lab/mural/runtime'
 import { DiagnosticsService } from '../../services/diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity, type Diagnostic } from '../../services/diagnostics/diagnostic.js'
@@ -86,6 +86,17 @@ export class ProblemsService extends ServiceBase
     // publish sets it true via Expand() to surface the problems.
     public static readonly IsOpenKey = Model.RegisterProperty<boolean>(ProblemsService, 'IsOpen', false, MetaData.None)
 
+    // Toolbar filter state. Any change re-runs rebuild() (see OnPropertyChanged),
+    // which filters the diagnostics before grouping. Counts stay full totals.
+    public static readonly ShowErrorsKey = Model.RegisterProperty<boolean>(ProblemsService, 'ShowErrors', true, MetaData.None)
+    public static readonly ShowWarningsKey = Model.RegisterProperty<boolean>(ProblemsService, 'ShowWarnings', true, MetaData.None)
+    public static readonly FilterTextKey = Model.RegisterProperty<string>(ProblemsService, 'FilterText', '', MetaData.None)
+
+    // Set true while ClearFilters mutates several filter DPs, so their individual
+    // property-change notifications don't each trigger a rebuild (ClearFilters
+    // rebuilds once at the end).
+    private suppressRebuild = false
+
     constructor(provider: IServiceProvider)
     {
         super(provider)
@@ -104,6 +115,12 @@ export class ProblemsService extends ServiceBase
     public get SummaryText(): string { return this.get_property_value(ProblemsService.SummaryTextKey) }
     public get IsOpen(): boolean { return this.get_property_value(ProblemsService.IsOpenKey) }
     public set IsOpen(v: boolean) { this.set_property_value(ProblemsService.IsOpenKey, v) }
+    public get ShowErrors(): boolean { return this.get_property_value(ProblemsService.ShowErrorsKey) }
+    public set ShowErrors(v: boolean) { this.set_property_value(ProblemsService.ShowErrorsKey, v) }
+    public get ShowWarnings(): boolean { return this.get_property_value(ProblemsService.ShowWarningsKey) }
+    public set ShowWarnings(v: boolean) { this.set_property_value(ProblemsService.ShowWarningsKey, v) }
+    public get FilterText(): string { return this.get_property_value(ProblemsService.FilterTextKey) }
+    public set FilterText(v: string) { this.set_property_value(ProblemsService.FilterTextKey, v) }
 
     public Expand(): void { this.IsOpen = true }
 
@@ -132,8 +149,10 @@ export class ProblemsService extends ServiceBase
         // more than one project has problems. Within a project, each diagnostic is
         // ONE self-contained row: the message plus its file + location — no separate
         // file-header rows (which read as disconnected siblings in a flat popup).
+        const visible = all.filter((d) => this.matchesFilter(d))
+
         const byProject = new Map<string, { name: string; diags: Diagnostic[] }>()
-        for (const d of all) {
+        for (const d of visible) {
             let proj = byProject.get(d.projectId)
             if (proj === undefined) { proj = { name: d.projectName, diags: [] }; byProject.set(d.projectId, proj) }
             proj.diags.push(d)
@@ -159,6 +178,27 @@ export class ProblemsService extends ServiceBase
                 rows.Add(row)
             }
         }
+    }
+
+    // Filter predicate applied before grouping: severity toggles gate errors and
+    // warnings (other severities always shown); a non-empty FilterText must appear
+    // (case-insensitively) in the message or the file name.
+    private matchesFilter(d: Diagnostic): boolean
+    {
+        if (d.severity === DiagnosticSeverity.Error && !this.ShowErrors) return false
+        if (d.severity === DiagnosticSeverity.Warning && !this.ShowWarnings) return false
+        const q = this.FilterText.trim().toLowerCase()
+        if (q === '') return true
+        const file = d.uri === null ? '' : fileNameOf(d.uri)
+        return d.message.toLowerCase().includes(q) || file.toLowerCase().includes(q)
+    }
+
+    protected override OnPropertyChanged(descriptor: PropertyDescriptor, oldValue: unknown, newValue: unknown): void
+    {
+        super.OnPropertyChanged(descriptor, oldValue, newValue)
+        if (this.suppressRebuild) return
+        const n = descriptor.Name
+        if (n === 'ShowErrors' || n === 'ShowWarnings' || n === 'FilterText') this.rebuild()
     }
 }
 
