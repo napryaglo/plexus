@@ -9,6 +9,7 @@ import { META_MODELS_BACKEND_ID } from '../../../meta-model/services/meta-models
 import { LIBRARIES_BACKEND_ID } from '../../../library/services/libraries-backend.js'
 import { ProjectExplorerService } from '../../../project-explorer/services/project-explorer-service.js'
 import { WorkspaceBaseResolver } from '../../../../services/projects/workspace-base-resolver.js'
+import { LibraryRegistry } from '../../../library/services/library-registry.js'
 import { ArchDiagramDocumentFactory } from '../arch-diagram-document-factory.js'
 import { ArchDiagramDocument } from '../arch-diagram-document.js'
 import { InstanceNodeVM } from '../instance-node-vm.js'
@@ -41,6 +42,15 @@ function env(): { provider: ServiceProvider; project: FakeStorage } {
     // backends set up above (its behavior when nothing local matches).
     provider.registerInstance(ProjectExplorerService.Key, { OpenProjects: new ObservableCollection() } as unknown as ProjectExplorerService)
     provider.registerInstance(WorkspaceBaseResolver.Key, new WorkspaceBaseResolver(provider))
+    // A published library bundle defining a visual for the term the tests reference,
+    // so the LibraryRegistry can lazily compile it for canvas nodes.
+    void libs.WriteText('viz/0.1.0/library.json', JSON.stringify({
+        id: 'viz', version: '0.1.0', name: 'Viz', metaModel: { id: 'ea', version: '1' },
+        classes: [{ id: 'stack.azure-openai', localId: 'azure-openai', label: 'Azure OpenAI', concept: 'technology', template: 'visuals/x.mural' }],
+        assets: [], docs: [], samples: [],
+    }))
+    void libs.WriteText('viz/0.1.0/visuals/x.mural', 'TextBlock [ Text = $Display ]')
+    provider.registerInstance(LibraryRegistry.Key, new LibraryRegistry(provider))
     return { provider, project }
 }
 
@@ -115,4 +125,21 @@ test('DeleteNodes removes the instance from the model and its node from the canv
     doc.DeleteNodes([node])
     expect(doc.Nodes.Count).toBe(0)
     expect(doc.Model.ownInstances()).toEqual([])
+})
+
+test('a node visual upgrades from the default box when its class compiles (lazy)', async () => {
+    const { provider, project } = env()
+    const doc = await openNew(provider, project)
+    const registry = provider.getRequired(LibraryRegistry.Key)
+    const def = registry.resolve('nobody', 'x')   // the shared default
+
+    // Drop a node referencing a class that has a published visual. Its template
+    // resolves to the default first (compile is scheduled), then upgrades.
+    const node = doc.CreateNode('stack.azure-openai', 10, 10) as InstanceNodeVM
+    if (node.Template === def) {
+        await new Promise<void>((res) => {
+            const off = registry.onChanged((id) => { if (id === 'stack.azure-openai') { off(); res() } })
+        })
+    }
+    expect(node.Template).not.toBe(def)
 })
