@@ -1,10 +1,18 @@
 import {
     Model, MetaData, ObservableCollection, ServiceBase, ServiceKey, RelayCommand,
-    type ICommand, type IServiceProvider,
+    type ICommand, type IServiceProvider, type PropertyDescriptor,
 } from '@pragmatic-lab/mural/runtime'
 import { DiagnosticsService } from '../../services/diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity, type Diagnostic } from '../../services/diagnostics/diagnostic.js'
+import { ViewportService } from '../../services/viewport/viewport-service.js'
+import { ClipboardService } from '../../services/clipboard/clipboard-service.js'
 import { ProjectExplorerService } from '../project-explorer/services/project-explorer-service.js'
+
+// The Problems popup caps its scrollable list at this fraction of the live
+// window height. When no ViewportService is available (headless edge cases), fall
+// back to a fixed height so the list still scrolls rather than growing unbounded.
+const LIST_HEIGHT_FRACTION = 0.3
+const FALLBACK_LIST_MAX_HEIGHT = 240
 
 // A standalone ServiceKey (like the framework's DiagramEditingContext). The
 // StatusBar ShellControlDefinition references THIS as its DataContext: the shell
@@ -33,6 +41,8 @@ export class ProblemsRow extends Model
     public static readonly ColumnKey = Model.RegisterProperty<number>(ProblemsRow, 'Column', 1, MetaData.None)
     public static readonly ActivateCommandKey = Model.RegisterProperty<ICommand | undefined>(
         ProblemsRow, 'ActivateCommand', undefined, MetaData.None)
+    public static readonly CopyCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        ProblemsRow, 'CopyCommand', undefined, MetaData.None)
 
     constructor(init: {
         kind: ProblemRowKind; label: string; detail?: string; severity?: DiagnosticSeverity;
@@ -62,6 +72,8 @@ export class ProblemsRow extends Model
     public get Column(): number { return this.get_property_value(ProblemsRow.ColumnKey) }
     public get ActivateCommand(): ICommand | undefined { return this.get_property_value(ProblemsRow.ActivateCommandKey) }
     public set ActivateCommand(v: ICommand | undefined) { this.set_property_value(ProblemsRow.ActivateCommandKey, v) }
+    public get CopyCommand(): ICommand | undefined { return this.get_property_value(ProblemsRow.CopyCommandKey) }
+    public set CopyCommand(v: ICommand | undefined) { this.set_property_value(ProblemsRow.CopyCommandKey, v) }
 }
 
 // A grouped, observable view over the DiagnosticsService, rendered in the shell's
@@ -86,6 +98,29 @@ export class ProblemsService extends ServiceBase
     // publish sets it true via Expand() to surface the problems.
     public static readonly IsOpenKey = Model.RegisterProperty<boolean>(ProblemsService, 'IsOpen', false, MetaData.None)
 
+    // Toolbar filter state. Any change re-runs rebuild() (see OnPropertyChanged),
+    // which filters the diagnostics before grouping. Counts stay full totals.
+    public static readonly ShowErrorsKey = Model.RegisterProperty<boolean>(ProblemsService, 'ShowErrors', true, MetaData.None)
+    public static readonly ShowWarningsKey = Model.RegisterProperty<boolean>(ProblemsService, 'ShowWarnings', true, MetaData.None)
+    public static readonly FilterTextKey = Model.RegisterProperty<string>(ProblemsService, 'FilterText', '', MetaData.None)
+
+    // MaxHeight for the popup's scrollable list = 30% of the live window height.
+    // Bound by the .mu ScrollViewer; recomputed whenever ViewportService.Height
+    // changes.
+    public static readonly ListMaxHeightKey = Model.RegisterProperty<number>(
+        ProblemsService, 'ListMaxHeight', FALLBACK_LIST_MAX_HEIGHT, MetaData.None)
+
+    // Toolbar commands: copy the (filtered) list to the clipboard; reset filters.
+    public static readonly CopyAllCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        ProblemsService, 'CopyAllCommand', undefined, MetaData.None)
+    public static readonly ClearFiltersCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        ProblemsService, 'ClearFiltersCommand', undefined, MetaData.None)
+
+    // Set true while ClearFilters mutates several filter DPs, so their individual
+    // property-change notifications don't each trigger a rebuild (ClearFilters
+    // rebuilds once at the end).
+    private suppressRebuild = false
+
     constructor(provider: IServiceProvider)
     {
         super(provider)
@@ -95,6 +130,13 @@ export class ProblemsService extends ServiceBase
         // to All's per-item collection events — the latter fires N+1 times per
         // publish and made this O(N) rebuild run per-item (O(N^2), froze the app).
         store?.Subscribe(() => this.rebuild())
+        const viewport = provider.get(ViewportService.Key)
+        if (viewport !== undefined) {
+            this.updateListMaxHeight(viewport.Height)
+            viewport.Subscribe(() => this.updateListMaxHeight(viewport.Height))
+        }
+        this.set_property_value(ProblemsService.CopyAllCommandKey, new RelayCommand(() => void this.copyAll()))
+        this.set_property_value(ProblemsService.ClearFiltersCommandKey, new RelayCommand(() => this.clearFilters()))
         this.rebuild()
     }
 
@@ -104,14 +146,25 @@ export class ProblemsService extends ServiceBase
     public get SummaryText(): string { return this.get_property_value(ProblemsService.SummaryTextKey) }
     public get IsOpen(): boolean { return this.get_property_value(ProblemsService.IsOpenKey) }
     public set IsOpen(v: boolean) { this.set_property_value(ProblemsService.IsOpenKey, v) }
+    public get ShowErrors(): boolean { return this.get_property_value(ProblemsService.ShowErrorsKey) }
+    public set ShowErrors(v: boolean) { this.set_property_value(ProblemsService.ShowErrorsKey, v) }
+    public get ShowWarnings(): boolean { return this.get_property_value(ProblemsService.ShowWarningsKey) }
+    public set ShowWarnings(v: boolean) { this.set_property_value(ProblemsService.ShowWarningsKey, v) }
+    public get FilterText(): string { return this.get_property_value(ProblemsService.FilterTextKey) }
+    public set FilterText(v: string) { this.set_property_value(ProblemsService.FilterTextKey, v) }
+    public get ListMaxHeight(): number { return this.get_property_value(ProblemsService.ListMaxHeightKey) }
+    public get CopyAllCommand(): ICommand | undefined { return this.get_property_value(ProblemsService.CopyAllCommandKey) }
+    public get ClearFiltersCommand(): ICommand | undefined { return this.get_property_value(ProblemsService.ClearFiltersCommandKey) }
 
     public Expand(): void { this.IsOpen = true }
 
-    // Open the row's file and scroll to its span (project-level rows do nothing).
+    // Open the row's file and scroll to its span (project-level rows do nothing),
+    // then close the popup.
     public ActivateRow(row: ProblemsRow): void
     {
         if (row.Uri === null) return
         void this.Provider.get(ProjectExplorerService.Key)?.OpenFileInProject(row.ProjectId, row.Uri, row.Line, row.Column)
+        this.IsOpen = false
     }
 
     private rebuild(): void
@@ -132,8 +185,10 @@ export class ProblemsService extends ServiceBase
         // more than one project has problems. Within a project, each diagnostic is
         // ONE self-contained row: the message plus its file + location — no separate
         // file-header rows (which read as disconnected siblings in a flat popup).
+        const visible = all.filter((d) => this.matchesFilter(d))
+
         const byProject = new Map<string, { name: string; diags: Diagnostic[] }>()
-        for (const d of all) {
+        for (const d of visible) {
             let proj = byProject.get(d.projectId)
             if (proj === undefined) { proj = { name: d.projectName, diags: [] }; byProject.set(d.projectId, proj) }
             proj.diags.push(d)
@@ -156,9 +211,65 @@ export class ProblemsService extends ServiceBase
                     column: d.span?.startColumn ?? 1,
                 })
                 row.ActivateCommand = new RelayCommand(() => this.ActivateRow(row))
+                row.CopyCommand = new RelayCommand(() => void this.copyOne(d))
                 rows.Add(row)
             }
         }
+    }
+
+    // Filter predicate applied before grouping: severity toggles gate errors and
+    // warnings (other severities always shown); a non-empty FilterText must appear
+    // (case-insensitively) in the message or the file name.
+    private matchesFilter(d: Diagnostic): boolean
+    {
+        if (d.severity === DiagnosticSeverity.Error && !this.ShowErrors) return false
+        if (d.severity === DiagnosticSeverity.Warning && !this.ShowWarnings) return false
+        const q = this.FilterText.trim().toLowerCase()
+        if (q === '') return true
+        const file = d.uri === null ? '' : fileNameOf(d.uri)
+        return d.message.toLowerCase().includes(q) || file.toLowerCase().includes(q)
+    }
+
+    private updateListMaxHeight(height: number): void
+    {
+        const h = height > 0 ? Math.round(height * LIST_HEIGHT_FRACTION) : FALLBACK_LIST_MAX_HEIGHT
+        this.set_property_value(ProblemsService.ListMaxHeightKey, h)
+    }
+
+    // Copy every currently displayed (filtered) diagnostic as text — WYSIWYG with
+    // the visible list. Re-derives the filtered set from the store so it reflects
+    // the current toggles/text.
+    private async copyAll(): Promise<void>
+    {
+        const store = this.Provider.get(DiagnosticsService.Key)
+        const all: Diagnostic[] = store ? [...store.All] : []
+        const text = all.filter((d) => this.matchesFilter(d)).map(problemLine).join('\n')
+        await this.Provider.get(ClipboardService.Key)?.writeText(text)
+    }
+
+    private async copyOne(d: Diagnostic): Promise<void>
+    {
+        await this.Provider.get(ClipboardService.Key)?.writeText(problemLine(d))
+    }
+
+    // Reset all filters and rebuild once (suppressRebuild coalesces the three DP
+    // changes into a single rebuild at the end).
+    private clearFilters(): void
+    {
+        this.suppressRebuild = true
+        this.set_property_value(ProblemsService.FilterTextKey, '')
+        this.set_property_value(ProblemsService.ShowErrorsKey, true)
+        this.set_property_value(ProblemsService.ShowWarningsKey, true)
+        this.suppressRebuild = false
+        this.rebuild()
+    }
+
+    protected override OnPropertyChanged(descriptor: PropertyDescriptor, oldValue: unknown, newValue: unknown): void
+    {
+        super.OnPropertyChanged(descriptor, oldValue, newValue)
+        if (this.suppressRebuild) return
+        const n = descriptor.Name
+        if (n === 'ShowErrors' || n === 'ShowWarnings' || n === 'FilterText') this.rebuild()
     }
 }
 
@@ -185,4 +296,18 @@ function summarize(errors: number, warnings: number): string
     if (errors > 0) parts.push(`${errors} error${errors === 1 ? '' : 's'}`)
     if (warnings > 0) parts.push(`${warnings} warning${warnings === 1 ? '' : 's'}`)
     return parts.join(', ')
+}
+
+const SEVERITY_LABEL: Record<DiagnosticSeverity, string> = {
+    [DiagnosticSeverity.Error]:   'ERROR',
+    [DiagnosticSeverity.Warning]: 'WARNING',
+    [DiagnosticSeverity.Info]:    'INFO',
+    [DiagnosticSeverity.Hint]:    'HINT',
+}
+
+// One clipboard line for a diagnostic: "<SEVERITY>  <file line:col>  <message>".
+// The location segment collapses out for a project-level (null-uri) diagnostic.
+function problemLine(d: Diagnostic): string
+{
+    return [SEVERITY_LABEL[d.severity], locationLabel(d), d.message].filter(Boolean).join('  ')
 }

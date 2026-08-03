@@ -58,6 +58,13 @@ import FileSystemService from "./services/file-system/file-system-service.js"
 // Static host environment (dirs, platform, versions, flags). No view resources.
 import EnvironmentService from "./services/environment/environment-service.js"
 
+// Live window-height feed (ViewportService.Height) — the Problems popup caps its
+// list at 30% of it. No view resources.
+import ViewportService from "./services/viewport/viewport-service.js"
+
+// System-clipboard seam — the Problems popup's copy actions write through it.
+import ClipboardService from "./services/clipboard/clipboard-service.js"
+
 // Storage-provider seam: maps a backend id → a rooted IStorage factory (seeded
 // with the local-FS backend over FileSystemService). The Project Explorer builds
 // a project's storage through this; remote backends (cloud/REST) register here.
@@ -154,6 +161,11 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
     .services: {
         FileSystemService
         EnvironmentService
+        // Live viewport (window) height, bindable + resize-reactive. The Problems
+        // popup derives its 30% list cap from this.
+        ViewportService
+        // System clipboard seam for the Problems popup's copy-all + per-row copy.
+        ClipboardService
         // Storage backends, keyed by id; the Project Explorer resolves this to
         // build a project's rooted IStorage. Root singleton so every consumer
         // shares the same registration set.

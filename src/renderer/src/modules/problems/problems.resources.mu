@@ -24,10 +24,10 @@ import ProblemsRow from "./problems-service.js"
 resources ProblemsResources {
     DataTemplate x:key="ProblemsDock" [ DataType = ProblemsService ] {
         MenuButton
-            [ Header          = $SummaryText,
-              IsOpen          = $IsOpen,
-              ItemsSource     = $Rows,
-              TriggerTemplate = @ProblemsDockTrigger,
+            [ Header              = $SummaryText,
+              IsOpen              = $IsOpen,
+              Template            = @ProblemsPopup,
+              TriggerTemplate     = @ProblemsDockTrigger,
               HorizontalAlignment = Left ]
     }
 
@@ -59,16 +59,71 @@ resources ProblemsResources {
         when ( IsEnabled = false ) { PART_Primary.Opacity = @DisabledContentOpacity; }
     }
 
-    // One popup row: the SAME @TabMenuRowButton chrome the document-host ⋯
-    // dropdown uses — a full-width, left-aligned transparent hit surface with the
-    // standard hover/press state layers. Diagnostic rows navigate to their file +
-    // span via ActivateCommand (project-level rows carry no command → inert). The
-    // message sits left, the file location ($Detail) right.
+    // The list's virtualizing panel — a fixed row height keeps virtualization
+    // cheap (rows are single-line).
+    ItemsPanelTemplate x:key="ProblemsListPanel" {
+        VirtualizingStackPanel [ Orientation = Vertical, ItemHeight = 28 ]
+    }
+
+    // The popup control template. Preserves the MenuButton popup contract (root
+    // MenuPopupHost = PART_PopupHost, a PART_Scrim ClickAwayScrim, a
+    // PART_PopupContainer Border) and adds a header/toolbar above a height-capped,
+    // virtualized ItemsControl bound to $Rows. Data bindings ($Rows, $ListMaxHeight,
+    // $ShowErrors, …) resolve against the templated MenuButton's DataContext, which
+    // is the ProblemsService (from the @ProblemsDock DataTemplate).
+    Template x:key="ProblemsPopup" [ TargetType = MenuButton ] {
+        MenuPopupHost x:name="PART_PopupHost" {
+            ClickAwayScrim x:name="PART_Scrim" [ BorderThickness = (0) ]
+            Border x:name="PART_PopupContainer"
+                [ Background = @SurfaceContainerHigh, BorderBrush = @OutlineVariant, BorderThickness = (1),
+                  CornerRadius = @ShapeExtraSmall, Effect = @Elevation2, Padding = (0) ] {
+                DockPanel [ LastChildFill = true, MinWidth = 340 ] {
+                    // Header + toolbar (docked Top).
+                    DockPanel [ DockPanel.Dock = Top, LastChildFill = true, Margin = (8,6,8,6) ] {
+                        // Right cluster: copy-all + clear.
+                        StackPanel [ DockPanel.Dock = Right, Orientation = Horizontal, VerticalAlignment = Center ] {
+                            IconButton [ Template = @CompactHeaderIconButton, Command = $CopyAllCommand, Margin = (4,0,0,0) ] {
+                                Shape [ Geometry = @Copy, Fill = @OnSurfaceVariant, Width = 12, Height = 12 ]
+                            }
+                            Button [ Command = $ClearFiltersCommand, Margin = (8,0,0,0) ] {
+                                TextBlock [ Text = "Clear", Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
+                            }
+                        }
+                        // Left cluster: title + severity toggles + filter box.
+                        StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
+                            TextBlock [ Text = "Problems", Style = @LabelLarge, Foreground = @OnSurface, VerticalAlignment = Center, Margin = (0,0,12,0) ]
+                            ToggleButton [ IsChecked = $ShowErrors, VerticalAlignment = Center, Margin = (0,0,6,0) ] {
+                                TextBlock [ Text = $ErrorCount, Style = @LabelMedium ]
+                            }
+                            ToggleButton [ IsChecked = $ShowWarnings, VerticalAlignment = Center, Margin = (0,0,12,0) ] {
+                                TextBlock [ Text = $WarningCount, Style = @LabelMedium ]
+                            }
+                            TextBox [ Text = $FilterText, Variant = Plain, MinWidth = 120, VerticalAlignment = Center ]
+                        }
+                    }
+                    // Capped, virtualized list (fills the remainder).
+                    ScrollViewer [ MaxHeight = $ListMaxHeight, HorizontalScrollEnabled = false ] {
+                        ItemsControl [ ItemsSource = $Rows, ItemsPanel = @ProblemsListPanel ]
+                    }
+                }
+            }
+        }
+    }
+
+    // One row: copy button (docked right) + activate button (fills). Siblings, not
+    // nested — clicking copy never triggers navigation. Project-header rows carry no
+    // command, so both buttons are inert for them. The activate button reuses the
+    // same @TabMenuRowButton chrome the document-host ⋯ dropdown uses.
     DataTemplate [ DataType = ProblemsRow ] {
-        Button [ Template = @TabMenuRowButton, Command = $ActivateCommand, HorizontalAlignment = Stretch, MinWidth = 260 ] {
-            DockPanel [ LastChildFill = true ] {
-                TextBlock [ DockPanel.Dock = Right, Text = $Detail, Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (12,0,0,0) ]
-                TextBlock [ Text = $Label, Foreground = @OnSurface, VerticalAlignment = Center ]
+        DockPanel [ LastChildFill = true ] {
+            IconButton [ DockPanel.Dock = Right, Template = @CompactHeaderIconButton, Command = $CopyCommand, VerticalAlignment = Center, Margin = (8,0,4,0) ] {
+                Shape [ Geometry = @Copy, Fill = @OnSurfaceVariant, Width = 11, Height = 11 ]
+            }
+            Button [ Template = @TabMenuRowButton, Command = $ActivateCommand, HorizontalAlignment = Stretch, MinWidth = 240 ] {
+                DockPanel [ LastChildFill = true ] {
+                    TextBlock [ DockPanel.Dock = Right, Text = $Detail, Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (12,0,0,0) ]
+                    TextBlock [ Text = $Label, Foreground = @OnSurface, VerticalAlignment = Center ]
+                }
             }
         }
     }
