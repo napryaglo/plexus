@@ -110,6 +110,11 @@ export class ProblemsService extends ServiceBase
     public static readonly ListMaxHeightKey = Model.RegisterProperty<number>(
         ProblemsService, 'ListMaxHeight', FALLBACK_LIST_MAX_HEIGHT, MetaData.None)
 
+    // Popup width = the live window width, so the dropdown spans the whole window.
+    // Bound by the .mu popup container; recomputed on resize.
+    public static readonly PopupWidthKey = Model.RegisterProperty<number>(
+        ProblemsService, 'PopupWidth', 0, MetaData.None)
+
     // Toolbar commands: copy the (filtered) list to the clipboard; reset filters.
     public static readonly CopyAllCommandKey = Model.RegisterProperty<ICommand | undefined>(
         ProblemsService, 'CopyAllCommand', undefined, MetaData.None)
@@ -132,8 +137,12 @@ export class ProblemsService extends ServiceBase
         store?.Subscribe(() => this.rebuild())
         const viewport = provider.get(ViewportService.Key)
         if (viewport !== undefined) {
-            this.updateListMaxHeight(viewport.Height)
-            viewport.Subscribe(() => this.updateListMaxHeight(viewport.Height))
+            const sync = (): void => {
+                this.updateListMaxHeight(viewport.Height)
+                this.set_property_value(ProblemsService.PopupWidthKey, viewport.Width)
+            }
+            sync()
+            viewport.Subscribe(sync)
         }
         this.set_property_value(ProblemsService.CopyAllCommandKey, new RelayCommand(() => void this.copyAll()))
         this.set_property_value(ProblemsService.ClearFiltersCommandKey, new RelayCommand(() => this.clearFilters()))
@@ -153,6 +162,7 @@ export class ProblemsService extends ServiceBase
     public get FilterText(): string { return this.get_property_value(ProblemsService.FilterTextKey) }
     public set FilterText(v: string) { this.set_property_value(ProblemsService.FilterTextKey, v) }
     public get ListMaxHeight(): number { return this.get_property_value(ProblemsService.ListMaxHeightKey) }
+    public get PopupWidth(): number { return this.get_property_value(ProblemsService.PopupWidthKey) }
     public get CopyAllCommand(): ICommand | undefined { return this.get_property_value(ProblemsService.CopyAllCommandKey) }
     public get ClearFiltersCommand(): ICommand | undefined { return this.get_property_value(ProblemsService.ClearFiltersCommandKey) }
 
