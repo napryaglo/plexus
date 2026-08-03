@@ -127,13 +127,13 @@ resources ProblemsResources {
         }
     }
 
-    // One row: copy button (docked right) + activate button (fills). Siblings, not
+    // One row: copy button (docked left) + activate button (fills). Siblings, not
     // nested — clicking copy never triggers navigation. Project-header rows carry no
     // command, so both buttons are inert for them. The activate button reuses the
     // same @TabMenuRowButton chrome the document-host ⋯ dropdown uses.
     DataTemplate [ DataType = ProblemsRow ] {
         DockPanel [ LastChildFill = true ] {
-            PanelButton [ DockPanel.Dock = Right, Command = $CopyCommand, VerticalAlignment = Center, Margin = (8,0,4,0) ] {
+            PanelButton [ DockPanel.Dock = Left, Command = $CopyCommand, VerticalAlignment = Center, Margin = (4,0,8,0) ] {
                 Shape [ Geometry = @Copy, Fill = @OnSurfaceVariant, Width = 14, Height = 14 ]
             }
             Button [ Template = @TabMenuRowButton, Command = $ActivateCommand, HorizontalAlignment = Stretch, MinWidth = 240 ] {
