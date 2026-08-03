@@ -125,6 +125,7 @@ import DockTabsResources from "./services/dock-tabs/dock-tabs.resources.mu.js"
 // project's .todl files against its declared bases via checkAgainst. Root-scoped
 // like ProjectFactoryRegistry so every module's editor can attach documents.
 import TodlLanguageClient from "./services/todl/todl-language-client.js"
+import WorkspaceBaseResolver from "./services/projects/workspace-base-resolver.js"
 import DiagnosticsService from "./services/diagnostics/diagnostics-service.js"
 import WorkspaceRefreshService from "./services/workspace/workspace-refresh-service.js"
 import FileWatchService from "./services/file-watch/file-watch-service.js"
@@ -220,6 +221,11 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // owns the LSP connection, the project source/base feed, diagnostics
         // routing, and the Monaco provider adapters.
         TodlLanguageClient
+        // Local-first base resolution: a consuming project resolves a base from
+        // an open sibling producer's live source instead of the published
+        // registry. Eagerly resolved in main.js so its OpenProjects subscription
+        // (dependent refresh on open/close) is live before session restore.
+        WorkspaceBaseResolver
         // Agent workspace tools: subscribes to the agent event stream and services
         // refresh_project (re-scan + re-validate + reply). Eagerly resolved in
         // main.js so it's listening before the first turn.
