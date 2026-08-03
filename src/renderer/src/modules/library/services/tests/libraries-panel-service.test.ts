@@ -58,7 +58,48 @@ test('builds a Library -> Concept -> Class tree, concepts sorted, leaves carry t
     expect(leaf.TermId).toBe('stack.azure-openai')
     expect(leaf.Concept).toBe('technology')
     expect(leaf.IsDraggable).toBe(true)
-    expect(typeof leaf.Template!.Apply).toBe('function')
+    // Lazy: leaves carry NO pre-compiled template — the tree is built from cheap
+    // discovery; a class compiles only when previewed/placed.
+    expect(leaf.Template).toBeUndefined()
+})
+
+test('IsLoading is true while discovering and false once the tree is built', async () => {
+    const svc = new LibrariesPanelService(providerWith((b) => {
+        void b.WriteText('ms/0.1.0/library.json', JSON.stringify({
+            id: 'ms', version: '0.1.0', name: 'MS', metaModel: { id: 'ea', version: '5' },
+            classes: [{ id: 'stack.a', localId: 'a', label: 'A', concept: 'technology', template: 'visuals/a.mural' }],
+            assets: [], docs: [], samples: [],
+        }))
+        void b.WriteText('ms/0.1.0/visuals/a.mural', 'TextBlock [ Text = $Display ]')
+    }))
+    const p = svc.Reload()
+    expect(svc.IsLoading).toBe(true)     // set synchronously before the discover await
+    await p
+    expect(svc.IsLoading).toBe(false)
+})
+
+test('selecting a class resolves its preview template lazily, upgrading when it compiles', async () => {
+    const provider = providerWith((b) => {
+        void b.WriteText('ms/0.1.0/library.json', JSON.stringify({
+            id: 'ms', version: '0.1.0', name: 'MS', metaModel: { id: 'ea', version: '5' },
+            classes: [{ id: 'stack.a', localId: 'a', label: 'A', concept: 'technology', template: 'visuals/a.mural' }],
+            assets: [], docs: [], samples: [],
+        }))
+        void b.WriteText('ms/0.1.0/visuals/a.mural', 'TextBlock [ Text = $Display ]')
+    })
+    const registry = provider.getRequired(LibraryRegistry.Key)
+    const svc = new LibrariesPanelService(provider)
+    await svc.Reload()
+    const a = leaves(svc.Roots.Get(0)!)[0]!
+
+    const compiled = new Promise<void>((res) => {
+        const off = registry.onChanged((id) => { if (id === 'stack.a') { off(); res() } })
+    })
+    svc.SelectedNode = a
+    const def = registry.resolve('nobody', 'x')
+    expect(svc.PreviewTemplate).toBe(def)   // default first (compile scheduled)
+    await compiled
+    expect(svc.PreviewTemplate).not.toBe(def)   // upgraded to the class's own template
 })
 
 test('selecting a class drives the bottom preview pane; selecting another moves it; a group clears it', async () => {
@@ -84,7 +125,7 @@ test('selecting a class drives the bottom preview pane; selecting another moves 
     expect(svc.HasPreview).toBe(true)
     expect(svc.PreviewData).toBe(a)
     expect(svc.PreviewConcept).toBe('technology')
-    expect(svc.PreviewTemplate).toBe(a.Template)
+    expect(typeof svc.PreviewTemplate!.Apply).toBe('function')   // resolved lazily (default or compiled)
 
     svc.SelectedNode = b
     expect(svc.PreviewData).toBe(b)

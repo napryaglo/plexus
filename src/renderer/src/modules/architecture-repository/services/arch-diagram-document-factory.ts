@@ -26,6 +26,10 @@ export class ArchDiagramDocumentFactory extends ServiceBase implements IDocument
         const source = (await storage.Exists(layoutDoc.todlFile)) ? await storage.ReadText(layoutDoc.todlFile) : ''
         const model = ArchInstanceModel.load(bases, source, layoutDoc.namespace)
         const registry = this.Provider.get(LibraryRegistry.Key)
+        // Ensure the registry has discovered its libraries so the diagram's nodes
+        // can resolve (and lazily compile) their class visuals — independent of
+        // whether the Libraries panel was ever opened. Cheap: metadata only.
+        await registry?.discover()
         return new ArchDiagramDocument(path, model, storage, layoutDoc.todlFile, layoutDoc.layout ?? {}, basename(path), registry)
     }
 

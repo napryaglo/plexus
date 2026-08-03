@@ -9,7 +9,7 @@ import { LIBRARIES_BACKEND_ID } from '../libraries-backend.js'
 import { LibraryRegistry } from '../library-registry.js'
 
 // Seed is SYNCHRONOUS: FakeStorage.WriteText sets its map synchronously, so every
-// file is present before refresh() lists the backend (an async seed with awaits
+// file is present before discover() lists the backend (an async seed with awaits
 // would race the first List). Matches the meta-models-service test pattern.
 function env(seed: (b: FakeStorage) => void): { provider: ServiceProvider; diagnostics: DiagnosticsService } {
     const provider = new ServiceProvider()
@@ -31,32 +31,61 @@ function manifest(id: string, template = `visuals/${id}.azure.mural`): string {
     })
 }
 
-test('mounts a class template so resolve returns it, and the default otherwise', async () => {
+// Resolve `classId`, then wait until the registry finishes compiling it (a Changed
+// tick), so the second resolve sees the compiled template. Returns nothing.
+function whenCompiled(reg: LibraryRegistry, classId: string): Promise<void> {
+    return new Promise((res) => {
+        const off = reg.onChanged((id) => { if (id === classId) { off(); res() } })
+        reg.resolve(classId, 'location')   // triggers the lazy compile
+    })
+}
+
+test('discover compiles nothing; resolve returns the default until a class is compiled', async () => {
     const { provider } = env((b) => {
         void b.WriteText('microsoft/0.1.0/library.json', manifest('microsoft'))
         void b.WriteText('microsoft/0.1.0/visuals/microsoft.azure.mural', 'TextBlock [ Text = $Display ]')
     })
     const reg = new LibraryRegistry(provider)
-    await reg.refresh()
+    const libs = await reg.discover()
+    expect(libs.map((l) => l.id)).toEqual(['microsoft'])
 
-    const mounted = reg.resolve('microsoft.azure', 'location')
-    const fallback = reg.resolve('nobody.here', 'location')
-    expect(mounted).not.toBe(fallback)          // class template, not the default
-    expect(fallback).toBe(reg.resolve('also.missing', 'x'))   // the single shared default
+    // No eager compile: right after discover, the class resolves to the default.
+    const def = reg.resolve('nobody.here', 'x')
+    expect(reg.resolve('microsoft.azure', 'location')).toBe(def)
+
+    // After the lazy compile settles, it resolves to its own (non-default) template.
+    await whenCompiled(reg, 'microsoft.azure')
+    expect(reg.resolve('microsoft.azure', 'location')).not.toBe(def)
+})
+
+test('concurrent resolves of the same class compile it only once', async () => {
+    const { provider } = env((b) => {
+        void b.WriteText('microsoft/0.1.0/library.json', manifest('microsoft'))
+        void b.WriteText('microsoft/0.1.0/visuals/microsoft.azure.mural', 'TextBlock [ Text = $Display ]')
+    })
+    const reg = new LibraryRegistry(provider)
+    await reg.discover()
+
+    let fires = 0
+    reg.onChanged((id) => { if (id === 'microsoft.azure') fires++ })
+    reg.resolve('microsoft.azure', 'location')
+    reg.resolve('microsoft.azure', 'location')
+    reg.resolve('microsoft.azure', 'location')
+    await new Promise((r) => setTimeout(r, 20))
+    expect(fires).toBe(1)
 })
 
 test('delete removes the library from the backend and clears its Problems slice', async () => {
     const { provider, diagnostics } = env((b) => {
-        void b.WriteText('microsoft/0.1.0/library.json', manifest('microsoft'))
-        void b.WriteText('microsoft/0.1.0/visuals/microsoft.azure.mural', 'not valid mural [[[')   // seeds an error diag
+        void b.WriteText('microsoft/0.1.0/library.json', manifest('microsoft', 'visuals/missing.mural'))   // referenced template missing → discovery warning
     })
     const reg = new LibraryRegistry(provider)
-    await reg.refresh()
+    await reg.discover()
     expect([...diagnostics.All].some((d) => d.projectId === 'library:microsoft@0.1.0')).toBe(true)
 
     await reg.delete('microsoft', '0.1.0')
 
-    expect(await reg.refresh()).toEqual([])   // gone from the backend
+    expect(await reg.discover()).toEqual([])   // gone from the backend
     expect([...diagnostics.All].some((d) => d.projectId === 'library:microsoft@0.1.0')).toBe(false)
 })
 
@@ -68,13 +97,14 @@ function iconManifest(icon: string, template?: string): string {
     return JSON.stringify({ id: 'microsoft', version: '0.1.0', name: 'microsoft', metaModel: { id: 'ea', version: '5' }, classes: [cls], assets: [], docs: [], samples: [] })
 }
 
-test('a class with an icon annotation and no template mounts an icon template (non-default)', async () => {
+test('a class with an icon annotation and no template mounts an icon template (non-default) lazily', async () => {
     const { provider } = env((b) => {
         void b.WriteText('microsoft/0.1.0/library.json', iconManifest('resources/azure.svg'))
         void b.WriteText('microsoft/0.1.0/resources/azure.svg', SVG)
     })
     const reg = new LibraryRegistry(provider)
-    await reg.refresh()
+    await reg.discover()
+    await whenCompiled(reg, 'microsoft.azure')
     expect(reg.resolve('microsoft.azure', 'location')).not.toBe(reg.resolve('missing', 'x'))
 })
 
@@ -85,7 +115,8 @@ test('an authored template wins over an icon annotation', async () => {
         void b.WriteText('microsoft/0.1.0/resources/broken.svg', 'not an svg')
     })
     const reg = new LibraryRegistry(provider)
-    await reg.refresh()
+    await reg.discover()
+    await whenCompiled(reg, 'microsoft.azure')
     // authored path taken → non-default, and the broken icon was never parsed (no warning about it)
     expect(reg.resolve('microsoft.azure', 'location')).not.toBe(reg.resolve('missing', 'x'))
     expect([...diagnostics.All].some((d) => d.uri === 'resources/broken.svg')).toBe(false)
@@ -97,7 +128,8 @@ test('a class template that fails to compile falls back to default and reports a
         void b.WriteText('microsoft/0.1.0/visuals/microsoft.azure.mural', 'not valid mural [[[')
     })
     const reg = new LibraryRegistry(provider)
-    await reg.refresh()
+    await reg.discover()
+    await whenCompiled(reg, 'microsoft.azure')
 
     expect(reg.resolve('microsoft.azure', 'location')).toBe(reg.resolve('x.y', 'z'))   // fell back to default
     const errs = [...diagnostics.All].filter((d) => d.owner === 'libraries' && d.severity === DiagnosticSeverity.Error)

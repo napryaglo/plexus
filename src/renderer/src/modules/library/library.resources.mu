@@ -45,6 +45,10 @@ resources LibraryResources {
                     TextBlock [ Text = $PreviewConcept, Style = @BodySmall, Foreground = @OnSurfaceVariant, Margin = (0,4,0,0) ]
                 }
             }
+            // Loading state — docked at the top while discovery runs.
+            TextBlock [ DockPanel.Dock = Top, Style = @BodyMedium, Text = "Loading libraries…",
+                        Foreground = @OnSurfaceVariant, TextWrapping = Wrap,
+                        Visibility = $IsLoading << ToVisibility ]
             // Empty state — docked at the top.
             TextBlock [ DockPanel.Dock = Top, Style = @BodyMedium, Text = "No published libraries yet.",
                         Foreground = @OnSurfaceVariant, TextWrapping = Wrap,

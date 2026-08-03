@@ -61,6 +61,20 @@ export class ArchDiagramDocument extends Model implements IDocument, DiagramMuta
         for (const [id, p] of Object.entries(layout)) this.positions.set(id, p)
         for (const id of Model.ownInstances()) this.AddNode(id)
         Model.onChanged(() => { this.dirty = true })
+        // A node's visual resolves to the default box until its class compiles
+        // (lazy). Upgrade the affected nodes' templates when the registry reports a
+        // class became available. (Same no-cleanup pattern as Model.onChanged above.)
+        registry?.onChanged((classId) => this.upgradeTemplatesFor(classId))
+    }
+
+    // Re-resolve the template of every node whose visual key is `classId` — called
+    // when that class's real template finishes compiling.
+    private upgradeTemplatesFor(classId: string): void
+    {
+        for (const vm of this.Nodes.ToArray()) {
+            const key = vm.ReferencedTerm !== '' ? vm.ReferencedTerm : vm.Concept
+            if (key === classId) vm.Template = this.ResolveTemplate(vm)
+        }
     }
 
     public get Title(): string { return this.get_property_value(ArchDiagramDocument.TitleKey) }
