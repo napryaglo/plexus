@@ -25,6 +25,7 @@ import { WorkspaceRefreshService } from './services/workspace/workspace-refresh-
 import { FileWatchService } from './services/file-watch/file-watch-service.js'
 import { EditorReloadService } from './services/file-watch/editor-reload-service.js'
 import { ProjectRescanService } from './services/file-watch/project-rescan-service.js'
+import { WorkspaceBaseResolver } from './services/projects/workspace-base-resolver.js'
 import { registerTodlLanguage } from './modules/meta-model/todl-language.js'
 import { registerMuralLanguage } from './modules/code-editor/mural-language.js'
 import { TodlLanguageClient } from './services/todl/todl-language-client.js'
@@ -63,6 +64,9 @@ try {
     app.Services.get(EditorReloadService.Key)
     // Project-rescan consumer: re-validates the owning project on external change.
     app.Services.get(ProjectRescanService.Key)
+    // Local-first base resolver: construct now so its OpenProjects subscription
+    // (refresh dependents on open/close) is live before session restore.
+    app.Services.get(WorkspaceBaseResolver.Key)
     // Wire the out-of-process TODL language client: build the JSON-RPC connection
     // over the preload pipe, handshake with the forked server, register the Monaco
     // provider adapters, and resync every project after a server restart.

@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { TodlLanguageClient } from '../todl-language-client.js'
+import { providerWithFakeResolver } from './fake-resolver.js'
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
 
 function fakeConn() {
@@ -16,7 +16,7 @@ async function attached() {
   const storage = new FakeStorage('proj')
   await storage.WriteText('open.todl', 'aaa')
   await storage.WriteText('closed.todl', 'zzz')
-  const client = new TodlLanguageClient(new ServiceProvider())
+  const client = new TodlLanguageClient(providerWithFakeResolver())
   await client.Initialize(fakeConn() as never)
   await client.AttachProject('C:\\proj', 'Proj', storage)
   return { client, storage }
