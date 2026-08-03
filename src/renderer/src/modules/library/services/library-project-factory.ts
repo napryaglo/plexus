@@ -20,6 +20,7 @@ import { ensureLibrariesBackend } from './libraries-backend.js'
 import { collectTaxonomySources, extname, joinRel } from '../../meta-model/services/todl-sources.js'
 import { deriveClasses, scanResources, type LibraryBundleManifest } from './library-bundle.js'
 import { generateLibraryPresentationMu } from './library-presentation-generator.js'
+import { publishLibraryPresentation } from './library-presentation-publisher.js'
 
 // The 'library' project type's factory — the library module's contribution to
 // the generic ProjectExplorerService (declared via `.projectFactories:` and
@@ -146,6 +147,13 @@ export class LibraryProjectFactory extends ServiceBase
 
         const dest = ensureLibrariesBackend(provider)
         const base = `${manifest.id}/${manifest.libVersion}`
+
+        // Bake the compiled presentation first — a missing icon blocks the publish
+        // before anything is written to the backend.
+        const pres = await publishLibraryPresentation(storage, dest, base, doc)
+        if (!pres.ok)
+            return { ok: false, message: `Publish blocked: missing icon file(s): ${pres.missing.join(', ')}.` }
+
         await dest.WriteText(`${base}/model.json`, JSON.stringify(doc, null, 2))
         await dest.WriteText(`${base}/library.json`, JSON.stringify(bundle, null, 2))
         for (const s of sources) await dest.WriteText(`${base}/src/${s.uri}`, s.text)
@@ -154,13 +162,17 @@ export class LibraryProjectFactory extends ServiceBase
         for (const folder of ['visuals', 'assets', 'docs', 'samples', 'thumbnails', 'resources'])
             copied += await this.copyResourceFolder(storage, dest, folder, base)
 
+        // Keep the project's presentation dictionary current with what was published.
+        await this.writePresentation(storage, doc)
+
         const warn = scanned.warnings.length > 0
             ? ` (${scanned.warnings.length} warning(s): ${scanned.warnings.join('; ')})`
             : ''
         return {
             ok: true,
             message: `Published ${manifest.id}@${manifest.libVersion} — `
-                + `${classes.length} class(es), ${sources.length} source(s), ${copied} resource file(s)${warn}.`,
+                + `${classes.length} class(es), ${sources.length} source(s), ${copied} resource file(s), `
+                + `presentation: ${pres.templates} template(s), ${pres.icons} icon(s)${warn}.`,
         }
     }
 

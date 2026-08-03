@@ -206,3 +206,41 @@ test('regeneratePresentation is a no-op when a .todl has a compile error', async
 
   expect(await storage.Exists('presentation.generated.mu')).toBe(false)
 })
+
+test('publish bakes presentation.compiled.json into the bundle and refreshes the project file', async () => {
+  const storage = new FakeStorage('fake://Acme')
+  const { provider, meta, libs } = publishEnv()
+  await seedMeta(meta)
+  const f = factoryWith(provider)
+  await f.createProject(storage, 'microsoft', { metaModel: { id: 'ea', version: '5' } })
+  await storage.WriteText('microsoft.todl', LIB)
+
+  const result = await f.publish(await f.openProject(storage), storage, provider)
+  expect(result.ok).toBe(true)
+  expect(await libs.Exists('microsoft/0.1.0/presentation/presentation.compiled.json')).toBe(true)
+  expect(await storage.Exists('presentation.generated.mu')).toBe(true)   // project file refreshed
+  expect(result.message).toMatch(/presentation:/)
+})
+
+// A meta-model whose `location` concept declares an `icon` field, so a taxonomy
+// term can carry an icon path — used to exercise the missing-icon publish block.
+const META_ICON = 'namespace ea { concept location { label : string; icon : string; } concept technology { label : string; } }'
+async function seedMetaIcon(meta: FakeStorage): Promise<void> {
+  await meta.WriteText('ea/5/model.json', JSON.stringify(toJSON(check([{ uri: 'm.todl', text: META_ICON }]).model)))
+}
+
+test('publish blocks when a class references an icon with no project file', async () => {
+  const storage = new FakeStorage('fake://Acme')
+  const { provider, meta, libs } = publishEnv()
+  await seedMetaIcon(meta)
+  const f = factoryWith(provider)
+  await f.createProject(storage, 'microsoft', { metaModel: { id: 'ea', version: '5' } })
+  // a class carrying an icon path, but the SVG file is never written to the project
+  await storage.WriteText('microsoft.todl',
+    'namespace lib { taxonomy microsoft : represents location { location azure { label = "Azure"; icon = "resources/azure.svg"; } } }')
+
+  const result = await f.publish(await f.openProject(storage), storage, provider)
+  expect(result.ok).toBe(false)
+  expect(result.message).toMatch(/icon/i)
+  expect(await libs.Exists('microsoft/0.1.0/model.json')).toBe(false)   // nothing written
+})
