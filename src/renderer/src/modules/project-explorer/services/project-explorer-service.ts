@@ -793,13 +793,18 @@ export class ProjectExplorerService extends ServiceBase
         await this.Provider.get(TodlLanguageClient.Key)?.RefreshBases(op.Storage)
         try {
             const result = await op.Factory.publish(op.Project, op.Storage, this.Provider)
-            this.Status = result.message
-            // Surface the outcome in the Problems dock: a failure becomes a
-            // project-level diagnostic (cleared on success), and the dock expands.
-            this.reportProjectProblem(op, 'publish', result.ok ? undefined : result.message)
-            if (!result.ok) this.Provider.get(ProblemsService.Key)?.Expand()
+            if (result.ok) {
+                this.Status = result.message
+                this.reportProjectProblem(op, 'publish', undefined)   // clear any prior failure
+                return
+            }
+            // A failure's error DESCRIPTION goes ONLY to the Problems dock — never
+            // the status pane, which shows just a neutral pointer.
+            this.Status = 'Publish failed — see Problems.'
+            this.reportProjectProblem(op, 'publish', result.message)
+            this.Provider.get(ProblemsService.Key)?.Expand()
         } catch (e) {
-            this.Status = `Publish failed: ${(e as Error).message}`
+            this.Status = 'Publish failed — see Problems.'
             this.reportProjectProblem(op, 'publish', `Publish failed: ${(e as Error).message}`)
             this.Provider.get(ProblemsService.Key)?.Expand()
         }
