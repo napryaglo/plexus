@@ -15,6 +15,8 @@ import { ConfirmDialogModel } from '../../../../services/dialogs/confirm-dialog-
 import { ProjectExplorerService, applyPrefill, importFilters, uniqueStorageName } from '../project-explorer-service.js'
 import { NewProjectDialogModel, ProjectTypeChoice } from '../../../../services/projects/new-project-dialog-model.js'
 import { TodlLanguageClient } from '../../../../services/todl/todl-language-client.js'
+import { DiagnosticsService } from '../../../../services/diagnostics/diagnostics-service.js'
+import { DiagnosticSeverity } from '../../../../services/diagnostics/diagnostic.js'
 
 // A picked file as the OS dialog would hand it back (absolute path + raw bytes).
 type Picked = { Path: string; Bytes: Uint8Array }
@@ -273,6 +275,66 @@ test('Publish is disabled for a non-publishable project', async () => {
 
     expect(pub.PublishCommand!.CanExecute(undefined)).toBe(true)
     expect(plain.PublishCommand!.CanExecute(undefined)).toBe(false)
+})
+
+// A publishable factory whose publish returns a preset result.
+function factoryReturning(result: { ok: boolean; message: string }): IProjectFactory & IPublishableProjectFactory {
+    return { ...fakeProjectFactory(true), publish: async () => result } as IProjectFactory & IPublishableProjectFactory
+}
+interface PublishPrivates { publishProject(op: OpenProject): Promise<void>; generatePresentation(op: OpenProject): Promise<void> }
+
+test('a failed publish surfaces its message as a project-level diagnostic in the Problems store', async () => {
+    const { service, priv, provider } = makeExplorer()
+    const diagnostics = new DiagnosticsService(provider)
+    provider.registerInstance(DiagnosticsService.Key, diagnostics)
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), factoryReturning({ ok: false, message: 'missing icon file(s): x.svg' }), new FakeStorage('C:/a'))
+
+    await (service as unknown as PublishPrivates).publishProject(op)
+
+    const pubs = [...diagnostics.All].filter((d) => d.owner === 'publish')
+    expect(pubs).toHaveLength(1)
+    expect(pubs[0]).toMatchObject({
+        owner: 'publish', projectId: 'C:/a', projectName: 'A', uri: null,
+        message: 'missing icon file(s): x.svg', severity: DiagnosticSeverity.Error, span: null,
+    })
+    expect(service.Status).toBe('missing icon file(s): x.svg')
+})
+
+test('a successful publish clears any prior publish diagnostic', async () => {
+    const { service, priv, provider } = makeExplorer()
+    const diagnostics = new DiagnosticsService(provider)
+    provider.registerInstance(DiagnosticsService.Key, diagnostics)
+    // One project whose publish result flips fail → success; the second run must
+    // clear the diagnostic the first seeded.
+    const result = { ok: false, message: 'boom' }
+    const factory = { ...fakeProjectFactory(true), publish: async () => result } as IProjectFactory & IPublishableProjectFactory
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), factory, new FakeStorage('C:/a'))
+
+    await (service as unknown as PublishPrivates).publishProject(op)
+    expect([...diagnostics.All].some((d) => d.owner === 'publish')).toBe(true)
+
+    result.ok = true
+    result.message = 'Published.'
+    await (service as unknown as PublishPrivates).publishProject(op)
+    expect([...diagnostics.All].some((d) => d.owner === 'publish')).toBe(false)
+})
+
+test('a failed generate-presentation surfaces its error as a project-level diagnostic', async () => {
+    const { service, priv, provider } = makeExplorer()
+    const diagnostics = new DiagnosticsService(provider)
+    provider.registerInstance(DiagnosticsService.Key, diagnostics)
+    const presFactory: IProjectFactory & IPresentationProjectFactory = {
+        ...fakeProjectFactory(),
+        regeneratePresentation: async () => { throw new Error('kaboom') },
+    }
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), presFactory, new FakeStorage('C:/a'))
+
+    await (service as unknown as PublishPrivates).generatePresentation(op)
+
+    const diags = [...diagnostics.All].filter((d) => d.owner === 'presentation')
+    expect(diags).toHaveLength(1)
+    expect(diags[0]).toMatchObject({ owner: 'presentation', projectId: 'C:/a', uri: null, severity: DiagnosticSeverity.Error })
+    expect(diags[0].message).toContain('kaboom')
 })
 
 test('RestoreSession reopens folders that exist and prunes missing ones', async () => {

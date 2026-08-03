@@ -68,6 +68,8 @@ import { ensureLibrariesBackend } from '../../library/services/libraries-backend
 import { TodlLanguageClient } from '../../../services/todl/todl-language-client.js'
 import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base-resolver.js'
 import { ProblemsService } from '../../problems/problems-service.js'
+import { DiagnosticsService } from '../../../services/diagnostics/diagnostics-service.js'
+import { DiagnosticSeverity } from '../../../services/diagnostics/diagnostic.js'
 import { planNodeMoves } from '../../../services/projects/node-move.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
 import { RecentProjectsService } from '../../../services/projects/recent-projects-service.js'
@@ -792,9 +794,13 @@ export class ProjectExplorerService extends ServiceBase
         try {
             const result = await op.Factory.publish(op.Project, op.Storage, this.Provider)
             this.Status = result.message
+            // Surface the outcome in the Problems dock: a failure becomes a
+            // project-level diagnostic (cleared on success), and the dock expands.
+            this.reportProjectProblem(op, 'publish', result.ok ? undefined : result.message)
             if (!result.ok) this.Provider.get(ProblemsService.Key)?.Expand()
         } catch (e) {
             this.Status = `Publish failed: ${(e as Error).message}`
+            this.reportProjectProblem(op, 'publish', `Publish failed: ${(e as Error).message}`)
             this.Provider.get(ProblemsService.Key)?.Expand()
         }
     }
@@ -809,9 +815,29 @@ export class ProjectExplorerService extends ServiceBase
             await op.Factory.regeneratePresentation(op.Storage)
             await this.rescan(op)
             this.Status = 'Presentation regenerated.'
+            this.reportProjectProblem(op, 'presentation', undefined)   // clear any prior failure
         } catch (e) {
-            this.Status = `Generate presentation failed: ${(e as Error).message}`
+            const message = `Generate presentation failed: ${(e as Error).message}`
+            this.Status = message
+            this.reportProjectProblem(op, 'presentation', message)
+            this.Provider.get(ProblemsService.Key)?.Expand()
         }
+    }
+
+    // Publish (or clear, when `message` is undefined) a single project-level
+    // diagnostic for one owner into the Problems store, so an operation error like
+    // a blocked publish or a failed presentation shows in the dock, not only in the
+    // status strip. The atomic-slice store replaces this owner's slice each call.
+    private reportProjectProblem(op: OpenProject, owner: string, message: string | undefined): void
+    {
+        const diagnostics = this.Provider.get(DiagnosticsService.Key)
+        if (diagnostics === undefined) return
+        const projectId = op.Project.RootPath
+        if (message === undefined) { diagnostics.Publish(owner, projectId, []); return }
+        diagnostics.Publish(owner, projectId, [{
+            owner, projectId, projectName: op.Project.Name, uri: null,
+            message, severity: DiagnosticSeverity.Error, span: null,
+        }])
     }
 
     // Refresh a project's bases: drop the validator's cached bases for this

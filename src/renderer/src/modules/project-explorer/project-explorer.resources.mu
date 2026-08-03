@@ -198,22 +198,23 @@ resources ProjectExplorerResources {
         }
     }
 
+    // Command bar docked top, status strip docked bottom (pinned — always visible,
+    // like a status bar), the scrolling project list filling the space between.
     DataTemplate [ DataType = ProjectExplorerService ] {
-        ScrollViewer [ HorizontalScrollEnabled = false ] {
-            StackPanel [ Orientation = Vertical, Margin = (8,8,8,8) ] {
-
-                StackPanel [ Orientation = Horizontal, Margin = (0,0,0,8) ] {
-                    PanelButton [ Margin = (0,0,4,0), Command = $OpenProjectCommand ] {
-                        Shape [ Geometry = @Folder, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
-                    }
-                    PanelButton [ Command = $NewProjectCommand ] {
-                        Shape [ Geometry = @NewFolder, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
-                    }
+        DockPanel [ LastChildFill = true, Margin = (8,8,8,8) ] {
+            StackPanel [ DockPanel.Dock = Top, Orientation = Horizontal, Margin = (0,0,0,8) ] {
+                PanelButton [ Margin = (0,0,4,0), Command = $OpenProjectCommand ] {
+                    Shape [ Geometry = @Folder, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
                 }
+                PanelButton [ Command = $NewProjectCommand ] {
+                    Shape [ Geometry = @NewFolder, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                }
+            }
 
-                TextBlock [ Style = @BodySmall, Text = $Status, Foreground = @OnSurfaceVariant,
-                            TextWrapping = Wrap, Margin = (0,0,0,8) ]
+            TextBlock [ DockPanel.Dock = Bottom, Style = @BodySmall, Text = $Status, Foreground = @OnSurfaceVariant,
+                        TextWrapping = Wrap, Margin = (0,8,0,0) ]
 
+            ScrollViewer [ HorizontalScrollEnabled = false ] {
                 ItemsControl [ ItemsSource = $OpenProjects, ItemsPanel = @VerticalStackPanel ]
             }
         }
