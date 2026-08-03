@@ -2,7 +2,7 @@ import { Application, ResourceDictionary, ServiceBase, ServiceKey, type IService
 import type { DataTemplate } from '@pragmatic-lab/mural/basic'
 
 import { ensureLibrariesBackend } from './libraries-backend.js'
-import { discoverLibraries, readTemplateSource, readIconSource, type LoadedClass, type LoadedLibrary, type LoadProblem } from './library-loader.js'
+import { discoverLibraries, loadLibraryPresentation, readTemplateSource, readIconSource, type LoadedClass, type LoadedLibrary, type LoadProblem } from './library-loader.js'
 import { buildCtx, compileTemplate, buildDefaultTemplate, buildIconTemplate } from './visual-library.js'
 import { parseSvgIcon } from '@pragmatic-lab/mural/basic'
 import { DiagnosticsService } from '../../../services/diagnostics/diagnostics-service.js'
@@ -25,6 +25,11 @@ export class LibraryRegistry extends ServiceBase
 
     private readonly ctx = buildCtx()
     private readonly libraryVisuals = new ResourceDictionary()
+    // Baked per-library presentation templates (class-keyed), aggregated. Cleared
+    // and repopulated on each discover(); the middle resolution tier between an
+    // authored .mural (wins) and the shared default box. Merged into the app
+    // resources so the canvas resolves every class by key, not just authored ones.
+    private readonly presentationVisuals = new ResourceDictionary()
     private readonly defaultTemplate: DataTemplate
     private merged = false
 
@@ -54,12 +59,16 @@ export class LibraryRegistry extends ServiceBase
     // `concept` is accepted for a future per-concept default tier (unused today).
     public resolve(classId: string, _concept: string): DataTemplate
     {
-        const t = this.libraryVisuals.Resolve(classId)
-        if (t !== undefined) return t as DataTemplate
+        // Authored .mural (lazy-compiled) wins; schedule its compile on first miss.
+        const authored = this.libraryVisuals.Resolve(classId)
+        if (authored !== undefined) return authored as DataTemplate
         if (this.classIndex.has(classId) && !this.attempted.has(classId) && !this.inFlight.has(classId)) {
             this.inFlight.add(classId)
             void this.compileClass(classId)
         }
+        // Then the baked presentation template (geometry inlined), else the default.
+        const pres = this.presentationVisuals.Resolve(classId)
+        if (pres !== undefined) return pres as DataTemplate
         return this.defaultTemplate
     }
 
@@ -73,6 +82,7 @@ export class LibraryRegistry extends ServiceBase
         this.slices.clear()
         this.inFlight.clear()
         this.attempted.clear()
+        this.presentationVisuals.Clear()
         const backend = ensureLibrariesBackend(this.Provider)
         const libs = await discoverLibraries(backend)
         for (const lib of libs) {
@@ -80,6 +90,9 @@ export class LibraryRegistry extends ServiceBase
             this.slices.set(pid, { lib, problems: [...lib.problems] })
             this.publishSlice(pid)
             for (const cls of lib.classes) this.classIndex.set(cls.id, { lib, cls })
+            // Load this library's baked presentation (if any) into the aggregate.
+            const pres = await loadLibraryPresentation(backend, lib.id, lib.version)
+            if (pres !== undefined) for (const [k, v] of pres.Entries()) this.presentationVisuals.Set(k, v)
         }
         return libs
     }
@@ -103,7 +116,10 @@ export class LibraryRegistry extends ServiceBase
                         this.addProblem(pid, { severity: 'error', uri: cls.templatePath ?? null,
                             message: `Template for ${cls.id} failed to compile: ${(e as Error).message}` })
                     }
-                } else if (cls.icon !== undefined) {
+                } else if (cls.icon !== undefined && !this.presentationVisuals.CanResolve(cls.id)) {
+                    // Legacy icon fallback — only when no baked presentation covers
+                    // this class (older bundles); otherwise the presentation tier
+                    // already supplies the iconful default.
                     const svg = await readIconSource(backend, lib, cls)
                     if (svg === undefined) {
                         this.addProblem(pid, { severity: 'warning', uri: cls.icon, message: `Icon asset is missing: ${cls.icon}` })
@@ -158,6 +174,7 @@ export class LibraryRegistry extends ServiceBase
     {
         if (this.merged) return
         Application.current?.Resources.AddMergedDictionary(this.libraryVisuals)
+        Application.current?.Resources.AddMergedDictionary(this.presentationVisuals)
         this.merged = true
     }
 

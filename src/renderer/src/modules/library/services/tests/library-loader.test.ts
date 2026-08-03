@@ -58,3 +58,28 @@ test('a class citing a missing template file records a warning but still loads',
     expect(lib.classes).toHaveLength(1)
     expect(lib.problems).toEqual([{ severity: 'warning', uri: 'visuals/microsoft.azure.mural', message: expect.stringContaining('missing') }])
 })
+
+// ── loadLibraryPresentation ─────────────────────────────────────────────────
+// Bake an artifact via the publisher so its shape stays in lockstep with the
+// emitter, then assert the loader evals it into a class-keyed dictionary.
+test('loadLibraryPresentation evals the compiled artifact into a class-keyed dictionary', async () => {
+    const backend = new FakeStorage('fake://libraries')
+    const proj = new FakeStorage('fake://proj')
+    await proj.WriteText('resources/azure.svg', '<svg viewBox="0 0 16 16"><path d="M2 2 L14 2 L14 14 Z"/></svg>')
+    const doc = { nodes: [{ id: 'microsoft.azure', tier: 'Instance', typeOf: 'location',
+        attrs: { class: true, id: 'azure', label: 'Azure', icon: 'resources/azure.svg' } }], edges: [] } as any
+    const { publishLibraryPresentation } = await import('../library-presentation-publisher.js')
+    await publishLibraryPresentation(proj, backend, 'microsoft/0.1.0', doc)
+
+    const { loadLibraryPresentation } = await import('../library-loader.js')
+    const dict = await loadLibraryPresentation(backend, 'microsoft', '0.1.0')
+    expect(dict).toBeDefined()
+    expect(dict!.CanResolve('microsoft.azure')).toBe(true)
+})
+
+test('loadLibraryPresentation returns undefined when the bundle has no compiled presentation', async () => {
+    const backend = new FakeStorage('fake://libraries')
+    await backend.WriteText('microsoft/0.1.0/library.json', '{}')
+    const { loadLibraryPresentation } = await import('../library-loader.js')
+    expect(await loadLibraryPresentation(backend, 'microsoft', '0.1.0')).toBeUndefined()
+})

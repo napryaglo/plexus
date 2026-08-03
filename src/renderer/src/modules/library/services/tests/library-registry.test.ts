@@ -11,16 +11,22 @@ import { LibraryRegistry } from '../library-registry.js'
 // Seed is SYNCHRONOUS: FakeStorage.WriteText sets its map synchronously, so every
 // file is present before discover() lists the backend (an async seed with awaits
 // would race the first List). Matches the meta-models-service test pattern.
-function env(seed: (b: FakeStorage) => void): { provider: ServiceProvider; diagnostics: DiagnosticsService } {
+// Wire a provider around a pre-populated backend (used when a test bakes a
+// presentation artifact into the backend before constructing the registry).
+function envWith(backend: FakeStorage): { provider: ServiceProvider; diagnostics: DiagnosticsService } {
     const provider = new ServiceProvider()
     const registry = new StorageProviderRegistry(provider)
-    const backend = new FakeStorage('fake://libraries')
     registry.Register(LIBRARIES_BACKEND_ID, () => backend)
     provider.registerInstance(StorageProviderRegistry.Key, registry)
     const diagnostics = new DiagnosticsService(provider)
     provider.registerInstance(DiagnosticsService.Key, diagnostics)
-    seed(backend)
     return { provider, diagnostics }
+}
+
+function env(seed: (b: FakeStorage) => void): { provider: ServiceProvider; diagnostics: DiagnosticsService } {
+    const backend = new FakeStorage('fake://libraries')
+    seed(backend)
+    return envWith(backend)
 }
 
 function manifest(id: string, template = `visuals/${id}.azure.mural`): string {
@@ -135,4 +141,40 @@ test('a class template that fails to compile falls back to default and reports a
     const errs = [...diagnostics.All].filter((d) => d.owner === 'libraries' && d.severity === DiagnosticSeverity.Error)
     expect(errs.some((d) => d.uri === 'visuals/microsoft.azure.mural')).toBe(true)
     expect(errs[0].projectId).toBe('library:microsoft@0.1.0')
+})
+
+// ── baked presentation tier ─────────────────────────────────────────────────
+// Bake a presentation artifact into `backend` for a single iconful class.
+async function bakePresentation(backend: any): Promise<void> {
+    const proj = new (backend.constructor)('fake://proj')
+    void proj.WriteText('resources/azure.svg', SVG)
+    const doc = { nodes: [{ id: 'microsoft.azure', tier: 'Instance', typeOf: 'location',
+        attrs: { class: true, id: 'azure', label: 'Azure', icon: 'resources/azure.svg' } }], edges: [] } as any
+    const { publishLibraryPresentation } = await import('../library-presentation-publisher.js')
+    await publishLibraryPresentation(proj, backend, 'microsoft/0.1.0', doc)
+}
+
+test('a class with a baked presentation resolves to its presentation template (non-default) right after discover', async () => {
+    const backend = new FakeStorage('fake://libraries')
+    await bakePresentation(backend)
+    void backend.WriteText('microsoft/0.1.0/library.json', iconManifest('resources/azure.svg'))   // no authored template
+    const { provider } = envWith(backend)
+    const reg = new LibraryRegistry(provider)
+    await reg.discover()
+    // presentation tier resolves immediately — not the shared default
+    expect(reg.resolve('microsoft.azure', 'location')).not.toBe(reg.resolve('nobody.here', 'x'))
+})
+
+test('an authored template still overrides the baked presentation template', async () => {
+    const backend = new FakeStorage('fake://libraries')
+    await bakePresentation(backend)
+    void backend.WriteText('microsoft/0.1.0/library.json', iconManifest('resources/azure.svg', 'visuals/microsoft.azure.mural'))
+    void backend.WriteText('microsoft/0.1.0/visuals/microsoft.azure.mural', 'TextBlock [ Text = $Display ]')
+    const { provider } = envWith(backend)
+    const reg = new LibraryRegistry(provider)
+    await reg.discover()
+    const presTemplate = reg.resolve('microsoft.azure', 'location')   // presentation tier (authored not yet compiled)
+    await whenCompiled(reg, 'microsoft.azure')
+    // once the authored .mural compiles it wins — a different template than the presentation one
+    expect(reg.resolve('microsoft.azure', 'location')).not.toBe(presTemplate)
 })
