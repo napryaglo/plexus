@@ -55,7 +55,7 @@ function classTemplate(doc: TodlDocument, n: JsonNode): string
         : [`            ${labelBlock}`]
 
     return [
-        `    DataTemplate x:key="${n.id}" {`,
+        `    DataTemplate x:key="${n.id}" [ DataType = LibraryClassData ] {`,
         '        Border [ Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (10,6,10,6) ] {',
         ...body,
         '        }',

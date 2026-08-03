@@ -18,9 +18,10 @@ test('emits a resources block with one include per icon and a class-keyed templa
     expect(mu).toContain('resources LibraryPresentation {')
     // one include for the single distinct icon, keyed by iconKey('resources/azure.svg')
     expect(mu).toContain('include "resources/azure.svg" as mm_icon_azure')
-    // class-keyed templates (string key = class id)
-    expect(mu).toContain('DataTemplate x:key="microsoft.azure"')
-    expect(mu).toContain('DataTemplate x:key="microsoft.aws"')
+    // class-keyed templates (string key = class id) declaring the inert DataType
+    // the mural compiler requires
+    expect(mu).toContain('DataTemplate x:key="microsoft.azure" [ DataType = LibraryClassData ]')
+    expect(mu).toContain('DataTemplate x:key="microsoft.aws" [ DataType = LibraryClassData ]')
 })
 
 test('the iconful class emits a Shape geometry + $Display label; the icon-less class is label-only', () => {
