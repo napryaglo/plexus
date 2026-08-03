@@ -297,7 +297,9 @@ test('a failed publish surfaces its message as a project-level diagnostic in the
         owner: 'publish', projectId: 'C:/a', projectName: 'A', uri: null,
         message: 'missing icon file(s): x.svg', severity: DiagnosticSeverity.Error, span: null,
     })
-    expect(service.Status).toBe('missing icon file(s): x.svg')
+    // The error description goes ONLY to Problems — the status pane never carries it.
+    expect(service.Status).toBe('Publish failed — see Problems.')
+    expect(service.Status).not.toContain('missing icon')
 })
 
 test('a successful publish clears any prior publish diagnostic', async () => {
