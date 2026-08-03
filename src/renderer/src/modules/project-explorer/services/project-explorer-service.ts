@@ -66,6 +66,7 @@ import type { BaseRef } from '../../../services/projects/base-binding.js'
 import { ensureMetaModelsBackend } from '../../meta-model/services/meta-models-backend.js'
 import { ensureLibrariesBackend } from '../../library/services/libraries-backend.js'
 import { TodlLanguageClient } from '../../../services/todl/todl-language-client.js'
+import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base-resolver.js'
 import { ProblemsService } from '../../problems/problems-service.js'
 import { planNodeMoves } from '../../../services/projects/node-move.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
@@ -829,13 +830,21 @@ export class ProjectExplorerService extends ServiceBase
     public async RefreshProjects(folders: readonly string[]): Promise<void>
     {
         const client = this.Provider.get(TodlLanguageClient.Key)
+        const resolver = this.Provider.get(WorkspaceBaseResolver.Key)
+        const producerIds: string[] = []
         for (const folder of folders)
         {
             const op = this.findByFolder(folder)
             if (op === undefined) continue
             await this.rescan(op)   // also resyncs the server's document set
             await client?.RefreshBases(op.Storage)
+            // Signal A: if the refreshed project is a producer, its dependents
+            // consume its (now-changed) live source and must revalidate too.
+            const id = resolver?.producedIdOf(op.Storage)
+            if (id !== undefined) producerIds.push(id)
         }
+        if (resolver !== undefined && producerIds.length > 0)
+            await resolver.RefreshDependentsOfIds(producerIds)
     }
 
     // Close a project: close its open tabs, drop it from the tree, and forget it

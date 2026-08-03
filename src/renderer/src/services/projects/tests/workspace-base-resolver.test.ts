@@ -4,9 +4,11 @@ import { check, toJSON, type TodlDocument } from '@pragmatic-lab/todl'
 
 import { StorageProviderRegistry } from '../../storage/storage-provider-registry.js'
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
+import type { IStorage } from '../../storage/storage.js'
 import { META_MODELS_BACKEND_ID } from '../../../modules/meta-model/services/meta-models-backend.js'
 import { LIBRARIES_BACKEND_ID } from '../../../modules/library/services/libraries-backend.js'
 import { ProjectExplorerService } from '../../../modules/project-explorer/services/project-explorer-service.js'
+import { TodlLanguageClient } from '../../todl/todl-language-client.js'
 import { PROJECT_MANIFEST_FILENAME, ProducerKind, type IProjectFactory, type IProducerProjectFactory } from '../project-factory.js'
 import { Project, ProjectNode } from '../project.js'
 import { OpenProject } from '../open-project.js'
@@ -146,4 +148,42 @@ test('a local producer with compile errors surfaces problems and still returns i
     const { bases, problems } = await resolver.ResolveForStorage(consumer)
     expect(hasNode(bases, 'partial')).toBe(true)
     expect(problems.some((p) => p.includes('boom'))).toBe(true)
+})
+
+test('RefreshDependentsOfIds refreshes a changed producer\'s transitive dependents', async () => {
+    // ea (meta-model) <- acme (library, binds ea) <- arch (binds ea + acme)
+    const mm = await openProject('meta-model', 'ea', '0.1.0',
+        producer(ProducerKind.MetaModel, 'namespace ea { concept c { label : string; } }'))
+    const lib = await openProject('library', 'acme', '0.1.0',
+        producer(ProducerKind.Library, 'namespace acme { concept l { label : string; } }'),
+        { metaModel: { id: 'ea', version: '0.1.0' } })
+    const arch = await openProject('architecture', 'sys', '0.1.0', { formats: [] } as unknown as IProjectFactory,
+        { metaModel: { id: 'ea', version: '0.1.0' }, libraries: [{ id: 'acme', version: '0.1.0' }] })
+    const { provider } = env([mm, lib, arch])
+
+    const refreshed: IStorage[] = []
+    provider.registerInstance(TodlLanguageClient.Key, {
+        RefreshBases: async (s: IStorage) => { refreshed.push(s) },
+    } as unknown as TodlLanguageClient)
+
+    const resolver = new WorkspaceBaseResolver(provider)
+    // Changing the meta-model must refresh both the library and the architecture.
+    await resolver.RefreshDependentsOfIds(['ea'])
+    expect(refreshed).toContain(lib.Storage)
+    expect(refreshed).toContain(arch.Storage)
+    // The meta-model itself is not a dependent of its own change.
+    expect(refreshed).not.toContain(mm.Storage)
+})
+
+test('producedIdOf reports a producer\'s id and undefined for a consumer', async () => {
+    const mm = await openProject('meta-model', 'ea', '0.1.0',
+        producer(ProducerKind.MetaModel, 'namespace ea { concept c { label : string; } }'))
+    const arch = await openProject('architecture', 'sys', '0.1.0', { formats: [] } as unknown as IProjectFactory,
+        { metaModel: { id: 'ea', version: '0.1.0' } })
+    const { provider } = env([mm, arch])
+    const resolver = new WorkspaceBaseResolver(provider)
+    // Force snapshot construction (producedIdOf reads the current snapshot).
+    await resolver.ResolveForStorage(arch.Storage)
+    expect(resolver.producedIdOf(mm.Storage)).toBe('ea')
+    expect(resolver.producedIdOf(arch.Storage)).toBeUndefined()
 })
