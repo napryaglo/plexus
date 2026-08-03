@@ -15,6 +15,10 @@ import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
 // attrs carried on an instance node that are markers, not authored fields.
 const MARKER_ATTRS = new Set(['id', 'class'])
 
+// The TODL default-library (prelude) namespace, injected into every compile as
+// the implicit foundation base — never a project meta-model or library binding.
+const PRELUDE_NAMESPACE = 'todl'
+
 export interface ModelBindings { metaModel: string; uses: string[] }
 
 // Derive a model's bindings from the compiled bases + the project namespace.
@@ -28,7 +32,10 @@ export function deriveBindings(bases: readonly TodlDocument[], namespace: string
     const baseNs = new Set<string>()
     for (const b of bases) for (const n of b.nodes) {
         const ns = (n.attrs as Record<string, unknown>)['namespace']
-        if (typeof ns === 'string' && ns.length > 0) baseNs.add(ns)
+        // Skip the implicit default library (prelude) namespace: it is injected
+        // into every compile as the foundation base, not a project binding, so it
+        // must never occupy the meta-model slot nor appear in `uses`.
+        if (typeof ns === 'string' && ns.length > 0 && ns !== PRELUDE_NAMESPACE) baseNs.add(ns)
     }
     const sortedBase = [...baseNs].sort()
     const metaModel = sortedBase[0] ?? namespace
