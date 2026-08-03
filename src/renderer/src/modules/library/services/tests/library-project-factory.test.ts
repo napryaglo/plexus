@@ -158,3 +158,51 @@ test('an orphan visual is a non-blocking warning', async () => {
   expect(result.ok).toBe(true)
   expect(result.message).toContain('warning')
 })
+
+// ── presentation generation ───────────────────────────────────────────────────
+// regeneratePresentation resolves the bound meta-model, so it needs the publishEnv
+// provider + a seeded meta-model. `factoryWith(provider)` builds a factory on it.
+function factoryWith(provider: ServiceProvider): LibraryProjectFactory { return new LibraryProjectFactory(provider) }
+
+test('regeneratePresentation writes presentation.generated.mu with a template per class + author merge', async () => {
+  const storage = new FakeStorage('fake://Acme')
+  const { provider, meta } = publishEnv()
+  await seedMeta(meta)
+  const f = factoryWith(provider)
+  await f.createProject(storage, 'microsoft', { metaModel: { id: 'ea', version: '5' } })
+  await storage.WriteText('microsoft.todl', LIB)
+  await storage.WriteText('presentation/custom.mu', 'resources LibraryPresentationCustom { }')
+
+  await f.regeneratePresentation(storage)
+
+  const out = await storage.ReadText('presentation.generated.mu')
+  expect(out).toContain('resources LibraryPresentation {')
+  expect(out).toContain('DataTemplate x:key="microsoft.azure"')          // qualified class id from LIB
+  expect(out).toContain('DataTemplate x:key="microsoft.azure-openai"')
+  expect(out).toContain('merge LibraryPresentationCustom')
+})
+
+test('regeneratePresentation is a no-op when the project has no .todl sources', async () => {
+  const storage = new FakeStorage('fake://Empty')
+  const { provider, meta } = publishEnv()
+  await seedMeta(meta)
+  const f = factoryWith(provider)
+  await f.createProject(storage, 'empty', { metaModel: { id: 'ea', version: '5' } })
+
+  await f.regeneratePresentation(storage)
+
+  expect(await storage.Exists('presentation.generated.mu')).toBe(false)
+})
+
+test('regeneratePresentation is a no-op when a .todl has a compile error', async () => {
+  const storage = new FakeStorage('fake://Acme')
+  const { provider, meta } = publishEnv()
+  await seedMeta(meta)
+  const f = factoryWith(provider)
+  await f.createProject(storage, 'microsoft', { metaModel: { id: 'ea', version: '5' } })
+  await storage.WriteText('bad.todl', 'namespace lib { taxonomy microsoft : represents nonesuch { } }')
+
+  await f.regeneratePresentation(storage)
+
+  expect(await storage.Exists('presentation.generated.mu')).toBe(false)
+})
