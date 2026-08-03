@@ -6,6 +6,7 @@ import { Model, MetaData, ServiceBase, ServiceKey, type IServiceProvider } from 
 export interface IViewportSource
 {
     height(): number
+    width(): number
     subscribe(onChange: () => void): () => void
 }
 
@@ -13,6 +14,7 @@ function windowViewportSource(): IViewportSource
 {
     return {
         height: () => window.innerHeight,
+        width: () => window.innerWidth,
         subscribe: (onChange) => {
             window.addEventListener('resize', onChange)
             return () => window.removeEventListener('resize', onChange)
@@ -28,6 +30,7 @@ export class ViewportService extends ServiceBase
 {
     public static readonly Key = new ServiceKey<ViewportService>('ViewportService')
     public static readonly HeightKey = Model.RegisterProperty<number>(ViewportService, 'Height', 0, MetaData.None)
+    public static readonly WidthKey = Model.RegisterProperty<number>(ViewportService, 'Width', 0, MetaData.None)
 
     private readonly listeners = new Set<() => void>()
 
@@ -35,13 +38,16 @@ export class ViewportService extends ServiceBase
     {
         super(provider)
         this.set_property_value(ViewportService.HeightKey, source.height())
+        this.set_property_value(ViewportService.WidthKey, source.width())
         source.subscribe(() => {
             this.set_property_value(ViewportService.HeightKey, source.height())
+            this.set_property_value(ViewportService.WidthKey, source.width())
             for (const l of this.listeners) l()
         })
     }
 
     public get Height(): number { return this.get_property_value(ViewportService.HeightKey) }
+    public get Width(): number { return this.get_property_value(ViewportService.WidthKey) }
 
     // Fired on every resize (after Height is updated). Returns an unsubscribe thunk.
     public Subscribe(listener: () => void): () => void

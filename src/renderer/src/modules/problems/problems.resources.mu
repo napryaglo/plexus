@@ -91,9 +91,10 @@ resources ProblemsResources {
         MenuPopupHost x:name="PART_PopupHost" {
             ClickAwayScrim x:name="PART_Scrim" [ BorderThickness = (0) ]
             Border x:name="PART_PopupContainer"
-                [ Background = @SurfaceContainerHigh, BorderBrush = @OutlineVariant, BorderThickness = (1),
+                [ Width = $PopupWidth,
+                  Background = @SurfaceContainerHigh, BorderBrush = @OutlineVariant, BorderThickness = (1),
                   CornerRadius = @ShapeExtraSmall, Effect = @Elevation2, Padding = (0) ] {
-                DockPanel [ LastChildFill = true, MinWidth = 340 ] {
+                DockPanel [ LastChildFill = true ] {
                     // Header + toolbar (docked Top).
                     DockPanel [ DockPanel.Dock = Top, LastChildFill = true, Margin = (8,6,8,6) ] {
                         // Right cluster: copy-all + clear (panel buttons).

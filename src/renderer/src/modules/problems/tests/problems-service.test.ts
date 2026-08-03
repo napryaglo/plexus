@@ -15,20 +15,23 @@ function diag(over: Partial<Diagnostic>): Diagnostic
     }
 }
 
-function fakeViewport(initial: number): IViewportSource & { push(h: number): void }
+function fakeViewport(h0: number, w0 = 1200): IViewportSource & { push(h: number): void; pushWidth(w: number): void }
 {
-    let h = initial
+    let h = h0, w = w0
     const cbs = new Set<() => void>()
+    const fire = (): void => { for (const cb of cbs) cb() }
     return {
         height: () => h,
+        width: () => w,
         subscribe: (cb) => { cbs.add(cb); return () => cbs.delete(cb) },
-        push: (next: number) => { h = next; for (const cb of cbs) cb() },
+        push: (nh: number) => { h = nh; fire() },
+        pushWidth: (nw: number) => { w = nw; fire() },
     }
 }
 
 function env(height = 1000): {
     store: DiagnosticsService; problems: ProblemsService
-    clipped: string[]; viewport: IViewportSource & { push(h: number): void }
+    clipped: string[]; viewport: IViewportSource & { push(h: number): void; pushWidth(w: number): void }
 }
 {
     const provider = new ServiceProvider()
@@ -163,6 +166,13 @@ test('ListMaxHeight is 30% of the viewport height and tracks resizes', () => {
     expect(problems.ListMaxHeight).toBe(300)   // 0.3 * 1000
     viewport.push(800)
     expect(problems.ListMaxHeight).toBe(240)   // 0.3 * 800
+})
+
+test('PopupWidth equals the viewport width and tracks resizes', () => {
+    const { problems, viewport } = env(1000)
+    expect(problems.PopupWidth).toBe(1200)   // fakeViewport default width
+    viewport.pushWidth(1600)
+    expect(problems.PopupWidth).toBe(1600)
 })
 
 test('CopyAllCommand copies the filtered rows as text; a row CopyCommand copies just its line', async () => {
