@@ -1,4 +1,5 @@
 import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import type { TodlDocument } from '@pragmatic-lab/todl'
 import type { IStorage } from '../storage/storage.js'
 import type { Project } from './project.js'
 import type { BaseBindings } from './base-binding.js'
@@ -100,4 +101,33 @@ export function canGeneratePresentation(
 ): factory is IProjectFactory & IPresentationProjectFactory
 {
     return typeof (factory as Partial<IPresentationProjectFactory>).regeneratePresentation === 'function'
+}
+
+// The producer kinds — a project type that publishes a base other projects
+// consume. Values match the corresponding factory `ProjectType` strings.
+export enum ProducerKind
+{
+    MetaModel = 'meta-model',
+    Library   = 'library',
+}
+
+// Optional capability a producer factory (meta-model, library) implements:
+// compile the project's sources into its base TodlDocument — exactly as publish
+// would, given already-resolved bases. `problems` carries compile-error messages
+// so callers decide whether to block (publish) or surface (the workspace
+// resolver). Publish and the WorkspaceBaseResolver share this one pipeline.
+export interface IProducerProjectFactory
+{
+    readonly producerKind: ProducerKind
+    compileToDocument(
+        storage: IStorage,
+        bases: TodlDocument[],
+        provider: IServiceProvider,
+    ): Promise<{ doc: TodlDocument; problems: string[] }>
+}
+
+// Type guard: does this factory produce a consumable base?
+export function isProducer(factory: IProjectFactory): factory is IProjectFactory & IProducerProjectFactory
+{
+    return typeof (factory as Partial<IProducerProjectFactory>).compileToDocument === 'function'
 }

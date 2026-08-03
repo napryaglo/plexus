@@ -1,8 +1,10 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { check, toJSON, Severity, type TodlDocument } from '@pragmatic-lab/todl'
+import { check, checkAgainst, toJSON, Severity, type TodlDocument } from '@pragmatic-lab/todl'
 
 import {
     PROJECT_MANIFEST_FILENAME,
+    ProducerKind,
+    type IProducerProjectFactory,
     type IProjectFactory,
     type IPresentationProjectFactory,
     type IPublishableProjectFactory,
@@ -40,7 +42,7 @@ interface MetaModelManifest extends ProjectManifestEnvelope
 }
 
 export class MetaModelProjectFactory extends ServiceBase
-    implements IProjectFactory, IPublishableProjectFactory, IPresentationProjectFactory
+    implements IProjectFactory, IPublishableProjectFactory, IPresentationProjectFactory, IProducerProjectFactory
 {
     public static readonly Key = new ServiceKey<MetaModelProjectFactory>('MetaModelProjectFactory')
     public static readonly ProjectType = 'meta-model'
@@ -87,6 +89,24 @@ export class MetaModelProjectFactory extends ServiceBase
         await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
     }
 
+    public readonly producerKind = ProducerKind.MetaModel
+
+    // Compile every `.todl` into the base document, exactly as publish does.
+    // A meta-model has no bases of its own, so callers pass `bases` (usually []).
+    public async compileToDocument(
+        storage: IStorage,
+        bases: TodlDocument[],
+        _provider: IServiceProvider,
+    ): Promise<{ doc: TodlDocument; problems: string[] }>
+    {
+        const sources = await collectTodlSources(storage)
+        const { model, diagnostics } = checkAgainst(bases, sources)
+        const problems = diagnostics
+            .filter((d) => d.severity === Severity.Error)
+            .map((d) => d.message)
+        return { doc: toJSON(model), problems }
+    }
+
     // Validate every `.todl` together; if clean, emit the compiled model + copy
     // the sources into the meta-models backend under `<id>/<modelVersion>/`.
     public async publish(_project: Project, storage: IStorage, provider: IServiceProvider): Promise<PublishResult>
@@ -95,12 +115,10 @@ export class MetaModelProjectFactory extends ServiceBase
         const sources = await collectTodlSources(storage)
         if (sources.length === 0) return { ok: false, message: 'Nothing to publish — the project has no .todl files.' }
 
-        const { model, diagnostics } = check(sources)
-        const errors = diagnostics.filter((d) => d.severity === Severity.Error)
-        if (errors.length > 0)
-            return { ok: false, message: `Publish blocked: ${errors.length} error(s). Fix them first.` }
+        const { doc, problems } = await this.compileToDocument(storage, [], provider)
+        if (problems.length > 0)
+            return { ok: false, message: `Publish blocked: ${problems.length} error(s). Fix them first.` }
 
-        const doc = toJSON(model)
         const dest = ensureMetaModelsBackend(provider)
         const base = `${manifest.id}/${manifest.modelVersion}`
 

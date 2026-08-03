@@ -1,8 +1,10 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { checkAgainst, toJSON, Severity } from '@pragmatic-lab/todl'
+import { checkAgainst, toJSON, Severity, type TodlDocument } from '@pragmatic-lab/todl'
 
 import {
     PROJECT_MANIFEST_FILENAME,
+    ProducerKind,
+    type IProducerProjectFactory,
     type IProjectFactory,
     type IPublishableProjectFactory,
     type ProjectFileFormat,
@@ -36,7 +38,8 @@ interface LibraryManifest extends ProjectManifestEnvelope
     description?: string         // optional human description, carried into library.json
 }
 
-export class LibraryProjectFactory extends ServiceBase implements IProjectFactory, IPublishableProjectFactory
+export class LibraryProjectFactory extends ServiceBase
+    implements IProjectFactory, IPublishableProjectFactory, IProducerProjectFactory
 {
     public static readonly Key = new ServiceKey<LibraryProjectFactory>('LibraryProjectFactory')
     public static readonly ProjectType = 'library'
@@ -75,6 +78,24 @@ export class LibraryProjectFactory extends ServiceBase implements IProjectFactor
         await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
     }
 
+    public readonly producerKind = ProducerKind.Library
+
+    // Compile the taxonomy sources (samples/ excluded) against the given bases,
+    // exactly as publish does. `bases` is the resolved meta-model (+ any libs).
+    public async compileToDocument(
+        storage: IStorage,
+        bases: TodlDocument[],
+        _provider: IServiceProvider,
+    ): Promise<{ doc: TodlDocument; problems: string[] }>
+    {
+        const sources = await collectTaxonomySources(storage)
+        const { model, diagnostics } = checkAgainst(bases, sources)
+        const problems = diagnostics
+            .filter((d) => d.severity === Severity.Error)
+            .map((d) => d.message)
+        return { doc: toJSON(model), problems }
+    }
+
     // Validate every taxonomy `.todl` (samples/ excluded) against the bound
     // meta-model; if clean, emit model.json + library.json + the sources, and copy
     // the resource folders (visuals/assets/docs/samples/thumbnails) into the
@@ -91,12 +112,10 @@ export class LibraryProjectFactory extends ServiceBase implements IProjectFactor
         const sources = await collectTaxonomySources(storage)
         if (sources.length === 0) return { ok: false, message: 'Nothing to publish — the project has no .todl files.' }
 
-        const { model, diagnostics } = checkAgainst(bases, sources)
-        const errors = diagnostics.filter((d) => d.severity === Severity.Error)
-        if (errors.length > 0)
-            return { ok: false, message: `Publish blocked: ${errors.length} error(s). Fix them first.` }
+        const { doc, problems: compileProblems } = await this.compileToDocument(storage, bases, provider)
+        if (compileProblems.length > 0)
+            return { ok: false, message: `Publish blocked: ${compileProblems.length} error(s). Fix them first.` }
 
-        const doc = toJSON(model)
         const classes = deriveClasses(doc)
         const scanned = await scanResources(storage, classes.map((c) => c.id))
         for (const c of classes) {
