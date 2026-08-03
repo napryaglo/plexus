@@ -164,3 +164,38 @@ test('ListMaxHeight is 30% of the viewport height and tracks resizes', () => {
     viewport.push(800)
     expect(problems.ListMaxHeight).toBe(240)   // 0.3 * 800
 })
+
+test('CopyAllCommand copies the filtered rows as text; a row CopyCommand copies just its line', async () => {
+    const { store, problems, clipped } = env()
+    store.Publish('todl', '/p', [
+        diag({ uri: 'a.todl', message: 'boom', severity: DiagnosticSeverity.Error, span: { startLine: 2, startColumn: 3, endLine: 2, endColumn: 4 } }),
+        diag({ uri: 'b.todl', message: 'quiet', severity: DiagnosticSeverity.Warning, span: { startLine: 5, startColumn: 1, endLine: 5, endColumn: 2 } }),
+    ])
+    problems.ShowWarnings = false   // hide the warning; copy-all is WYSIWYG
+
+    problems.CopyAllCommand!.Execute()
+    await Promise.resolve()
+    expect(clipped.at(-1)).toBe('ERROR  a.todl 2:3  boom')
+
+    const errorRow = [...problems.Rows].find((r) => r.Kind === ProblemRowKind.Diagnostic)!
+    errorRow.CopyCommand!.Execute()
+    await Promise.resolve()
+    expect(clipped.at(-1)).toBe('ERROR  a.todl 2:3  boom')
+})
+
+test('ClearFiltersCommand resets text and both severity toggles, restoring all rows', () => {
+    const { store, problems } = env()
+    store.Publish('todl', '/p', [
+        diag({ uri: 'a.todl', message: 'boom', severity: DiagnosticSeverity.Error }),
+        diag({ uri: 'a.todl', message: 'quiet', severity: DiagnosticSeverity.Warning }),
+    ])
+    problems.ShowWarnings = false
+    problems.FilterText = 'boom'
+    expect([...problems.Rows].filter((r) => r.Kind === ProblemRowKind.Diagnostic).length).toBe(1)
+
+    problems.ClearFiltersCommand!.Execute()
+    expect(problems.FilterText).toBe('')
+    expect(problems.ShowErrors).toBe(true)
+    expect(problems.ShowWarnings).toBe(true)
+    expect([...problems.Rows].filter((r) => r.Kind === ProblemRowKind.Diagnostic).length).toBe(2)
+})
