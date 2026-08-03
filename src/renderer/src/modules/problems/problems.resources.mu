@@ -65,6 +65,22 @@ resources ProblemsResources {
         VirtualizingStackPanel [ Orientation = Vertical, ItemHeight = 28 ]
     }
 
+    // Panel-consistent chrome for the severity toggles: the same transparent
+    // surface + hover/press state layers a PanelButton uses, but as a ToggleButton
+    // hosting its count. A checked (filter-on) toggle fills with @SecondaryContainer;
+    // unchecked (filter hidden) dims so the "off" state reads at a glance.
+    Template x:key="PanelToggle" [ TargetType = ToggleButton ] {
+        Border x:name="PART_Border" [ Background = #00000000, CornerRadius = @ShapeSmall ] {
+            Border x:name="PART_StateLayer" [ Background = #00000000, CornerRadius = @ShapeSmall, Padding = (8,3,8,3) ] {
+                ContentPresenter [ HorizontalAlignment = Center, VerticalAlignment = Center ]
+            }
+        }
+        when ( IsChecked = true ) { PART_StateLayer.Background = @SecondaryContainer; }
+        when ( IsChecked = false ) { PART_Border.Opacity = @DisabledContentOpacity; }
+        when ( IsMouseOver ) { PART_StateLayer.Background = @OnSurfaceVariantHoverLayer; }
+        when ( IsPressed ) { PART_StateLayer.Background = @OnSurfaceVariantPressLayer; }
+    }
+
     // The popup control template. Preserves the MenuButton popup contract (root
     // MenuPopupHost = PART_PopupHost, a PART_Scrim ClickAwayScrim, a
     // PART_PopupContainer Border) and adds a header/toolbar above a height-capped,
@@ -80,23 +96,23 @@ resources ProblemsResources {
                 DockPanel [ LastChildFill = true, MinWidth = 340 ] {
                     // Header + toolbar (docked Top).
                     DockPanel [ DockPanel.Dock = Top, LastChildFill = true, Margin = (8,6,8,6) ] {
-                        // Right cluster: copy-all + clear.
+                        // Right cluster: copy-all + clear (panel buttons).
                         StackPanel [ DockPanel.Dock = Right, Orientation = Horizontal, VerticalAlignment = Center ] {
-                            IconButton [ Template = @CompactHeaderIconButton, Command = $CopyAllCommand, Margin = (4,0,0,0) ] {
-                                Shape [ Geometry = @Copy, Fill = @OnSurfaceVariant, Width = 12, Height = 12 ]
+                            PanelButton [ Command = $CopyAllCommand, Margin = (4,0,0,0) ] {
+                                Shape [ Geometry = @Copy, Fill = @OnSurfaceVariant, Width = 16, Height = 16 ]
                             }
-                            Button [ Command = $ClearFiltersCommand, Margin = (8,0,0,0) ] {
-                                TextBlock [ Text = "Clear", Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
+                            PanelButton [ Command = $ClearFiltersCommand, Margin = (4,0,0,0) ] {
+                                Shape [ Geometry = @FilterOff, Fill = @OnSurfaceVariant, Width = 16, Height = 16 ]
                             }
                         }
                         // Left cluster: title + severity toggles + filter box.
                         StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
                             TextBlock [ Text = "Problems", Style = @LabelLarge, Foreground = @OnSurface, VerticalAlignment = Center, Margin = (0,0,12,0) ]
-                            ToggleButton [ IsChecked = $ShowErrors, VerticalAlignment = Center, Margin = (0,0,6,0) ] {
-                                TextBlock [ Text = $ErrorCount, Style = @LabelMedium ]
+                            ToggleButton [ Template = @PanelToggle, IsChecked = $ShowErrors, VerticalAlignment = Center, Margin = (0,0,4,0) ] {
+                                TextBlock [ Text = $ErrorCount, Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
                             }
-                            ToggleButton [ IsChecked = $ShowWarnings, VerticalAlignment = Center, Margin = (0,0,12,0) ] {
-                                TextBlock [ Text = $WarningCount, Style = @LabelMedium ]
+                            ToggleButton [ Template = @PanelToggle, IsChecked = $ShowWarnings, VerticalAlignment = Center, Margin = (0,0,12,0) ] {
+                                TextBlock [ Text = $WarningCount, Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
                             }
                             TextBox [ Text = $FilterText, Variant = Plain, MinWidth = 120, VerticalAlignment = Center ]
                         }
@@ -116,8 +132,8 @@ resources ProblemsResources {
     // same @TabMenuRowButton chrome the document-host ⋯ dropdown uses.
     DataTemplate [ DataType = ProblemsRow ] {
         DockPanel [ LastChildFill = true ] {
-            IconButton [ DockPanel.Dock = Right, Template = @CompactHeaderIconButton, Command = $CopyCommand, VerticalAlignment = Center, Margin = (8,0,4,0) ] {
-                Shape [ Geometry = @Copy, Fill = @OnSurfaceVariant, Width = 11, Height = 11 ]
+            PanelButton [ DockPanel.Dock = Right, Command = $CopyCommand, VerticalAlignment = Center, Margin = (8,0,4,0) ] {
+                Shape [ Geometry = @Copy, Fill = @OnSurfaceVariant, Width = 14, Height = 14 ]
             }
             Button [ Template = @TabMenuRowButton, Command = $ActivateCommand, HorizontalAlignment = Stretch, MinWidth = 240 ] {
                 DockPanel [ LastChildFill = true ] {
