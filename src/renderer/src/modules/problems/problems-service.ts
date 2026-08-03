@@ -4,7 +4,14 @@ import {
 } from '@pragmatic-lab/mural/runtime'
 import { DiagnosticsService } from '../../services/diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity, type Diagnostic } from '../../services/diagnostics/diagnostic.js'
+import { ViewportService } from '../../services/viewport/viewport-service.js'
 import { ProjectExplorerService } from '../project-explorer/services/project-explorer-service.js'
+
+// The Problems popup caps its scrollable list at this fraction of the live
+// window height. When no ViewportService is available (headless edge cases), fall
+// back to a fixed height so the list still scrolls rather than growing unbounded.
+const LIST_HEIGHT_FRACTION = 0.3
+const FALLBACK_LIST_MAX_HEIGHT = 240
 
 // A standalone ServiceKey (like the framework's DiagramEditingContext). The
 // StatusBar ShellControlDefinition references THIS as its DataContext: the shell
@@ -92,6 +99,12 @@ export class ProblemsService extends ServiceBase
     public static readonly ShowWarningsKey = Model.RegisterProperty<boolean>(ProblemsService, 'ShowWarnings', true, MetaData.None)
     public static readonly FilterTextKey = Model.RegisterProperty<string>(ProblemsService, 'FilterText', '', MetaData.None)
 
+    // MaxHeight for the popup's scrollable list = 30% of the live window height.
+    // Bound by the .mu ScrollViewer; recomputed whenever ViewportService.Height
+    // changes.
+    public static readonly ListMaxHeightKey = Model.RegisterProperty<number>(
+        ProblemsService, 'ListMaxHeight', FALLBACK_LIST_MAX_HEIGHT, MetaData.None)
+
     // Set true while ClearFilters mutates several filter DPs, so their individual
     // property-change notifications don't each trigger a rebuild (ClearFilters
     // rebuilds once at the end).
@@ -106,6 +119,11 @@ export class ProblemsService extends ServiceBase
         // to All's per-item collection events — the latter fires N+1 times per
         // publish and made this O(N) rebuild run per-item (O(N^2), froze the app).
         store?.Subscribe(() => this.rebuild())
+        const viewport = provider.get(ViewportService.Key)
+        if (viewport !== undefined) {
+            this.updateListMaxHeight(viewport.Height)
+            viewport.Subscribe(() => this.updateListMaxHeight(viewport.Height))
+        }
         this.rebuild()
     }
 
@@ -121,6 +139,7 @@ export class ProblemsService extends ServiceBase
     public set ShowWarnings(v: boolean) { this.set_property_value(ProblemsService.ShowWarningsKey, v) }
     public get FilterText(): string { return this.get_property_value(ProblemsService.FilterTextKey) }
     public set FilterText(v: string) { this.set_property_value(ProblemsService.FilterTextKey, v) }
+    public get ListMaxHeight(): number { return this.get_property_value(ProblemsService.ListMaxHeightKey) }
 
     public Expand(): void { this.IsOpen = true }
 
@@ -191,6 +210,12 @@ export class ProblemsService extends ServiceBase
         if (q === '') return true
         const file = d.uri === null ? '' : fileNameOf(d.uri)
         return d.message.toLowerCase().includes(q) || file.toLowerCase().includes(q)
+    }
+
+    private updateListMaxHeight(height: number): void
+    {
+        const h = height > 0 ? Math.round(height * LIST_HEIGHT_FRACTION) : FALLBACK_LIST_MAX_HEIGHT
+        this.set_property_value(ProblemsService.ListMaxHeightKey, h)
     }
 
     protected override OnPropertyChanged(descriptor: PropertyDescriptor, oldValue: unknown, newValue: unknown): void

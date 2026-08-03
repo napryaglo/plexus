@@ -157,3 +157,10 @@ test('severity and text filters intersect', () => {
     const rows = [...problems.Rows].filter((r) => r.Kind === ProblemRowKind.Diagnostic)
     expect(rows.length).toBe(1)   // only the error 'boom' survives both filters
 })
+
+test('ListMaxHeight is 30% of the viewport height and tracks resizes', () => {
+    const { problems, viewport } = env(1000)
+    expect(problems.ListMaxHeight).toBe(300)   // 0.3 * 1000
+    viewport.push(800)
+    expect(problems.ListMaxHeight).toBe(240)   // 0.3 * 800
+})
