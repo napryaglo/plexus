@@ -38,4 +38,7 @@ resources PlexusIcons {
     include "icons/diagram.svg"                  as Diagram
     include "icons/todl.svg"                     as Todl
     include "icons/file.svg"                     as File
+
+    // Copy glyph — the Problems popup's copy-all + per-row copy buttons.
+    include "icons/copy.svg"                     as Copy
 }
