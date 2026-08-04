@@ -73,6 +73,7 @@ import { DiagnosticsService } from '../../../services/diagnostics/diagnostics-se
 import { DiagnosticSeverity } from '../../../services/diagnostics/diagnostic.js'
 import { planNodeMoves } from '../../../services/projects/node-move.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
+import { AddLibraryReferenceDialogModel } from '../../../services/projects/add-library-reference-dialog-model.js'
 import { RecentProjectsService } from '../../../services/projects/recent-projects-service.js'
 import { CodeDocument } from '../../code-editor/code-document.js'
 import { EnvironmentService } from '../../../services/environment/environment-service.js'
@@ -415,6 +416,11 @@ export class ProjectExplorerService extends ServiceBase
         op.RefreshBasesCommand = new RelayCommand(
             () => this.refreshBases(op),
             () => op.Factory.requiresMetaModel === true)
+        // Bind a published library after the fact — only for a type that offers
+        // libraries (architecture).
+        op.AddLibraryReferenceCommand = new RelayCommand(
+            () => void this.addLibraryReference(op),
+            () => op.Factory.offersLibraries === true)
         op.CloseCommand = new RelayCommand(() => void this.closeProject(op))
         op.MoveNodesCommand = new RelayCommand((arg) => {
             const a = arg as MoveArg
@@ -930,6 +936,28 @@ export class ProjectExplorerService extends ServiceBase
     {
         void this.Provider.get(TodlLanguageClient.Key)?.RefreshBases(op.Storage)
         this.Status = `Refreshed bases for ${op.Name}.`
+    }
+
+    // Bind an already-published library to `op` after the fact: offer the published
+    // libraries this project does not already reference, append the chosen ones to
+    // the manifest's `libraries`, and refresh its bases so the new terms resolve.
+    private async addLibraryReference(op: OpenProject): Promise<void>
+    {
+        const manifest = JSON.parse(await op.Storage.ReadText(PROJECT_MANIFEST_FILENAME)) as {
+            libraries?: BaseRef[]; [k: string]: unknown
+        }
+        const bound = new Set((manifest.libraries ?? []).map((l) => `${l.id}@${l.version}`))
+        const addable = (await this.publishedLibraries()).filter((l) => !bound.has(`${l.id}@${l.version}`))
+
+        const vm = new AddLibraryReferenceDialogModel(addable, (r) => this.dialogs.Close(r))
+        const chosen = await this.dialogs.Show<readonly BaseRef[]>({ Title: 'Add Library Reference', Content: vm, Width: 480 })
+        if (chosen === undefined || chosen.length === 0) return
+
+        manifest.libraries = [...(manifest.libraries ?? []), ...chosen]
+        await op.Storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
+        await this.Provider.get(TodlLanguageClient.Key)?.RefreshBases(op.Storage)
+        const names = chosen.map((l) => `${l.id}@${l.version}`).join(', ')
+        this.Status = `Added library reference${chosen.length > 1 ? 's' : ''} ${names} to ${op.Name}.`
     }
 
     // Re-scan the named open projects from disk and re-validate their models —

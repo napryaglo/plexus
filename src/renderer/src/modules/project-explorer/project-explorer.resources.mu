@@ -15,6 +15,7 @@ import EditingToLabelVisibility from "../../services/projects/project-node-icon.
 import NewProjectDialogModel from "../../services/projects/new-project-dialog-model.js"
 import ProjectTypeChoice from "../../services/projects/new-project-dialog-model.js"
 import LibraryChoice from "../../services/projects/new-project-dialog-model.js"
+import AddLibraryReferenceDialogModel from "../../services/projects/add-library-reference-dialog-model.js"
 import OpenProjectDialogModel from "../../services/projects/open-project-dialog-model.js"
 import RecentProjectItem from "../../services/projects/open-project-dialog-model.js"
 import ConfirmDialogModel from "../../services/dialogs/confirm-dialog-model.js"
@@ -57,6 +58,7 @@ resources ProjectExplorerResources {
               Command = $PublishCommand,
               Icon = Shape [ Geometry = @Publish, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
         MenuItem [ Header = "Generate Presentation", Command = $GeneratePresentationCommand ]
+        MenuItem [ Header = "Add Library Reference…", Command = $AddLibraryReferenceCommand ]
         MenuItem [ Header = "Refresh Bases", Command = $RefreshBasesCommand ]
         MenuSeparator
         MenuItem [ Header = "Close Project", Command = $CloseCommand ]
@@ -278,6 +280,23 @@ resources ProjectExplorerResources {
             StackPanel [ Orientation = Horizontal, HorizontalAlignment = Right ] {
                 Button [ Variant = Text, Command = $CancelCommand, Margin = (0,0,8,0) ] { TextBlock [ Text = "Cancel" ] }
                 Button [ Variant = Filled, Command = $ConfirmCommand, IsEnabled = $CanConfirm ] { TextBlock [ Text = "Create" ] }
+            }
+        }
+    }
+
+    // ── Add Library Reference dialog ─────────────────────────────────────
+    // A checklist of published libraries this project does not already bind (reuses
+    // DataTemplate[LibraryChoice]). EmptyLabel guides when there is nothing to add;
+    // Add stays disabled until at least one row is checked.
+    DataTemplate [ DataType = AddLibraryReferenceDialogModel ] {
+        StackPanel [ Orientation = Vertical, HorizontalAlignment = Stretch ] {
+            TextBlock [ Style = @BodyLarge, Text = "Libraries", Foreground = @OnSurface, Margin = (0,0,0,4) ]
+            ItemsControl [ ItemsSource = $Libraries, ItemsPanel = @VerticalStackPanel ]
+            TextBlock [ Style = @BodySmall, Text = $EmptyLabel, Foreground = @OnSurfaceVariant, TextWrapping = Wrap, Margin = (0,2,0,0) ]
+
+            StackPanel [ Orientation = Horizontal, HorizontalAlignment = Right, Margin = (0,14,0,0) ] {
+                Button [ Variant = Text, Command = $CancelCommand, Margin = (0,0,8,0) ] { TextBlock [ Text = "Cancel" ] }
+                Button [ Variant = Filled, Command = $ConfirmCommand, IsEnabled = $CanConfirm ] { TextBlock [ Text = "Add" ] }
             }
         }
     }
