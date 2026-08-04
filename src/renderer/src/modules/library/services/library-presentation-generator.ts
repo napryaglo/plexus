@@ -35,11 +35,19 @@ export function generateLibraryPresentationMu(model: TodlDocument, authorOverrid
     return lines.join('\n')
 }
 
+// A raster (bitmap) icon path — baked as an ImageBrush and drawn by filling a
+// Border, versus an SVG path which bakes to a Shape geometry.
+export function isRasterIcon(path: string): boolean
+{
+    return /\.(png|jpe?g|webp|gif)$/i.test(path)
+}
+
 // One class's DataTemplate, keyed by its (qualified) class id so
 // LibraryRegistry.resolve(classId) finds it. Icon+label when the class resolves an
-// icon, else label-only. The label is BOUND ($Display) — the canvas supplies the
-// class instance's display string — not baked, the one divergence from the
-// meta-model generator.
+// icon, else label-only. A vector icon draws through a Shape geometry; a raster
+// icon fills a fixed-size Border with the icon's ImageBrush. The label is BOUND
+// ($Display) — the canvas supplies the class instance's display string — not baked,
+// the one divergence from the meta-model generator.
 function classTemplate(doc: TodlDocument, n: JsonNode): string
 {
     const { icon } = resolveFacets(n, projectAnnotations(doc, n.id))
@@ -48,7 +56,7 @@ function classTemplate(doc: TodlDocument, n: JsonNode): string
     const body = (icon !== undefined)
         ? [
             '            StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {',
-            `                Shape [ Geometry = @${iconKey(icon)}, Fill = @OnSurface, Width = 16, Height = 16, Margin = (0,0,6,0) ]`,
+            `                ${iconElement(icon)}`,
             `                ${labelBlock}`,
             '            }',
           ]
@@ -61,4 +69,14 @@ function classTemplate(doc: TodlDocument, n: JsonNode): string
         '        }',
         '    }',
     ].join('\n')
+}
+
+// The 16×16 icon element for a class: a Shape drawing the baked SVG geometry, or —
+// for a raster icon — a Border filled with the baked ImageBrush.
+function iconElement(icon: string): string
+{
+    const key = iconKey(icon)
+    return isRasterIcon(icon)
+        ? `Border [ Width = 16, Height = 16, Margin = (0,0,6,0), Background = @${key} ]`
+        : `Shape [ Geometry = @${key}, Fill = @OnSurface, Width = 16, Height = 16, Margin = (0,0,6,0) ]`
 }

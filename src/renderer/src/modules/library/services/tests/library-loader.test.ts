@@ -83,3 +83,19 @@ test('loadLibraryPresentation returns undefined when the bundle has no compiled 
     const { loadLibraryPresentation } = await import('../library-loader.js')
     expect(await loadLibraryPresentation(backend, 'microsoft', '0.1.0')).toBeUndefined()
 })
+
+test('loadLibraryPresentation evals a raster-icon artifact (ImageBrush/BitmapImage in ctx)', async () => {
+    const backend = new FakeStorage('fake://libraries')
+    const proj = new FakeStorage('fake://proj')
+    const PNG = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='), (c) => c.charCodeAt(0))
+    await proj.WriteBytes('resources/aml.png', PNG)
+    const doc = { nodes: [{ id: 'microsoft.aml', tier: 'Instance', typeOf: 'technology',
+        attrs: { class: true, id: 'aml', label: 'Azure ML', icon: 'resources/aml.png' } }], edges: [] } as any
+    const { publishLibraryPresentation } = await import('../library-presentation-publisher.js')
+    await publishLibraryPresentation(proj, backend, 'microsoft/0.1.0', doc)
+
+    const { loadLibraryPresentation } = await import('../library-loader.js')
+    const dict = await loadLibraryPresentation(backend, 'microsoft', '0.1.0')
+    expect(dict).toBeDefined()
+    expect(dict!.CanResolve('microsoft.aml')).toBe(true)
+})

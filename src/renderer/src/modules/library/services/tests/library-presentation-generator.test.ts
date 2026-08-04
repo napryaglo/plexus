@@ -41,3 +41,23 @@ test('author override dictionaries are merged last; none → no merge line', () 
         .toContain('merge LibraryPresentationCustom')
     expect(generateLibraryPresentationMu(DOC, [])).not.toContain('merge ')
 })
+
+// A class whose icon is a raster image (PNG): the template fills a Border with the
+// icon resource (an ImageBrush) instead of drawing an SVG geometry into a Shape.
+const RASTER_DOC: TodlDocument = {
+    nodes: [
+        { id: 'microsoft.aml', tier: 'Instance', typeOf: 'technology',
+          attrs: { class: true, id: 'aml', label: 'Azure ML', icon: 'resources/azure-machine-learning.png' } },
+    ],
+    edges: [],
+} as unknown as TodlDocument
+
+test('a raster-icon class fills a Border with the icon brush; no Shape/Geometry', () => {
+    const mu = generateLibraryPresentationMu(RASTER_DOC, [])
+    expect(mu).toContain('include "resources/azure-machine-learning.png" as mm_icon_azure_machine_learning')
+    const t = mu.slice(mu.indexOf('x:key="microsoft.aml"'))
+    expect(t).toContain('Border [ Width = 16, Height = 16, Margin = (0,0,6,0), Background = @mm_icon_azure_machine_learning ]')
+    expect(t).not.toContain('Shape [')
+    expect(t).not.toContain('Geometry =')
+    expect(t).toContain('Text = $Display')
+})
