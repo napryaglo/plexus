@@ -41,6 +41,11 @@ export class OpenProject extends Model
     // cache + revalidate) — picks up a republished meta-model/library.
     static readonly RefreshBasesCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'RefreshBasesCommand', undefined, MetaData.None)
+    // Bind an already-published library to this project's manifest — enabled only
+    // for a factory that OffersLibraries (architecture). Covers a library not
+    // chosen at creation time (or published later).
+    static readonly AddLibraryReferenceCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        OpenProject, 'AddLibraryReferenceCommand', undefined, MetaData.None)
     static readonly CloseCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'CloseCommand', undefined, MetaData.None)
     // Move dragged node(s) into a target folder — the drag behavior executes this
@@ -130,6 +135,9 @@ export class OpenProject extends Model
 
     public get RefreshBasesCommand(): ICommand | undefined { return this.get_property_value(OpenProject.RefreshBasesCommandKey) }
     public set RefreshBasesCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.RefreshBasesCommandKey, v) }
+
+    public get AddLibraryReferenceCommand(): ICommand | undefined { return this.get_property_value(OpenProject.AddLibraryReferenceCommandKey) }
+    public set AddLibraryReferenceCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.AddLibraryReferenceCommandKey, v) }
 
     public get MoveNodesCommand(): ICommand | undefined { return this.get_property_value(OpenProject.MoveNodesCommandKey) }
     public set MoveNodesCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.MoveNodesCommandKey, v) }
