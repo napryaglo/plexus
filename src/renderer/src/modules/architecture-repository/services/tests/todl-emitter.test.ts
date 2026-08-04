@@ -52,21 +52,30 @@ function ownFrom(bs: TodlDocument[], source: string): TodlDocument {
     return ownOf(toJSON(r.model), baseIds(bs))
 }
 
-test('deriveBindings: meta-model is the first sorted base namespace; uses adds the rest + self', () => {
-    expect(deriveBindings(bases(), 'app')).toEqual({ metaModel: 'ea', uses: ['app', 'ms'] })
+const EMPTY: TodlDocument = { nodes: [], edges: [] }
+
+test('deriveBindings: metaModel = first sorted base namespace; imports = the base namespaces', () => {
+    expect(deriveBindings(bases(), EMPTY, 'app')).toEqual({ metaModel: 'ea', uses: [], imports: ['ea', 'ms'] })
 })
 
-test('deriveBindings: no bases binds the project namespace alone', () => {
-    expect(deriveBindings([], 'app')).toEqual({ metaModel: 'app', uses: [] })
+test('deriveBindings: no bases binds the project namespace alone, nothing to import', () => {
+    expect(deriveBindings([], EMPTY, 'app')).toEqual({ metaModel: 'app', uses: [], imports: [] })
+})
+
+test('deriveBindings: uses = the taxonomies whose terms the model references', () => {
+    const bs = bases()
+    const own = ownFrom(bs, `namespace app { import ea; import ms; model m : ea uses stack { component gw { label = "G"; realised-by = &stack.azure-openai; } } }`)
+    expect(deriveBindings(bs, own, 'app').uses).toEqual(['stack'])
 })
 
 test('round-trips a concept instance with a scalar field and a single reference', () => {
     const bs = bases()
-    const src = `namespace app { import ea; import ms; model app-model : ea uses ms { component gw { label = "Gateway"; realised-by = &stack.azure-openai; } } }`
+    const src = `namespace app { import ea; import ms; model app-model : ea uses stack { component gw { label = "Gateway"; realised-by = &stack.azure-openai; } } }`
     const own = ownFrom(bs, src)
 
-    const emitted = emitInstances(own, 'app', deriveBindings(bs, 'app'))
+    const emitted = emitInstances(own, 'app', deriveBindings(bs, own, 'app'))
     expect(emitted).toContain('model app-model : ea')
+    expect(emitted).toContain('uses stack')
     const own2 = ownFrom(bs, emitted)
 
     expect(normal(own2)).toEqual(normal(own))
@@ -78,13 +87,13 @@ test('round-trips a many-valued reference (list) and an instanceof class', () =>
       import ea;
       import ms;
       class component web-tier { realised-by = &stack.azure-func; }
-      model app-model : ea uses ms, app {
+      model app-model : ea uses stack {
         component api instanceof web-tier { label = "API"; deployed-to = [stack.azure-openai, stack.azure-func]; }
       }
     }`
     const own = ownFrom(bs, src)
 
-    const emitted = emitInstances(own, 'app', deriveBindings(bs, 'app'))
+    const emitted = emitInstances(own, 'app', deriveBindings(bs, own, 'app'))
     expect(emitted).toContain('model app-model : ea')
     expect(emitted).toMatch(/^\s*class component web-tier/m)   // local class stays top-level
     const own2 = ownFrom(bs, emitted)

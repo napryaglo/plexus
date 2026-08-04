@@ -130,7 +130,7 @@ export class ArchInstanceModel
         return repo.effectiveSchema(fromConcept).fields.filter((f) => compatible.has(f.type))
     }
 
-    public emit(): string { return emitInstances(this.own, this.namespace, deriveBindings(this.bases, this.namespace)) }
+    public emit(): string { return emitInstances(this.own, this.namespace, deriveBindings(this.bases, this.own, this.namespace)) }
 
     public onChanged(listener: () => void): () => void
     {
