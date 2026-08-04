@@ -1,18 +1,19 @@
 import { Behavior, type Visual } from '@pragmatic-lab/mural/runtime'
 import { Selector } from '@pragmatic-lab/mural/framework'
 
-import { OpenProject } from './open-project.js'
-import { ProjectNode } from './project.js'
+import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'
 
-// Surfaces a project TreeView's MULTI-selection to the OpenProject it renders.
+// Surfaces the single project TreeView's MULTI-selection to the explorer service,
+// which distributes it back into each project's per-project selection state.
 //
-// The TreeView's single `SelectedDataItem` already two-way-binds to
-// OpenProject.SelectedNode (the anchor — selecting a row opens it). But a
-// multi-select delete needs the WHOLE set, and the framework exposes that only
-// as the non-bindable `Selector.SelectedItems`. This behavior bridges the gap:
-// attached to the TreeView (SelectionMode=Extended) via the view's `.Behaviors:`
-// block, it listens for selection changes and pushes the selected ProjectNodes
-// into OpenProject.SelectedNodes, where the host reads them for a Delete.
+// The whole explorer is now ONE TreeView with unified selection (root items =
+// open projects, their descendants = files), so a selection can span projects
+// and the tree's DataContext is the ProjectExplorerService — not a single
+// OpenProject as it was when each project had its own tree. This behavior, on
+// each selection change, hands the raw selection (SelectedItems) plus the anchor
+// (SelectedItem) to the service; ProjectExplorerService.ApplyTreeSelection groups
+// them by owning project and populates op.SelectedNode / op.SelectedNodes, so the
+// existing delete / rename / key-handling paths are unchanged.
 export class TreeSelectionBehavior extends Behavior
 {
     private selector: Selector | undefined
@@ -36,14 +37,12 @@ export class TreeSelectionBehavior extends Behavior
         this.listener = undefined
     }
 
-    // Copy the selector's current data selection (the ProjectNodes) into the
-    // OpenProject that is the TreeView's DataContext. Non-node items and a
-    // missing/foreign DataContext are ignored so this stays inert off the tree.
+    // Push the selector's current selection to the service. A missing/foreign
+    // DataContext is ignored so this stays inert off the explorer tree.
     private sync(): void
     {
-        const op = this.selector?.DataContext
-        if (!(op instanceof OpenProject)) return
-        op.SelectedNodes = (this.selector!.SelectedItems ?? []).filter(
-            (i): i is ProjectNode => i instanceof ProjectNode)
+        const service = this.selector?.DataContext
+        if (!(service instanceof ProjectExplorerService)) return
+        service.ApplyTreeSelection(this.selector!.SelectedItems, this.selector!.SelectedItem)
     }
 }

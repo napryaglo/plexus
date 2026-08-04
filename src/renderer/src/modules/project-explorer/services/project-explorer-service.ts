@@ -49,7 +49,8 @@ import {
 import { isRelocatable, isRelocatableAcrossStorage, type IDocumentFactory } from '../../../services/documents/document-factory.js'
 import { copyTree } from '../../../services/storage/copy-tree.js'
 import type { FileFilter } from '../../../../../shared/file-system-api.js'
-import type { Project, ProjectNode } from '../../../services/projects/project.js'
+import { ProjectNode } from '../../../services/projects/project.js'
+import type { Project } from '../../../services/projects/project.js'
 import { OpenProject } from '../../../services/projects/open-project.js'
 import { NewItemChoice } from '../../../services/projects/new-item-choice.js'
 import { OpenProjectsStore } from '../../../services/projects/open-projects-store.js'
@@ -98,6 +99,18 @@ export function applyPrefill(form: NewProjectDialogModel, prefill?: CreateProjec
     }
 }
 
+// Depth-first membership test: is `node` `root` or anywhere in its subtree?
+// Used to resolve which open project owns a selected/dragged node.
+function subtreeContains(root: ProjectNode, node: ProjectNode): boolean
+{
+    if (root === node) return true
+    for (const child of root.Children.ToArray())
+    {
+        if (subtreeContains(child, node)) return true
+    }
+    return false
+}
+
 export class ProjectExplorerService extends ServiceBase
 {
     public static readonly Key = new ServiceKey<ProjectExplorerService>('ProjectExplorerService')
@@ -112,6 +125,12 @@ export class ProjectExplorerService extends ServiceBase
         ProjectExplorerService, 'OpenProjectCommand', undefined as unknown as ICommand, MetaData.None)
     public static readonly NewProjectCommandKey = Model.RegisterProperty<ICommand>(
         ProjectExplorerService, 'NewProjectCommand', undefined as unknown as ICommand, MetaData.None)
+    // Keyboard handler for the single project TreeView (bound `on KeyDown` from
+    // the tree's wrapper). The whole tree is now ONE TreeView with unified
+    // selection, so the key routes to whichever project currently holds the
+    // selection (F2 rename / Delete / Enter-commit / Escape-cancel).
+    public static readonly TreeKeyCommandKey = Model.RegisterProperty<ICommand>(
+        ProjectExplorerService, 'TreeKeyCommand', undefined as unknown as ICommand, MetaData.None)
 
     // Which open project each open document belongs to — for save-routing (the
     // active doc saves through its own factory) and close-cleanup.
@@ -144,12 +163,71 @@ export class ProjectExplorerService extends ServiceBase
         this.set_property_value(ProjectExplorerService.OpenProjectsKey, new ObservableCollection<OpenProject>())
         this.set_property_value(ProjectExplorerService.OpenProjectCommandKey, new RelayCommand(() => void this.openProject()))
         this.set_property_value(ProjectExplorerService.NewProjectCommandKey, new RelayCommand(() => void this.newProject()))
+        this.set_property_value(ProjectExplorerService.TreeKeyCommandKey, new RelayCommand((arg) => this.handleTreeKeyGlobal(arg as KeyEventArgs)))
     }
 
     public get OpenProjects(): ObservableCollection<OpenProject> { return this.get_property_value(ProjectExplorerService.OpenProjectsKey) }
     public get Status(): string { return this.get_property_value(ProjectExplorerService.StatusKey) }
     public get OpenProjectCommand(): ICommand { return this.get_property_value(ProjectExplorerService.OpenProjectCommandKey) }
     public get NewProjectCommand(): ICommand { return this.get_property_value(ProjectExplorerService.NewProjectCommandKey) }
+    public get TreeKeyCommand(): ICommand { return this.get_property_value(ProjectExplorerService.TreeKeyCommandKey) }
+
+    // The project that owns `node` — the open project whose file tree contains
+    // it. The single unified TreeView renders every project, so behaviors resolve
+    // a node's project by membership (a node no longer sits under a per-project
+    // tree whose DataContext names the owner). Undefined for a node that belongs
+    // to no open project (e.g. one already detached by a concurrent delete).
+    public OwnerOf(node: ProjectNode): OpenProject | undefined
+    {
+        for (const op of this.OpenProjects.ToArray())
+        {
+            if (subtreeContains(op.Root, node)) return op
+        }
+        return undefined
+    }
+
+    // Distribute the unified tree selection into each project's per-project
+    // selection state, so the existing per-project operations (delete / rename /
+    // key handling) keep reading op.SelectedNode / op.SelectedNodes unchanged.
+    // `items` is the full multi-selection (ProjectNodes, possibly spanning
+    // projects — though in practice one project at a time); `primary` is the
+    // anchor row. Setting a project's SelectedNode to the anchor activates it
+    // (OpenProject.OnPropertyChanged opens a leaf); every other project's anchor
+    // is cleared so a stale selection in a now-inactive project doesn't linger.
+    public ApplyTreeSelection(items: readonly unknown[], primary: unknown): void
+    {
+        const byOwner = new Map<OpenProject, ProjectNode[]>()
+        for (const item of items)
+        {
+            if (!(item instanceof ProjectNode)) continue
+            const op = this.OwnerOf(item)
+            if (op === undefined) continue
+            const bucket = byOwner.get(op)
+            if (bucket === undefined) byOwner.set(op, [item])
+            else bucket.push(item)
+        }
+        const primaryNode = primary instanceof ProjectNode ? primary : undefined
+        const primaryOwner = primaryNode !== undefined ? this.OwnerOf(primaryNode) : undefined
+        for (const op of this.OpenProjects.ToArray())
+        {
+            op.SelectedNodes = byOwner.get(op) ?? []
+            // Assigning SelectedNode = the anchor opens a leaf (OpenProject's
+            // OnPropertyChanged); an unchanged value is a DP no-op, so a
+            // re-selection of the same row doesn't re-open it.
+            op.SelectedNode = op === primaryOwner ? primaryNode : undefined
+        }
+    }
+
+    // Route a tree key to the project currently holding the selection. With one
+    // unified tree and unified selection, exactly one project has a live
+    // selection at a time; find it and delegate to the per-project handler.
+    private handleTreeKeyGlobal(args: KeyEventArgs): void
+    {
+        if (args === undefined) return
+        const op = this.OpenProjects.ToArray().find(
+            (p) => p.SelectedNode !== undefined || p.SelectedNodes.length > 0)
+        if (op !== undefined) this.handleTreeKey(op, args)
+    }
 
     private set Status(v: string) { this.set_property_value(ProjectExplorerService.StatusKey, v) }
 

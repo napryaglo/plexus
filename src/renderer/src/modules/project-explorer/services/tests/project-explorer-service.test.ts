@@ -608,6 +608,76 @@ test('F2 begins rename on the selected node; Escape cancels it', async () => {
     expect(esc.Handled).toBe(true)
 })
 
+// ── Unified single-tree selection & key routing ────────────────────────────
+
+test('OwnerOf resolves the project whose subtree contains a node', async () => {
+    const { service, priv } = makeExplorer()
+    const opA = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), new FakeStorage('C:/a'))
+    const opB = await priv.addOpenProject(projectWith('B', 'C:/b'), fakeProjectFactory(), new FakeStorage('C:/b'))
+
+    expect(service.OwnerOf(childNode(opA))).toBe(opA)
+    expect(service.OwnerOf(childNode(opB))).toBe(opB)
+    expect(service.OwnerOf(opA.Root)).toBe(opA)                       // the root itself belongs to its project
+    expect(service.OwnerOf(new ProjectNode('x', 'x', 'todl'))).toBeUndefined()   // a foreign node
+})
+
+test('ApplyTreeSelection distributes selection per project and opens the anchor leaf', async () => {
+    const { service, priv, rec } = makeExplorer()
+    const opA = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), new FakeStorage('C:/a'))
+    const opB = await priv.addOpenProject(projectWith('B', 'C:/b'), fakeProjectFactory(), new FakeStorage('C:/b'))
+    const aNode = childNode(opA)   // the 'core.todl' leaf
+
+    service.ApplyTreeSelection([aNode], aNode)
+
+    expect(opA.SelectedNodes).toEqual([aNode])
+    expect(opA.SelectedNode).toBe(aNode)
+    expect(opB.SelectedNodes).toEqual([])
+    expect(opB.SelectedNode).toBeUndefined()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(rec.opened).toContain('core.todl')                        // anchoring a leaf opens it
+})
+
+test('ApplyTreeSelection moving the anchor to another project clears the first project selection', async () => {
+    const { service, priv } = makeExplorer()
+    const opA = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), new FakeStorage('C:/a'))
+    const opB = await priv.addOpenProject(projectWith('B', 'C:/b'), fakeProjectFactory(), new FakeStorage('C:/b'))
+
+    service.ApplyTreeSelection([childNode(opA)], childNode(opA))
+    service.ApplyTreeSelection([childNode(opB)], childNode(opB))     // unified selection: one active project at a time
+
+    expect(opA.SelectedNode).toBeUndefined()
+    expect(opA.SelectedNodes).toEqual([])
+    expect(opB.SelectedNode).toBe(childNode(opB))
+})
+
+test('TreeKeyCommand routes Delete to the project holding the selection', async () => {
+    const { service, priv } = makeExplorer()
+    const storage = new FakeStorage('C:/a')
+    await storage.WriteText('core.todl', 'x')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), storage)
+    service.ApplyTreeSelection([childNode(op)], childNode(op))
+
+    const del = { Key: Key.Delete, Handled: false } as unknown as KeyEventArgs
+    service.TreeKeyCommand.Execute(del)
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(await storage.Exists('core.todl')).toBe(false)
+    expect(del.Handled).toBe(true)
+})
+
+test('TreeKeyCommand routes F2 to begin rename in the selected project', async () => {
+    const { service, priv } = makeExplorer()
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), new FakeStorage('C:/a'))
+    const node = childNode(op)
+    service.ApplyTreeSelection([node], node)
+
+    const f2 = { Key: Key.F2, Handled: false } as unknown as KeyEventArgs
+    service.TreeKeyCommand.Execute(f2)
+
+    expect(node.IsEditing).toBe(true)
+    expect(f2.Handled).toBe(true)
+})
+
 test('importFilters lists each format plus an All-files catch-all', () => {
     const filters = importFilters([{ extension: '.todl', kind: 'todl', displayName: 'TODL Definition' }])
     expect(filters).toEqual([

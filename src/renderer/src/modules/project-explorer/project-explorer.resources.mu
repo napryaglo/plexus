@@ -11,7 +11,6 @@ import ProjectExplorerService from "./services/project-explorer-service.js"
 import OpenProject from "../../services/projects/open-project.js"
 import ProjectNode from "../../services/projects/project.js"
 import KindToGeometry from "../../services/projects/project-node-icon.js"
-import ExpandedToChevron from "../../services/projects/project-node-icon.js"
 import EditingToLabelVisibility from "../../services/projects/project-node-icon.js"
 import NewProjectDialogModel from "../../services/projects/new-project-dialog-model.js"
 import ProjectTypeChoice from "../../services/projects/new-project-dialog-model.js"
@@ -21,6 +20,7 @@ import RecentProjectItem from "../../services/projects/open-project-dialog-model
 import ConfirmDialogModel from "../../services/dialogs/confirm-dialog-model.js"
 import TreeSelectionBehavior from "../../services/projects/tree-selection-behavior.js"
 import TreeDragDropBehavior from "../../services/projects/tree-drag-drop-behavior.js"
+import ProjectTreeTemplateBehavior from "../../services/projects/project-tree-template-behavior.js"
 import NewItemChoice from "../../services/projects/new-item-choice.js"
 
 resources ProjectExplorerResources {
@@ -154,47 +154,21 @@ resources ProjectExplorerResources {
         when ( $IsEditing = true ) { PART_RenameSlot.ContentTemplate = @RenameEditorTemplate; }
     }
 
-    // Chrome-less host for the header's expand/collapse toggle: no PART_Border /
-    // state-layer, so there's no hover or press chrome — the chevron glyph is the
-    // only state indicator. The transparent padded Border just gives a hit area.
-    Template x:key="ChevronToggle" [ TargetType = ToggleButton ] {
-        Border [ Background = #00000000, Padding = (2,2,2,2) ] {
-            ContentPresenter [ HorizontalAlignment = Center, VerticalAlignment = Center ]
-        }
-    }
-
-    // One open project: a header row (chevron toggle + name + right-click context
-    // menu) over its file tree. The tree binds declaratively — ItemsSource walks
-    // the project's node tree, ItemTemplate renders each node, and SelectedDataItem
-    // pushes the clicked node to OpenProject.SelectedNode (which opens it). A New
-    // File re-scans Root, and the ItemsSource binding re-projects automatically.
-    DataTemplate [ DataType = OpenProject ] {
-        StackPanel [ Orientation = Vertical, Margin = (0,0,0,6) ] {
-            // Collapsible project header. The transparent Border makes the whole
-            // header a right-click target for the project context menu; the
-            // chevron ToggleButton two-ways IsChecked ⇄ IsExpanded, so its glyph
-            // (down/right) is the sole collapse affordance and the tree's
-            // Visibility folds with it — no button chrome anywhere.
-            Border [ Background = #00000000, HorizontalAlignment = Stretch, Margin = (0,2,0,2),
-                     ContextMenuService.ContextMenu = @ProjectContextMenu ] {
-                .Behaviors: { TreeDragDropBehavior }
-                DockPanel [ LastChildFill = true ] {
-                    ToggleButton [ DockPanel.Dock = Left, Template = @ChevronToggle,
-                                   IsChecked = $IsExpanded, Margin = (0,0,4,0) ] {
-                        Shape [ Geometry = $IsExpanded << ExpandedToChevron, Fill = @OnSurfaceVariant,
-                                Width = 12, Height = 12, VerticalAlignment = Center ]
-                    }
-                    TextBlock [ Style = @LabelLarge, Text = $Name, Foreground = @OnSurfaceVariant,
-                                VerticalAlignment = Center ]
-                }
-            }
-            Border [ Style = @TreeKeyStyle, Visibility = $IsExpanded << ToVisibility ] {
-                TreeView [ Indent = 14, ItemsSource = $Root.Children, ItemTemplate = @ProjectNodeTemplate,
-                           SelectedDataItem = $SelectedNode, SelectionMode = Extended,
-                           AllowMarqueeSelection = true ] {
-                    .Behaviors: { TreeSelectionBehavior }
-                }
-            }
+    // One open project — the tree's ROOT row. A header (project name + right-click
+    // project context menu); expansion is the TreeViewItem's own chevron. The
+    // hierarchical `itemsselector = Root.Children` makes the project's top-level
+    // nodes this row's children, so files/folders nest under the project in the
+    // one unified TreeView. The row template is picked per level by
+    // ProjectTreeTemplateBehavior's ItemTemplateSelector (OpenProject → this
+    // header, ProjectNode → the row below). The header carries the drag behavior so
+    // it's a drop target for moving nodes into the project root.
+    HierarchicalDataTemplate x:key="OpenProjectTemplate"
+        [ DataType = OpenProject, itemsselector = Root.Children ] {
+        Border x:root [ Background = #00000000, HorizontalAlignment = Stretch,
+                        ContextMenuService.ContextMenu = @ProjectContextMenu ] {
+            .Behaviors: { TreeDragDropBehavior }
+            TextBlock [ Style = @LabelLarge, Text = $Name, Foreground = @OnSurfaceVariant,
+                        VerticalAlignment = Center ]
         }
     }
 
@@ -214,8 +188,17 @@ resources ProjectExplorerResources {
             TextBlock [ DockPanel.Dock = Bottom, Style = @BodySmall, Text = $Status, Foreground = @OnSurfaceVariant,
                         TextWrapping = Wrap, Margin = (0,8,0,0) ]
 
-            ScrollViewer [ HorizontalScrollEnabled = false ] {
-                ItemsControl [ ItemsSource = $OpenProjects, ItemsPanel = @VerticalStackPanel ]
+            // The whole project list is ONE TreeView (roots = open projects,
+            // descendants = files/folders), so its built-in ScrollViewer is the
+            // single scroll region — no nested per-project scrollbars. The wrapper
+            // Border carries the tree's KeyDown → the service's TreeKeyCommand
+            // (F2 / Delete / Enter / Escape), routed to whichever project holds
+            // the current selection.
+            Border [ Style = @TreeKeyStyle ] {
+                TreeView [ Indent = 14, ItemsSource = $OpenProjects, ItemTemplate = @OpenProjectTemplate,
+                           SelectionMode = Extended, AllowMarqueeSelection = true ] {
+                    .Behaviors: { ProjectTreeTemplateBehavior TreeSelectionBehavior }
+                }
             }
         }
     }
