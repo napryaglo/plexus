@@ -28,7 +28,7 @@ async function seedMeta(meta: FakeStorage): Promise<void> {
   await meta.WriteText('ea/5/model.json', JSON.stringify(toJSON(check([{ uri: 'm.todl', text: META }]).model)))
 }
 
-const LIB = `namespace lib { taxonomy microsoft : represents location, technology {
+const LIB = `namespace lib { import ea; taxonomy microsoft : represents location, technology {
   location azure { label = "Azure"; }
   technology azure-openai { label = "Azure OpenAI"; }
 } }`
@@ -237,7 +237,7 @@ test('publish blocks when a class references an icon with no project file', asyn
   await f.createProject(storage, 'microsoft', { metaModel: { id: 'ea', version: '5' } })
   // a class carrying an icon path, but the SVG file is never written to the project
   await storage.WriteText('microsoft.todl',
-    'namespace lib { taxonomy microsoft : represents location { location azure { label = "Azure"; icon = "resources/azure.svg"; } } }')
+    'namespace lib { import ea; taxonomy microsoft : represents location { location azure { label = "Azure"; icon = "resources/azure.svg"; } } }')
 
   const result = await f.publish(await f.openProject(storage), storage, provider)
   expect(result.ok).toBe(false)

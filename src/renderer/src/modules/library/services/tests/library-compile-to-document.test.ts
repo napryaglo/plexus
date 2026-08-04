@@ -19,7 +19,7 @@ async function libraryProject(text: string): Promise<FakeStorage>
 }
 
 // A library source that extends a base concept — resolves only when the base is present.
-const LIB = 'namespace acme { concept special : category { label : string; } }'
+const LIB = 'namespace acme { import ea; concept special : category { label : string; } }'
 
 test('compileToDocument compiles the library sources against the given base', async () => {
     const factory = new LibraryProjectFactory(new ServiceProvider())

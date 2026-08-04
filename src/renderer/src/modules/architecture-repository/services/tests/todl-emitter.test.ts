@@ -9,7 +9,7 @@ const META = `namespace ea {
   concept technology { label : string; }
   concept component { label : string; realised-by : technology?; deployed-to : technology[]; }
 }`
-const LIB = `namespace ms { taxonomy stack : represents technology {
+const LIB = `namespace ms { import ea; taxonomy stack : represents technology {
   technology azure-openai { label = "Azure OpenAI"; }
   technology azure-func   { label = "Azure Functions"; }
 } }`
@@ -62,7 +62,7 @@ test('deriveBindings: no bases binds the project namespace alone', () => {
 
 test('round-trips a concept instance with a scalar field and a single reference', () => {
     const bs = bases()
-    const src = `namespace app { model app-model : ea uses ms { component gw { label = "Gateway"; realised-by = &stack.azure-openai; } } }`
+    const src = `namespace app { import ms; model app-model : ea uses ms { component gw { label = "Gateway"; realised-by = &stack.azure-openai; } } }`
     const own = ownFrom(bs, src)
 
     const emitted = emitInstances(own, 'app', deriveBindings(bs, 'app'))
@@ -75,6 +75,7 @@ test('round-trips a concept instance with a scalar field and a single reference'
 test('round-trips a many-valued reference (list) and an instanceof class', () => {
     const bs = bases()
     const src = `namespace app {
+      import ms;
       class component web-tier { realised-by = &stack.azure-func; }
       model app-model : ea uses ms, app {
         component api instanceof web-tier { label = "API"; deployed-to = [stack.azure-openai, stack.azure-func]; }

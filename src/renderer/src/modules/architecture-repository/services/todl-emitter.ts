@@ -83,6 +83,13 @@ export function emitInstances(own: TodlDocument, namespace: string, bindings: Mo
     }
 
     const lines: string[] = [`namespace ${namespace}`, '{']
+    // Import every bound namespace (meta-model + uses libraries) except our own —
+    // under namespace-scoped resolution a bare cross-namespace reference (e.g. a
+    // `realised-by = &stack.term` pointing into a library) only resolves when its
+    // namespace is imported. The prelude is implicitly reachable, so it is never
+    // imported here.
+    const importNs = [...new Set([bindings.metaModel, ...bindings.uses])].filter((n) => n !== namespace).sort()
+    for (const ns of importNs) lines.push(`  import ${ns};`)
     for (const n of classes) lines.push(...emitOne(n, instanceOf.get(n.id), rels.get(n.id) ?? []))
     if (concrete.length > 0) {
         const uses = bindings.uses.length > 0 ? ` uses ${bindings.uses.join(', ')}` : ''
