@@ -5,8 +5,9 @@
 // Register once from app.whenReady(), alongside registerFileSystemHandlers().
 import { BrowserWindow, ipcMain } from 'electron'
 import {
-    AgentChannel, ASK_TOOL_QUALIFIED, CREATE_PROJECT_TOOL_QUALIFIED, MCP_SERVER_KEY, REFRESH_TOOL_QUALIFIED,
-    type AgentEvent, type CreateProjectResult, type QuestionAnswer, type RefreshProjectResult,
+    AgentChannel, ASK_TOOL_QUALIFIED, CREATE_PROJECT_TOOL_QUALIFIED, GET_PROBLEMS_TOOL_QUALIFIED,
+    MCP_SERVER_KEY, REFRESH_TOOL_QUALIFIED,
+    type AgentEvent, type CreateProjectResult, type GetProblemsResult, type QuestionAnswer, type RefreshProjectResult,
 } from '../shared/agent-api.js'
 import { AiProviderService } from './agent/ai-provider-service.js'
 import { ClaudeCliProvider } from './agent/claude-cli-provider.js'
@@ -45,7 +46,7 @@ export async function registerAgentHandlers(): Promise<void>
         servers: {
             [MCP_SERVER_KEY]: { type: 'http', url: mcpServer.Url },
         },
-        allowedTools: [ASK_TOOL_QUALIFIED, REFRESH_TOOL_QUALIFIED, CREATE_PROJECT_TOOL_QUALIFIED],
+        allowedTools: [ASK_TOOL_QUALIFIED, REFRESH_TOOL_QUALIFIED, CREATE_PROJECT_TOOL_QUALIFIED, GET_PROBLEMS_TOOL_QUALIFIED],
         // Turn off Claude Code's built-in AskUserQuestion (it can't render in
         // headless -p mode → fails), so the model uses our MCP tool instead.
         disallowedTools: ['AskUserQuestion'],
@@ -73,5 +74,9 @@ export async function registerAgentHandlers(): Promise<void>
     // The renderer's create outcome → unblock the create_project tool call.
     ipcMain.handle(AgentChannel.CreateProjectResult, (_e, result: CreateProjectResult): void => {
         mcpServer.resolveCreate(result)
+    })
+    // The renderer's problems list → unblock the get_problems tool call.
+    ipcMain.handle(AgentChannel.GetProblemsResult, (_e, result: GetProblemsResult): void => {
+        mcpServer.resolveProblems(result)
     })
 }

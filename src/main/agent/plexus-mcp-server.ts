@@ -1,11 +1,15 @@
 // One in-process HTTP MCP server hosting Plexus's agent-facing tools, pointed at
-// by the `claude` CLI via --mcp-config. It exposes two tools under the single
+// by the `claude` CLI via --mcp-config. It exposes these tools under the single
 // server key `plexus`:
 //
 //   • ask_user_question  — surfaces a choice card and BLOCKS until the user
 //     answers (resolveAnswer), returning the answer as the tool result.
 //   • refresh_project    — asks the renderer to re-scan + re-validate a project
 //     and BLOCKS until it posts a summary (resolveRefresh), returned as output.
+//   • create_project     — opens the New Project form and BLOCKS until the user
+//     confirms/cancels (resolveCreate), returning the outcome.
+//   • get_problems       — asks the renderer for the current diagnostics list and
+//     BLOCKS until it posts them (resolveProblems), returned as output.
 //
 // Both tool calls land in Plexus main (same process as the event push), so there
 // is no separate MCP subprocess or bridge: the call arrives here, an event rides
@@ -26,11 +30,14 @@ import {
     AgentEventKind,
     ASK_TOOL_NAME,
     CREATE_PROJECT_TOOL_NAME,
+    GET_PROBLEMS_TOOL_NAME,
     MCP_SERVER_KEY,
+    ProblemSeverity,
     REFRESH_TOOL_NAME,
     type AgentEvent,
     type CreateProjectPrefill,
     type CreateProjectResult,
+    type GetProblemsResult,
     type Question,
     type QuestionAnswer,
     type RefreshProjectResult,
@@ -55,6 +62,7 @@ export class PlexusMcpServer
     private readonly pendingAnswers = new Map<string, (answers: QuestionAnswer['answers']) => void>()
     private readonly pendingRefresh = new Map<string, (result: RefreshProjectResult) => void>()
     private readonly pendingCreate = new Map<string, (result: CreateProjectResult) => void>()
+    private readonly pendingProblems = new Map<string, (result: GetProblemsResult) => void>()
     // Monotonic id source — no Date.now/Math.random (keeps behaviour deterministic
     // and dependency-free).
     private seq = 0
@@ -140,6 +148,43 @@ export class PlexusMcpServer
         })
     }
 
+    // Deliver the renderer's problems list to a blocked get_problems call; no-op if stale.
+    public resolveProblems(result: GetProblemsResult): void
+    {
+        const done = this.pendingProblems.get(result.id)
+        if (done === undefined) return
+        this.pendingProblems.delete(result.id)
+        done(result)
+    }
+
+    // Emit a GetProblems request and await the renderer's list. Guarded by the
+    // same timeout as refresh (reading diagnostics is fast). No sink (probe /
+    // headless) → resolve with an error so the round-trip still completes.
+    public requestProblems(path?: string, severity?: ProblemSeverity): Promise<GetProblemsResult>
+    {
+        const id = `p${(this.seq += 1)}`
+        const sink = this.sink
+        const empty = (error: string): GetProblemsResult =>
+            ({ id, problems: [], errorCount: 0, warningCount: 0, total: 0, truncated: false, error })
+        if (sink === undefined)
+        {
+            return Promise.resolve(empty('No Plexus window is available to read problems.'))
+        }
+        return new Promise((resolve) =>
+        {
+            const timer = setTimeout(() =>
+            {
+                if (this.pendingProblems.delete(id))
+                {
+                    resolve(empty('Timed out waiting for the Plexus UI to report problems.'))
+                }
+            }, this.timeoutMs)
+            // Register BEFORE emitting so a fast reply can't race pending.set.
+            this.pendingProblems.set(id, (result) => { clearTimeout(timer); resolve(result) })
+            sink({ Kind: AgentEventKind.GetProblems, Request: { id, path, severity } })
+        })
+    }
+
     public async listen(host = '127.0.0.1'): Promise<void>
     {
         this.httpServer = http.createServer((req, res) => { void this.handle(req, res) })
@@ -155,6 +200,7 @@ export class PlexusMcpServer
         for (const [id, done] of [...this.pendingAnswers]) { this.pendingAnswers.delete(id); done({}) }
         for (const [id, done] of [...this.pendingRefresh]) { this.pendingRefresh.delete(id); done({ id, projects: [], error: 'Server closed.' }) }
         for (const [id, done] of [...this.pendingCreate]) { this.pendingCreate.delete(id); done({ id, created: false, error: 'Server closed.' }) }
+        for (const [id, done] of [...this.pendingProblems]) { this.pendingProblems.delete(id); done({ id, problems: [], errorCount: 0, warningCount: 0, total: 0, truncated: false, error: 'Server closed.' }) }
         for (const transport of this.transports.values()) await transport.close()
         this.transports.clear()
         await new Promise<void>((resolve) => { if (this.httpServer) this.httpServer.close(() => resolve()); else resolve() })
@@ -216,6 +262,27 @@ export class PlexusMcpServer
             async ({ name, type, location }) =>
             {
                 const result = await this.requestCreateProject({ name, type, location })
+                return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
+            },
+        )
+
+        server.registerTool(
+            GET_PROBLEMS_TOOL_NAME,
+            {
+                title: 'List the current Plexus problems (validation diagnostics)',
+                description:
+                    'Read the current Problems list — the validation errors and warnings Plexus shows for '
+                    + 'open projects — WITHOUT changing any files. Optionally pass `path` (a file or folder) to '
+                    + 'scope to the project containing it; omit it for every open project. Optionally pass '
+                    + '`severity` as a minimum threshold: "error" returns errors only, "warning" returns errors '
+                    + 'and warnings, "info"/"hint" widen further. Returns error/warning counts, a total, and the '
+                    + 'problems (project, file, severity, message, line/column), capped with a `truncated` flag. '
+                    + 'Use this to inspect existing problems; call refresh_project first if you just changed files.',
+                inputSchema: { path: z.string().optional(), severity: z.nativeEnum(ProblemSeverity).optional() },
+            },
+            async ({ path, severity }) =>
+            {
+                const result = await this.requestProblems(path, severity)
                 return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
             },
         )

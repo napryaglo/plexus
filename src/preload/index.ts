@@ -85,6 +85,7 @@ const agent: IAgentApi = {
   answerQuestion: (answer): Promise<void> => ipcRenderer.invoke(AgentChannel.AnswerQuestion, answer),
   refreshProjectResult: (result): Promise<void> => ipcRenderer.invoke(AgentChannel.RefreshProjectResult, result),
   createProjectResult: (result): Promise<void> => ipcRenderer.invoke(AgentChannel.CreateProjectResult, result),
+  getProblemsResult: (result): Promise<void> => ipcRenderer.invoke(AgentChannel.GetProblemsResult, result),
   onEvent: (handler: (event: AgentEvent) => void): (() => void) => {
     const listener = (_e: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AgentChannel.Event, listener)

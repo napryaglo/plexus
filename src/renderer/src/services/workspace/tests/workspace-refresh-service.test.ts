@@ -4,7 +4,7 @@ import { WorkspaceRefreshService } from '../workspace-refresh-service.js'
 import { ProjectExplorerService } from '../../../modules/project-explorer/services/project-explorer-service.js'
 import { DiagnosticsService } from '../../diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity } from '../../diagnostics/diagnostic.js'
-import { AgentEventKind, type AgentEvent, type RefreshProjectResult } from '../../../../../shared/agent-api.js'
+import { AgentEventKind, type AgentEvent, type GetProblemsResult, type RefreshProjectResult } from '../../../../../shared/agent-api.js'
 
 // Minimal fakes. onEvent captures the handler so the test can push events; the
 // bridge records the results the service sends back. A fake ProjectExplorerService
@@ -12,18 +12,22 @@ import { AgentEventKind, type AgentEvent, type RefreshProjectResult } from '../.
 function harness(): {
     provider: ServiceProvider
     results: RefreshProjectResult[]
+    problems: GetProblemsResult[]
+    diagnostics: DiagnosticsService
     refreshedWith: string[][]
     push: (e: AgentEvent) => void
 }
 {
     let handler: ((e: AgentEvent) => void) | undefined
     const results: RefreshProjectResult[] = []
+    const problems: GetProblemsResult[] = []
     const refreshedWith: string[][] = []
 
     ;(globalThis as unknown as { api: unknown }).api = {
         agent: {
             onEvent: (h: (e: AgentEvent) => void) => { handler = h; return () => { handler = undefined } },
             refreshProjectResult: (r: RefreshProjectResult) => { results.push(r); return Promise.resolve() },
+            getProblemsResult: (r: GetProblemsResult) => { problems.push(r); return Promise.resolve() },
         },
     }
 
@@ -42,7 +46,7 @@ function harness(): {
         { owner: 'todl', projectId: '/p/a', projectName: 'A', uri: 'x.todl', message: 'boom', severity: DiagnosticSeverity.Error, span: null },
     ])
 
-    return { provider, results, refreshedWith, push: (e) => handler?.(e) }
+    return { provider, results, problems, diagnostics, refreshedWith, push: (e) => handler?.(e) }
 }
 
 // Let the async event handler settle (it awaits RefreshProjects).
@@ -83,6 +87,23 @@ describe('WorkspaceRefreshService', () => {
         expect(h.refreshedWith[0]).toEqual([])
         expect(h.results[0]!.projects.length).toBe(0)
         expect((h.results[0]!.note ?? '').length).toBeGreaterThan(0)
+        service.Dispose()
+    })
+
+    test('GetProblems → reads diagnostics and replies with the problems list (read-only, no refresh)', () => {
+        const h = harness()
+        h.diagnostics.Publish('todl', '/p/b', [
+            { owner: 'todl', projectId: '/p/b', projectName: 'B', uri: 'y.todl', message: 'warn', severity: DiagnosticSeverity.Warning, span: null },
+        ])
+        const service = new WorkspaceRefreshService(h.provider)
+        h.push({ Kind: AgentEventKind.GetProblems, Request: { id: 'p1' } })
+        // Synchronous handler — no project re-scan happens.
+        expect(h.refreshedWith.length).toBe(0)
+        const res = h.problems[0]!
+        expect(res.id).toBe('p1')
+        expect(res.total).toBe(2)
+        expect(res.errorCount).toBe(1)
+        expect(res.warningCount).toBe(1)
         service.Dispose()
     })
 })

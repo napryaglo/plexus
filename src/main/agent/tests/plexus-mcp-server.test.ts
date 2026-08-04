@@ -3,8 +3,10 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { PlexusMcpServer } from '../plexus-mcp-server.js'
 import {
-    AgentEventKind, ASK_TOOL_NAME, REFRESH_TOOL_NAME, CREATE_PROJECT_TOOL_NAME,
+    AgentEventKind, ASK_TOOL_NAME, REFRESH_TOOL_NAME, CREATE_PROJECT_TOOL_NAME, GET_PROBLEMS_TOOL_NAME,
+    ProblemSeverity,
     type AgentEvent, type QuestionRequest, type RefreshProjectResult, type CreateProjectResult,
+    type GetProblemsResult,
 } from '../../../shared/agent-api.js'
 
 // Proves the merged server hosts BOTH tools under one listener at the MCP protocol
@@ -44,8 +46,49 @@ describe('PlexusMcpServer — tool surface', () => {
         expect(names).toContain(ASK_TOOL_NAME)
         expect(names).toContain(REFRESH_TOOL_NAME)
         expect(names).toContain(CREATE_PROJECT_TOOL_NAME)
+        expect(names).toContain(GET_PROBLEMS_TOOL_NAME)
         expect(tools.find((t) => t.name === ASK_TOOL_NAME)!.inputSchema.properties).toHaveProperty('questions')
         expect(tools.find((t) => t.name === REFRESH_TOOL_NAME)!.inputSchema.properties).toHaveProperty('path')
+        const problems = tools.find((t) => t.name === GET_PROBLEMS_TOOL_NAME)!
+        expect(problems.inputSchema.properties).toHaveProperty('path')
+        expect(problems.inputSchema.properties).toHaveProperty('severity')
+    })
+})
+
+describe('PlexusMcpServer — get_problems', () => {
+    test('requestProblems emits a GetProblems event and resolves with the posted list', async () => {
+        const server = new PlexusMcpServer()
+        const events: AgentEvent[] = []
+        server.setSink((e) => events.push(e))
+
+        const pending = server.requestProblems('/proj/a/file.todl', ProblemSeverity.Error)
+        expect(events.length).toBe(1)
+        const evt = events[0]!
+        expect(evt.Kind).toBe(AgentEventKind.GetProblems)
+        const req = (evt as { Request: { id: string; path?: string; severity?: ProblemSeverity } }).Request
+        expect(req.path).toBe('/proj/a/file.todl')
+        expect(req.severity).toBe(ProblemSeverity.Error)
+
+        const result: GetProblemsResult = {
+            id: req.id, problems: [{ project: 'A', folder: '/proj/a', uri: 'file.todl', severity: ProblemSeverity.Error, message: 'boom', owner: 'todl', line: 1, column: 1 }],
+            errorCount: 1, warningCount: 0, total: 1, truncated: false,
+        }
+        server.resolveProblems(result)
+        expect(await pending).toEqual(result)
+    })
+
+    test('requestProblems with no sink resolves immediately with an error', async () => {
+        const server = new PlexusMcpServer()
+        const result = await server.requestProblems()
+        expect(result.problems.length).toBe(0)
+        expect((result.error ?? '').length).toBeGreaterThan(0)
+    })
+
+    test('requestProblems times out with an error when the renderer never replies', async () => {
+        const server = new PlexusMcpServer(20)
+        server.setSink(() => { /* never resolves */ })
+        const result = await server.requestProblems()
+        expect((result.error ?? '').toLowerCase()).toContain('timed out')
     })
 })
 
