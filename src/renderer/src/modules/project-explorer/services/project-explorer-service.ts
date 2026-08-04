@@ -98,6 +98,23 @@ export function applyPrefill(form: NewProjectDialogModel, prefill?: CreateProjec
         const match = form.Types.ToArray().find((t) => t.Type === prefill.type)
         if (match?.SelectCommand !== undefined) match.SelectCommand.Execute()
     }
+    // Carry the base bindings the prefill proposes into the pickers, matched by
+    // id@version against the published choices (the type is already selected, so
+    // the collections are populated). Unknown refs are ignored — the user still
+    // finalizes the form. Without this the pickers reset to empty even when the
+    // agent named a meta-model/library, silently dropping the binding.
+    if (prefill.metaModel !== undefined)
+    {
+        const ref = prefill.metaModel
+        const choice = form.MetaModels.ToArray().find((m) => m.Ref.id === ref.id && m.Ref.version === ref.version)
+        if (choice !== undefined) form.SelectedMetaModel = choice
+    }
+    if (prefill.libraries !== undefined)
+    {
+        const wanted = new Set(prefill.libraries.map((l) => `${l.id}@${l.version}`))
+        for (const lib of form.Libraries.ToArray())
+            if (wanted.has(`${lib.Ref.id}@${lib.Ref.version}`)) lib.IsSelected = true
+    }
 }
 
 // Depth-first membership test: is `node` `root` or anywhere in its subtree?

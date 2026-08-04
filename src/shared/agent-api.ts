@@ -93,9 +93,22 @@ export const CREATE_PROJECT_TOOL_QUALIFIED = `mcp__${MCP_SERVER_KEY}__${CREATE_P
 export const GET_PROBLEMS_TOOL_NAME = 'get_problems'
 export const GET_PROBLEMS_TOOL_QUALIFIED = `mcp__${MCP_SERVER_KEY}__${GET_PROBLEMS_TOOL_NAME}`
 
+// A published base a prefill proposes to bind, by id + version (structurally a
+// renderer BaseRef; kept plain so shared/ has no renderer dependency).
+export interface PrefillBaseRef { id: string; version: string }
+
 // create_project payloads. `prefill` is the agent's optional proposal; the user
 // finalizes it in the New Project form. Correlated by `id` like a Question.
-export interface CreateProjectPrefill { name?: string; type?: string; location?: string }
+// `metaModel`/`libraries` pre-fill the base-binding pickers (a meta-model-requiring
+// or library-offering type) so an agent-driven create carries its bindings in.
+export interface CreateProjectPrefill
+{
+    name?:      string
+    type?:      string
+    location?:  string
+    metaModel?: PrefillBaseRef
+    libraries?: readonly PrefillBaseRef[]
+}
 export interface CreateProjectRequest { id: string; prefill?: CreateProjectPrefill }
 // The outcome the create_project card returns to the agent.
 export interface CreateProjectResult
