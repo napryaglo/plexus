@@ -39,6 +39,38 @@ test('a referenced icon with no project file blocks publish (names the path, wri
     expect(await dest.Exists('microsoft/0.1.0/presentation/presentation.compiled.json')).toBe(false)
 })
 
+// A raster (PNG) class icon: the bytes are baked as an ImageBrush(BitmapImage(data
+// URI)) — NOT run through the SVG geometry parser (which would throw on non-SVG).
+const RASTER_DOC: TodlDocument = {
+    nodes: [
+        { id: 'microsoft.aml', tier: 'Instance', typeOf: 'technology',
+          attrs: { class: true, id: 'aml', label: 'Azure ML', icon: 'resources/azure-machine-learning.png' } },
+    ],
+    edges: [],
+} as unknown as TodlDocument
+
+// 1x1 transparent PNG bytes.
+const PNG = Uint8Array.from(atob(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='),
+    (c) => c.charCodeAt(0))
+
+test('a raster (PNG) icon is baked as an ImageBrush, not run through the SVG parser', async () => {
+    const proj = new FakeStorage('fake://proj')
+    await proj.WriteBytes('resources/azure-machine-learning.png', PNG)
+    const dest = new FakeStorage('fake://backend')
+    const res = await publishLibraryPresentation(proj, dest, 'microsoft/0.1.0', RASTER_DOC)
+    expect(res).toMatchObject({ ok: true, templates: 1, icons: 1 })
+    const art = JSON.parse(await dest.ReadText('microsoft/0.1.0/presentation/presentation.compiled.json'))
+    expect(art.body).toContain('new ImageBrush(new BitmapImage("data:image/png;base64,')
+    expect(art.symbols).toEqual(expect.arrayContaining(['ImageBrush', 'BitmapImage']))
+})
+
+test('a referenced raster icon with no project file blocks publish', async () => {
+    const dest = new FakeStorage('fake://backend')
+    const res = await publishLibraryPresentation(new FakeStorage('fake://proj'), dest, 'microsoft/0.1.0', RASTER_DOC)
+    expect(res).toEqual({ ok: false, missing: ['resources/azure-machine-learning.png'] })
+})
+
 test('a model with no icons still bakes a valid artifact', async () => {
     const noIcons: TodlDocument = {
         nodes: [{ id: 'microsoft.aws', tier: 'Instance', typeOf: 'location', attrs: { class: true, id: 'aws', label: 'AWS' } }],
