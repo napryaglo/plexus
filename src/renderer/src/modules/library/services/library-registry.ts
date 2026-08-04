@@ -25,11 +25,17 @@ export class LibraryRegistry extends ServiceBase
 
     private readonly ctx = buildCtx()
     private readonly libraryVisuals = new ResourceDictionary()
-    // Baked per-library presentation templates (class-keyed), aggregated. Cleared
-    // and repopulated on each discover(); the middle resolution tier between an
-    // authored .mural (wins) and the shared default box. Merged into the app
-    // resources so the canvas resolves every class by key, not just authored ones.
-    private readonly presentationVisuals = new ResourceDictionary()
+    // Baked per-library presentation templates (class-keyed), aggregated. Rebuilt
+    // wholesale on each discover(); the middle resolution tier between an authored
+    // .mural (wins) and the shared default box. Merged into the app resources so
+    // the canvas resolves every class by key. NOT readonly: discover() builds a
+    // fresh detached dictionary and swaps it in via ReplaceMergedDictionary, so
+    // populating ~470 class templates fires one merged-notification instead of one
+    // per Set (the entry-by-entry storm cost ~4-5s of style re-resolution per
+    // panel open). presentationMerged tracks the currently-merged instance so the
+    // next discover can swap it out.
+    private presentationVisuals = new ResourceDictionary()
+    private presentationMerged: ResourceDictionary | undefined
     private readonly defaultTemplate: DataTemplate
     private merged = false
 
@@ -44,6 +50,12 @@ export class LibraryRegistry extends ServiceBase
     {
         super(provider)
         this.defaultTemplate = buildDefaultTemplate(this.ctx)
+        // These dictionaries hold string-keyed class templates, never
+        // Function-keyed (control-type) styles, so their changes can never
+        // affect an implicit/theme style lookup. Opt them out of the style
+        // notification channel: populating them wakes DynamicResource / by-key
+        // consumers (general channel) but does zero per-element style work.
+        this.libraryVisuals.StyleParticipating = false
     }
 
     // Subscribe to "a class's real template is now available". Returns an
@@ -82,9 +94,15 @@ export class LibraryRegistry extends ServiceBase
         this.slices.clear()
         this.inFlight.clear()
         this.attempted.clear()
-        this.presentationVisuals.Clear()
         const backend = ensureLibrariesBackend(this.Provider)
         const libs = await discoverLibraries(backend)
+        // Build the presentation aggregate DETACHED — its Set()s notify nobody,
+        // since nothing is subscribed to a dictionary that isn't merged yet — then
+        // swap it in for the previous one in a single ReplaceMergedDictionary
+        // (one notification total). Marked non-participating like libraryVisuals so
+        // that one notification does no per-element style work either.
+        const nextPresentation = new ResourceDictionary()
+        nextPresentation.StyleParticipating = false
         for (const lib of libs) {
             const pid = this.projectIdOf(lib)
             this.slices.set(pid, { lib, problems: [...lib.problems] })
@@ -92,8 +110,14 @@ export class LibraryRegistry extends ServiceBase
             for (const cls of lib.classes) this.classIndex.set(cls.id, { lib, cls })
             // Load this library's baked presentation (if any) into the aggregate.
             const pres = await loadLibraryPresentation(backend, lib.id, lib.version)
-            if (pres !== undefined) for (const [k, v] of pres.Entries()) this.presentationVisuals.Set(k, v)
+            if (pres !== undefined) for (const [k, v] of pres.Entries()) nextPresentation.Set(k, v)
         }
+        // Swap into the app resources (last-merged, so it stays after libraryVisuals
+        // — same precedence as before). resolve() reads presentationVisuals directly,
+        // so headless (no Application.current) still works via the owned reference.
+        Application.current?.Resources.ReplaceMergedDictionary(this.presentationMerged, nextPresentation)
+        this.presentationMerged = nextPresentation
+        this.presentationVisuals = nextPresentation
         return libs
     }
 
@@ -173,8 +197,11 @@ export class LibraryRegistry extends ServiceBase
     private ensureMerged(): void
     {
         if (this.merged) return
+        // Merge only libraryVisuals here (once). presentationVisuals is merged —
+        // and re-merged on every discover — via ReplaceMergedDictionary, which
+        // adds it AFTER libraryVisuals so authored-vs-presentation precedence in
+        // the app's by-key lookup is unchanged.
         Application.current?.Resources.AddMergedDictionary(this.libraryVisuals)
-        Application.current?.Resources.AddMergedDictionary(this.presentationVisuals)
         this.merged = true
     }
 

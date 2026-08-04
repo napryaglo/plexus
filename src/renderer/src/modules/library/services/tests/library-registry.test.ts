@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { Application, ServiceProvider } from '@pragmatic-lab/mural/runtime'
 
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
@@ -163,6 +163,55 @@ test('a class with a baked presentation resolves to its presentation template (n
     await reg.discover()
     // presentation tier resolves immediately — not the shared default
     expect(reg.resolve('microsoft.azure', 'location')).not.toBe(reg.resolve('nobody.here', 'x'))
+})
+
+// Bake a presentation with N iconful classes so discover() populates N template
+// entries. Used to prove the population is O(1) notifications, not O(N).
+async function bakePresentationN(backend: any, n: number): Promise<void> {
+    const proj = new (backend.constructor)('fake://proj')
+    void proj.WriteText('resources/azure.svg', SVG)
+    const nodes = Array.from({ length: n }, (_, i) => ({
+        id: `microsoft.c${i}`, tier: 'Instance', typeOf: 'location',
+        attrs: { class: true, id: `c${i}`, label: `C${i}`, icon: 'resources/azure.svg' },
+    }))
+    const { publishLibraryPresentation } = await import('../library-presentation-publisher.js')
+    await publishLibraryPresentation(proj, backend, 'microsoft/0.1.0', { nodes, edges: [] } as any)
+}
+
+// Regression guard for the style-invalidation storm: populating a large baked
+// presentation into Application.Resources must fire a CONSTANT number of
+// notifications (the merged-dictionary swap), not one per class. The old code
+// merged the presentation dict up front then Set() each entry into it live,
+// firing a global notification — and every element's style re-resolution — per
+// class (~4-5s per open for the real 470-class library). discover() now builds
+// the dict detached and swaps it in via ReplaceMergedDictionary.
+test('populating a large baked presentation fires O(1) app-resource notifications, not one per class', async () => {
+    const prior = Application.current
+    try {
+        const app = new Application()
+        Application.current = app
+        const N = 12
+        const backend = new FakeStorage('fake://libraries')
+        await bakePresentationN(backend, N)
+        const classes = Array.from({ length: N }, (_, i) => ({ id: `microsoft.c${i}`, localId: `c${i}`, label: `C${i}`, concept: 'location', icon: 'resources/azure.svg' }))
+        void backend.WriteText('microsoft/0.1.0/library.json', JSON.stringify({ id: 'microsoft', version: '0.1.0', name: 'microsoft', metaModel: { id: 'ea', version: '5' }, classes, assets: [], docs: [], samples: [] }))
+        const { provider } = envWith(backend)
+        const reg = new LibraryRegistry(provider)
+
+        let general = 0, style = 0
+        app.Resources.Subscribe(() => { general++ })
+        app.Resources.SubscribeStyle(() => { style++ })
+
+        await reg.discover()                         // merges libraryVisuals + swaps presentation in
+        expect(general).toBeLessThan(N)              // NOT one notification per class
+        const afterFirst = general, afterFirstStyle = style
+
+        await reg.discover()                         // re-populate: only the presentation swap
+        expect(general - afterFirst).toBe(1)         // exactly one notification for the whole re-populate
+        expect(style - afterFirstStyle).toBe(1)      // one structural style signal, independent of N
+    } finally {
+        Application.current = prior
+    }
 })
 
 test('an authored template still overrides the baked presentation template', async () => {
