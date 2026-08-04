@@ -61,6 +61,7 @@ export class LibraryTreeNode extends Model
     public get Label(): string { return this.get_property_value(LibraryTreeNode.LabelKey) }
     public get LocalId(): string { return this.get_property_value(LibraryTreeNode.LocalIdKey) }
     public get Template(): DataTemplate | undefined { return this.get_property_value(LibraryTreeNode.TemplateKey) }
+    public set Template(v: DataTemplate | undefined) { this.set_property_value(LibraryTreeNode.TemplateKey, v) }
     public get Data(): LibraryTreeNode { return this.get_property_value(LibraryTreeNode.DataKey) }
     public get BeginKindDragData(): (() => { data: DataObject; effects: DragDropEffects }) | undefined {
         return this.get_property_value(LibraryTreeNode.BeginKindDragDataKey)

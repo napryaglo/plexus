@@ -97,9 +97,9 @@ test('selecting a class resolves its preview template lazily, upgrading when it 
     })
     svc.SelectedNode = a
     const def = registry.resolve('nobody', 'x')
-    expect(svc.PreviewTemplate).toBe(def)   // default first (compile scheduled)
+    expect(a.Template).toBe(def)   // the selected node carries the default first (compile scheduled)
     await compiled
-    expect(svc.PreviewTemplate).not.toBe(def)   // upgraded to the class's own template
+    expect(a.Template).not.toBe(def)   // upgraded to the class's own template, in place on the node
 })
 
 test('selecting a class drives the bottom preview pane; selecting another moves it; a group clears it', async () => {
@@ -124,11 +124,12 @@ test('selecting a class drives the bottom preview pane; selecting another moves 
     svc.SelectedNode = a
     expect(svc.HasPreview).toBe(true)
     expect(svc.PreviewData).toBe(a)
-    expect(svc.PreviewConcept).toBe('technology')
-    expect(typeof svc.PreviewTemplate!.Apply).toBe('function')   // resolved lazily (default or compiled)
+    expect(a.Concept).toBe('technology')
+    expect(typeof a.Template!.Apply).toBe('function')   // node carries its resolved template (default or compiled)
 
     svc.SelectedNode = b
     expect(svc.PreviewData).toBe(b)
+    expect(typeof b.Template!.Apply).toBe('function')   // the newly-selected node gets its own template too
 
     svc.SelectedNode = lib          // a group node clears the preview
     expect(svc.HasPreview).toBe(false)

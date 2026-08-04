@@ -35,15 +35,43 @@ resources LibraryResources {
         when ( $IsLibrary = true ) { ContextMenuService.ContextMenu = @LibraryContextMenu; }
     }
 
+    // Bottom-pane preview for a selected class LEAF. Implicit-by-type (DataType =
+    // LibraryTreeNode, no x:key), so the ContentControl in the panel resolves it
+    // for the node it hosts; the TreeView rows use the EXPLICIT @LibraryNodeTemplate,
+    // so this template only ever renders in the preview pane. The inner
+    // ContentPresenter applies the node's OWN resolved Template to the node ($Data
+    // is the self-reference), so the class's mounted visual shows; $Concept labels
+    // it. The panel service sets the node's Template before it drives the pane, so
+    // the inner presenter always has a template and never recurses into this one.
+    DataTemplate [ DataType = LibraryTreeNode ] {
+        StackPanel [ Orientation = Vertical ] {
+            // ContentTemplate is listed BEFORE Content deliberately. Both bind to
+            // the node's DataContext; mural fires DataContext listeners in
+            // registration = source order. If Content resolved first, the presenter
+            // would run with Content = the node but ContentTemplate still unset, and
+            // an unset ContentTemplate makes ContentPresenter fall back to the
+            // implicit template for the content's type — which is THIS template —
+            // recursing until the stack blows and the pane renders blank. Binding
+            // ContentTemplate first means the node's own Template is in place before
+            // Content ever triggers a resolve, so the class visual renders directly.
+            ContentPresenter [ ContentTemplate = $Template, Content = $Data ]
+            TextBlock [ Text = $Concept, Style = @BodySmall, Foreground = @OnSurfaceVariant, Margin = (0,4,0,0) ]
+        }
+    }
+
     DataTemplate [ DataType = LibrariesPanelService ] {
         DockPanel [ LastChildFill = true, Margin = (12,12,12,12) ] {
             // Preview pane — docked at the bottom, shown when a class is selected.
             Border [ DockPanel.Dock = Bottom, Visibility = $HasPreview << ToVisibility,
                      Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (8), Margin = (0,8,0,0) ] {
-                StackPanel [ Orientation = Vertical ] {
-                    ContentPresenter [ Content = $PreviewData, ContentTemplate = $PreviewTemplate ]
-                    TextBlock [ Text = $PreviewConcept, Style = @BodySmall, Foreground = @OnSurfaceVariant, Margin = (0,4,0,0) ]
-                }
+                // Host the selected NODE via a ContentControl (not a bare
+                // ContentPresenter): the ContentControl keeps its own DataContext
+                // (this panel service), so Content = $PreviewData keeps tracking the
+                // selection, and it resolves the node through the implicit
+                // PreviewNodeTemplate (DataTemplate[LibraryTreeNode]) above. A bare
+                // ContentPresenter pins its DataContext to the content it renders,
+                // which froze the preview on the first class selected.
+                ContentControl [ Content = $PreviewData ]
             }
             // Loading state — docked at the top while discovery runs.
             TextBlock [ DockPanel.Dock = Top, Style = @BodyMedium, Text = "Loading libraries…",

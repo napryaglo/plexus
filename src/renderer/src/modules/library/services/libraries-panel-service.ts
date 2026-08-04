@@ -1,6 +1,5 @@
 import { MetaData, Model, ObservableCollection, RelayCommand, ServiceBase, ServiceKey, type IServiceProvider, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
 import { DialogService, type IActivatable } from '@pragmatic-lab/mural/framework'
-import type { DataTemplate } from '@pragmatic-lab/mural/basic'
 
 import { LibraryRegistry } from './library-registry.js'
 import { LibraryTreeNode, LibraryNodeKind } from './library-tree-node.js'
@@ -24,12 +23,16 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
     // True while discover() runs — bound to a loading indicator in the panel .mu.
     public static readonly IsLoadingKey = Model.RegisterProperty<boolean>(LibrariesPanelService, 'IsLoading', false, MetaData.None)
 
-    // Bottom preview pane, driven by the selected class leaf.
+    // Bottom preview pane, driven by the selected class leaf. The preview hosts
+    // the selected NODE itself (Content = $PreviewData); the node carries its own
+    // resolved Template (set below) + self-referential Data + Concept, which the
+    // preview DataTemplate renders. Driving the preview off the node — rather than
+    // off a service-level template DP — is deliberate: a bare ContentPresenter
+    // pins its own DataContext to the content it renders, which would break a
+    // service-scoped $PreviewTemplate binding after the first class (the preview
+    // then froze on the first selection). See [[library-preview-datacontext]].
     public static readonly PreviewDataKey = Model.RegisterProperty<LibraryTreeNode | undefined>(
         LibrariesPanelService, 'PreviewData', undefined, MetaData.None)
-    public static readonly PreviewTemplateKey = Model.RegisterProperty<DataTemplate | undefined>(
-        LibrariesPanelService, 'PreviewTemplate', undefined, MetaData.None)
-    public static readonly PreviewConceptKey = Model.RegisterProperty<string>(LibrariesPanelService, 'PreviewConcept', '', MetaData.None)
     public static readonly HasPreviewKey = Model.RegisterProperty<boolean>(LibrariesPanelService, 'HasPreview', false, MetaData.None)
 
     private reloadSeq = 0
@@ -39,12 +42,12 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
         super(provider)
         this.set_property_value(LibrariesPanelService.RootsKey, new ObservableCollection<LibraryTreeNode>())
         // When a class's template finishes compiling, upgrade the preview if that
-        // class is the one currently selected (default → its real template).
+        // class is the one currently selected (default → its real template). The
+        // node carries the template, so the preview re-renders in place.
         this.Provider.get(LibraryRegistry.Key)?.onChanged((classId) => {
             const sel = this.SelectedNode
             if (sel !== undefined && sel.Kind === LibraryNodeKind.Class && sel.TermId === classId) {
-                this.set_property_value(LibrariesPanelService.PreviewTemplateKey,
-                    this.Provider.get(LibraryRegistry.Key)?.resolve(classId, sel.Concept))
+                sel.Template = this.Provider.get(LibraryRegistry.Key)?.resolve(classId, sel.Concept)
             }
         })
         void this.Reload()
@@ -56,8 +59,6 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
     public get IsEmpty(): boolean { return this.get_property_value(LibrariesPanelService.IsEmptyKey) }
     public get IsLoading(): boolean { return this.get_property_value(LibrariesPanelService.IsLoadingKey) }
     public get PreviewData(): LibraryTreeNode | undefined { return this.get_property_value(LibrariesPanelService.PreviewDataKey) }
-    public get PreviewTemplate(): DataTemplate | undefined { return this.get_property_value(LibrariesPanelService.PreviewTemplateKey) }
-    public get PreviewConcept(): string { return this.get_property_value(LibrariesPanelService.PreviewConceptKey) }
     public get HasPreview(): boolean { return this.get_property_value(LibrariesPanelService.HasPreviewKey) }
 
     public OnActivated(): void { void this.Reload() }
@@ -128,12 +129,11 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
         if (descriptor.Name !== 'SelectedNode') return
         const node = newValue instanceof LibraryTreeNode ? newValue : undefined
         if (node !== undefined && node.Kind === LibraryNodeKind.Class) {
+            // Give the node its resolved template BEFORE it drives the pane, so the
+            // preview never sees a template-less node (default now, upgraded via the
+            // registry's onChanged subscription once the class compiles).
+            node.Template = this.Provider.get(LibraryRegistry.Key)?.resolve(node.TermId, node.Concept)
             this.set_property_value(LibrariesPanelService.PreviewDataKey, node)
-            // Resolve lazily: default now, upgraded via the registry's onChanged
-            // subscription (wired in the constructor) once the class compiles.
-            this.set_property_value(LibrariesPanelService.PreviewTemplateKey,
-                this.Provider.get(LibraryRegistry.Key)?.resolve(node.TermId, node.Concept))
-            this.set_property_value(LibrariesPanelService.PreviewConceptKey, node.Concept)
             this.set_property_value(LibrariesPanelService.HasPreviewKey, true)
         } else {
             this.clearPreview()
@@ -143,8 +143,6 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
     private clearPreview(): void
     {
         this.set_property_value(LibrariesPanelService.PreviewDataKey, undefined)
-        this.set_property_value(LibrariesPanelService.PreviewTemplateKey, undefined)
-        this.set_property_value(LibrariesPanelService.PreviewConceptKey, '')
         this.set_property_value(LibrariesPanelService.HasPreviewKey, false)
     }
 }
