@@ -235,6 +235,37 @@ test('applyPrefill ignores an unknown type and missing fields', () => {
     expect(form.Name).toBe('')
 })
 
+// A form whose architecture type requires a meta-model + offers libraries, with a
+// published meta-model and two libraries available to the pickers.
+function archForm(): NewProjectDialogModel {
+    const choices = [new ProjectTypeChoice('architecture', 'Architecture', 'arch project', true, true)]
+    const metaModels = [{ id: 'tech-architecture', version: '0.1.0' }]
+    const libraries = [{ id: 'microsoft', version: '0.1.0' }, { id: 'aws', version: '0.2.0' }]
+    return new NewProjectDialogModel(choices, {} as never, async () => null, () => {}, metaModels, libraries)
+}
+
+test('applyPrefill selects the prefilled meta-model and checks the prefilled libraries', () => {
+    const form = archForm()
+    applyPrefill(form, {
+        type: 'architecture',
+        metaModel: { id: 'tech-architecture', version: '0.1.0' },
+        libraries: [{ id: 'microsoft', version: '0.1.0' }],
+    })
+    expect(form.SelectedMetaModel?.Ref).toEqual({ id: 'tech-architecture', version: '0.1.0' })
+    expect(form.SelectedLibraries).toEqual([{ id: 'microsoft', version: '0.1.0' }])   // aws stays unchecked
+})
+
+test('applyPrefill ignores meta-model/library refs not among the published choices', () => {
+    const form = archForm()
+    applyPrefill(form, {
+        type: 'architecture',
+        metaModel: { id: 'nope', version: '9' },
+        libraries: [{ id: 'ghost', version: '1' }],
+    })
+    expect(form.SelectedMetaModel).toBeUndefined()
+    expect(form.SelectedLibraries).toEqual([])
+})
+
 test('CreateProject refuses a folder that already contains a project', async () => {
     const { service, occupied } = makeExplorer()
     occupied.add('C:/taken')
