@@ -1,4 +1,4 @@
-import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
+import { MetaKind, type TodlDocument, type JsonNode } from '@pragmatic-lab/todl'
 
 // Emit an own instance document (concept instances + reference edges) back to
 // `.todl` SOURCE TEXT — the component TODL itself lacks. A pure function of the
@@ -19,29 +19,50 @@ const MARKER_ATTRS = new Set(['id', 'class'])
 // the implicit foundation base — never a project meta-model or library binding.
 const PRELUDE_NAMESPACE = 'todl'
 
-export interface ModelBindings { metaModel: string; uses: string[] }
+// metaModel = the meta-model NAMESPACE (`: <metaModel>`); uses = the TAXONOMIES
+// whose terms the model references (its term-drop scope, `uses <tax, …>`);
+// imports = the base NAMESPACES to `import` for cross-namespace reachability.
+export interface ModelBindings { metaModel: string; uses: string[]; imports: string[] }
 
-// Derive a model's bindings from the compiled bases + the project namespace.
-// metaModel = the first (sorted) distinct `namespace` attr across the BASE nodes;
-// uses = the remaining base namespaces plus the project namespace (so local `class`
-// constructors stay in scope), sorted, minus the meta-model slot. Validity only
-// requires every bound name to be present in the merged doc — validateModel makes
-// no meta-model/library distinction.
-export function deriveBindings(bases: readonly TodlDocument[], namespace: string): ModelBindings
+// Derive a model's bindings from the compiled bases, the OWN instance document,
+// and the project namespace. Under namespace-scoped resolution a model `uses`
+// names taxonomies (not namespaces): each taxonomy whose terms this model
+// references must be `uses`-d so a bare `microsoft-graph` drops to its flat
+// `microsoft-tech.microsoft-graph` node. Imports cover cross-namespace
+// reachability; the meta-model namespace is the first sorted base namespace.
+export function deriveBindings(
+    bases: readonly TodlDocument[],
+    own: TodlDocument,
+    namespace: string,
+): ModelBindings
 {
     const baseNs = new Set<string>()
+    const taxIds = new Set<string>()
     for (const b of bases) for (const n of b.nodes) {
         const ns = (n.attrs as Record<string, unknown>)['namespace']
         // Skip the implicit default library (prelude) namespace: it is injected
         // into every compile as the foundation base, not a project binding, so it
-        // must never occupy the meta-model slot nor appear in `uses`.
+        // must never occupy the meta-model slot nor be imported.
         if (typeof ns === 'string' && ns.length > 0 && ns !== PRELUDE_NAMESPACE) baseNs.add(ns)
+        if (n.typeOf === MetaKind.Taxonomy) taxIds.add(n.id)
+    }
+    // A term node id is `<taxonomy>.<rest>` where `<taxonomy>` is a taxonomy node.
+    const taxonomyOf = (id: string): string | undefined => {
+        const dot = id.indexOf('.')
+        if (dot < 0) return undefined
+        const tax = id.slice(0, dot)
+        return taxIds.has(tax) ? tax : undefined
+    }
+    // uses = every taxonomy a reference edge target belongs to (term-drop scope).
+    const usesSet = new Set<string>()
+    for (const e of own.edges) {
+        const tax = taxonomyOf(String(e.to))
+        if (tax !== undefined) usesSet.add(tax)
     }
     const sortedBase = [...baseNs].sort()
     const metaModel = sortedBase[0] ?? namespace
-    const usesSet = new Set<string>([...sortedBase.slice(1), namespace])
-    usesSet.delete(metaModel)
-    return { metaModel, uses: [...usesSet].sort() }
+    const imports = sortedBase.filter((n) => n !== namespace)
+    return { metaModel, uses: [...usesSet].sort(), imports }
 }
 
 // The bare local name of an id (drops any dotting) — used for the instance's own
@@ -83,13 +104,12 @@ export function emitInstances(own: TodlDocument, namespace: string, bindings: Mo
     }
 
     const lines: string[] = [`namespace ${namespace}`, '{']
-    // Import every bound namespace (meta-model + uses libraries) except our own —
-    // under namespace-scoped resolution a bare cross-namespace reference (e.g. a
-    // `realised-by = &stack.term` pointing into a library) only resolves when its
+    // Import every base namespace except our own — under namespace-scoped
+    // resolution a bare cross-namespace reference (e.g. a `realised-by =
+    // &microsoft-tech.term` pointing into a library) only resolves when its
     // namespace is imported. The prelude is implicitly reachable, so it is never
-    // imported here.
-    const importNs = [...new Set([bindings.metaModel, ...bindings.uses])].filter((n) => n !== namespace).sort()
-    for (const ns of importNs) lines.push(`  import ${ns};`)
+    // imported here. (`uses` names taxonomies, not namespaces — see deriveBindings.)
+    for (const ns of bindings.imports) lines.push(`  import ${ns};`)
     for (const n of classes) lines.push(...emitOne(n, instanceOf.get(n.id), rels.get(n.id) ?? []))
     if (concrete.length > 0) {
         const uses = bindings.uses.length > 0 ? ` uses ${bindings.uses.join(', ')}` : ''
