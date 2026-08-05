@@ -267,31 +267,49 @@ resources DiagramResources {
     }
 
     // ── ToolBox capability panel — the shapes palette in the left pane.
-    // Overrides the generic `DataTemplate [DataType = PlexusPanelService]` for
-    // the ToolboxService subtype (exact-type match wins). The unified toolbox
-    // presents $Pages as a TabControl: a built-in Shapes page plus one page per
-    // visible taxonomy. ItemsControl.ItemTemplate templates each tab HEADER; the
-    // tab BODY dispatches by DataType to `DataTemplate [DataType = ToolboxPage]`. ──
+    // Overrides the generic `DataTemplate [DataType = PlexusPanelService]` for the
+    // ToolboxService subtype (exact-type match wins). The unified toolbox presents
+    // $Pages as a single-expand ACCORDION (a built-in Shapes page plus one section
+    // per visible taxonomy): each section's header two-ways the page's IsExpanded
+    // and its body collapses when closed; opening one collapses the others
+    // (coordinated in ToolboxService). The whole stack scrolls as one region. ──
     DataTemplate [DataType = ToolboxService] {
-        Border [ Padding = (8) ] {
-            TabControl
-                [ ItemsControl.ItemsSource  = $Pages,
-                  ItemsControl.ItemTemplate = @ToolboxTabHeader ]
+        ScrollViewer [ IsAutoHideScrollBars = false, HorizontalScrollEnabled = false ] {
+            ItemsControl [ ItemsSource = $Pages, ItemTemplate = @ToolboxAccordionItem, ItemsPanel = @VerticalStackPanel, Margin = (8) ]
         }
     }
 
-    // Tab header for a toolbox page — just its title.
-    DataTemplate x:key="ToolboxTabHeader" [DataType = ToolboxPage] {
-        TextBlock [ Text = $Title, Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
+    // Chromeless accordion header chrome: a full-width, hit-testable row (no
+    // default ToggleButton pill) whose leading chevron flips ▸→▾ when expanded
+    // (IsChecked). The ContentPresenter shows the ToggleButton's content (title).
+    Template x:key="ToolboxAccordionHeaderChrome" [TargetType = ToggleButton] {
+        Border x:name="Root" [ Background = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (4,6,4,6) ] {
+            DockPanel [ LastChildFill = true ] {
+                TextBlock x:name="Chevron"
+                    [ DockPanel.Dock = Left, Text = "▸", Foreground = @OnSurfaceVariant,
+                      Margin = (0,0,8,0), VerticalAlignment = Center ]
+                ContentPresenter [ VerticalAlignment = Center ]
+            }
+        }
+        when ( IsMouseOver ) { Root.Background = @StateHoverOverlay; }
+        when ( IsChecked )   { Chevron.Text = "▾"; }
     }
 
-    // One toolbox page body: the page's tiles in the uniform wrap grid. No
-    // ItemTemplate — each item dispatches by DataType (ToolboxShape → the shape
-    // tile above; TermTile → the term tile below). HorizontalScrollEnabled = false
-    // so the WrapPanel wraps to the pane width instead of scrolling horizontally.
-    DataTemplate [DataType = ToolboxPage] {
-        ScrollViewer [ IsAutoHideScrollBars = false, HorizontalScrollEnabled = false ] {
-            ItemsControl [ ItemsSource = $Items, ItemsPanel = @DiagramToolboxPanel ]
+    // One accordion section: a header ToggleButton (two-ways IsExpanded) over the
+    // page's tiles in the uniform wrap grid, collapsed when the section is closed.
+    // The tiles dispatch by DataType (ToolboxShape → shape tile; TermTile → term
+    // tile). The outer ScrollViewer scrolls; no per-section scroll region.
+    DataTemplate x:key="ToolboxAccordionItem" [DataType = ToolboxPage] {
+        StackPanel [ Orientation = Vertical, Margin = (0,0,0,2) ] {
+            ToggleButton
+                [ Template            = @ToolboxAccordionHeaderChrome,
+                  IsChecked           = $IsExpanded,
+                  HorizontalAlignment = Stretch ] {
+                TextBlock [ Text = $Title, Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
+            }
+            Border [ Visibility = $IsExpanded << ToVisibility, Padding = (0,4,0,6) ] {
+                ItemsControl [ ItemsSource = $Items, ItemsPanel = @DiagramToolboxPanel ]
+            }
         }
     }
 

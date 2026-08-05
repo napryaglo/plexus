@@ -92,6 +92,24 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
         pages.Clear()
         pages.Add(shapesPage)
         for (const { page } of byTaxonomy.values()) pages.Add(page)
+        this.wireAccordion(pages)
+    }
+
+    // Single-expand accordion: opening a section collapses the others, and the
+    // first section (Shapes) starts open. Each reload builds fresh ToolboxPage
+    // instances, so the listeners are new — nothing to unsubscribe. Setting a
+    // sibling false re-enters the listener with IsExpanded === false, which the
+    // guard ignores, so there is no cascade.
+    private wireAccordion(pages: ObservableCollection<ToolboxPage>): void
+    {
+        const all = pages.ToArray()
+        for (const page of all) {
+            page.AddPropertyChangedListener(ToolboxPage.IsExpandedKey, () => {
+                if (!page.IsExpanded) return
+                for (const other of all) if (other !== page) other.IsExpanded = false
+            })
+        }
+        if (all.length > 0) all[0].IsExpanded = true
     }
 
     // The built-in Shapes page: a snapshot of the diagram's live ToolboxShapes.
