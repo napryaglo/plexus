@@ -77,8 +77,9 @@ export async function publishPresentation(
 
 // The author DataTemplate bodies to inline, in deterministic (filename) order,
 // plus the total DataTemplate count. One `resources <Name> { … }` dict per file
-// by convention; we splice its inner declarations into the assets block.
-async function readAuthorTemplates(project: IStorage, dir: string): Promise<{ inners: string[]; count: number }>
+// by convention; we splice its inner declarations into the assets block. Shared
+// with the library publisher.
+export async function readAuthorTemplates(project: IStorage, dir: string): Promise<{ inners: string[]; count: number }>
 {
     let entries
     try { entries = await project.List(dir) }
@@ -111,8 +112,9 @@ function extractResourcesInner(text: string): string | undefined
 
 // One self-contained `resources` block: icon includes (baked by the compiler)
 // followed by the inlined author templates that reference them (`@icon` resolves
-// as a local var because it's declared earlier in the SAME block).
-function combinedSource(doc: TodlDocument, dictName: string, authorInners: readonly string[]): string
+// as a local var because it's declared earlier in the SAME block). Shared with
+// the library publisher.
+export function combinedSource(doc: TodlDocument, dictName: string, authorInners: readonly string[]): string
 {
     const includes = distinctIcons(doc).map((p) => `    include "${p}" as ${iconKey(p)}`)
     return [

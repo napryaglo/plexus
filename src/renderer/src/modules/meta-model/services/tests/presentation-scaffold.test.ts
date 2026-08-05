@@ -27,6 +27,16 @@ describe('scaffoldAuthorStubs', () => {
     const text = await s.ReadText('presentation/lib_button.mu')
     expect(text).toContain('DataTemplate x:key="lib.button" [ DataType = LibraryClassData ]')
     expect(text).toContain('Text = $Display')
+    expect(text).toContain('Shape [ Geometry = @mm_icon_b') // vector icon → Shape geometry
+  })
+
+  test('raster icon → a Border filled with the ImageBrush, not a Shape', async () => {
+    const s = new FakeStorage()
+    const m = doc([{ id: 'lib.logo', tier: 'Instance', typeOf: 'class', attrs: { class: true, icon: 'resources/logo.png' } }])
+    await scaffoldAuthorStubs(s, m, LIBRARY_ROLE, 'presentation')
+    const text = await s.ReadText('presentation/lib_logo.mu')
+    expect(text).not.toContain('Shape [')
+    expect(text).toContain('Border [ Width = 16, Height = 16, Margin = (0,0,6,0), Background = @mm_icon_logo ]')
   })
 
   test('write-once: skips a key already declared in presentation/*.mu', async () => {

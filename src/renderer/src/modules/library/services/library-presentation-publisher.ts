@@ -1,8 +1,9 @@
 // library-presentation-publisher.ts — compile the library's presentation once and
 // bake it into the bundle as presentation.compiled.json (geometry inlined, imports
-// stripped), mirroring meta-model/services/presentation-publisher.ts. A referenced
-// icon with no project file blocks publish (nothing written). Author overrides are
-// intentionally ignored (the compiled artifact merges nothing).
+// stripped), mirroring meta-model/services/presentation-publisher.ts. Templates are
+// AUTHOR-owned (presentation/*.mu): missing stubs are scaffolded write-once and the
+// author DataTemplates are inlined into the single assets block. A referenced icon
+// with no project file blocks publish (nothing written).
 import type { TodlDocument } from '@pragmatic-lab/todl'
 import {
     compile, DEFAULT_SYMBOLS, svgToGeometryJs,
@@ -10,13 +11,16 @@ import {
 } from '@pragmatic-lab/mural/compiler'
 
 import type { IStorage } from '../../../services/storage/storage.js'
-import type { CompiledPresentation } from '../../meta-model/services/presentation-publisher.js'
-import { distinctIcons } from '../../meta-model/services/presentation-generator.js'
-import { generateLibraryPresentationMu, isRasterIcon } from './library-presentation-generator.js'
+import {
+    type CompiledPresentation, readAuthorTemplates, combinedSource,
+} from '../../meta-model/services/presentation-publisher.js'
+import { distinctIcons, isRasterIcon } from '../../meta-model/services/presentation-generator.js'
+import { scaffoldAuthorStubs, LIBRARY_ROLE } from '../../meta-model/services/presentation-scaffold.js'
 
 const PRESENTATION_DIR = 'presentation'
 const COMPILED_FILE = 'presentation.compiled.json'
 const VISUAL_ENGINE = '@pragmatic-lab/mural/visual-engine'
+const DICT_NAME = 'LibraryPresentation'
 
 // Raster icon extensions → MIME type for the baked data URI.
 const RASTER_MIME: Readonly<Record<string, string>> = {
@@ -47,6 +51,9 @@ export async function publishLibraryPresentation(
     project: IStorage, dest: IStorage, base: string, doc: TodlDocument,
 ): Promise<PublishLibraryPresentationResult>
 {
+    // Ensure every class has an editable author-template stub (write-once).
+    await scaffoldAuthorStubs(project, doc, LIBRARY_ROLE, PRESENTATION_DIR)
+
     // Pre-read every referenced icon (compiler include resolution is sync). SVGs are
     // read as text and baked to geometry; raster images are read as bytes and baked
     // as an ImageBrush data URI.
@@ -64,7 +71,8 @@ export async function publishLibraryPresentation(
     }
     if (missing.length > 0) return { ok: false, missing }
 
-    const source = generateLibraryPresentationMu(doc, [])   // no author-override merges
+    const author = await readAuthorTemplates(project, PRESENTATION_DIR)
+    const source = combinedSource(doc, DICT_NAME, author.inners)
 
     const include: IncludeResolver = (path, ctx): IncludeResolution => {
         if (isRasterIcon(path)) {
@@ -95,6 +103,5 @@ export async function publishLibraryPresentation(
     const artifact: CompiledPresentation = { body, symbols: [...names].sort(), className }
     await dest.WriteText(`${base}/${PRESENTATION_DIR}/${COMPILED_FILE}`, JSON.stringify(artifact))
 
-    const templates = doc.nodes.filter((n) => n.tier === 'Instance' && n.attrs['class'] === true).length
-    return { ok: true, templates, icons: svgByPath.size + rasterUriByPath.size }
+    return { ok: true, templates: author.count, icons: svgByPath.size + rasterUriByPath.size }
 }
