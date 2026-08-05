@@ -69,6 +69,11 @@ export class ToolboxPage extends Model
         ToolboxPage, 'Kind', ToolboxPageKind.Taxonomy, MetaData.None)
     public static readonly ItemsKey = Model.RegisterProperty<ObservableCollection<unknown>>(
         ToolboxPage, 'Items', undefined as unknown as ObservableCollection<unknown>, MetaData.None)
+    // Accordion section state: the header ToggleButton two-ways this, and the
+    // section body's Visibility binds to it. Single-expand coordination (opening
+    // one collapses the others) lives in ToolboxService.
+    public static readonly IsExpandedKey = Model.RegisterProperty<boolean>(
+        ToolboxPage, 'IsExpanded', false, MetaData.None)
 
     constructor(title: string, kind: ToolboxPageKind)
     {
@@ -81,4 +86,6 @@ export class ToolboxPage extends Model
     public get Title(): string { return this.get_property_value(ToolboxPage.TitleKey) }
     public get Kind(): ToolboxPageKind { return this.get_property_value(ToolboxPage.KindKey) }
     public get Items(): ObservableCollection<unknown> { return this.get_property_value(ToolboxPage.ItemsKey) }
+    public get IsExpanded(): boolean { return this.get_property_value(ToolboxPage.IsExpandedKey) }
+    public set IsExpanded(v: boolean) { this.set_property_value(ToolboxPage.IsExpandedKey, v) }
 }

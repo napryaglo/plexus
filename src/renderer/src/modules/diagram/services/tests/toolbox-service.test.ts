@@ -60,4 +60,32 @@ describe('ToolboxService', () => {
     expect(svc.Pages.Count).toBe(1)
     expect(svc.Pages.Get(0)!.Kind).toBe(ToolboxPageKind.Shapes)
   })
+
+  it('accordion: the first section starts expanded, the rest collapsed', async () => {
+    const svc = new ToolboxService(provider((mm) => { void mm.WriteText('tech/0.1.0/model.json', MODEL) }))
+    await svc.reload()
+    const ps = pages(svc)
+    expect(ps.length).toBeGreaterThan(1)
+    expect(ps[0].IsExpanded).toBe(true)
+    expect(ps.slice(1).every((p) => !p.IsExpanded)).toBe(true)
+  })
+
+  it('accordion is single-expand: opening one section collapses the others', async () => {
+    const svc = new ToolboxService(provider((mm) => { void mm.WriteText('tech/0.1.0/model.json', MODEL) }))
+    await svc.reload()
+    const ps = pages(svc)
+
+    ps[1].IsExpanded = true                          // open the second section
+    expect(ps[1].IsExpanded).toBe(true)
+    expect(ps[0].IsExpanded).toBe(false)             // the first one collapsed
+    expect(ps.filter((p) => p.IsExpanded).length).toBe(1)
+  })
+
+  it('accordion allows collapsing the open section (at most one open)', async () => {
+    const svc = new ToolboxService(provider((mm) => { void mm.WriteText('tech/0.1.0/model.json', MODEL) }))
+    await svc.reload()
+    const ps = pages(svc)
+    ps[0].IsExpanded = false                         // close the only-open section
+    expect(ps.every((p) => !p.IsExpanded)).toBe(true)
+  })
 })
