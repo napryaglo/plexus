@@ -4,7 +4,7 @@ export interface DropTarget { concept: string; member: string }
 
 // Every (concept, reference-field) pair where the concept has a field whose type
 // the dropped term's concept is (or a subtype of). The canvas creates a concept
-// instance of `concept` and sets `member = &term`. Concepts are `typeOf==='concept'`
+// instance of `concept` and sets `member = term`. Concepts are `typeOf==='concept'`
 // nodes; schema fields come from the derived repo (which carries the base edges
 // that define them). One target ⇒ auto-create; several ⇒ chooser; none ⇒ reject.
 export function resolveTermDrop(model: ArchInstanceModel, termId: string): DropTarget[]

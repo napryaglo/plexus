@@ -6,7 +6,7 @@ import { MetaKind, type TodlDocument, type JsonNode } from '@pragmatic-lab/todl'
 //   own → emitInstances → checkAgainst(bases, [emitted]) → own' == own.
 //
 // Instance syntax (from the TODL grammar + fixtures):
-//   <concept> <id> [instanceof <bareClass>] { field = value; ref = &t.term; many = [a.b, c.d]; }
+//   <concept> <id> [instanceof <bareClass>] { field = value; ref = t.term; many = [a.b, c.d]; }
 // - `instanceof` targets a bare local `class` id only; taxonomy terms are dotted
 //   ids that appear as REFERENCE targets, not instanceof targets.
 // - A `Relationship` edge's `via` is the member name; `to` is the (dotted) target id.
@@ -138,8 +138,9 @@ function emitOne(node: JsonNode, cls: string | undefined, relEdges: Array<{ via:
         if (MARKER_ATTRS.has(name)) continue
         body.push(`${name} = ${literal(value)};`)
     }
-    // Relationships grouped by member: a single target emits `&t`, several emit a
-    // bare-name list `[a, b]` (the list form TODL uses for taxonomy-term refs).
+    // Relationships grouped by member: a single target emits a bare name `t`,
+    // several emit a bare-name list `[a, b]`. TODL is type-directed (todl@0.14),
+    // so a bare name on a concept/taxonomy-typed member is a reference — no sigil.
     const byMember = new Map<string, string[]>()
     for (const r of relEdges) {
         const list = byMember.get(r.via) ?? []
@@ -147,7 +148,7 @@ function emitOne(node: JsonNode, cls: string | undefined, relEdges: Array<{ via:
         byMember.set(r.via, list)
     }
     for (const [member, targets] of byMember) {
-        body.push(targets.length === 1 ? `${member} = &${targets[0]};` : `${member} = [${targets.join(', ')}];`)
+        body.push(targets.length === 1 ? `${member} = ${targets[0]};` : `${member} = [${targets.join(', ')}];`)
     }
 
     if (body.length === 0) return [`  ${head} {}`]

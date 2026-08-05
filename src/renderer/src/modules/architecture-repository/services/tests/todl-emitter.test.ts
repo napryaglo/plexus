@@ -64,13 +64,13 @@ test('deriveBindings: no bases binds the project namespace alone, nothing to imp
 
 test('deriveBindings: uses = the taxonomies whose terms the model references', () => {
     const bs = bases()
-    const own = ownFrom(bs, `namespace app { import ea; import ms; model m : ea uses stack { component gw { label = "G"; realised-by = &stack.azure-openai; } } }`)
+    const own = ownFrom(bs, `namespace app { import ea; import ms; model m : ea uses stack { component gw { label = "G"; realised-by = stack.azure-openai; } } }`)
     expect(deriveBindings(bs, own, 'app').uses).toEqual(['stack'])
 })
 
 test('round-trips a concept instance with a scalar field and a single reference', () => {
     const bs = bases()
-    const src = `namespace app { import ea; import ms; model app-model : ea uses stack { component gw { label = "Gateway"; realised-by = &stack.azure-openai; } } }`
+    const src = `namespace app { import ea; import ms; model app-model : ea uses stack { component gw { label = "Gateway"; realised-by = stack.azure-openai; } } }`
     const own = ownFrom(bs, src)
 
     const emitted = emitInstances(own, 'app', deriveBindings(bs, own, 'app'))
@@ -86,7 +86,7 @@ test('round-trips a many-valued reference (list) and an instanceof class', () =>
     const src = `namespace app {
       import ea;
       import ms;
-      class component web-tier { realised-by = &stack.azure-func; }
+      class component web-tier { realised-by = stack.azure-func; }
       model app-model : ea uses stack {
         component api instanceof web-tier { label = "API"; deployed-to = [stack.azure-openai, stack.azure-func]; }
       }

@@ -69,7 +69,7 @@ test('newFile then Save writes a .archdiagram + sibling .todl; open restores mod
     expect(await project.Exists('system.archdiagram')).toBe(true)
     const todl = await project.ReadText('system.todl')
     expect(todl).toContain('component ')
-    expect(todl).toContain('realised-by = &stack.azure-openai;')
+    expect(todl).toContain('realised-by = stack.azure-openai;')
     const layout = JSON.parse(await project.ReadText('system.archdiagram'))
     expect(layout.layout[id]).toEqual({ x: 120, y: 80 })
 
