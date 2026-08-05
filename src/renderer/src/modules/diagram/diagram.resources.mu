@@ -318,15 +318,20 @@ resources DiagramResources {
     // applyTermDrop. Mirrors the ToolboxShape tile's drag wiring.
     DataTemplate [DataType = TermTile] {
         Border x:root
-            [ IsDraggable     = true,
-              OnDragStart     = $BeginKindDragData,
-              Background      = @Surface,
-              BorderBrush     = @OutlineVariant,
-              BorderThickness = (1),
-              CornerRadius    = 4,
-              Padding         = (8,6,8,6),
-              Margin          = (2,0,2,4) ] {
-            TextBlock [ Text = $Display, FontSize = 12, Foreground = @OnSurface ]
+            [ IsDraggable         = true,
+              OnDragStart         = $BeginKindDragData,
+              Background          = @Surface,
+              BorderBrush         = @OutlineVariant,
+              BorderThickness     = (1),
+              CornerRadius        = 4,
+              Padding             = (8,6,8,6),
+              Margin              = (2,0,2,4),
+              HorizontalAlignment = Stretch ] {
+            // Wrap long term labels (e.g. AWS service names) to the pane width.
+            // Without this the tile is as wide as its longest label, so the
+            // uniform-cell toolbox grid sizes every cell to that width and spills
+            // past the narrow pane.
+            TextBlock [ Text = $Display, FontSize = 12, Foreground = @OnSurface, TextWrapping = Wrap ]
         }
     }
 }
