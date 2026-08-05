@@ -90,14 +90,18 @@ export class OpenProject extends Model
         }
     }
 
-    // Adopt a freshly-scanned Project (same factory/storage) — after a New File
-    // rebuilds the tree. Updates the Name/Root DPs so the bound view refreshes;
-    // the caller re-wires the new nodes' OpenCommands.
+    // Adopt a freshly-scanned Project (same factory/storage) — after a rescan
+    // (new file/folder, import, delete) rebuilds the tree. The Root instance is
+    // KEPT and its subtree reconciled IN PLACE: the TreeView captures Root.Children
+    // (an ObservableCollection) when a project's container is first prepared, so
+    // swapping Root wholesale would leave the tree observing the old collection and
+    // a rescan's added files/folders would never appear. The caller re-wires the
+    // new nodes' OpenCommands.
     public Adopt(project: Project): void
     {
         this.project = project
         this.set_property_value(OpenProject.NameKey, project.Name)
-        this.set_property_value(OpenProject.RootKey, project.Root)
+        reconcileChildren(this.Root, project.Root)
     }
 
     public get Name(): string { return this.get_property_value(OpenProject.NameKey) }
@@ -157,4 +161,28 @@ export class OpenProject extends Model
     public get Storage(): IStorage { return this.storage }
     // The project's root folder — the dedupe + persistence key.
     public get Folder(): string { return this.project.RootPath }
+}
+
+// Update `existing`'s Children subtree to match `fresh`'s IN PLACE, keyed by each
+// node's project-relative Path (its stable identity). Mutating the same
+// ObservableCollection the TreeView observes is what makes the change appear (see
+// OpenProject.Adopt). Done INCREMENTALLY — only added/removed rows change — so a
+// rescan does not churn the whole tree: a matched child keeps its instance and is
+// recursed into, preserving unchanged folders' expansion. Both child lists come
+// from the same sorted scan, so survivors stay in fresh's relative order and a new
+// node just lands at its index.
+function reconcileChildren(existing: ProjectNode, fresh: ProjectNode): void
+{
+    const freshList = fresh.Children.ToArray()
+    const freshPaths = new Set(freshList.map((c) => c.Path))
+    for (const child of existing.Children.ToArray())
+        if (!freshPaths.has(child.Path)) existing.Children.Remove(child)
+
+    const byPath = new Map(existing.Children.ToArray().map((c) => [c.Path, c]))
+    freshList.forEach((child, i) =>
+    {
+        const kept = byPath.get(child.Path)
+        if (kept === undefined) existing.Children.Insert(i, child)
+        else reconcileChildren(kept, child)
+    })
 }
