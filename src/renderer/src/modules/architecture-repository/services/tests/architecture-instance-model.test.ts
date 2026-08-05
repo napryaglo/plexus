@@ -34,7 +34,7 @@ test('createInstance adds a fresh concept instance; setField + addRelationship m
     const emitted = model.emit()
     expect(emitted).toContain(`component ${id}`)
     expect(emitted).toContain('label = "API";')
-    expect(emitted).toContain('realised-by = &stack.azure-openai;')
+    expect(emitted).toContain('realised-by = stack.azure-openai;')
 })
 
 test('remove drops the instance and its edges', () => {

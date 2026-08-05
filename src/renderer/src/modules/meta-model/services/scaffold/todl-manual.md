@@ -44,9 +44,11 @@ One `namespace` per file. Everything is declared inside it:
 - **Strings**: `"single line"`. **Raw / multi-line**: triple-quoted
   `"""…"""` (keeps newlines; use for `description` prose).
 - **Numbers**: bare integers, e.g. `version = 5;`.
-- **References**: `&name` or `&dotted.path` — the `&` sigil marks a reference to
-  another record. `@` and `$` are **reserved for Mural** and are hard errors in
-  `.todl`.
+- **References**: a bare `name` or `dotted.path` — there is no sigil. Whether a
+  value is a reference (an edge) or a scalar is decided by the member's declared
+  **type**: a field typed by a `concept` or `taxonomy` is a reference, a field
+  typed by a primitive is a scalar. `@` and `$` are **reserved for Mural** and
+  are hard errors in `.todl`.
 - **Every statement ends in `;`.** Blocks are delimited by `{ … }`, lists by
   `[ … ]`.
 
@@ -247,12 +249,12 @@ occasionally write instances:
 
 Connectors and steps can be written as edges:
 
-    connector &business-agent --> &crm-api;
-    step &receive -> &validate;
+    connector business-agent --> crm-api;
+    step receive -> validate;
 
-- `&from <op> &to` where `<op>` is `->` or `-->`. A trailing `{ … }` block adds
-  attributes; otherwise end with `;`.
-- Inside an `application-connectors { … }` block, list bare `&a --> &b` edges.
+- `from <op> to` where `<op>` is `->` or `-->`; endpoints are bare names. A
+  trailing `{ … }` block adds attributes; otherwise end with `;`.
+- Inside an `application-connectors { … }` block, list bare `a --> b` edges.
 
 ## 8. Modifiers
 

@@ -49,7 +49,7 @@ test('applyTermDrop creates a concept instance referencing the term, positioned 
     expect(d.Model.ownInstances()).toEqual([id])
     expect(d.LayoutOf(id)).toEqual({ x: 200, y: 140 })
     expect(d.Nodes.Count).toBe(1)
-    expect(d.Model.emit()).toContain('realised-by = &stack.azure-openai;')
+    expect(d.Model.emit()).toContain('realised-by = stack.azure-openai;')
 })
 
 test('applyTermDrop is unresolved and mutates nothing when no concept can reference the term', async () => {
@@ -81,6 +81,6 @@ test('applyConnect sets the reference member linking two nodes', () => {
     const from = model.createInstance('component')
 
     expect(applyConnect(model, from, 'stack.azure-openai')).toBe('ok')
-    expect(model.emit()).toContain('realised-by = &stack.azure-openai;')
+    expect(model.emit()).toContain('realised-by = stack.azure-openai;')
     expect(applyConnect(model, from, 'nope.nope')).toBe('none')
 })
