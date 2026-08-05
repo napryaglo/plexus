@@ -84,18 +84,18 @@ test('resolveFacets: humanize label and no icon when neither present', () => {
 
 // ── generatePresentationAssets — assets-only, no DataTemplates ────────────────
 
-test('generatePresentationAssets emits icon includes + merges, no DataTemplates', () => {
+test('generatePresentationAssets emits icon includes only — no DataTemplates, no merges', () => {
     const m = doc([
         { id: 'app-component', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'resources/comp.svg' } },
         { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'resources/actor.svg' } },
     ])
-    const out = generatePresentationAssets(m, ['AuthorA'], 'MetaModelPresentation')
+    const out = generatePresentationAssets(m, 'MetaModelPresentation')
     expect(out).toMatch(/resources MetaModelPresentation \{/)
     expect(out).toContain('include "resources/actor.svg" as mm_icon_actor')
     expect(out).toContain('include "resources/comp.svg" as mm_icon_comp')
-    expect(out).toContain('merge AuthorA')
     expect(out).toMatch(/Embedded content \(base64\)/) // reserved seam
     expect(out).not.toContain('DataTemplate') // templates are author-owned now
+    expect(out).not.toContain('merge ')       // author templates are inlined by the publisher, not merged
     // deterministic: actor include precedes comp include (sorted)
     expect(out.indexOf('mm_icon_actor')).toBeLessThan(out.indexOf('mm_icon_comp'))
 })
@@ -108,16 +108,15 @@ test('generatePresentationAssets includes annotation-sourced icons', () => {
         ],
         edges: [{ kind: 'Annotated', via: null, from: 'actor', to: 'actor@icon' }],
     } as unknown as TodlDocument
-    const out = generatePresentationAssets(m, [], 'MetaModelPresentation')
+    const out = generatePresentationAssets(m, 'MetaModelPresentation')
     expect(out).toContain('include "resources/actor.svg" as mm_icon_actor')
     expect(out).not.toContain('DataTemplate')
 })
 
-test('generatePresentationAssets: no author dicts → no merge line; deterministic', () => {
+test('generatePresentationAssets is deterministic', () => {
     const m = doc([{ id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} }])
-    const a = generatePresentationAssets(m, [], 'LibraryPresentation')
-    const b = generatePresentationAssets(m, [], 'LibraryPresentation')
+    const a = generatePresentationAssets(m, 'LibraryPresentation')
+    const b = generatePresentationAssets(m, 'LibraryPresentation')
     expect(a).toBe(b)
     expect(a).toMatch(/resources LibraryPresentation \{/)
-    expect(a).not.toContain('merge ')
 })

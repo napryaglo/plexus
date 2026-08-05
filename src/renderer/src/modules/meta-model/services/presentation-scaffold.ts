@@ -22,8 +22,9 @@ export enum PresentationRoleKind
 }
 
 // A role parameterises the per-domain differences: which nodes are presentable,
-// how a node maps to a template key, the template's DataType, and the label
-// expression (a mural attribute value — a baked string vs a `$Display` binding).
+// how a node maps to a template key, the template's DataType, the label
+// expression (a mural attribute value — a baked string vs a `$Display` binding),
+// and the `resources <Name>` identifier of the single scaffolded templates file.
 export interface PresentationRole
 {
     kind: PresentationRoleKind
@@ -31,6 +32,7 @@ export interface PresentationRole
     key(node: JsonNode): string
     dataType: string
     labelExpr(doc: TodlDocument, node: JsonNode): string
+    templatesDict: string
 }
 
 export const META_MODEL_ROLE: PresentationRole = {
@@ -39,6 +41,7 @@ export const META_MODEL_ROLE: PresentationRole = {
     key: (n) => `mm:${n.id}`,
     dataType: 'MetaModelEntity',
     labelExpr: (doc, n) => `"${escapeMu(resolveFacets(n, projectAnnotations(doc, n.id)).label)}"`,
+    templatesDict: 'MetaModelPresentationTemplates',
 }
 
 export const LIBRARY_ROLE: PresentationRole = {
@@ -47,10 +50,17 @@ export const LIBRARY_ROLE: PresentationRole = {
     key: (n) => n.id,
     dataType: 'LibraryClassData',
     labelExpr: () => '$Display',
+    templatesDict: 'LibraryPresentationTemplates',
 }
 
-// Seed missing author stubs. Returns the number written. Never overwrites an
-// existing file, and never re-creates a key already declared in presentation/*.mu.
+// The single author-templates file all scaffolded stubs live in.
+const TEMPLATES_FILE = 'templates.mu'
+
+// Seed missing author templates into a SINGLE `presentation/templates.mu` dict —
+// one editable DataTemplate per entity. Write-once: an entity whose key is
+// already declared in ANY presentation/*.mu is skipped, and regeneration only
+// APPENDS new entities (existing declarations are never rewritten), so author
+// edits survive. Returns the number of templates added.
 export async function scaffoldAuthorStubs(
     storage: IStorage,
     doc: TodlDocument,
@@ -59,15 +69,38 @@ export async function scaffoldAuthorStubs(
 ): Promise<number>
 {
     const have = await existingKeys(storage, dir)
-    let written = 0
-    for (const node of role.entities(doc)) {
-        const key = role.key(node)
-        if (have.has(key)) continue
-        await storage.WriteText(`${dir}/${slug(node.id)}.mu`, stubMu(role, doc, node))
-        have.add(key)
-        written++
-    }
-    return written
+    const missing = role.entities(doc).filter((n) => !have.has(role.key(n)))
+    if (missing.length === 0) return 0
+
+    const blocks = missing.map((n) => templateBlock(role, doc, n))
+    const path = `${dir}/${TEMPLATES_FILE}`
+    const existing = await readOrEmpty(storage, path)
+    const next = existing.trim() === ''
+        ? [
+            '// AUTHOR TEMPLATES — edit freely; regeneration only APPENDS new entities.',
+            `resources ${role.templatesDict} {`,
+            blocks.join('\n\n'),
+            '}',
+            '',
+          ].join('\n')
+        : insertBeforeLastBrace(existing, `\n${blocks.join('\n\n')}\n`)
+    await storage.WriteText(path, next)
+    return missing.length
+}
+
+async function readOrEmpty(storage: IStorage, path: string): Promise<string>
+{
+    try { return await storage.ReadText(path) }
+    catch { return '' }
+}
+
+// Splice new template blocks in just before the templates dict's closing brace,
+// leaving every existing declaration byte-for-byte intact.
+function insertBeforeLastBrace(text: string, insertion: string): string
+{
+    const idx = text.lastIndexOf('}')
+    if (idx < 0) return `${text}\n${insertion}`
+    return text.slice(0, idx) + insertion + text.slice(idx)
 }
 
 // The x:key values already declared across presentation/*.mu — the write-once
@@ -86,8 +119,10 @@ async function existingKeys(storage: IStorage, dir: string): Promise<Set<string>
     return keys
 }
 
-// One editable author stub: a Border wrapping an icon + label (or label only).
-function stubMu(role: PresentationRole, doc: TodlDocument, node: JsonNode): string
+// One editable author template (a DataTemplate declaration, indented to sit
+// inside the templates `resources` block): a Border wrapping an icon + label
+// (or label only).
+function templateBlock(role: PresentationRole, doc: TodlDocument, node: JsonNode): string
 {
     const { icon } = resolveFacets(node, projectAnnotations(doc, node.id))
     const label = `TextBlock [ Text = ${role.labelExpr(doc, node)}, Foreground = @OnSurface ]`
@@ -100,15 +135,11 @@ function stubMu(role: PresentationRole, doc: TodlDocument, node: JsonNode): stri
             `            }`,
           ]
     return [
-        '// AUTHOR STUB — edit freely; regeneration will not overwrite this file.',
-        `resources Pres_${slug(node.id)} {`,
         `    DataTemplate x:key="${role.key(node)}" [ DataType = ${role.dataType} ] {`,
         `        Border [ Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (8,6,8,6) ] {`,
         ...inner,
         `        }`,
         `    }`,
-        '}',
-        '',
     ].join('\n')
 }
 
@@ -120,12 +151,6 @@ function iconElement(icon: string): string
     return isRasterIcon(icon)
         ? `Border [ Width = 16, Height = 16, Margin = (0,0,6,0), Background = @${key} ]`
         : `Shape [ Geometry = @${key}, Fill = @OnSurface, Width = 16, Height = 16, Margin = (0,0,6,0) ]`
-}
-
-// Slug an id into a filesystem-safe stem + identifier fragment (iconKey's rules).
-function slug(id: string): string
-{
-    return id.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
 }
 
 // Escape a string for a double-quoted mural attribute value.

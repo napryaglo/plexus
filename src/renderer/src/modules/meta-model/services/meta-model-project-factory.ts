@@ -13,7 +13,7 @@ import {
     type PublishResult,
 } from '../../../services/projects/project-factory.js'
 import { Project, ProjectNode, type ProjectNodeKind } from '../../../services/projects/project.js'
-import { compareStorageEntries, type IStorage, type StorageEntry } from '../../../services/storage/storage.js'
+import { compareStorageEntries, type IStorage } from '../../../services/storage/storage.js'
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
 import { ensureScaffold } from './meta-model-scaffold.js'
 import { collectTodlSources, extname, joinRel } from './todl-sources.js'
@@ -161,37 +161,16 @@ export class MetaModelProjectFactory extends ServiceBase
         await this.writePresentation(storage, toJSON(model))
     }
 
-    // Write presentation.generated.mu from an already-compiled document. Scans the
-    // presentation/ folder for author dictionaries to merge (by their resources
-    // block name). Shared by regeneratePresentation and publish (which passes its
-    // own compiled doc, avoiding a second compile).
+    // Write presentation.generated.mu (icons-only assets dict) from an already-
+    // compiled document, seeding missing author-template stubs into
+    // presentation/templates.mu first (write-once). Shared by regeneratePresentation
+    // and publish (which passes its own compiled doc, avoiding a second compile).
     private async writePresentation(storage: IStorage, doc: TodlDocument): Promise<void>
     {
-        // Seed missing author-template stubs first (write-once), then emit the
-        // assets dictionary that merges every author dict — the scaffolded stubs
-        // included.
         await scaffoldAuthorStubs(storage, doc, META_MODEL_ROLE, MetaModelProjectFactory.PRESENTATION_DIR)
-        const authorDicts = await this.scanAuthorDicts(storage)
-        const source = generatePresentationAssets(doc, authorDicts, 'MetaModelPresentation')
-        await storage.WriteText(MetaModelProjectFactory.PRESENTATION_FILE, source)
-    }
-
-    // The `resources <Name>` identifiers declared in presentation/*.mu, so the
-    // generated dictionary can `merge` each (one dictionary per file, by
-    // convention). Missing folder → []. Sorted for deterministic output.
-    private async scanAuthorDicts(storage: IStorage): Promise<string[]>
-    {
-        let entries: readonly StorageEntry[]
-        try { entries = await storage.List(MetaModelProjectFactory.PRESENTATION_DIR) }
-        catch { return [] }
-        const names: string[] = []
-        for (const e of entries) {
-            if (e.IsDirectory || !e.Name.endsWith('.mu')) continue
-            const text = await storage.ReadText(`${MetaModelProjectFactory.PRESENTATION_DIR}/${e.Name}`)
-            const m = /\bresources\s+([A-Za-z_][A-Za-z0-9_]*)/.exec(text)
-            if (m) names.push(m[1])
-        }
-        return names.sort()
+        await storage.WriteText(
+            MetaModelProjectFactory.PRESENTATION_FILE,
+            generatePresentationAssets(doc, 'MetaModelPresentation'))
     }
 
     private async buildProject(storage: IStorage, manifest: MetaModelManifest): Promise<Project>
