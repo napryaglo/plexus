@@ -273,9 +273,19 @@ resources DiagramResources {
     // per visible taxonomy): each section's header two-ways the page's IsExpanded
     // and its body collapses when closed; opening one collapses the others
     // (coordinated in ToolboxService). The whole stack scrolls as one region. ──
+    // The 8dp inset lives on an OUTER Border (padding), NOT as a Margin on the
+    // scrolled ItemsControl. A margin on the scroll viewport's content shifts
+    // that content's origin (translate(8,8)), but the ScrollContentPresenter
+    // sizes its viewport clip to the full viewport and applies it on the
+    // (now margin-offset) content — so the clip overshoots the viewport bottom
+    // by the top margin, letting the last few dp of tiles paint over whatever
+    // sits below the pane (the status bar). Keeping the inset outside the
+    // ScrollViewer leaves the scrolled content at origin, so the clip aligns.
     DataTemplate [DataType = ToolboxService] {
-        ScrollViewer [ IsAutoHideScrollBars = false, HorizontalScrollEnabled = false ] {
-            ItemsControl [ ItemsSource = $Pages, ItemTemplate = @ToolboxAccordionItem, ItemsPanel = @VerticalStackPanel, Margin = (8) ]
+        Border [ Padding = (8) ] {
+            ScrollViewer [ IsAutoHideScrollBars = false, HorizontalScrollEnabled = false ] {
+                ItemsControl [ ItemsSource = $Pages, ItemTemplate = @ToolboxAccordionItem, ItemsPanel = @VerticalStackPanel ]
+            }
         }
     }
 
@@ -318,19 +328,21 @@ resources DiagramResources {
     // applyTermDrop. Mirrors the ToolboxShape tile's drag wiring.
     DataTemplate [DataType = TermTile] {
         Border x:root
-            [ IsDraggable         = true,
-              OnDragStart         = $BeginKindDragData,
-              Background          = @Surface,
-              BorderBrush         = @OutlineVariant,
-              BorderThickness     = (1),
-              CornerRadius        = 4,
-              Padding             = (8,6,8,6),
-              Margin              = (2,0,2,4),
-              HorizontalAlignment = Stretch ] {
-            // Wrap long term labels (e.g. AWS service names) to the pane width.
-            // Without this the tile is as wide as its longest label, so the
-            // uniform-cell toolbox grid sizes every cell to that width and spills
-            // past the narrow pane.
+            [ IsDraggable     = true,
+              OnDragStart     = $BeginKindDragData,
+              Background      = @Surface,
+              BorderBrush     = @OutlineVariant,
+              BorderThickness = (1),
+              CornerRadius    = 4,
+              Padding         = (8,6,8,6),
+              Margin          = (2,0,2,4),
+              MaxWidth        = 104 ] {
+            // Cap the tile width and wrap long term labels (e.g. AWS service
+            // names) to it. Without the cap the tile is as wide as its longest
+            // label, so the uniform-cell toolbox grid sizes every cell to that
+            // width — one over-wide column that spills past the narrow pane.
+            // MaxWidth bounds the wrap width, so the label wraps at 104, the
+            // uniform cell is small, and the tiles pack into a multi-column grid.
             TextBlock [ Text = $Display, FontSize = 12, Foreground = @OnSurface, TextWrapping = Wrap ]
         }
     }
