@@ -19,7 +19,8 @@ import { compareStorageEntries, type IStorage, type StorageEntry } from '../../.
 import { ensureLibrariesBackend } from './libraries-backend.js'
 import { collectTaxonomySources, extname, joinRel } from '../../meta-model/services/todl-sources.js'
 import { deriveClasses, scanResources, type LibraryBundleManifest } from './library-bundle.js'
-import { generateLibraryPresentationMu } from './library-presentation-generator.js'
+import { generatePresentationAssets } from '../../meta-model/services/presentation-generator.js'
+import { scaffoldAuthorStubs, LIBRARY_ROLE } from '../../meta-model/services/presentation-scaffold.js'
 import { publishLibraryPresentation } from './library-presentation-publisher.js'
 
 // The 'library' project type's factory — the library module's contribution to
@@ -199,8 +200,14 @@ export class LibraryProjectFactory extends ServiceBase
     // block name). Shared by regeneratePresentation and publish.
     private async writePresentation(storage: IStorage, doc: TodlDocument): Promise<void>
     {
+        // Seed missing author-template stubs first (write-once), then emit the
+        // assets dictionary that merges every author dict — the scaffolded stubs
+        // included.
+        await scaffoldAuthorStubs(storage, doc, LIBRARY_ROLE, LibraryProjectFactory.PRESENTATION_DIR)
         const authorDicts = await this.scanAuthorDicts(storage)
-        await storage.WriteText(LibraryProjectFactory.PRESENTATION_FILE, generateLibraryPresentationMu(doc, authorDicts))
+        await storage.WriteText(
+            LibraryProjectFactory.PRESENTATION_FILE,
+            generatePresentationAssets(doc, authorDicts, 'LibraryPresentation'))
     }
 
     // The `resources <Name>` identifiers declared in presentation/*.mu (one

@@ -17,7 +17,8 @@ import { compareStorageEntries, type IStorage, type StorageEntry } from '../../.
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
 import { ensureScaffold } from './meta-model-scaffold.js'
 import { collectTodlSources, extname, joinRel } from './todl-sources.js'
-import { generatePresentationMu } from './presentation-generator.js'
+import { generatePresentationAssets } from './presentation-generator.js'
+import { scaffoldAuthorStubs, META_MODEL_ROLE } from './presentation-scaffold.js'
 import { publishPresentation } from './presentation-publisher.js'
 import { projectAnnotations } from './annotation-projection.js'
 import type { MetaModelManifestFile } from './meta-model-manifest-loader.js'
@@ -166,8 +167,12 @@ export class MetaModelProjectFactory extends ServiceBase
     // own compiled doc, avoiding a second compile).
     private async writePresentation(storage: IStorage, doc: TodlDocument): Promise<void>
     {
+        // Seed missing author-template stubs first (write-once), then emit the
+        // assets dictionary that merges every author dict — the scaffolded stubs
+        // included.
+        await scaffoldAuthorStubs(storage, doc, META_MODEL_ROLE, MetaModelProjectFactory.PRESENTATION_DIR)
         const authorDicts = await this.scanAuthorDicts(storage)
-        const source = generatePresentationMu(doc, authorDicts)
+        const source = generatePresentationAssets(doc, authorDicts, 'MetaModelPresentation')
         await storage.WriteText(MetaModelProjectFactory.PRESENTATION_FILE, source)
     }
 
