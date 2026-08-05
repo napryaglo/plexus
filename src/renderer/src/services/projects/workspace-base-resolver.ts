@@ -123,8 +123,14 @@ export class WorkspaceBaseResolver extends ServiceBase
         if (producer !== undefined && producer.Storage !== consumerStorage
             && !visited.has(producer.Storage) && isProducer(producer.Factory))
         {
+            // `visited` is the current DFS path (ancestors), not a global seen-set:
+            // add on entry, remove on exit (backtrack). This catches genuine cycles
+            // — a producer still on the path — while allowing diamonds, where the
+            // same producer (e.g. a meta-model bound by both the architecture and
+            // one of its libraries) is reached by two independent branches.
             visited.add(producer.Storage)
             const child = await this.resolveBindingsOf(producer.Storage, visited)
+            visited.delete(producer.Storage)
             problems.push(...child.problems)
             const compiled = await producer.Factory.compileToDocument(producer.Storage, child.bases, this.Provider)
             for (const p of compiled.problems) problems.push(`local ${kind} "${ref.id}" — ${p}`)

@@ -111,13 +111,44 @@ test('resolves recursively: architecture -> library -> meta-model, all local, me
         { type: 'architecture', metaModel: { id: 'ea', version: '0.1.0' }, libraries: [{ id: 'acme', version: '0.1.0' }] }))
 
     const resolver = new WorkspaceBaseResolver(provider)
-    const { bases } = await resolver.ResolveForStorage(consumer)
+    const { bases, problems } = await resolver.ResolveForStorage(consumer)
     expect(hasNode(bases, 'mm-node')).toBe(true)
     expect(hasNode(bases, 'lib-node')).toBe(true)
+    // The library also binds the meta-model the architecture binds (a diamond),
+    // which must resolve cleanly — no false "cyclic local reference".
+    expect(problems).toEqual([])
     // meta-model first (stable order the language server expects)
     const mmIdx = bases.findIndex((b) => b.nodes.some((n) => n.id === 'mm-node'))
     const libIdx = bases.findIndex((b) => b.nodes.some((n) => n.id === 'lib-node'))
     expect(mmIdx).toBeLessThan(libIdx)
+})
+
+test('diamond: architecture -> meta-model + two libraries that each bind it resolves without a false cycle', async () => {
+    // Mirrors the real corpus: test_architecture binds tech-architecture plus the
+    // microsoft and aws libraries, both of which are authored against
+    // tech-architecture. Two sibling branches reach the same meta-model.
+    const mm = await openProject('meta-model', 'tech', '0.1.0',
+        producer(ProducerKind.MetaModel, 'namespace tech { concept mm-node { label : string; } }'))
+    const libA = await openProject('library', 'microsoft', '0.1.0',
+        producer(ProducerKind.Library, 'namespace microsoft { concept a-node { label : string; } }'),
+        { metaModel: { id: 'tech', version: '0.1.0' } })
+    const libB = await openProject('library', 'aws', '0.1.0',
+        producer(ProducerKind.Library, 'namespace aws { concept b-node { label : string; } }'),
+        { metaModel: { id: 'tech', version: '0.1.0' } })
+    const { provider } = env([mm, libA, libB])
+    const consumer = new FakeStorage('C:/arch')
+    await consumer.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify({
+        type: 'architecture', metaModel: { id: 'tech', version: '0.1.0' },
+        libraries: [{ id: 'microsoft', version: '0.1.0' }, { id: 'aws', version: '0.1.0' }],
+    }))
+
+    const resolver = new WorkspaceBaseResolver(provider)
+    const { bases, problems } = await resolver.ResolveForStorage(consumer)
+    expect(problems.some((p) => p.includes('cyclic'))).toBe(false)
+    expect(problems).toEqual([])
+    expect(hasNode(bases, 'mm-node')).toBe(true)
+    expect(hasNode(bases, 'a-node')).toBe(true)
+    expect(hasNode(bases, 'b-node')).toBe(true)
 })
 
 test('a producer editing its own source does not resolve against itself', async () => {
