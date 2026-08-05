@@ -170,7 +170,7 @@ test('publish is blocked and writes nothing when a source has an error', async (
     expect(dest.size).toBe(0)                           // nothing written
 })
 
-test('regeneratePresentation writes presentation.generated.mu with a template per entity + author merge', async () => {
+test('regeneratePresentation writes an assets dict merging author + scaffolded stubs', async () => {
     const storage = new FakeStorage('fake://Acme')
     const f = factory()
     await f.createProject(storage, 'Acme')
@@ -182,10 +182,12 @@ test('regeneratePresentation writes presentation.generated.mu with a template pe
 
     const out = await storage.ReadText('presentation.generated.mu')
     expect(out).toContain('resources MetaModelPresentation {')
-    expect(out).toContain('DataTemplate x:key="mm:model"')
-    expect(out).toContain('DataTemplate x:key="mm:component"')
-    expect(out).toContain('DataTemplate x:key="mm:location"')
-    expect(out).toContain('merge MetaModelPresentationCustom')
+    expect(out).not.toContain('DataTemplate')                   // assets dict only — templates are author-owned
+    expect(out).toContain('merge MetaModelPresentationCustom')  // author override merged
+    expect(out).toContain('merge Pres_model')                   // scaffolded stub merged
+    // Each entity's template lives in its (write-once) scaffolded author stub.
+    const stub = await storage.ReadText('presentation/model.mu')
+    expect(stub).toContain('DataTemplate x:key="mm:model" [ DataType = MetaModelEntity ]')
 })
 
 test('regeneratePresentation is a no-op when the project has no .todl sources', async () => {
@@ -210,7 +212,9 @@ test('publish also (re)writes presentation.generated.mu into the project', async
 
     expect(result.ok).toBe(true)
     expect(await storage.Exists('presentation.generated.mu')).toBe(true)
-    expect(await storage.ReadText('presentation.generated.mu')).toContain('DataTemplate x:key="mm:model"')
+    expect(await storage.ReadText('presentation.generated.mu')).toContain('merge Pres_model')
+    // The per-entity template lives in the scaffolded author stub.
+    expect(await storage.ReadText('presentation/model.mu')).toContain('DataTemplate x:key="mm:model"')
 })
 
 test('publish ships the presentation payload into the backend', async () => {
