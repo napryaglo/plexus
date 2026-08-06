@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { test, expect } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
 import { performance } from 'node:perf_hooks'

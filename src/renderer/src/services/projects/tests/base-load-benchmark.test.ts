@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { test, expect } from 'vitest'
 import { writeFileSync } from 'node:fs'
 import { check, checkAgainst, toJSON, type TodlDocument } from '@pragmatic-lab/todl'
