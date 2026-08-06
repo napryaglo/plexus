@@ -1,137 +1,89 @@
-import { checkAgainst, fromJSON, toJSON, emitModelTodl, deriveBindings, type TodlDocument, type JsonNode, type Repository, type FieldSchema } from '@pragmatic-lab/todl'
+import { ModelDraft, Repository, graphFromJSON, type TodlDocument, type JsonNode, type FieldSchema } from '@pragmatic-lab/todl'
 
 // The editable instance model behind an architecture-diagram document.
 //
-// TODL's graph is ADD-ONLY (no node/edge removal), so the mutable source of truth
-// is the OWN `TodlDocument` ({nodes, edges}) — just this project's concept
-// instances + reference edges. A `Repository` is DERIVED on demand (fromJSON of
-// bases + own) for schema queries; the emitter turns the own document back into
-// `.todl` source. Adds append to the own doc, deletes filter it — so delete works
-// despite TODL's add-only graph.
+// A thin Plexus wrapper over TODL's mutable `ModelDraft`: the draft owns the
+// delta, mutation, schema queries, and `.todl` emission; this layer keeps only
+// the Plexus-facing concerns — id-allocation policy (`freshId`) and UI
+// reactivity (`onChanged`). Every mutating call fans out to the listeners.
 export class ArchInstanceModel
 {
     private readonly listeners = new Set<() => void>()
-    private repoCache: Repository | undefined
     private seq = 0
 
     private constructor(
-        private own: TodlDocument,
-        private readonly bases: readonly TodlDocument[],
-        private readonly baseIds: ReadonlySet<string>,
+        private readonly draft: ModelDraft,
         public readonly namespace: string,
     )
     {}
 
-    // Compile the instance source against the bases, then keep only the non-base
-    // nodes/edges as the own document. An empty source starts empty.
+    // Compile the instance source against the bases into an editable draft. An
+    // empty source starts empty. Bases arrive as documents; the draft wants
+    // Repositories, so wrap each one.
     public static load(bases: readonly TodlDocument[], instanceSource: string, namespace: string): ArchInstanceModel
     {
-        const baseIds = new Set<string>()
-        for (const b of bases) for (const n of b.nodes) baseIds.add(n.id)
-
-        let own: TodlDocument = { nodes: [], edges: [] }
-        if (instanceSource.trim().length > 0) {
-            const full = toJSON(checkAgainst([...bases], [{ uri: `${namespace}.todl`, text: instanceSource }]).model)
-            // The synthesized `model` container node (typeOf 'model') is a
-            // serialization artifact, not an editable instance — strip it (and its
-            // Contains edges) so `own` stays instances + local classes as before.
-            const modelIds = new Set(full.nodes.filter((n) => n.typeOf === 'model').map((n) => n.id))
-            own = {
-                nodes: full.nodes.filter((n) => !baseIds.has(n.id) && !modelIds.has(n.id)),
-                edges: full.edges.filter((e) => !baseIds.has(String(e.from)) && !modelIds.has(String(e.from))),
-            }
-        }
-        return new ArchInstanceModel(own, bases, baseIds, namespace)
+        const baseRepos = bases.map((d) => new Repository(graphFromJSON(d)))
+        const draft = ModelDraft.fromSource(baseRepos, instanceSource, { namespace })
+        return new ArchInstanceModel(draft, namespace)
     }
 
     // The own instance ids (leaf concept instances, not locally-declared classes).
     public ownInstances(): string[]
     {
-        return this.own.nodes
+        return this.draft.toJSON().nodes
             .filter((n) => n.tier === 'Instance' && (n.attrs as Record<string, unknown>).class !== true)
             .map((n) => n.id)
     }
 
-    public node(id: string): JsonNode | undefined { return this.own.nodes.find((n) => n.id === id) }
+    public node(id: string): JsonNode | undefined { return this.draft.toJSON().nodes.find((n) => n.id === id) }
 
     // The own document (for layout/persistence + emit).
-    public get document(): TodlDocument { return this.own }
+    public get document(): TodlDocument { return this.draft.toJSON() }
 
     // Append a fresh concept instance; returns its generated id.
     public createInstance(concept: string): string
     {
         const id = this.freshId(concept)
-        this.own.nodes.push({ id, tier: 'Instance', typeOf: concept, attrs: { id } })
+        this.draft.create(concept, id)
         this.mutated()
         return id
     }
 
     public setField(id: string, name: string, value: string | number | boolean): void
     {
-        const n = this.node(id)
-        if (n === undefined) return
-        ;(n.attrs as Record<string, unknown>)[name] = value
+        this.draft.setField(id, name, value)
         this.mutated()
     }
 
     public addRelationship(from: string, member: string, to: string): void
     {
-        this.own.edges.push({ kind: 'Relationship', via: member, from, to })
+        this.draft.addRef(from, member, to)
         this.mutated()
     }
 
     public removeRelationship(from: string, member: string, to: string): void
     {
-        this.own.edges = this.own.edges.filter(
-            (e) => !(e.kind === 'Relationship' && e.from === from && e.via === member && e.to === to))
+        this.draft.removeRef(from, member, to)
         this.mutated()
     }
 
     // Remove an instance and every edge that touches it.
     public remove(id: string): void
     {
-        this.own.nodes = this.own.nodes.filter((n) => n.id !== id)
-        this.own.edges = this.own.edges.filter((e) => e.from !== id && e.to !== id)
+        this.draft.remove(id)
         this.mutated()
     }
 
-    // A Repository over bases + own, rebuilt on mutation, for schema queries.
-    public repository(): Repository
-    {
-        if (this.repoCache === undefined) {
-            // Bases overlap — a library base (compiled via checkAgainst) carries the
-            // meta-model's nodes too — so dedup nodes by id and edges by identity
-            // before fromJSON, which rejects duplicates.
-            const nodes = new Map<string, JsonNode>()
-            for (const n of [...this.bases.flatMap((b) => b.nodes), ...this.own.nodes]) nodes.set(n.id, n)
-            const edges = new Map<string, TodlDocument['edges'][number]>()
-            for (const e of [...this.bases.flatMap((b) => b.edges), ...this.own.edges]) {
-                edges.set(`${e.kind}|${e.from}|${e.to}|${e.via}`, e)
-            }
-            this.repoCache = fromJSON({ nodes: [...nodes.values()], edges: [...edges.values()] })
-        }
-        return this.repoCache
-    }
+    // A Repository over bases + own, for schema queries.
+    public repository(): Repository { return this.draft.model }
 
-    // The reference members of `fromId`'s concept that `toId` could fill — the
-    // concept-typed FIELDS (e.g. `realised-by : technology`) whose type `toId` is
-    // (or is a subtype of). Used to resolve a connector (or a term drop) to the
-    // member that links the node to a term. Primitive-typed fields (`label :
-    // string`) never match a concept target, so they fall out naturally.
+    // The reference members of `fromId`'s concept that `toId` could fill.
     public referenceMembers(fromId: string, toId: string): FieldSchema[]
     {
-        const repo = this.repository()
-        const fromConcept = repo.resolve(fromId)?.typeOf
-        const toConcept = repo.resolve(toId)?.typeOf
-        if (fromConcept === undefined || toConcept === undefined) return []
-        const compatible = new Set([toConcept, ...repo.supertypesOf(toConcept)])
-        return repo.effectiveSchema(fromConcept).fields.filter((f) => compatible.has(f.type))
+        return this.draft.referenceMembers(fromId, toId)
     }
 
-    // Serialize the own delta to `.todl` via TODL core's model emitter. Bindings
-    // derive from the combined Repository (bases + own) filtered to the base ids;
-    // TODL owns this emitter now (Plexus's copy was retired).
-    public emit(): string { return emitModelTodl(this.own, this.namespace, deriveBindings(this.repository(), this.baseIds, this.namespace, this.own)) }
+    public emit(): string { return this.draft.toTodl() }
 
     public onChanged(listener: () => void): () => void
     {
@@ -143,13 +95,12 @@ export class ArchInstanceModel
     {
         const stem = concept.slice(concept.lastIndexOf('.') + 1)
         let id = `${stem}-${++this.seq}`
-        while (this.node(id) !== undefined || this.baseIds.has(id)) id = `${stem}-${++this.seq}`
+        while (this.draft.has(id)) id = `${stem}-${++this.seq}`
         return id
     }
 
     private mutated(): void
     {
-        this.repoCache = undefined
         for (const l of this.listeners) l()
     }
 }
