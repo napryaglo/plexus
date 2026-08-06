@@ -1,0 +1,66 @@
+import { test, expect } from 'vitest'
+import { check, checkAgainst, toJSON, type TodlDocument } from '@pragmatic-lab/todl'
+
+import { ArchInstanceModel } from '../architecture-instance-model.js'
+
+// The `.todl` emitter now lives in TODL core (emitModelTodl/deriveBindings);
+// ArchInstanceModel.emit() delegates to it. These tests guard the delegation
+// end-to-end at the Plexus seam: load an instance source, emit it back, reload,
+// and assert the own document survives the round-trip unchanged.
+
+// Bases: a meta-model (component references a technology) + a library taxonomy of
+// technologies. Reused across the round-trip assertions.
+const META = `namespace ea {
+  concept technology { label : string; }
+  concept component { label : string; realised-by : technology?; deployed-to : technology[]; }
+}`
+const LIB = `namespace ms { import ea; taxonomy stack : represents technology {
+  technology azure-openai { label = "Azure OpenAI"; }
+  technology azure-func   { label = "Azure Functions"; }
+} }`
+
+function bases(): TodlDocument[] {
+    const metaDoc = toJSON(check([{ uri: 'ea.todl', text: META }]).model)
+    const libDoc = toJSON(checkAgainst([metaDoc], [{ uri: 'ms.todl', text: LIB }]).model)
+    return [metaDoc, libDoc]
+}
+
+// Order-insensitive normal form for comparing two own documents.
+function normal(doc: TodlDocument): string {
+    const nodes = doc.nodes.map((n) => `${n.tier}|${n.id}|${n.typeOf}|${JSON.stringify(Object.entries(n.attrs).sort())}`).sort()
+    const edges = doc.edges.map((e) => `${e.kind}|${e.from}|${e.to}|${e.via}`).sort()
+    return JSON.stringify({ nodes, edges })
+}
+
+test('round-trips a concept instance with a scalar field and a single reference', () => {
+    const bs = bases()
+    const src = `namespace app { import ea; import ms; model app-model : ea uses stack { component gw { label = "Gateway"; realised-by = stack.azure-openai; } } }`
+    const m1 = ArchInstanceModel.load(bs, src, 'app')
+
+    const emitted = m1.emit()
+    expect(emitted).toContain('model app-model : ea')
+    expect(emitted).toContain('uses stack')
+
+    const m2 = ArchInstanceModel.load(bs, emitted, 'app')
+    expect(normal(m2.document)).toEqual(normal(m1.document))
+})
+
+test('round-trips a many-valued reference (list) and an instanceof class', () => {
+    const bs = bases()
+    const src = `namespace app {
+      import ea;
+      import ms;
+      class component web-tier { realised-by = stack.azure-func; }
+      model app-model : ea uses stack {
+        component api instanceof web-tier { label = "API"; deployed-to = [stack.azure-openai, stack.azure-func]; }
+      }
+    }`
+    const m1 = ArchInstanceModel.load(bs, src, 'app')
+
+    const emitted = m1.emit()
+    expect(emitted).toContain('model app-model : ea')
+    expect(emitted).toMatch(/^\s*class component web-tier/m)   // local class stays top-level
+
+    const m2 = ArchInstanceModel.load(bs, emitted, 'app')
+    expect(normal(m2.document)).toEqual(normal(m1.document))
+})

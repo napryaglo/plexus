@@ -1,6 +1,4 @@
-import { checkAgainst, fromJSON, toJSON, type TodlDocument, type JsonNode, type Repository, type FieldSchema } from '@pragmatic-lab/todl'
-
-import { emitInstances, deriveBindings } from './todl-emitter.js'
+import { checkAgainst, fromJSON, toJSON, emitModelTodl, deriveBindings, type TodlDocument, type JsonNode, type Repository, type FieldSchema } from '@pragmatic-lab/todl'
 
 // The editable instance model behind an architecture-diagram document.
 //
@@ -130,7 +128,10 @@ export class ArchInstanceModel
         return repo.effectiveSchema(fromConcept).fields.filter((f) => compatible.has(f.type))
     }
 
-    public emit(): string { return emitInstances(this.own, this.namespace, deriveBindings(this.bases, this.own, this.namespace)) }
+    // Serialize the own delta to `.todl` via TODL core's model emitter. Bindings
+    // derive from the combined Repository (bases + own) filtered to the base ids;
+    // TODL owns this emitter now (Plexus's copy was retired).
+    public emit(): string { return emitModelTodl(this.own, this.namespace, deriveBindings(this.repository(), this.baseIds, this.namespace, this.own)) }
 
     public onChanged(listener: () => void): () => void
     {
