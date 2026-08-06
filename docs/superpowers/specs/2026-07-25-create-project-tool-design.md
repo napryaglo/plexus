@@ -5,7 +5,7 @@ Project form as a card in the chat, lets the user create the project from it, an
 returns the outcome to the agent — reusing the existing dialog view-model and the
 project-creation command, with no Mural framework changes.
 
-**Status:** Approved design (brainstorming). Plexus-only.
+**Status:** ✅ Finished
 
 ---
 

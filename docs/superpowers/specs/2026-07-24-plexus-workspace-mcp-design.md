@@ -1,5 +1,7 @@
 # PlexusWorkspace MCP server — design
 
+**Status:** ✅ Finished
+
 Date: 2026-07-24
 Status: approved (design), pending implementation plan
 

@@ -1,7 +1,7 @@
 # Editor / Project Separation
 
 **Date:** 2026-07-22
-**Status:** Design (pending user review)
+**Status:** ✅ Finished
 **Repo:** Plexus (renderer)
 **Arc:** Sub-project 1 of 4 (architecture-model loading). Frees the `architecture`
 project-type name and establishes the editor/project model the later

@@ -1,6 +1,6 @@
 # TODL 0.5.0 Orphan Migration Design
 
-**Status:** design complete, pending user review
+**Status:** ✅ Finished
 **Target:** Plexus (consumes `@pragmatic-lab/todl` 0.5.0)
 **Date:** 2026-08-01
 

@@ -1,6 +1,6 @@
 # Library Registry (Phase 2) — Design
 
-**Status:** Designed for implementation. Phase 2 of the library resource-bundle arc (Phase 1 shipped: publish emits `library.json` + resource folders).
+**Status:** ✅ Finished
 **Date:** 2026-07-25
 
 ## Problem

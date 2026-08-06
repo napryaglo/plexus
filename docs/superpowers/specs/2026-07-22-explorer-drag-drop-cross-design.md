@@ -1,6 +1,6 @@
 # Project Explorer Drag-and-Drop (SP-2: across projects) — Design
 
-**Status:** Approved
+**Status:** ✅ Finished
 **Date:** 2026-07-22
 **Builds on:** SP-1 (within-project drag-and-drop: `TreeDragDropBehavior`, `node-move.ts`, `moveNodes`, `MoveNodesCommand`).
 

@@ -1,6 +1,6 @@
 # Unified Toolbox with Taxonomy Pages — Design
 
-**Status:** draft for review
+**Status:** ✅ Finished
 **Date:** 2026-08-02
 **Scope:** Plexus (renderer). No TODL change — the `toolbox` annotation is
 author-declared and taxonomy-level annotations already ship in

@@ -1,7 +1,7 @@
 # New / Open Project Dialogs & Commands — Design
 
 **Date:** 2026-07-14
-**Status:** Approved (design), implementing
+**Status:** ✅ Finished
 **Repos touched:** `Plexus` only (no Mural change, no republish)
 
 ## Goal

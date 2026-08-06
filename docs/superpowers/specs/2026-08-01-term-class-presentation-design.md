@@ -1,5 +1,7 @@
 # Term / class presentation in the meta-model browser — design (SP2)
 
+**Status:** ✅ Finished
+
 ## Goal
 
 A taxonomy `term` (or `class`) that carries an `icon` / `label` annotation should

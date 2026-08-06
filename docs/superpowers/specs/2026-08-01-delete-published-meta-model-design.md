@@ -1,6 +1,6 @@
 # Delete Published Meta-Model Design
 
-**Status:** design complete, pending user review
+**Status:** ✅ Finished
 **Target:** Plexus (renderer, meta-model module)
 **Date:** 2026-08-01
 

@@ -1,7 +1,7 @@
 # Meta-model Entity Drawer — Design
 
 **Date:** 2026-07-31
-**Status:** Approved (design), pending plan
+**Status:** ✅ Finished
 **Umbrella:** Meta-model presentation. Sub-project A (publish the presentation
 payload to the backend) shipped 2026-07-30. This spec covers sub-projects **B**
 (runtime presentation loader + `MetaModelEntity`) and **C** (double-click →

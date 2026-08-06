@@ -1,7 +1,7 @@
 # External File-Change Detection — Design
 
 **Date:** 2026-07-31
-**Status:** Approved (design), pending plan
+**Status:** ✅ Finished
 **Repo:** Plexus (Electron app on mural)
 **Branch:** `external-file-change-detection` (base `main`)
 

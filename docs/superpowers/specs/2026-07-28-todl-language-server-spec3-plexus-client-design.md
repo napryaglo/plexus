@@ -7,8 +7,8 @@ go-to-definition, find-references, document symbols, rename, semantic tokens,
 folding, code actions, formatting, signature help — driven by a real language
 server forked from Electron main, with the in-renderer validation pass retired.
 
-**Status:** Design approved 2026-07-28. This is **Component 3** of the umbrella
-design `TODL/docs/superpowers/specs/2026-07-28-todl-language-server-design.md`.
+**Status:** ✅ Finished — Component 3 of the umbrella design
+`TODL/docs/superpowers/specs/2026-07-28-todl-language-server-design.md`.
 Specs 1 (analysis core) and 2 (LSP server) are DONE on TODL `main`. This spec is
 Plexus-side only and depends on Spec 2's `createServer` + stdio entry.
 

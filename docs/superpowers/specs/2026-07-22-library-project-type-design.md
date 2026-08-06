@@ -1,7 +1,7 @@
 # Library Project Type + Libraries Backend
 
 **Date:** 2026-07-22
-**Status:** Design (pending user review)
+**Status:** ✅ Finished
 **Repo:** Plexus (renderer) + consumes TODL `checkAgainst` (SP3, published)
 **Arc:** Sub-project 2 of 4 (architecture-model loading). Adds the `library`
 project type and the shared **base-resolution + base-aware validation**

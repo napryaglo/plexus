@@ -1,5 +1,7 @@
 # Libraries Panel TreeView — Design
 
+**Status:** ✅ Finished
+
 **Goal:** Replace the Libraries panel's flat nested list with a `TreeView`
 (Library → Concept → Class), where class leaves are draggable onto the
 architecture canvas and selecting a class expands an inline preview beneath its

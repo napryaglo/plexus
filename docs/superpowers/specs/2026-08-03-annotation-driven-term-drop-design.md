@@ -1,7 +1,6 @@
 # Annotation-Driven Term Drop — Design (Backlog)
 
-**Status:** Backlog — captured 2026-08-03, not scheduled. Design approved in
-principle; no implementation started.
+**Status:** ⬜ Unfinished — Backlog, no implementation started.
 
 **Owner context:** Follows the arch-canvas Phase 3 work (`.archdiagram`
 concept-aware editor). This replaces the fragile drop-target *inference* with an

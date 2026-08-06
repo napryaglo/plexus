@@ -1,6 +1,6 @@
 # Architecture Canvas (Phase 3) — Design
 
-**Status:** Designed for implementation (one combined spec). Final phase of the library arc (Phase 1 publish bundle ✓, Phase 2 LibraryRegistry ✓).
+**Status:** ✅ Finished
 **Date:** 2026-07-25
 
 ## Problem

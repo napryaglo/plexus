@@ -1,6 +1,6 @@
 # Local Inter-Project References — Design
 
-**Status:** Design approved 2026-08-03. Ready for an implementation plan.
+**Status:** ✅ Finished
 
 **Goal:** When several projects are open at once (Plexus already supports this),
 let a consuming project resolve its bases from an **open sibling project's live

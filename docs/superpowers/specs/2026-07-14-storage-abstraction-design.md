@@ -1,7 +1,7 @@
 # Storage Abstraction — Design
 
 **Date:** 2026-07-14
-**Status:** Approved (design), pending implementation plan
+**Status:** ✅ Finished
 **Repos touched:** `Plexus` only (no Mural change, no republish)
 
 ## Goal

@@ -1,5 +1,7 @@
 # Pre-compiled meta-model presentation — design
 
+**Status:** ✅ Finished
+
 ## Problem
 
 Meta-model `publish` ships the presentation as a raw `presentation.generated.mu`

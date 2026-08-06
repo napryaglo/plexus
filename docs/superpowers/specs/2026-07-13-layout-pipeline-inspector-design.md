@@ -1,7 +1,7 @@
 # Layout Pipeline Inspector — Design
 
 **Date:** 2026-07-13
-**Status:** Approved (design), pending implementation plan
+**Status:** ✅ Finished
 **Repos touched:** `Plexus` (primary), `Fresco` (one additive change)
 
 ## Goal

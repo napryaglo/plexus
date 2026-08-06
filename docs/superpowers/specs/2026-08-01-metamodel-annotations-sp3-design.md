@@ -1,6 +1,6 @@
 # Meta-Model Annotations — SP3 (annotation-driven presentation bake) Design
 
-**Status:** design complete, pending user review
+**Status:** ✅ Finished
 **Target:** Plexus (consumes `@pragmatic-lab/todl` 0.5.0; SP2 already landed)
 **Date:** 2026-08-01
 

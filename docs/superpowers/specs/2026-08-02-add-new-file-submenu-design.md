@@ -1,7 +1,7 @@
 # "Add New →" Submenu Driven by Project Formats — Design
 
 **Date:** 2026-08-02
-**Status:** Approved (brainstorm)
+**Status:** ✅ Finished
 **Area:** Plexus project explorer + architecture-repository module
 
 ## Problem

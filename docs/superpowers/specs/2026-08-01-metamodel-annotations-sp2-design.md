@@ -1,6 +1,6 @@
 # Meta-Model Annotations — SP2 (Plexus projection + manifest) Design
 
-**Status:** design complete, pending user review
+**Status:** ✅ Finished
 **Target:** Plexus (consumes `@pragmatic-lab/todl` 0.5.0 — already bumped in `7d466a5`)
 **Date:** 2026-08-01
 

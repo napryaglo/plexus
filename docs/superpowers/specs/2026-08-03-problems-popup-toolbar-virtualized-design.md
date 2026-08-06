@@ -1,7 +1,7 @@
 # Problems Popup — Header/Toolbar + Capped Virtualized List (Design)
 
 **Date:** 2026-08-03
-**Status:** Approved (pending spec review)
+**Status:** ✅ Finished
 
 ## Goal
 

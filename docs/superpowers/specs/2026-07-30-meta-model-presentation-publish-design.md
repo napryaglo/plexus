@@ -1,7 +1,7 @@
 # Meta-model Presentation Publish (Sub-project A) — Design
 
 **Date:** 2026-07-30
-**Status:** Approved, ready for planning
+**Status:** ✅ Finished
 **Repo:** Plexus
 **Umbrella:** "Double-click a tree entity → flyout renders it with its presentation template." Decomposed into A (publish presentation to the backend), B (runtime loader + `MetaModelEntity`), C (double-click → flyout → render). This spec is **A only**; B and C get their own spec → plan → build cycles.
 

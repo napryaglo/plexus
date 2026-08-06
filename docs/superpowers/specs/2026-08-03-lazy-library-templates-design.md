@@ -1,6 +1,6 @@
 # Lazy Library Template Compilation — Design
 
-**Status:** Design approved 2026-08-03. Ready for an implementation plan.
+**Status:** ✅ Finished
 
 **Goal:** Make the Libraries panel appear instantly regardless of library size by
 splitting cheap library **discovery** from expensive per-class **template

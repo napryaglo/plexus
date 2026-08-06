@@ -1,6 +1,6 @@
 # Plexus Agent Runtime — Design
 
-**Status:** approved design, pre-implementation
+**Status:** ✅ Finished
 **Date:** 2026-07-17
 **Scope:** v1 = a provider-agnostic agent *engine* + a *chat panel*. No TODL-specific
 wiring — that is a later component that rides this engine.

@@ -1,7 +1,7 @@
 # Unified Presentation Assets Emitter + Author-Owned Templates — Design
 
 **Date:** 2026-08-05
-**Status:** Design (awaiting review → implementation plan)
+**Status:** ✅ Finished
 
 ## Goal
 

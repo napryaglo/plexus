@@ -1,7 +1,7 @@
 # Meta-model View: Virtualized Tree Outline — Design
 
 **Date:** 2026-07-30
-**Status:** Approved, ready for planning
+**Status:** ✅ Finished
 **Repos:** Mural (framework hook) + Plexus (consumer)
 
 ## Goal

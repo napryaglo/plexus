@@ -1,7 +1,7 @@
 # Import File / Import Folder — Design
 
 **Date:** 2026-07-28
-**Status:** Approved (pending spec review)
+**Status:** ✅ Finished
 **Scope:** Plexus (`project-explorer` module + `projects`/`file-system` services)
 
 ## Goal

@@ -1,5 +1,7 @@
 # Canvas glyph from a term's icon annotation — design (SP3)
 
+**Status:** ✅ Finished
+
 ## Goal
 
 An architecture-canvas node whose referenced term (or class) carries an `icon`

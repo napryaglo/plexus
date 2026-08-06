@@ -1,6 +1,6 @@
 # Project Explorer Drag-and-Drop (SP-1: within a project) — Design
 
-**Status:** Approved
+**Status:** ✅ Finished
 **Date:** 2026-07-22
 **Part of:** a two-sub-project split. **SP-1 (this):** drag-and-drop move within a single project. **SP-2 (later):** cross-project moves — adds `ReadBytes` to the storage seam, a cross-storage copy+delete, cross-project drop resolution, and moved-tab handling.
 
