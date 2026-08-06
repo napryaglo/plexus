@@ -1,5 +1,5 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { check, checkAgainst, toJSON, Severity, type TodlDocument } from '@pragmatic-lab/todl'
+import { check, checkAgainst, toJSON, Severity, compilePackage, BlobPackageStore, type TodlDocument } from '@pragmatic-lab/todl'
 
 import {
     PROJECT_MANIFEST_FILENAME,
@@ -14,6 +14,7 @@ import {
 } from '../../../services/projects/project-factory.js'
 import { Project, ProjectNode, type ProjectNodeKind } from '../../../services/projects/project.js'
 import { compareStorageEntries, type IStorage } from '../../../services/storage/storage.js'
+import { StoragePackageSink } from '../../../services/storage/storage-package-sink.js'
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
 import { ensureScaffold } from './meta-model-scaffold.js'
 import { collectTodlSources, extname, joinRel } from './todl-sources.js'
@@ -116,9 +117,15 @@ export class MetaModelProjectFactory extends ServiceBase
         const sources = await collectTodlSources(storage)
         if (sources.length === 0) return { ok: false, message: 'Nothing to publish — the project has no .todl files.' }
 
-        const { doc, problems } = await this.compileToDocument(storage, [], provider)
-        if (problems.length > 0)
-            return { ok: false, message: `Publish blocked: ${problems.length} error(s). Fix them first.` }
+        const outcome = compilePackage([], sources, {
+            id: manifest.id,
+            version: manifest.modelVersion,
+            name: manifest.name ?? manifest.id,
+        })
+        if (!outcome.ok || outcome.package === undefined)
+            return { ok: false, message: `Publish blocked: ${outcome.errors.length} error(s). Fix them first.` }
+        const pkg = outcome.package
+        const doc = pkg.document
 
         const dest = ensureMetaModelsBackend(provider)
         const base = `${manifest.id}/${manifest.modelVersion}`
@@ -129,8 +136,8 @@ export class MetaModelProjectFactory extends ServiceBase
         if (!pres.ok)
             return { ok: false, message: `Publish blocked: missing icon file(s): ${pres.missing.join(', ')}.` }
 
-        await dest.WriteText(`${base}/model.json`, JSON.stringify(doc, null, 2))
-        for (const s of sources) await dest.WriteText(`${base}/src/${s.uri}`, s.text)
+        // model.json + src/ written by TODL's BlobPackageStore (the publish spine).
+        await new BlobPackageStore(new StoragePackageSink(dest)).persist(pkg)
         // Ship a thin package descriptor (identity + package-level annotations) so
         // Plexus can understand the package without parsing model.json.
         const PACKAGE_NODE = 'package'
