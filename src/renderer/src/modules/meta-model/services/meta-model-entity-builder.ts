@@ -2,11 +2,10 @@
 // + resolved fields) from a parsed model.json. Pure; no I/O. Fields are separate
 // Ontology `field` nodes linked to the entity by `HasField` edges — a concept's
 // own attrs are often empty, so the fields carry the substance.
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import { projectAnnotations, type TodlDocument } from '@pragmatic-lab/todl'
 
 import { MetaModelEntity, MetaModelField } from './meta-model-entity.js'
 import { humanize, resolveFacets } from './presentation-generator.js'
-import { projectAnnotations } from './annotation-projection.js'
 
 const HAS_FIELD = 'HasField'
 

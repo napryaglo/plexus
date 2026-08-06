@@ -7,11 +7,10 @@
 // declared across presentation/*.mu, so author edits (and consolidations) survive
 // every regeneration. The one per-domain difference (mm:<id> + baked label vs a
 // class id + $Display binding) is isolated to the role descriptor below.
-import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
+import { projectAnnotations, type TodlDocument, type JsonNode } from '@pragmatic-lab/todl'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import { ontologyEntities, classEntities, resolveFacets, iconKey, isRasterIcon } from './presentation-generator.js'
-import { projectAnnotations } from './annotation-projection.js'
 
 // Which domain a stub is authored for. Markup-facing (drives DataType), so a
 // real enum with stable values.

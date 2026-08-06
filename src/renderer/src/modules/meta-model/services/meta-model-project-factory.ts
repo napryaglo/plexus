@@ -1,5 +1,5 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { check, checkAgainst, toJSON, Severity, compilePackage, BlobPackageStore, type TodlDocument } from '@pragmatic-lab/todl'
+import { check, checkAgainst, toJSON, Severity, compilePackage, BlobPackageStore, projectAnnotations, type TodlDocument } from '@pragmatic-lab/todl'
 
 import {
     PROJECT_MANIFEST_FILENAME,
@@ -21,7 +21,6 @@ import { collectTodlSources, extname, joinRel } from './todl-sources.js'
 import { generatePresentationAssets } from './presentation-generator.js'
 import { scaffoldAuthorStubs, META_MODEL_ROLE } from './presentation-scaffold.js'
 import { publishPresentation } from './presentation-publisher.js'
-import { projectAnnotations } from './annotation-projection.js'
 import type { MetaModelManifestFile } from './meta-model-manifest-loader.js'
 
 // The 'meta-model' project type's factory — the meta-model module's contribution
