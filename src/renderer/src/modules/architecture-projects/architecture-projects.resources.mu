@@ -1,4 +1,4 @@
-// architecture-repository.resources.mu — view resources for the `.archdiagram`
+// architecture-projects.resources.mu — view resources for the `.archdiagram`
 // editor + its term palette. Merged app-global by app.mu.
 //
 // The editor (DataTemplate[ArchDiagramDocument]) is a term-palette rail beside a
@@ -15,7 +15,7 @@
 import ArchDiagramDocument from "./services/arch-diagram-document.js"
 import InstanceNodeVM from "./services/instance-node-vm.js"
 
-resources ArchitectureRepositoryResources {
+resources ArchitectureProjectsResources {
 
     // ── Node container placement: bind each node Figure to its vm's position ──
     Style x:key="ArchNodeContainerStyle" [ TargetType = Figure ] {

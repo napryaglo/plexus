@@ -12,7 +12,6 @@
 
 resources PlexusIcons {
     include "icons/tool-box.svg"                 as ToolBox
-    include "icons/architecture-repository.svg"  as ArchitectureRepository
     include "icons/project-explorer.svg"         as ProjectExplorer
     include "icons/meta-models.svg"              as MetaModels
     include "icons/libraries.svg"                as Libraries

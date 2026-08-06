@@ -34,7 +34,7 @@ import Shell from "@pragmatic-lab/mural/framework/shell/shell.js"
 // every capability's Name (and, later, Icon) becomes a root-nav entry, and
 // the NavigationService surfaces the active capability's Panel.
 import DiagramModule from "./modules/diagram/diagram.module.mu.js"
-import ArchitectureRepositoryModule from "./modules/architecture-repository/architecture-repository.module.mu.js"
+import ArchitectureProjectsModule from "./modules/architecture-projects/architecture-projects.module.mu.js"
 import ProjectExplorerModule from "./modules/project-explorer/project-explorer.module.mu.js"
 import MetaModelModule from "./modules/meta-model/meta-model.module.mu.js"
 import LibraryModule from "./modules/library/library.module.mu.js"
@@ -106,7 +106,7 @@ import MetaModelResources from "./modules/meta-model/meta-model.resources.mu.js"
 import LibraryResources from "./modules/library/library.resources.mu.js"
 
 // Architecture-diagram editor (DataTemplate[ArchDiagramDocument] + node/palette/tile).
-import ArchitectureRepositoryResources from "./modules/architecture-repository/architecture-repository.resources.mu.js"
+import ArchitectureProjectsResources from "./modules/architecture-projects/architecture-projects.resources.mu.js"
 
 // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
 import AgentChatResources from "./modules/agent-chat/agent-chat.resources.mu.js"
@@ -253,7 +253,7 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
 
     .modules: {
         DiagramModule
-        ArchitectureRepositoryModule
+        ArchitectureProjectsModule
         ProjectExplorerModule
         MetaModelModule
         LibraryModule
@@ -297,7 +297,7 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         merge LibraryResources
 
         // Architecture-diagram editor (DataTemplate[ArchDiagramDocument] + node/palette/tile).
-        merge ArchitectureRepositoryResources
+        merge ArchitectureProjectsResources
 
         // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
         merge AgentChatResources

@@ -1,19 +1,16 @@
-// architecture-repository.module.mu â€” the Architecture Repository module.
+// architecture-projects.module.mu - the Architecture Projects module.
 //
-// A ShellModule: a capability provider added to the shell via a `.modules:`
-// block on the Application. Its capability is one root-nav entry (Name + Icon)
-// whose content is service-backed â€” the `.services:` block registers the
-// service, the Capability names it via `ServiceKey`, and a shared
-// `DataTemplate [DataType = PlexusPanelService]` (in panels.resources.mu) renders it in the
-// left panel. See services/panels/panel-services.ts and diagram.module.mu.
+// A ShellModule with NO nav Capability (like code-editor/problems/agent-chat):
+// it carries only the BACKEND for architecture projects — the `architecture`
+// project type (ArchitectureProjectFactory) and the `.archdiagram` concept-aware
+// editor (ArchDiagramDocumentFactory) — with no left-panel entry. The editor's
+// view resources are merged app-global from architecture-projects.resources.mu.
 
-import ArchitectureRepositoryService from "./services/architecture-repository-service.js"
 import ArchitectureProjectFactory from "./services/architecture-project-factory.js"
 import ArchDiagramDocumentFactory from "./services/arch-diagram-document-factory.js"
 
-module ArchitectureRepositoryModule [ Name = "Architecture Repository" ] {
+module ArchitectureProjectsModule [ Name = "Architecture Projects" ] {
     .services: {
-        ArchitectureRepositoryService
         ArchitectureProjectFactory
         ArchDiagramDocumentFactory
     }
@@ -40,6 +37,4 @@ module ArchitectureRepositoryModule [ Name = "Architecture Repository" ] {
               Title   = "Architecture Project",
               Factory = ArchitectureProjectFactory ]
     }
-
-    Capability [ Name = "Architecture Repository", Icon = @ArchitectureRepository, ServiceKey = ArchitectureRepositoryService ]
 }

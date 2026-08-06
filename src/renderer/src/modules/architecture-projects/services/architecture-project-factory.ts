@@ -10,7 +10,7 @@ import type { BaseBindings, BaseRef } from '../../../services/projects/base-bind
 import { Project, ProjectNode, type ProjectNodeKind } from '../../../services/projects/project.js'
 import { compareStorageEntries, type IStorage } from '../../../services/storage/storage.js'
 
-// The 'architecture' project type — the architecture-repository module's
+// The 'architecture' project type — the architecture-projects module's
 // contribution to the generic ProjectExplorerService (declared via
 // `.projectFactories:`, resolved through the ProjectFactoryRegistry). It is a
 // TODL-authoring project: its `.todl` files are the instance-tier architecture
