@@ -1,0 +1,14 @@
+import type { PackageSink } from '@pragmatic-lab/todl'
+
+import type { IStorage } from './storage.js'
+
+// Adapts the project IStorage to TODL's PackageSink so publish can write a
+// bundle's model.json + src/ through it — the ~5-line consumer adapter TODL's
+// publish design leaves to the host (mirrors the FileIO seam).
+export class StoragePackageSink implements PackageSink
+{
+    constructor(private readonly storage: IStorage) {}
+
+    writeText(path: string, content: string): Promise<void> { return this.storage.WriteText(path, content) }
+    writeBytes(path: string, bytes: Uint8Array): Promise<void> { return this.storage.WriteBytes(path, bytes) }
+}

@@ -1,5 +1,5 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { checkAgainst, toJSON, Severity, type TodlDocument } from '@pragmatic-lab/todl'
+import { checkAgainst, toJSON, Severity, compilePackage, BlobPackageStore, type TodlDocument } from '@pragmatic-lab/todl'
 
 import {
     PROJECT_MANIFEST_FILENAME,
@@ -16,9 +16,10 @@ import type { BaseBindings, BaseRef } from '../../../services/projects/base-bind
 import { resolveBases } from '../../../services/projects/base-resolver.js'
 import { Project, ProjectNode, type ProjectNodeKind } from '../../../services/projects/project.js'
 import { compareStorageEntries, type IStorage } from '../../../services/storage/storage.js'
+import { StoragePackageSink } from '../../../services/storage/storage-package-sink.js'
 import { ensureLibrariesBackend } from './libraries-backend.js'
 import { collectTaxonomySources, extname, joinRel } from '../../meta-model/services/todl-sources.js'
-import { deriveClasses, scanResources, type LibraryBundleManifest } from './library-bundle.js'
+import { scanResources, type LibraryBundleManifest, type PublishedClass } from './library-bundle.js'
 import { generatePresentationAssets } from '../../meta-model/services/presentation-generator.js'
 import { scaffoldAuthorStubs, LIBRARY_ROLE } from '../../meta-model/services/presentation-scaffold.js'
 import { publishLibraryPresentation } from './library-presentation-publisher.js'
@@ -121,11 +122,17 @@ export class LibraryProjectFactory extends ServiceBase
         const sources = await collectTaxonomySources(storage)
         if (sources.length === 0) return { ok: false, message: 'Nothing to publish — the project has no .todl files.' }
 
-        const { doc, problems: compileProblems } = await this.compileToDocument(storage, bases, provider)
-        if (compileProblems.length > 0)
-            return { ok: false, message: `Publish blocked: ${compileProblems.length} error(s). Fix them first.` }
+        const outcome = compilePackage(bases, sources, {
+            id: manifest.id,
+            version: manifest.libVersion,
+            name: manifest.name ?? manifest.id,
+        })
+        if (!outcome.ok || outcome.package === undefined)
+            return { ok: false, message: `Publish blocked: ${outcome.errors.length} error(s). Fix them first.` }
+        const pkg = outcome.package
+        const doc = pkg.document
 
-        const classes = deriveClasses(doc)
+        const classes: PublishedClass[] = pkg.classes.map((c) => ({ ...c }))
         const scanned = await scanResources(storage, classes.map((c) => c.id))
         for (const c of classes) {
             const r = scanned.byClass.get(c.id)
@@ -155,9 +162,10 @@ export class LibraryProjectFactory extends ServiceBase
         if (!pres.ok)
             return { ok: false, message: `Publish blocked: missing icon file(s): ${pres.missing.join(', ')}.` }
 
-        await dest.WriteText(`${base}/model.json`, JSON.stringify(doc, null, 2))
+        // model.json + src/ are written by TODL's BlobPackageStore (the publish
+        // spine); library.json is the Plexus bundle wrapper, written here.
+        await new BlobPackageStore(new StoragePackageSink(dest)).persist(pkg)
         await dest.WriteText(`${base}/library.json`, JSON.stringify(bundle, null, 2))
-        for (const s of sources) await dest.WriteText(`${base}/src/${s.uri}`, s.text)
 
         let copied = 0
         for (const folder of ['visuals', 'assets', 'docs', 'samples', 'thumbnails', 'resources'])

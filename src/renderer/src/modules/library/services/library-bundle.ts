@@ -1,18 +1,13 @@
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import { deriveClasses as todlDeriveClasses, type PublishedClass as TodlPublishedClass, type TodlDocument } from '@pragmatic-lab/todl'
 
 import type { IStorage } from '../../../services/storage/storage.js'
-import { projectAnnotations } from '../../meta-model/services/annotation-projection.js'
 
-// One instantiable class a published library provides — a palette item. Derived
-// from the compiled model's Instance-tier clabjects; resource paths are attached
-// later (present only when the conventionally-named file exists).
-export interface PublishedClass
+// One instantiable class a published library provides — a palette item. The
+// model-derived fields (id/localId/label/icon/concept) come from TODL's
+// PublishedClass; Plexus adds the bundle resource paths, attached later (present
+// only when the conventionally-named file exists).
+export interface PublishedClass extends TodlPublishedClass
 {
-    id:         string     // qualified class NodeId, e.g. "microsoft.azure"
-    localId?:   string     // attrs.id, the short name, e.g. "azure"
-    label?:     string     // attrs.label, if present, e.g. "Azure"
-    icon?:      string     // annotation icon path, e.g. "resources/azure.svg" (bundle-relative)
-    concept:    string     // node.typeOf — the meta-model concept it realises, e.g. "location"
     template?:  string     // "visuals/<id>.mural"    — present only if the file exists
     thumbnail?: string     // "thumbnails/<id>.png"   — present only if the file exists
     doc?:       string     // "docs/<id>.md"          — present only if the file exists
@@ -34,24 +29,13 @@ export interface LibraryBundleManifest
     samples:     string[]
 }
 
-// The instantiable classes a library provides: Instance-tier clabjects
-// (`attrs.class === true`), each simultaneously an instance of a meta concept and
-// a class for further instantiation. `tier` is compared to the literal "Instance"
-// because toJSON emits the Tier enum by member name; `attrs.class` is a boolean
-// scalar. Ontology-tier concept/field/taxonomy definitions are NOT classes.
+// The instantiable classes a library provides. The derivation (Instance-tier
+// clabjects with `attrs.class === true`, label + annotation icon) now lives in
+// TODL core (`deriveClasses`); this delegates and widens the result to the
+// Plexus PublishedClass so resource paths can be attached at publish time.
 export function deriveClasses(model: TodlDocument): PublishedClass[]
 {
-    const out: PublishedClass[] = []
-    for (const n of model.nodes) {
-        if (n.tier !== 'Instance' || n.attrs.class !== true) continue
-        const cls: PublishedClass = { id: n.id, concept: n.typeOf }
-        if (typeof n.attrs.id === 'string') cls.localId = n.attrs.id
-        if (typeof n.attrs.label === 'string') cls.label = n.attrs.label
-        const iconPath = projectAnnotations(model, n.id).icon?.path
-        if (typeof iconPath === 'string') cls.icon = iconPath
-        out.push(cls)
-    }
-    return out
+    return todlDeriveClasses(model)
 }
 
 export interface ScannedResources
