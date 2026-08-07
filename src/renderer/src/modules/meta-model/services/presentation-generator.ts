@@ -93,6 +93,32 @@ export function iconKey(path: string): string
     return `mm_icon_${slug}`
 }
 
+// Assign every distinct icon path a UNIQUE mural resource key. The base key is
+// iconKey(path); when two paths share a stem (a/az.svg, b/az.svg) the second and
+// later collisions are suffixed _2, _3, … in sorted-path order. A pure function
+// of the doc's icon paths (stamping adds attrs, never paths), so every call-site
+// computes the identical map with no threading. Map insertion order follows
+// distinctIcons (sorted), so iterating it is sorted.
+export function assignResourceKeys(doc: TodlDocument): Map<string, string>
+{
+    const out = new Map<string, string>()
+    const used = new Map<string, number>()
+    for (const path of distinctIcons(doc)) {
+        const base = iconKey(path)
+        const n = used.get(base) ?? 0
+        used.set(base, n + 1)
+        out.set(path, n === 0 ? base : `${base}_${n + 1}`)
+    }
+    return out
+}
+
+// The unique resource key for one icon path in this doc. Falls back to the base
+// iconKey for a path not among the doc's icons (should not happen in practice).
+export function resourceKeyFor(doc: TodlDocument, path: string): string
+{
+    return assignResourceKeys(doc).get(path) ?? iconKey(path)
+}
+
 // "app-component" → "App Component". Splits on '-'/'.'/'_' and title-cases each
 // word. Used as the fallback label when an entity declares no attrs.label.
 export function humanize(id: string): string

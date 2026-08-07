@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
-import { iconKey, humanize, ontologyEntities, classEntities, distinctIcons, generatePresentationAssets, isRasterIcon, resolveFacets } from '../presentation-generator.js'
+import { iconKey, humanize, ontologyEntities, classEntities, distinctIcons, generatePresentationAssets, isRasterIcon, resolveFacets, assignResourceKeys, resourceKeyFor } from '../presentation-generator.js'
 
 function doc(nodes: TodlDocument['nodes']): TodlDocument { return { nodes, edges: [] } }
 
@@ -119,4 +119,38 @@ test('generatePresentationAssets is deterministic', () => {
     const b = generatePresentationAssets(m, 'LibraryPresentation')
     expect(a).toBe(b)
     expect(a).toMatch(/resources LibraryPresentation \{/)
+})
+
+test('assignResourceKeys gives distinct stems their base iconKey, sorted', () => {
+    const m = doc([
+        { id: 'a', tier: 'Instance', typeOf: 'x', attrs: { icon: 'resources/comp.svg' } },
+        { id: 'b', tier: 'Instance', typeOf: 'x', attrs: { icon: 'resources/actor.svg' } },
+    ])
+    expect([...assignResourceKeys(m)]).toEqual([
+        ['resources/actor.svg', 'mm_icon_actor'],
+        ['resources/comp.svg', 'mm_icon_comp'],
+    ])
+})
+
+test('assignResourceKeys suffixes colliding stems _2, _3 in sorted-path order', () => {
+    const m = doc([
+        { id: 'a', tier: 'Instance', typeOf: 'x', attrs: { icon: 'a/az.svg' } },
+        { id: 'b', tier: 'Instance', typeOf: 'x', attrs: { icon: 'b/az.svg' } },
+        { id: 'c', tier: 'Instance', typeOf: 'x', attrs: { icon: 'c/az.svg' } },
+        { id: 'd', tier: 'Instance', typeOf: 'x', attrs: { icon: 'x/other.svg' } },
+    ])
+    const keys = assignResourceKeys(m)
+    expect(keys.get('a/az.svg')).toBe('mm_icon_az')
+    expect(keys.get('b/az.svg')).toBe('mm_icon_az_2')
+    expect(keys.get('c/az.svg')).toBe('mm_icon_az_3')
+    expect(keys.get('x/other.svg')).toBe('mm_icon_other')
+})
+
+test('resourceKeyFor returns the assigned (possibly suffixed) key', () => {
+    const m = doc([
+        { id: 'a', tier: 'Instance', typeOf: 'x', attrs: { icon: 'a/az.svg' } },
+        { id: 'b', tier: 'Instance', typeOf: 'x', attrs: { icon: 'b/az.svg' } },
+    ])
+    expect(resourceKeyFor(m, 'a/az.svg')).toBe('mm_icon_az')
+    expect(resourceKeyFor(m, 'b/az.svg')).toBe('mm_icon_az_2')
 })
