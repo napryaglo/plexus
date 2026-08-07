@@ -1,8 +1,47 @@
 # MuralResource Keys — Design
 
-**Date:** 2026-08-06
-**Status:** Approved, ready for planning
-**Repos:** TODL (`@pragmatic-lab/todl`, schema only) + Plexus (all key logic)
+**Date:** 2026-08-06 (reconciled 2026-08-07 — see §Reconciliation)
+**Status:** Approved, reconciled to the C-like identifier grammar
+**Repos:** TODL (`@pragmatic-lab/todl`, schema + a one-line reflect fix) + Plexus (all key logic)
+
+> **Reconciliation (2026-08-07).** This spec predates the C-like identifier
+> migration (TODL 0.19.0 / Plexus SP2). The body below still uses the old
+> lowercase spelling; the authoritative deltas are here.
+>
+> **Casing.** Annotation **type** names are PascalCase and **params** are
+> camelCase now. So the prelude annotation is **`Icon`** (not `icon`), the base is
+> `MuralResource`, and its param is **`key`** (not `Key`). Stamping writes
+> `attrs['key']` onto application nodes whose `typeOf === 'Icon'` (verified:
+> `annotate Icon { path = … }` compiles to node `X@Icon`, `typeOf: "Icon"`).
+>
+> **Version.** `0.19.0` is already published (the C-like release). The
+> MuralResource prelude change is **`@pragmatic-lab/todl@0.20.0`**; Plexus floor
+> → `^0.20.0`.
+>
+> **Folded prerequisite — well-known annotation-name alignment.** SP1 renamed the
+> prelude annotations to PascalCase (`Icon`, `Toolbox`, `Instance`) but did **not**
+> update the consumers that read them by name, leaving a latent, untested bug that
+> SP3 sits directly on:
+> - **TODL** `publish/reflect.js` `deriveClasses` reads `projectAnnotations(…).icon`
+>   (lowercase) → class icons never derive. Fix to `.Icon`.
+> - **Plexus** `presentation-generator.ts` (`n.typeOf === 'icon'`,
+>   `annotations['icon']?.['path']`) and `toolbox-projection.ts`
+>   (`projectAnnotations(…)['toolbox']`) read lowercase → icon/toolbox projection
+>   silently produces nothing for the prelude annotations. Fix to `'Icon'` /
+>   `'Toolbox'`.
+> - **Not a bug:** raw field reads `node.attrs['icon']` / `node.attrs['label']`
+>   stay lowercase — fields are camelCase members, and `icon = "…"` / `label = "…"`
+>   are raw attrs, not annotation applications.
+> - The existing tests hand-build lowercase-`typeOf` graphs, which is why they
+>   stayed green and masked this. The alignment task adds **compile-based** tests
+>   (author real `annotate Icon` / `annotate Toolbox`, assert projection) that fail
+>   before the fix.
+>
+> **`label` note.** There is no `Label` *annotation* — the name is taken by
+> `primitive Label`, so a same-named annotation is impossible. The
+> `annotations['label']?.['text']` branch in the presentation generator is
+> vestigial (nothing produces a lowercase `label` annotation); label presentation
+> flows through the raw `label = "…"` attr. Left as-is, out of scope.
 
 ## Goal
 
