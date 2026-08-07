@@ -80,3 +80,12 @@ test('changed fires on every mutation', () => {
     model.remove(id)
     expect(n).toBe(3)
 })
+
+test('createInstance generates a valid camelCase C-like id (no hyphen)', () => {
+    const META2 = `namespace ea { concept Component { label : string; } }`
+    const metaDoc = toJSON(check([{ uri: 'ea.todl', text: META2 }]).model)
+    const m = ArchInstanceModel.load([metaDoc], '', 'app')
+    const id = m.createInstance('ea.Component')
+    expect(id).toBe('component1')
+    expect(id).toMatch(/^[A-Za-z_][A-Za-z0-9_]*$/)
+})
