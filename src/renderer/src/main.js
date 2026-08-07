@@ -15,6 +15,7 @@ import { HtmlTarget } from '@pragmatic-lab/mural/visual-engine'
 import { ContentHostService, PanelDockService } from '@pragmatic-lab/mural/framework'
 import { DiagramWorkspaceService } from './modules/diagram/services/diagram-workspace-service.js'
 import { AgentService } from './modules/agent-chat/services/agent-service.js'
+import { TemplateGalleryService } from './modules/agent-chat/services/template-gallery-service.js'
 import { attachAutoOpenInspector } from './modules/diagram/behaviors/auto-open-inspector-behavior.js'
 import { attachSaveShortcuts } from './services/documents/save-shortcuts.js'
 import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'
@@ -123,6 +124,13 @@ try {
     const dock = app.Services.get(PanelDockService.Key)
     const agent = app.Services.get(AgentService.Key)
     if (dock !== undefined && agent !== undefined) dock.Add(agent)
+    // Dev-only: a Card Gallery tab to preview the agent card templates without
+    // driving the agent. Never seeded in packaged builds.
+    if (dock !== undefined && env !== undefined && env.IsDevelopment)
+    {
+        const gallery = app.Services.get(TemplateGalleryService.Key)
+        if (gallery !== undefined) dock.Add(gallery)
+    }
     if (workspace !== undefined && dock !== undefined)
     {
         attachAutoOpenInspector(workspace.Document, dock)

@@ -14,6 +14,7 @@ import OptionVM from "./services/question-card.js"
 import NewProjectCard from "./services/new-project-card.js"
 import ToolApprovalCard from "./services/approval-card.js"
 import ApprovalRuleRow from "./services/approval-rules.js"
+import TemplateGalleryService from "./services/template-gallery-service.js"
 
 resources AgentChatResources {
     DataTemplate [ DataType = AgentService ] {
@@ -50,6 +51,22 @@ resources AgentChatResources {
             // (sticky — scrolling up to read history is not interrupted).
             ScrollViewer [ HorizontalScrollEnabled = false, AutoScrollToEnd = true ] {
                 ItemsControl [ ItemsSource = $Transcript, ItemsPanel = @VerticalStackPanel ]
+            }
+        }
+    }
+
+    // ── Template Gallery (dev-only) ─────────────────────────────────────────────
+    // Renders one of every transcript/tool card through the SAME implicit item
+    // DataTemplates the chat uses, so the card visuals can be iterated on without
+    // driving the agent (edit a template → compile:mu → reload). Seeded as a dock
+    // tab in main.js only when IsDevelopment.
+    DataTemplate [ DataType = TemplateGalleryService ] {
+        DockPanel [ LastChildFill = true, Margin = (12,12,12,12) ] {
+            TextBlock [ DockPanel.Dock = Top, Style = @LabelSmall, Margin = (0,0,0,8),
+                        Foreground = @OnSurfaceVariant,
+                        Text = "TEMPLATE GALLERY — dev preview of agent card templates" ]
+            ScrollViewer [ HorizontalScrollEnabled = false ] {
+                ItemsControl [ ItemsSource = $Cards, ItemsPanel = @VerticalStackPanel ]
             }
         }
     }
@@ -219,7 +236,7 @@ resources AgentChatResources {
                             TextBlock [ Text = "Deny" ]
                         }
                         ProgressIndicator [ Variant = Circular, Value = $Countdown,
-                                            Width = 20, Height = 20, VerticalAlignment = Center ]
+                                            Width = 12, Height = 12, VerticalAlignment = Center ]
                     }
                 }
                 TextBlock [ Text = $Recap, Visibility = $IsAnswered << ToVisibility,
