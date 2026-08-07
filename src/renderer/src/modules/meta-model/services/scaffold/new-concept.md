@@ -18,8 +18,8 @@ then proceed.
                <one paragraph: what this concept is, and the rule it enforces>
                """;
 
-           id : Identifier;
-           label : Label;
+           id : identifier;
+           label : string;
            // fields:        <name> : <Type> <card>;   card = (none) | ? | [] | [+]
            // relationships: relationship <name> -> <Target> <card>;
        }

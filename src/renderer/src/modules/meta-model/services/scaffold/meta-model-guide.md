@@ -15,8 +15,8 @@ published meta-model and build on it.
 ## The three building blocks — how to choose
 
 - **`primitive`** — a leaf data type constrained by a regex or a base type. Reach
-  for one when you need a validated scalar (`Identifier`, `Label`, `Url`). Don't
-  model an entity as a primitive.
+  for one when you need a validated scalar (`Url`, `Email`, or the built-in
+  lowercase `identifier`). Don't model an entity as a primitive.
 - **`taxonomy`** — a closed, named set of values, where each value is a **class**
   of the concept it categorises (a clabject). Reach for one when a field's value
   comes from a controlled vocabulary that may carry its own fixed attributes
