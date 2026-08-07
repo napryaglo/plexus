@@ -21,7 +21,7 @@ function fakeConn() {
 
 test('AttachProject resolves bases through WorkspaceBaseResolver (local-first), not resolveBases', async () => {
   const provider = new ServiceProvider()
-  const doc = toJSON(check([{ uri: 'p.todl', text: 'namespace ea { concept via-resolver { label : string; } }' }]).model)
+  const doc = toJSON(check([{ uri: 'p.todl', text: 'namespace ea { concept ViaResolver { label : string; } }' }]).model)
   let called = false
   provider.registerInstance(WorkspaceBaseResolver.Key, {
     ResolveForStorage: async () => { called = true; return { bases: [doc], problems: [] } },
@@ -37,5 +37,5 @@ test('AttachProject resolves bases through WorkspaceBaseResolver (local-first), 
   expect(called).toBe(true)
   const setBases = notes.find((n) => n.method === 'todl/setBases')
   const bases = (setBases!.params as { bases: typeof doc[] }).bases
-  expect(bases[0]!.nodes.some((n) => n.id === 'via-resolver')).toBe(true)
+  expect(bases[0]!.nodes.some((n) => n.id === 'ViaResolver')).toBe(true)
 })

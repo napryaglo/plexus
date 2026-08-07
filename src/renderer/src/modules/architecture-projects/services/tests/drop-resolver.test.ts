@@ -10,7 +10,7 @@ const META = `namespace ea {
   concept Location { label : string; }
 }`
 const LIB = `namespace ms { taxonomy Stack : represents Technology {
-  Technology azureOpenai { label = "Azure OpenAI"; }
+  Technology AzureOpenai { label = "Azure OpenAI"; }
 } }`
 
 function model(): ArchInstanceModel {
@@ -20,7 +20,7 @@ function model(): ArchInstanceModel {
 }
 
 test('resolves a technology term to the concept+member that can reference it', () => {
-    expect(resolveTermDrop(model(), 'stack.azure-openai')).toEqual([{ concept: 'component', member: 'realised-by' }])
+    expect(resolveTermDrop(model(), 'Stack.AzureOpenai')).toEqual([{ concept: 'Component', member: 'realisedBy' }])
 })
 
 test('an unknown term resolves to no targets', () => {

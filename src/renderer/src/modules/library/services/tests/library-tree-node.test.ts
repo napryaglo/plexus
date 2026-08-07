@@ -19,15 +19,15 @@ test('group node: kind, name, empty children, inert (not draggable, no preview p
 test('class leaf: exposes the render surface + a draggable term payload', () => {
     const tpl = new DataTemplate((() => ({})) as never)
     const n = LibraryTreeNode.leaf(
-        { display: 'Azure OpenAI', label: 'Azure OpenAI', localId: 'azure-openai', termId: 'stack.azure-openai', concept: 'technology' },
+        { display: 'Azure OpenAI', label: 'Azure OpenAI', localId: 'AzureOpenai', termId: 'Stack.AzureOpenai', concept: 'technology' },
         tpl,
     )
     expect(n.Kind).toBe(LibraryNodeKind.Class)
     expect(n.Name).toBe('Azure OpenAI')
     expect(n.Display).toBe('Azure OpenAI')
     expect(n.Label).toBe('Azure OpenAI')
-    expect(n.LocalId).toBe('azure-openai')
-    expect(n.TermId).toBe('stack.azure-openai')
+    expect(n.LocalId).toBe('AzureOpenai')
+    expect(n.TermId).toBe('Stack.AzureOpenai')
     expect(n.Concept).toBe('technology')
     expect(n.Template).toBe(tpl)
     expect(n.Data).toBe(n)
@@ -35,5 +35,5 @@ test('class leaf: exposes the render surface + a draggable term payload', () => 
     expect(n.IsDraggable).toBe(true)
 
     const payload = n.BeginKindDragData!()
-    expect(payload.data.Get(TOOLBOX_NODE_KIND_FORMAT)).toBe('stack.azure-openai')
+    expect(payload.data.Get(TOOLBOX_NODE_KIND_FORMAT)).toBe('Stack.AzureOpenai')
 })

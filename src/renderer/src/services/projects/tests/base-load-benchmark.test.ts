@@ -35,7 +35,7 @@ function librarySource(n: number): string {
 // An architecture project referencing a spread of the library's terms.
 function instanceSource(n: number): string {
     const comps: string[] = []
-    for (let i = 0; i < n; i++) comps.push(`  component c${i} { label = "C${i}"; realised-by = stack.t${i % Math.max(1, n)}; }`)
+    for (let i = 0; i < n; i++) comps.push(`  component c${i} { label = "C${i}"; realisedBy = stack.t${i % Math.max(1, n)}; }`)
     return `namespace app {\n${comps.join('\n')}\n}`
 }
 

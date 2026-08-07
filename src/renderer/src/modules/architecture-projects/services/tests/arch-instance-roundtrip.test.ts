@@ -15,8 +15,8 @@ const META = `namespace ea {
   concept Component { label : string; realisedBy : Technology?; deployedTo : Technology[]; }
 }`
 const LIB = `namespace ms { import ea; taxonomy Stack : represents Technology {
-  Technology azureOpenai { label = "Azure OpenAI"; }
-  Technology azureFunc   { label = "Azure Functions"; }
+  Technology AzureOpenai { label = "Azure OpenAI"; }
+  Technology AzureFunc   { label = "Azure Functions"; }
 } }`
 
 function bases(): TodlDocument[] {
@@ -34,12 +34,12 @@ function normal(doc: TodlDocument): string {
 
 test('round-trips a concept instance with a scalar field and a single reference', () => {
     const bs = bases()
-    const src = `namespace app { import ea; import ms; model AppModel : Ea uses Stack { Component gw { label = "Gateway"; realisedBy = Stack.AzureOpenai; } } }`
+    const src = `namespace app { import ea; import ms; model appModel : ea uses Stack { Component gw { label = "Gateway"; realisedBy = Stack.AzureOpenai; } } }`
     const m1 = ArchInstanceModel.load(bs, src, 'app')
 
     const emitted = m1.emit()
-    expect(emitted).toContain('model app-model : ea')
-    expect(emitted).toContain('uses stack')
+    expect(emitted).toContain('model appModel : ea')
+    expect(emitted).toContain('uses Stack')
 
     const m2 = ArchInstanceModel.load(bs, emitted, 'app')
     expect(normal(m2.document)).toEqual(normal(m1.document))
@@ -51,15 +51,15 @@ test('round-trips a many-valued reference (list) and an instanceof class', () =>
       import ea;
       import ms;
       class Component webTier { realisedBy = Stack.AzureFunc; }
-      model AppModel : Ea uses Stack {
+      model appModel : ea uses Stack {
         Component api instanceof webTier { label = "API"; deployedTo = [Stack.AzureOpenai, Stack.AzureFunc]; }
       }
     }`
     const m1 = ArchInstanceModel.load(bs, src, 'app')
 
     const emitted = m1.emit()
-    expect(emitted).toContain('model app-model : ea')
-    expect(emitted).toMatch(/^\s*class component web-tier/m)   // local class stays top-level
+    expect(emitted).toContain('model appModel : ea')
+    expect(emitted).toMatch(/^\s*class Component webTier/m)   // local class stays top-level
 
     const m2 = ArchInstanceModel.load(bs, emitted, 'app')
     expect(normal(m2.document)).toEqual(normal(m1.document))

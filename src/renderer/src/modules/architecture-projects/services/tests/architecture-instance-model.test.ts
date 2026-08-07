@@ -8,7 +8,7 @@ const META = `namespace ea {
   concept Component { label : string; realisedBy : Technology?; deployedTo : Technology[]; }
 }`
 const LIB = `namespace ms { taxonomy Stack : represents Technology {
-  Technology azureOpenai { label = "Azure OpenAI"; }
+  Technology AzureOpenai { label = "Azure OpenAI"; }
 } }`
 
 function bases(): TodlDocument[] {
@@ -25,57 +25,57 @@ test('load exposes only the own instances (not base concepts/terms)', () => {
 
 test('createInstance adds a fresh concept instance; setField + addRelationship mutate it', () => {
     const model = ArchInstanceModel.load(bases(), '', 'app')
-    const id = model.createInstance('component')
+    const id = model.createInstance('Component')
     expect(model.ownInstances()).toEqual([id])
 
     model.setField(id, 'label', 'API')
-    model.addRelationship(id, 'realised-by', 'stack.azure-openai')
+    model.addRelationship(id, 'realisedBy', 'Stack.AzureOpenai')
 
     const emitted = model.emit()
-    expect(emitted).toContain(`component ${id}`)
+    expect(emitted).toContain(`Component ${id}`)
     expect(emitted).toContain('label = "API";')
-    expect(emitted).toContain('realised-by = stack.azure-openai;')
+    expect(emitted).toContain('realisedBy = Stack.AzureOpenai;')
 })
 
 test('remove drops the instance and its edges', () => {
     const model = ArchInstanceModel.load(bases(), '', 'app')
-    const id = model.createInstance('component')
-    model.addRelationship(id, 'realised-by', 'stack.azure-openai')
+    const id = model.createInstance('Component')
+    model.addRelationship(id, 'realisedBy', 'Stack.AzureOpenai')
     model.remove(id)
     expect(model.ownInstances()).toEqual([])
-    expect(model.emit()).not.toContain('realised-by')
+    expect(model.emit()).not.toContain('realisedBy')
 })
 
 test('referenceMembers returns the concept-typed fields whose type the target satisfies', () => {
     const model = ArchInstanceModel.load(bases(), '', 'app')
-    const from = model.createInstance('component')
-    // 'stack.azure-openai' is a technology term; component references technology
-    // via realised-by (single) and deployed-to (list); label:string is excluded.
-    const names = model.referenceMembers(from, 'stack.azure-openai').map((r) => r.name).sort()
-    expect(names).toEqual(['deployed-to', 'realised-by'])
+    const from = model.createInstance('Component')
+    // 'Stack.AzureOpenai' is a technology term; component references technology
+    // via realisedBy (single) and deployedTo (list); label:string is excluded.
+    const names = model.referenceMembers(from, 'Stack.AzureOpenai').map((r) => r.name).sort()
+    expect(names).toEqual(['deployedTo', 'realisedBy'])
 })
 
 test('load strips the model container node; ownInstances excludes it', () => {
-    const src = `namespace app { model AppModel : Ea uses Ms { Component gw { label = "Gateway"; } } }`
+    const src = `namespace app { model appModel : ea uses Stack { Component gw { label = "Gateway"; } } }`
     const model = ArchInstanceModel.load(bases(), src, 'app')
-    expect(model.ownInstances()).toEqual(['gw'])   // 'app-model' container excluded
+    expect(model.ownInstances()).toEqual(['gw'])   // 'appModel' container excluded
 })
 
 test('emit wraps concrete instances in a model block bound to the meta-model', () => {
     const model = ArchInstanceModel.load(bases(), '', 'app')
-    const id = model.createInstance('component')
+    const id = model.createInstance('Component')
     model.setField(id, 'label', 'API')
 
     const emitted = model.emit()
-    expect(emitted).toContain('model app-model : ea')
-    expect(emitted).toContain(`component ${id}`)
+    expect(emitted).toContain('model appModel : ea')
+    expect(emitted).toContain(`Component ${id}`)
 })
 
 test('changed fires on every mutation', () => {
     const model = ArchInstanceModel.load(bases(), '', 'app')
     let n = 0
     model.onChanged(() => { n++ })
-    const id = model.createInstance('component')
+    const id = model.createInstance('Component')
     model.setField(id, 'label', 'x')
     model.remove(id)
     expect(n).toBe(3)

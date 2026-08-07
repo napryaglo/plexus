@@ -13,7 +13,7 @@ function factory(): LibraryProjectFactory { return new LibraryProjectFactory(new
 
 // A meta-model with the concepts a library references, published to a fake
 // meta-models backend; plus a fake libraries backend to receive the publish.
-const META = 'namespace ea { concept location { label : string; } concept technology { label : string; } }'
+const META = 'namespace ea { concept Location { label : string; } concept Technology { label : string; } }'
 function publishEnv(): { provider: ServiceProvider; meta: FakeStorage; libs: FakeStorage } {
   const provider = new ServiceProvider()
   const registry = new StorageProviderRegistry(provider)
@@ -29,8 +29,8 @@ async function seedMeta(meta: FakeStorage): Promise<void> {
 }
 
 const LIB = `namespace lib { import ea; taxonomy Microsoft : represents Location, Technology {
-  Location azure { label = "Azure"; }
-  Technology azureOpenai { label = "Azure OpenAI"; }
+  Location Azure { label = "Azure"; }
+  Technology AzureOpenai { label = "Azure OpenAI"; }
 } }`
 
 test('createProject writes a library manifest with a publish identity + binding', async () => {
@@ -93,9 +93,9 @@ test('publish writes library.json with the derived classes + resource paths, and
   const f = factory()
   await f.createProject(storage, 'microsoft', { metaModel: { id: 'ea', version: '5' } })
   await storage.WriteText('microsoft.todl', LIB)
-  await storage.WriteText('visuals/microsoft.azure.mural', '<template/>')
-  await storage.WriteText('thumbnails/microsoft.azure.png', 'PNGBYTES')
-  await storage.WriteText('docs/microsoft.azure.md', '# Azure')
+  await storage.WriteText('visuals/Microsoft.Azure.mural', '<template/>')
+  await storage.WriteText('thumbnails/Microsoft.Azure.png', 'PNGBYTES')
+  await storage.WriteText('docs/Microsoft.Azure.md', '# Azure')
   await storage.WriteText('assets/logo.svg', '<svg/>')
   await storage.WriteText('samples/demo.todl', 'sample instance')
 
@@ -110,19 +110,19 @@ test('publish writes library.json with the derived classes + resource paths, and
   expect(bundle.version).toBe('0.1.0')
   expect(bundle.metaModel).toEqual({ id: 'ea', version: '5' })
   expect(bundle.classes.map((c: { id: string }) => c.id).sort())
-      .toEqual(['microsoft.azure', 'microsoft.azure-openai'])
-  const azure = bundle.classes.find((c: { id: string }) => c.id === 'microsoft.azure')
+      .toEqual(['Microsoft.Azure', 'Microsoft.AzureOpenai'])
+  const azure = bundle.classes.find((c: { id: string }) => c.id === 'Microsoft.Azure')
   expect(azure).toMatchObject({
-      localId: 'azure', label: 'Azure', concept: 'location',
-      template: 'visuals/microsoft.azure.mural',
-      thumbnail: 'thumbnails/microsoft.azure.png',
-      doc: 'docs/microsoft.azure.md',
+      localId: 'Azure', label: 'Azure', concept: 'Location',
+      template: 'visuals/Microsoft.Azure.mural',
+      thumbnail: 'thumbnails/Microsoft.Azure.png',
+      doc: 'docs/Microsoft.Azure.md',
   })
   expect(bundle.assets).toEqual(['assets/logo.svg'])
   expect(bundle.samples).toEqual(['samples/demo.todl'])
 
   // Resource folders copied into the bundle.
-  expect(await libs.Exists('microsoft/0.1.0/visuals/microsoft.azure.mural')).toBe(true)
+  expect(await libs.Exists('microsoft/0.1.0/visuals/Microsoft.Azure.mural')).toBe(true)
   expect(await libs.Exists('microsoft/0.1.0/assets/logo.svg')).toBe(true)
   expect(await libs.Exists('microsoft/0.1.0/samples/demo.todl')).toBe(true)
 })
@@ -182,7 +182,7 @@ test('regeneratePresentation writes presentation.generated.mu with a template pe
   // Every class's template lives in the single scaffolded author-templates file.
   const templates = await storage.ReadText('presentation/templates.mu')
   expect(templates).toContain('resources LibraryPresentationTemplates {')
-  expect(templates).toContain('DataTemplate x:key="microsoft.azure" [ DataType = LibraryClassData ]')
+  expect(templates).toContain('DataTemplate x:key="Microsoft.Azure" [ DataType = LibraryClassData ]')
 })
 
 test('regeneratePresentation is a no-op when the project has no .todl sources', async () => {
