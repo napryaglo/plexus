@@ -5,11 +5,11 @@ import { ArchInstanceModel } from '../architecture-instance-model.js'
 import { InstanceNodeVM } from '../instance-node-vm.js'
 
 const META = `namespace ea {
-  concept technology { label : string; }
-  concept component { label : string; realised-by : technology?; }
+  concept Technology { label : string; }
+  concept Component { label : string; realisedBy : Technology?; }
 }`
-const LIB = `namespace ms { taxonomy stack : represents technology {
-  technology azure-openai { label = "Azure OpenAI"; }
+const LIB = `namespace ms { taxonomy Stack : represents Technology {
+  Technology azureOpenai { label = "Azure OpenAI"; }
 } }`
 
 function model(): ArchInstanceModel {

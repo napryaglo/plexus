@@ -21,15 +21,15 @@ import { check, checkAgainst, toJSON, type TodlDocument } from '@pragmatic-lab/t
 const RUN = process.env.PLEXUS_BENCH === '1'
 
 const META = `namespace ea {
-  concept technology { label : string; }
-  concept component { label : string; realised-by : technology?; deployed-to : technology[]; }
+  concept Technology { label : string; }
+  concept Component { label : string; realisedBy : Technology?; deployedTo : Technology[]; }
 }`
 
 // A library = one taxonomy of N `technology` terms under `stack`.
 function librarySource(n: number): string {
     const terms: string[] = []
     for (let i = 0; i < n; i++) terms.push(`  technology t${i} { label = "Tech ${i}"; }`)
-    return `namespace ms { taxonomy stack : represents technology {\n${terms.join('\n')}\n} }`
+    return `namespace ms { taxonomy Stack : represents Technology {\n${terms.join('\n')}\n} }`
 }
 
 // An architecture project referencing a spread of the library's terms.

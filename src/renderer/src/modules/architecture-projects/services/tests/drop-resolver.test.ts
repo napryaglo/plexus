@@ -5,12 +5,12 @@ import { ArchInstanceModel } from '../architecture-instance-model.js'
 import { resolveTermDrop } from '../drop-resolver.js'
 
 const META = `namespace ea {
-  concept technology { label : string; }
-  concept component { label : string; realised-by : technology?; }
-  concept location { label : string; }
+  concept Technology { label : string; }
+  concept Component { label : string; realisedBy : Technology?; }
+  concept Location { label : string; }
 }`
-const LIB = `namespace ms { taxonomy stack : represents technology {
-  technology azure-openai { label = "Azure OpenAI"; }
+const LIB = `namespace ms { taxonomy Stack : represents Technology {
+  Technology azureOpenai { label = "Azure OpenAI"; }
 } }`
 
 function model(): ArchInstanceModel {

@@ -4,11 +4,11 @@ import { check, checkAgainst, toJSON, type TodlDocument } from '@pragmatic-lab/t
 import { ArchInstanceModel } from '../architecture-instance-model.js'
 
 const META = `namespace ea {
-  concept technology { label : string; }
-  concept component { label : string; realised-by : technology?; deployed-to : technology[]; }
+  concept Technology { label : string; }
+  concept Component { label : string; realisedBy : Technology?; deployedTo : Technology[]; }
 }`
-const LIB = `namespace ms { taxonomy stack : represents technology {
-  technology azure-openai { label = "Azure OpenAI"; }
+const LIB = `namespace ms { taxonomy Stack : represents Technology {
+  Technology azureOpenai { label = "Azure OpenAI"; }
 } }`
 
 function bases(): TodlDocument[] {
@@ -18,7 +18,7 @@ function bases(): TodlDocument[] {
 }
 
 test('load exposes only the own instances (not base concepts/terms)', () => {
-    const src = `namespace app { component gw { label = "Gateway"; } }`
+    const src = `namespace app { Component gw { label = "Gateway"; } }`
     const model = ArchInstanceModel.load(bases(), src, 'app')
     expect(model.ownInstances()).toEqual(['gw'])
 })
@@ -56,7 +56,7 @@ test('referenceMembers returns the concept-typed fields whose type the target sa
 })
 
 test('load strips the model container node; ownInstances excludes it', () => {
-    const src = `namespace app { model app-model : ea uses ms { component gw { label = "Gateway"; } } }`
+    const src = `namespace app { model AppModel : Ea uses Ms { Component gw { label = "Gateway"; } } }`
     const model = ArchInstanceModel.load(bases(), src, 'app')
     expect(model.ownInstances()).toEqual(['gw'])   // 'app-model' container excluded
 })

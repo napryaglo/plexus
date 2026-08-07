@@ -11,12 +11,12 @@ import { ArchInstanceModel } from '../architecture-instance-model.js'
 // Bases: a meta-model (component references a technology) + a library taxonomy of
 // technologies. Reused across the round-trip assertions.
 const META = `namespace ea {
-  concept technology { label : string; }
-  concept component { label : string; realised-by : technology?; deployed-to : technology[]; }
+  concept Technology { label : string; }
+  concept Component { label : string; realisedBy : Technology?; deployedTo : Technology[]; }
 }`
-const LIB = `namespace ms { import ea; taxonomy stack : represents technology {
-  technology azure-openai { label = "Azure OpenAI"; }
-  technology azure-func   { label = "Azure Functions"; }
+const LIB = `namespace ms { import ea; taxonomy Stack : represents Technology {
+  Technology azureOpenai { label = "Azure OpenAI"; }
+  Technology azureFunc   { label = "Azure Functions"; }
 } }`
 
 function bases(): TodlDocument[] {
@@ -34,7 +34,7 @@ function normal(doc: TodlDocument): string {
 
 test('round-trips a concept instance with a scalar field and a single reference', () => {
     const bs = bases()
-    const src = `namespace app { import ea; import ms; model app-model : ea uses stack { component gw { label = "Gateway"; realised-by = stack.azure-openai; } } }`
+    const src = `namespace app { import ea; import ms; model AppModel : Ea uses Stack { Component gw { label = "Gateway"; realisedBy = Stack.AzureOpenai; } } }`
     const m1 = ArchInstanceModel.load(bs, src, 'app')
 
     const emitted = m1.emit()
@@ -50,9 +50,9 @@ test('round-trips a many-valued reference (list) and an instanceof class', () =>
     const src = `namespace app {
       import ea;
       import ms;
-      class component web-tier { realised-by = stack.azure-func; }
-      model app-model : ea uses stack {
-        component api instanceof web-tier { label = "API"; deployed-to = [stack.azure-openai, stack.azure-func]; }
+      class Component webTier { realisedBy = Stack.AzureFunc; }
+      model AppModel : Ea uses Stack {
+        Component api instanceof webTier { label = "API"; deployedTo = [Stack.AzureOpenai, Stack.AzureFunc]; }
       }
     }`
     const m1 = ArchInstanceModel.load(bs, src, 'app')

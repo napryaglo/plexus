@@ -28,9 +28,9 @@ async function seedMeta(meta: FakeStorage): Promise<void> {
   await meta.WriteText('ea/5/model.json', JSON.stringify(toJSON(check([{ uri: 'm.todl', text: META }]).model)))
 }
 
-const LIB = `namespace lib { import ea; taxonomy microsoft : represents location, technology {
-  location azure { label = "Azure"; }
-  technology azure-openai { label = "Azure OpenAI"; }
+const LIB = `namespace lib { import ea; taxonomy Microsoft : represents Location, Technology {
+  Location azure { label = "Azure"; }
+  Technology azureOpenai { label = "Azure OpenAI"; }
 } }`
 
 test('createProject writes a library manifest with a publish identity + binding', async () => {
