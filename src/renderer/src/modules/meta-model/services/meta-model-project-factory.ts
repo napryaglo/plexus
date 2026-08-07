@@ -18,7 +18,7 @@ import { StoragePackageSink } from '../../../services/storage/storage-package-si
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
 import { ensureScaffold } from './meta-model-scaffold.js'
 import { collectTodlSources, extname, joinRel } from './todl-sources.js'
-import { generatePresentationAssets } from './presentation-generator.js'
+import { generatePresentationAssets, stampResourceKeys } from './presentation-generator.js'
 import { scaffoldAuthorStubs, META_MODEL_ROLE } from './presentation-scaffold.js'
 import { publishPresentation } from './presentation-publisher.js'
 import type { MetaModelManifestFile } from './meta-model-manifest-loader.js'
@@ -125,6 +125,11 @@ export class MetaModelProjectFactory extends ServiceBase
             return { ok: false, message: `Publish blocked: ${outcome.errors.length} error(s). Fix them first.` }
         const pkg = outcome.package
         const doc = pkg.document
+
+        // Assign + write mural resource keys onto icon apps before either the
+        // presentation or model.json is written — pkg.document is the same object
+        // BlobPackageStore persists, so the key reaches model.json.
+        stampResourceKeys(doc)
 
         const dest = ensureMetaModelsBackend(provider)
         const base = `${manifest.id}/${manifest.modelVersion}`

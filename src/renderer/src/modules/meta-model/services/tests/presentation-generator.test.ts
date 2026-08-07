@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
-import { iconKey, humanize, ontologyEntities, classEntities, distinctIcons, generatePresentationAssets, isRasterIcon, resolveFacets, assignResourceKeys, resourceKeyFor } from '../presentation-generator.js'
+import { iconKey, humanize, ontologyEntities, classEntities, distinctIcons, generatePresentationAssets, isRasterIcon, resolveFacets, assignResourceKeys, resourceKeyFor, stampResourceKeys } from '../presentation-generator.js'
 
 function doc(nodes: TodlDocument['nodes']): TodlDocument { return { nodes, edges: [] } }
 
@@ -163,4 +163,22 @@ test('generatePresentationAssets suffixes colliding icon stems in its includes',
     const out = generatePresentationAssets(m, 'MetaModelPresentation')
     expect(out).toContain('include "a/az.svg" as mm_icon_az')
     expect(out).toContain('include "b/az.svg" as mm_icon_az_2')
+})
+
+test('stampResourceKeys writes the assigned key onto icon application nodes only', () => {
+    const m = {
+        nodes: [
+            { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} },
+            { id: 'actor@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'a/az.svg' } },
+            { id: 'comp@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'b/az.svg' } },
+            { id: 'raw', tier: 'Instance', typeOf: 'x', attrs: { icon: 'c/other.svg' } }, // raw attr, not an app
+        ],
+        edges: [],
+    } as unknown as TodlDocument
+    stampResourceKeys(m)
+    const byId = (id: string) => m.nodes.find((n) => n.id === id)!.attrs as Record<string, unknown>
+    expect(byId('actor@icon')['key']).toBe('mm_icon_az')
+    expect(byId('comp@icon')['key']).toBe('mm_icon_az_2') // collision-aware, shares the assignment
+    expect(byId('raw')['key']).toBeUndefined()            // raw attrs.icon node is not stamped
+    expect(byId('actor')['key']).toBeUndefined()          // non-icon node untouched
 })

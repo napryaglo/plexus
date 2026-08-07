@@ -119,6 +119,24 @@ export function resourceKeyFor(doc: TodlDocument, path: string): string
     return assignResourceKeys(doc).get(path) ?? iconKey(path)
 }
 
+// Write the assigned resource key onto each icon application node in place — the
+// "write-back" that lands in the compiled artifact (model.json). Only annotation
+// application nodes (typeOf 'icon' carrying a `path`) are stamped; a raw attrs.icon
+// on a concept/instance is not an application node and is left untouched. Called
+// over pkg.document before persist, so the stamped key reaches model.json.
+export function stampResourceKeys(doc: TodlDocument): void
+{
+    const keys = assignResourceKeys(doc)
+    for (const n of doc.nodes) {
+        if (n.typeOf !== 'icon') continue
+        const attrs = n.attrs as Record<string, unknown>
+        const path = attrs['path']
+        if (typeof path !== 'string' || path.length === 0) continue
+        const key = keys.get(path)
+        if (key !== undefined) attrs['key'] = key
+    }
+}
+
 // "app-component" → "App Component". Splits on '-'/'.'/'_' and title-cases each
 // word. Used as the fallback label when an entity declares no attrs.label.
 export function humanize(id: string): string
