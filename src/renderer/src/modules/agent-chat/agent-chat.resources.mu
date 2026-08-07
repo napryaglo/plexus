@@ -12,6 +12,7 @@ import QuestionCard from "./services/question-card.js"
 import QuestionVM from "./services/question-card.js"
 import OptionVM from "./services/question-card.js"
 import NewProjectCard from "./services/new-project-card.js"
+import ToolApprovalCard from "./services/approval-card.js"
 
 resources AgentChatResources {
     DataTemplate [ DataType = AgentService ] {
@@ -177,6 +178,40 @@ resources AgentChatResources {
                     }
                 }
                 TextBlock [ Text = $AnswerSummary, Visibility = $IsAnswered << ToVisibility,
+                            Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
+            }
+        }
+    }
+
+    // ── tool-approval card ──────────────────────────────────────────────────────
+    // The agent asked to use a tool needing permission: tool + command, a button
+    // row (Approve once / Always allow <prefix> / Deny) with a depleting countdown
+    // ring at the right; on 10s expiry the card auto-approves once. Collapses to a
+    // recap after answering.
+    DataTemplate [ DataType = ToolApprovalCard ] {
+        Border [ BorderBrush = @OutlineVariant, BorderThickness = (1,1,1,1), CornerRadius = 10,
+                 Background = @SurfaceContainer, Padding = (12,10,12,12), Margin = (0,4,20,4) ] {
+            StackPanel [ Orientation = Vertical ] {
+                StackPanel [ Orientation = Vertical, Visibility = $IsPending << ToVisibility ] {
+                    TextBlock [ Text = $ToolName, Foreground = @OnSurface, Style = @BodyMedium ]
+                    Border [ Style = @ToolMonoBox, Visibility = $HasCommand << ToVisibility, Margin = (0,6,0,0) ] {
+                        TextBlock [ FontFamily = "Consolas", Text = $Command, Foreground = @OnSurface, TextWrapping = Wrap ]
+                    }
+                    DockPanel [ LastChildFill = false, Margin = (0,10,0,0) ] {
+                        ProgressIndicator [ DockPanel.Dock = Right, Variant = Circular, Value = $Countdown,
+                                            Width = 20, Height = 20, Margin = (8,0,0,0) ]
+                        Button [ DockPanel.Dock = Left, Command = $ApproveOnceCommand, Template = @CompactButton, Margin = (0,0,6,0) ] {
+                            TextBlock [ Text = "Approve once" ]
+                        }
+                        Button [ DockPanel.Dock = Left, Command = $AllowAlwaysCommand, Template = @CompactButton, Margin = (0,0,6,0) ] {
+                            TextBlock [ Text = $AllowAlwaysLabel ]
+                        }
+                        Button [ DockPanel.Dock = Left, Command = $DenyCommand, Template = @CompactButton ] {
+                            TextBlock [ Text = "Deny" ]
+                        }
+                    }
+                }
+                TextBlock [ Text = $Recap, Visibility = $IsAnswered << ToVisibility,
                             Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
             }
         }

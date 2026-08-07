@@ -85,6 +85,7 @@ export class AgentService extends ServiceBase implements IDockPanel
         // A submitted answer goes back to the agent bridge; a change in the pending
         // set gates the input row (CanInput).
         this.reducer.onAnswerSubmitted = (answer) => { void this.agent.answerQuestion(answer) }
+        this.reducer.onToolApprovalSubmitted = (answer) => { void this.agent.answerToolApproval(answer) }
         this.reducer.onPendingChange = () =>
             this.set_property_value(AgentService.CanInputKey, !this.reducer.HasPendingQuestion)
 

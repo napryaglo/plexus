@@ -4,9 +4,10 @@
 // AgentService is a thin shell over it.
 import { MetaData, Model, ObservableCollection, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
 import { type FlowDocument } from '@pragmatic-lab/mural/basic'
-import { AgentEventKind, type AgentEvent, type QuestionAnswer } from '../../../../../shared/agent-api.js'
+import { AgentEventKind, type AgentEvent, type QuestionAnswer, type ToolApprovalAnswer } from '../../../../../shared/agent-api.js'
 import { buildFlowDocument } from './markdown-document.js'
 import { QuestionCard } from './question-card.js'
+import { ToolApprovalCard } from './approval-card.js'
 
 export enum TranscriptRole { User = 'user', Assistant = 'assistant', Tool = 'tool' }
 
@@ -147,6 +148,8 @@ export class TranscriptReducer
     // react when the pending-question set changes (to gate input).
     public onAnswerSubmitted: ((answer: QuestionAnswer) => void) | undefined
     public onPendingChange: (() => void) | undefined
+    // Set by AgentService: forward a submitted tool-approval verdict to the bridge.
+    public onToolApprovalSubmitted: ((answer: ToolApprovalAnswer) => void) | undefined
 
     // True while any card is still awaiting an answer (the turn is blocked).
     public get HasPendingQuestion(): boolean { return this.pendingQuestions.size > 0 }
@@ -221,6 +224,25 @@ export class TranscriptReducer
                 {
                     this.pendingQuestions.delete(request.id)
                     this.onAnswerSubmitted?.(answer)
+                    this.onPendingChange?.()
+                })
+                this.Transcript.Add(card)
+                this.onPendingChange?.()
+                break
+            }
+
+            case AgentEventKind.ToolApproval:
+            {
+                // The CLI's permission hook asked whether a consequential tool may
+                // run: render an approval card and block the turn until the user
+                // answers or the card's countdown auto-approves once.
+                this.currentAssistant = null
+                const request = event.Request
+                this.pendingQuestions.add(request.id)
+                const card = new ToolApprovalCard(request, (answer) =>
+                {
+                    this.pendingQuestions.delete(request.id)
+                    this.onToolApprovalSubmitted?.(answer)
                     this.onPendingChange?.()
                 })
                 this.Transcript.Add(card)
