@@ -154,3 +154,13 @@ test('resourceKeyFor returns the assigned (possibly suffixed) key', () => {
     expect(resourceKeyFor(m, 'a/az.svg')).toBe('mm_icon_az')
     expect(resourceKeyFor(m, 'b/az.svg')).toBe('mm_icon_az_2')
 })
+
+test('generatePresentationAssets suffixes colliding icon stems in its includes', () => {
+    const m = doc([
+        { id: 'a', tier: 'Instance', typeOf: 'x', attrs: { icon: 'a/az.svg' } },
+        { id: 'b', tier: 'Instance', typeOf: 'x', attrs: { icon: 'b/az.svg' } },
+    ])
+    const out = generatePresentationAssets(m, 'MetaModelPresentation')
+    expect(out).toContain('include "a/az.svg" as mm_icon_az')
+    expect(out).toContain('include "b/az.svg" as mm_icon_az_2')
+})

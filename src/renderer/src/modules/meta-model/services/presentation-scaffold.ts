@@ -10,7 +10,7 @@
 import { projectAnnotations, type TodlDocument, type JsonNode } from '@pragmatic-lab/todl'
 
 import type { IStorage } from '../../../services/storage/storage.js'
-import { ontologyEntities, classEntities, resolveFacets, iconKey, isRasterIcon } from './presentation-generator.js'
+import { ontologyEntities, classEntities, resolveFacets, resourceKeyFor, isRasterIcon } from './presentation-generator.js'
 
 // Which domain a stub is authored for. Markup-facing (drives DataType), so a
 // real enum with stable values.
@@ -129,7 +129,7 @@ function templateBlock(role: PresentationRole, doc: TodlDocument, node: JsonNode
         ? [`            ${label}`]
         : [
             `            StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {`,
-            `                ${iconElement(icon)}`,
+            `                ${iconElement(doc, icon)}`,
             `                ${label}`,
             `            }`,
           ]
@@ -144,9 +144,9 @@ function templateBlock(role: PresentationRole, doc: TodlDocument, node: JsonNode
 
 // The 16×16 icon element: a Shape drawing a baked SVG geometry, or — for a raster
 // icon — a Border filled with the baked ImageBrush.
-function iconElement(icon: string): string
+function iconElement(doc: TodlDocument, icon: string): string
 {
-    const key = iconKey(icon)
+    const key = resourceKeyFor(doc, icon)
     return isRasterIcon(icon)
         ? `Border [ Width = 16, Height = 16, Margin = (0,0,6,0), Background = @${key} ]`
         : `Shape [ Geometry = @${key}, Fill = @OnSurface, Width = 16, Height = 16, Margin = (0,0,6,0) ]`
