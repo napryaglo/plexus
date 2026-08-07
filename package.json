@@ -1,6 +1,6 @@
 {
   "name": "@pragmatic-lab/plexus",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "description": "Plexus — a diagram editor built on mural, packaged as an Electron desktop app (electron-vite). Sibling app in the mural repo: consumes mural through its published package surface (no relative ../src imports, no internals), so extracting to its own repo later is a config change, not a rewrite.",
   "main": "./out/main/index.js",
