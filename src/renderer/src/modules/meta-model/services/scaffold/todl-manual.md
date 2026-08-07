@@ -17,10 +17,10 @@ One `namespace` per file. Everything is declared inside it:
     namespace acme.ea.concepts
     {
         // imports first (optional), then declarations
-        concept component { … }
+        concept Component { … }
     }
 
-- The namespace path is a dotted, kebab-case path (`acme.ea.concepts`). By
+- The namespace path is a dotted, lowercase path (`acme.ea.concepts`). By
   convention it mirrors the file's folder path.
 - **`import` statements come first**, before any declaration:
 
@@ -37,14 +37,20 @@ One `namespace` per file. Everything is declared inside it:
 
 ## 2. Lexical rules
 
-- **Identifiers**: `[a-z] [a-z0-9]* ( - [a-z0-9]+ )*` — lowercase kebab-case.
-  `app-component`, `implemented-by`, `location`. No PascalCase, no `_`, no
-  leading digit.
+- **Identifiers**: `[A-Za-z_] [A-Za-z0-9_]*` — C-like. No hyphens; `_` is
+  allowed; no leading digit. By convention:
+  - **Types** — `concept`, `primitive`, `taxonomy`, `annotation`, `enum`,
+    `term`, and `class` names — are **PascalCase**: `AppComponent`,
+    `ComponentCategory`, `Identifier`.
+  - **Members** — field names, relationship names, and annotation parameters —
+    are **camelCase**: `implementedBy`, `realisedBy`, `category`.
+  - **Keywords** (`concept`, `model`, `import`, …) and **namespace** segments
+    are lowercase.
 - **Comments**: `// line` and `/* block */`. Both are ignored by the compiler.
 - **Strings**: `"single line"`. **Raw / multi-line**: triple-quoted
   `"""…"""` (keeps newlines; use for `description` prose).
 - **Numbers**: bare integers, e.g. `version = 5;`.
-- **References**: a bare `name` or `dotted.path` — there is no sigil. Whether a
+- **References**: a bare `Name` or `dotted.Path` — there is no sigil. Whether a
   value is a reference (an edge) or a scalar is decided by the member's declared
   **type**: a field typed by a `concept` or `taxonomy` is a reference, a field
   typed by a primitive is a scalar. `@` and `$` are **reserved for Mural** and
@@ -57,32 +63,32 @@ One `namespace` per file. Everything is declared inside it:
 A concept is a first-class entity: the unit authors instantiate and the compiler
 validates. It carries fields, relationships, and invariants.
 
-    concept component
+    concept Component
     {
         description = """
             A first-class entity in the architecture — the unit that runs in a
             location. Naming is purpose-first; the technology choice lives in
-            implemented-by, not in the name.
+            implementedBy, not in the name.
             """;
 
-        id : identifier;
-        label : label;
-        category : component-category;
-        implemented-by : identifier ?;
+        id : Identifier;
+        label : Label;
+        category : ComponentCategory;
+        implementedBy : Identifier ?;
 
-        relationship in -> location;
-        relationship realised-by -> technology [];
+        relationship in -> Location;
+        relationship realisedBy -> Technology [];
 
         invariant "Component ids are globally unique within the model.";
-        invariant "category resolves to a known component-category term.";
+        invariant "category resolves to a known ComponentCategory term.";
     }
 
 ### Fields
 
-    <name> : <type> <cardinality>? ;
+    <name> : <Type> <cardinality>? ;
 
-- `<type>` is a **single name**: a primitive (`string`, `identifier`), a taxonomy
-  (`component-category`), or another concept. There is **no inline object type** —
+- `<Type>` is a **single name**: a primitive (`string`, `Identifier`), a taxonomy
+  (`ComponentCategory`), or another concept. There is **no inline object type** —
   for structured data, define a nested concept and reference it by name.
 - `<cardinality>` is a suffix:
 
@@ -93,23 +99,23 @@ validates. It carries fields, relationships, and invariants.
   | `[]`   | many           | 0..N  |
   | `[+]`  | one or more    | 1..N  |
 
-  So `realised-by : technology [];` is "zero or more technologies", and
-  `implemented-by : identifier ?;` is "at most one".
+  So `realisedBy : Technology [];` is "zero or more technologies", and
+  `implementedBy : Identifier ?;` is "at most one".
 
 ### Inheritance
 
-    concept app-component : component { … }
+    concept AppComponent : Component { … }
 
-`concept <name> : <parent>` extends a parent concept; the child inherits its
+`concept <Name> : <Parent>` extends a parent concept; the child inherits its
 fields and relationships. Override an inherited field only with a
 type-compatible narrowing.
 
 ### Relationships
 
-    relationship <name> -> <target> <cardinality>? ;
+    relationship <name> -> <Target> <cardinality>? ;
 
-`<target>` must be a concept name. Cardinality suffixes are the same as fields;
-omit the suffix for exactly-one. `relationship realised-by -> technology [];`.
+`<Target>` must be a concept name. Cardinality suffixes are the same as fields;
+omit the suffix for exactly-one. `relationship realisedBy -> Technology [];`.
 
 ### Invariants
 
@@ -120,7 +126,7 @@ Rules the validator enforces on instances. Two forms:
     invariant
     {
         description = "Longer explanation of the same rule.";
-        predicate   = this.implemented-by != none;
+        predicate   = this.implementedBy != none;
     }
 
 The prose form is documentation the validator surfaces on violation. The
@@ -132,13 +138,13 @@ Problems panel.
 
 ## 4. `primitive` — a base data type
 
-    primitive identifier : string
+    primitive Identifier : string
     {
         description = "A stable, machine-friendly id.";
-        regex = "[a-z][a-z0-9]*(-[a-z0-9]+)*";
+        regex = "[A-Za-z_][A-Za-z0-9_]*";
     }
 
-- `primitive <name> : <base>` optionally names a base primitive (`string`,
+- `primitive <Name> : <base>` optionally names a base primitive (`string`,
   `integer`, …). The body carries a `description` and, for string primitives, a
   `regex` constraint.
 - Built-in primitives usable as a bare type without declaring them: `string`
@@ -150,28 +156,28 @@ A taxonomy *represents* one or more concepts; each `term` is a **class** of that
 concept — a named subtype carrying fixed field values. A concept field typed by
 the taxonomy takes one of its terms as a bare-name value.
 
-    taxonomy component-category : represents component
+    taxonomy ComponentCategory : represents Component
     {
         description = "The kinds of component the architecture recognises.";
 
-        term ai-agent  { label = "AI Agent"; }
-        term database  { label = "Database"; }
-        term api       { label = "API"; }
+        term AiAgent   { label = "AI Agent"; }
+        term Database  { label = "Database"; }
+        term Api       { label = "API"; }
     }
 
-- `taxonomy <name> : represents <concept> ( , <concept> )*` — the concept(s) whose
+- `taxonomy <Name> : represents <Concept> ( , <Concept> )*` — the concept(s) whose
   instances draw their class from this taxonomy.
-- `term <id> { <name> = <value>; … }` — the single-concept form (valid when the
+- `term <Id> { <name> = <value>; … }` — the single-concept form (valid when the
   taxonomy represents exactly one concept).
-- `<concept> <id> { … }` — the **concept-led** term form, used when a taxonomy
+- `<Concept> <Id> { … }` — the **concept-led** term form, used when a taxonomy
   represents several concepts and each term must say which one it is a class of.
 
 A concept referencing it:
 
-    concept component { category : component-category; }
+    concept Component { category : ComponentCategory; }
 
-and an instance picks a term by name: `category = ai-agent;`. A `|`-composed set
-of terms is allowed where the field is a flag set: `traits = physical | managed;`.
+and an instance picks a term by name: `category = AiAgent;`. A `|`-composed set
+of terms is allowed where the field is a flag set: `traits = Physical | Managed;`.
 
 ## 6. `annotation` — typed metadata on concepts and the package
 
@@ -182,34 +188,35 @@ presentation generator and the package manifest).
 
 Declare an annotation type like a concept, with typed params:
 
-    annotation icon     { path : string; }
-    annotation category { name : string; order : integer ?; }
-    annotation author   { name : string; email : string ?; }
+    annotation Icon     { path : string; }
+    annotation Category { name : string; order : integer ?; }
+    annotation Author   { name : string; email : string ?; }
 
 Apply it with `annotate` — legal inside a `concept` body, a taxonomy `term` body,
 a `class` declaration, or a `package { }` block (annotations are type-level; a
 concrete instance carrying `annotate` is `annotation.invalid-target`) — giving
 each param a fixed value:
 
-    concept actor
+    concept Actor
     {
-        annotate icon     { path = "resources/actor.svg"; }
-        annotate category { name = "actors"; order = 1; }
+        annotate Icon     { path = "resources/actor.svg"; }
+        annotate Category { name = "actors"; order = 1; }
 
-        label : label;
+        label : Label;
     }
 
     package
     {
-        annotate author { name = "Acme Corp"; email = "eng@acme.io"; }
+        annotate Author { name = "Acme Corp"; email = "eng@acme.io"; }
     }
 
-- Names are lowercase kebab-case, like every other identifier.
+- Annotation **type** names are PascalCase; their **params** are camelCase, like
+  every other type/member.
 - Each annotation applies **at most once per target**; a repeat is an error.
 - Params are **scalar** (string / integer / boolean). A required param must be
   given; an undeclared param is rejected.
-- **Well-known annotations drive presentation.** `annotate icon { path = "…"; }`
-  and `annotate label { text = "…"; }` on a concept feed the generated presentation
+- **Well-known annotations drive presentation.** `annotate Icon { path = "…"; }`
+  and `annotate Label { text = "…"; }` on a concept feed the generated presentation
   (a raw `icon =` / `label =` attribute, where present, still takes precedence).
   Custom annotations are queryable and bindable in author presentation overrides.
 
@@ -220,16 +227,16 @@ Meta-model authors mostly write concepts/primitives/taxonomies; the *data*
 occasionally write instances:
 
     // model <id> : <meta-model> [uses <library> , … ] { concrete instances }
-    model acme : acme-ea uses azure-catalog
+    model acme : acmeEa uses azureCatalog
     {
-        component business-agent
+        Component businessAgent
         {
             label = "Business Agent";
-            category = ai-agent;
-            implemented-by = copilot;
+            category = AiAgent;
+            implementedBy = copilot;
         }
 
-        location azure-westeurope { label = "Azure West Europe"; }
+        Location azureWesteurope { label = "Azure West Europe"; }
     }
 
 - **A concrete instance must live inside a `model` block.** A `model <id> :
@@ -237,24 +244,24 @@ occasionally write instances:
   `:` names the meta-model and `uses` lists the libraries it draws terms from
   (both are **namespace names** that must be in scope). A concrete instance
   declared at top level is an error (`instance.orphan`).
-- A nested record inside a body expresses **containment** (the `component` lives
+- A nested record inside a body expresses **containment** (the `Component` lives
   in the `model`).
-- `<id>` is a bare identifier or a quoted string.
-- `class <concept> <id> { … }` declares a **class** (a partial, fixed-value
+- `<id>` is a bare camelCase identifier or a quoted string.
+- `class <Concept> <id> { … }` declares a **class** (a partial, fixed-value
   definition). Classes are **exempt** from the model rule — they may sit at top
   level. A leaf points at one with `instanceof`:
-  `component x instanceof web-app { … }`.
+  `Component x instanceof webApp { … }`.
 
 ### Edge shorthand
 
 Connectors and steps can be written as edges:
 
-    connector business-agent --> crm-api;
+    connector businessAgent --> crmApi;
     step receive -> validate;
 
 - `from <op> to` where `<op>` is `->` or `-->`; endpoints are bare names. A
   trailing `{ … }` block adds attributes; otherwise end with `;`.
-- Inside an `application-connectors { … }` block, list bare `a --> b` edges.
+- Inside a `connectors { … }` block, list bare `a --> b` edges.
 
 ## 8. Modifiers
 
@@ -298,24 +305,24 @@ spurious later diagnostics. Re-check after each fix.
     namespace a.b.c { … }                       // one per file
     import a.b.d;                                // first in the body
 
-    primitive id : string { description = "…"; regex = "…"; }
+    primitive Id : string { description = "…"; regex = "…"; }
 
-    annotation icon { path : string; }          // typed metadata type
+    annotation Icon { path : string; }          // typed metadata type
 
-    concept thing : parent
+    concept Thing : Parent
     {
-        annotate icon { path = "resources/thing.svg"; }   // decorate the concept
+        annotate Icon { path = "resources/thing.svg"; }   // decorate the concept
         description = """ … """;
-        name  : label;              // exactly one
-        tags  : some-taxonomy [];   // many
-        owner : identifier ?;       // optional
-        parts : part [+];           // one or more
-        relationship uses -> other [];
+        name  : Label;              // exactly one
+        tags  : SomeTaxonomy [];    // many
+        owner : Identifier ?;       // optional
+        parts : Part [+];           // one or more
+        relationship uses -> Other [];
         invariant "…";
     }
 
-    taxonomy some-taxonomy : represents thing { term a { label = "A"; } }
+    taxonomy SomeTaxonomy : represents Thing { term A { label = "A"; } }
 
-    package { annotate author { name = "…"; } }  // package-level metadata
+    package { annotate Author { name = "…"; } }  // package-level metadata
 
-    model m : a.b.c uses lib { thing t { … } }   // instances live in a model
+    model m : a.b.c uses lib { Thing t { … } }   // instances live in a model
