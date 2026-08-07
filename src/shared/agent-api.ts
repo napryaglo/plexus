@@ -21,6 +21,13 @@ export enum AgentChannel
     // renderer→main: the current problems/diagnostics list for a pending
     // get_problems tool call (unblocks the tool).
     GetProblemsResult = 'agent:get-problems-result',
+    // renderer→main: the user's verdict for a pending tool-approval card
+    // (unblocks the approve_tool permission hook).
+    AnswerToolApproval = 'agent:answer-tool-approval',
+    // renderer→main query: the persistent approval rules for a project.
+    ListApprovalRules = 'agent:list-approval-rules',
+    // renderer→main: drop one persistent approval rule for a project.
+    RevokeApprovalRule = 'agent:revoke-approval-rule',
 }
 
 export enum AgentEventKind
@@ -41,6 +48,10 @@ export enum AgentEventKind
     // The agent called get_problems: the renderer reads the current diagnostics
     // and replies with the list via AgentChannel.GetProblemsResult.
     GetProblems    = 'get-problems',
+    // The CLI's permission hook (approve_tool) needs a verdict for a consequential
+    // tool (e.g. Bash): render an approval card and block until the user answers
+    // or the countdown auto-approves (see PlexusMcpServer + AnswerToolApproval).
+    ToolApproval   = 'tool-approval',
     TurnComplete   = 'turn-complete',
     Error          = 'error',
 }
@@ -92,6 +103,11 @@ export const CREATE_PROJECT_TOOL_NAME = 'create_project'
 export const CREATE_PROJECT_TOOL_QUALIFIED = `mcp__${MCP_SERVER_KEY}__${CREATE_PROJECT_TOOL_NAME}`
 export const GET_PROBLEMS_TOOL_NAME = 'get_problems'
 export const GET_PROBLEMS_TOOL_QUALIFIED = `mcp__${MCP_SERVER_KEY}__${GET_PROBLEMS_TOOL_NAME}`
+// The headless CLI's permission hook, passed as --permission-prompt-tool. Unlike
+// the tools above it is NOT allow-listed (allow-listed tools skip the prompt), so
+// consequential tools route here for a user verdict.
+export const APPROVE_TOOL_NAME = 'approve_tool'
+export const APPROVE_TOOL_QUALIFIED = `mcp__${MCP_SERVER_KEY}__${APPROVE_TOOL_NAME}`
 
 // A published base a prefill proposes to bind, by id + version (structurally a
 // renderer BaseRef; kept plain so shared/ has no renderer dependency).
@@ -160,6 +176,19 @@ export interface GetProblemsResult
     error?:       string
 }
 
+// Tool-approval payloads. The CLI's approve_tool hook asks whether a consequential
+// tool may run; the user picks one decision. AllowAlways persists a rule (session +
+// per-project); AllowOnce/timeout allow this call only; Deny returns a deny verdict.
+export enum ToolApprovalDecision { AllowOnce = 'allow-once', AllowAlways = 'allow-always', Deny = 'deny' }
+// A remembered approval. `tool` is the tool name (e.g. "Bash"); `prefix` (Bash only)
+// is the leading command family (e.g. "python"), so a rule grants a command family,
+// not all shell access. A prefix-less rule matches any use of that tool.
+export interface ApprovalRule { tool: string; prefix?: string }
+// What the approval card shows: tool + (for Bash) the command and its derived prefix.
+export interface ToolApprovalRequest { id: string; toolName: string; command?: string; prefix?: string }
+// The user's verdict for a pending approval, correlated by `id`.
+export interface ToolApprovalAnswer { id: string; decision: ToolApprovalDecision }
+
 // Emitted once per session from the CLI's system:init line.
 export interface SessionStartedEvent { Kind: AgentEventKind.SessionStarted; SessionId: string }
 // A token delta appended to the growing assistant bubble.
@@ -170,6 +199,7 @@ export interface QuestionEvent       { Kind: AgentEventKind.Question; Request: Q
 export interface RefreshProjectEvent { Kind: AgentEventKind.RefreshProject; Request: RefreshProjectRequest }
 export interface CreateProjectEvent  { Kind: AgentEventKind.CreateProject; Request: CreateProjectRequest }
 export interface GetProblemsEvent    { Kind: AgentEventKind.GetProblems; Request: GetProblemsRequest }
+export interface ToolApprovalEvent   { Kind: AgentEventKind.ToolApproval; Request: ToolApprovalRequest }
 export interface TurnCompleteEvent   { Kind: AgentEventKind.TurnComplete }
 export interface AgentErrorEvent     { Kind: AgentEventKind.Error; Message: string }
 
@@ -182,6 +212,7 @@ export type AgentEvent =
     | RefreshProjectEvent
     | CreateProjectEvent
     | GetProblemsEvent
+    | ToolApprovalEvent
     | TurnCompleteEvent
     | AgentErrorEvent
 
@@ -203,5 +234,11 @@ export interface IAgentApi
     createProjectResult(result: CreateProjectResult): Promise<void>;
     // The renderer's problems list for a pending get_problems tool call.
     getProblemsResult(result: GetProblemsResult): Promise<void>;
+    // Reply to a pending tool-approval card; unblocks the approve_tool hook.
+    answerToolApproval(answer: ToolApprovalAnswer): Promise<void>;
+    // Read the persistent approval rules for a project (settings surface).
+    listApprovalRules(projectKey: string): Promise<ApprovalRule[]>;
+    // Drop one persistent approval rule for a project.
+    revokeApprovalRule(projectKey: string, rule: ApprovalRule): Promise<void>;
     onEvent(handler: (event: AgentEvent) => void): () => void;
 }

@@ -22,6 +22,7 @@ import { ProjectExplorerService } from '../../project-explorer/services/project-
 import type { NewProjectResult } from '../../../services/projects/new-project-dialog-model.js'
 import { NewProjectCard } from './new-project-card.js'
 import { TranscriptReducer } from './transcript.js'
+import { ApprovalRulesVM, type ApprovalRulesPort } from './approval-rules.js'
 
 export class AgentService extends ServiceBase implements IDockPanel
 {
@@ -49,6 +50,11 @@ export class AgentService extends ServiceBase implements IDockPanel
     // the pressed key is Return (the trigger fires for every bubbled keystroke).
     public static readonly SubmitCommandKey = Model.RegisterProperty<ICommand>(
         AgentService, 'SubmitCommand', undefined as unknown as ICommand, MetaData.None)
+    // The current project's persistent tool-approval rules (review + revoke). The
+    // chat template shows it as a collapsible "Approved tools" section (only when
+    // the project has rules).
+    public static readonly ApprovalsKey = Model.RegisterProperty<ApprovalRulesVM>(
+        AgentService, 'Approvals', undefined as unknown as ApprovalRulesVM, MetaData.None)
 
     private readonly reducer = new TranscriptReducer()
     private readonly agent: IAgentApi
@@ -85,6 +91,7 @@ export class AgentService extends ServiceBase implements IDockPanel
         // A submitted answer goes back to the agent bridge; a change in the pending
         // set gates the input row (CanInput).
         this.reducer.onAnswerSubmitted = (answer) => { void this.agent.answerQuestion(answer) }
+        this.reducer.onToolApprovalSubmitted = (answer) => { void this.agent.answerToolApproval(answer) }
         this.reducer.onPendingChange = () =>
             this.set_property_value(AgentService.CanInputKey, !this.reducer.HasPendingQuestion)
 
@@ -94,6 +101,14 @@ export class AgentService extends ServiceBase implements IDockPanel
             if (event.Kind === AgentEventKind.CreateProject) { void this.handleCreateProject(event.Request); return }
             this.reducer.apply(event)
         })
+
+        // Persistent-approvals surface: a VM over the bridge, keyed live to the
+        // current agent cwd, so it always shows the active project's rules.
+        const port: ApprovalRulesPort = {
+            list: (key) => this.agent.listApprovalRules(key),
+            revoke: (key, rule) => this.agent.revokeApprovalRule(key, rule),
+        }
+        this.set_property_value(AgentService.ApprovalsKey, new ApprovalRulesVM(port, () => this.currentCwd()))
 
         // Track the open-project set: seed from the store (forcing a load), then
         // follow changes. Each change re-targets the NEXT turn + refreshes Status.
@@ -110,6 +125,15 @@ export class AgentService extends ServiceBase implements IDockPanel
         const cwd = dirs.length > 0 ? dirs[0] : this.fallbackCwd
         const extra = dirs.length > 1 ? ` (+${dirs.length - 1} more)` : ''
         this.set_property_value(AgentService.StatusKey, `Agent directory: ${cwd}${extra}`)
+        // The active project changed → reload its persistent approval rules.
+        void this.Approvals?.Refresh()
+    }
+
+    // The agent's cwd = the first open-project folder, or the environment fallback.
+    // Also the key the persistent approval rules are scoped under.
+    private currentCwd(): string
+    {
+        return this.workingDirs.length > 0 ? this.workingDirs[0] : this.fallbackCwd
     }
 
     // Drop the store subscription (the shell calls this when the service is torn
@@ -125,6 +149,7 @@ export class AgentService extends ServiceBase implements IDockPanel
     public get CanInput(): boolean { return this.get_property_value(AgentService.CanInputKey) }
     public get SendCommand(): ICommand { return this.get_property_value(AgentService.SendCommandKey) }
     public get SubmitCommand(): ICommand { return this.get_property_value(AgentService.SubmitCommandKey) }
+    public get Approvals(): ApprovalRulesVM { return this.get_property_value(AgentService.ApprovalsKey) }
 
     private send(): void
     {
@@ -133,7 +158,7 @@ export class AgentService extends ServiceBase implements IDockPanel
         // Blocked on a pending question — the user must answer the card first.
         if (!this.CanInput) return
         const dirs = this.workingDirs
-        const cwd = dirs.length > 0 ? dirs[0] : this.fallbackCwd
+        const cwd = this.currentCwd()
         const addDirs = dirs.length > 0 ? dirs.slice(1) : []
         this.reducer.beginUserTurn(text)   // optimistic echo
         void this.agent.sendTurn(cwd, addDirs, text)

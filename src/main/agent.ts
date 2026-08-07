@@ -3,16 +3,20 @@
 //   • commands   renderer→main via ipcMain.handle
 //   • events     main→renderer via webContents.send on AgentChannel.Event
 // Register once from app.whenReady(), alongside registerFileSystemHandlers().
-import { BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import {
-    AgentChannel, ASK_TOOL_QUALIFIED, CREATE_PROJECT_TOOL_QUALIFIED, GET_PROBLEMS_TOOL_QUALIFIED,
+    AgentChannel, APPROVE_TOOL_QUALIFIED, ASK_TOOL_QUALIFIED, CREATE_PROJECT_TOOL_QUALIFIED, GET_PROBLEMS_TOOL_QUALIFIED,
     MCP_SERVER_KEY, REFRESH_TOOL_QUALIFIED,
-    type AgentEvent, type CreateProjectResult, type GetProblemsResult, type QuestionAnswer, type RefreshProjectResult,
+    type AgentEvent, type ApprovalRule, type CreateProjectResult, type GetProblemsResult, type QuestionAnswer,
+    type RefreshProjectResult, type ToolApprovalAnswer,
 } from '../shared/agent-api.js'
 import { AiProviderService } from './agent/ai-provider-service.js'
 import { ClaudeCliProvider } from './agent/claude-cli-provider.js'
 import { AgentSession } from './agent/agent-session.js'
 import { PlexusMcpServer } from './agent/plexus-mcp-server.js'
+import { RuleStore } from './agent/tool-approval-rules.js'
 
 // Appended to the model's system prompt every session so it calls refresh_project
 // after — and only after — a turn that changed files or folders in a project.
@@ -41,23 +45,39 @@ export async function registerAgentHandlers(): Promise<void>
     await mcpServer.listen()
     mcpServer.setSink(emitToRenderer)
 
+    // Persistent per-project tool-approval rules, stored in Electron userData (never
+    // in a project tree). The projectKey is re-pointed to the session's working
+    // directory on each start/turn so allow-always is scoped per project.
+    const rulesPath = join(app.getPath('userData'), 'agent-approvals.json')
+    const store = new RuleStore(
+        { read: (p) => (existsSync(p) ? readFileSync(p, 'utf8') : undefined), write: (p, s) => writeFileSync(p, s, 'utf8') },
+        rulesPath,
+    )
+    mcpServer.setRuleStore(store, process.cwd())
+
     const providers = new AiProviderService()
     providers.register(new ClaudeCliProvider(undefined, undefined, {
         servers: {
             [MCP_SERVER_KEY]: { type: 'http', url: mcpServer.Url },
         },
-        allowedTools: [ASK_TOOL_QUALIFIED, REFRESH_TOOL_QUALIFIED, CREATE_PROJECT_TOOL_QUALIFIED, GET_PROBLEMS_TOOL_QUALIFIED],
+        // The four Plexus MCP tools + read-only built-ins auto-approve; everything
+        // else (Bash, WebFetch, Write outside edits, …) routes to approve_tool.
+        allowedTools: [ASK_TOOL_QUALIFIED, REFRESH_TOOL_QUALIFIED, CREATE_PROJECT_TOOL_QUALIFIED, GET_PROBLEMS_TOOL_QUALIFIED,
+                       'Read', 'Glob', 'Grep', 'LS'],
         // Turn off Claude Code's built-in AskUserQuestion (it can't render in
         // headless -p mode → fails), so the model uses our MCP tool instead.
         disallowedTools: ['AskUserQuestion'],
         appendSystemPrompt: REFRESH_INSTRUCTION,
+        permissionPromptTool: APPROVE_TOOL_QUALIFIED,
     }))
     const session = new AgentSession(providers, emitToRenderer)
 
     ipcMain.handle(AgentChannel.StartSession, (_e, workingDirectory: string, addDirs: readonly string[]): void => {
+        mcpServer.setRuleStore(store, workingDirectory)
         session.start(workingDirectory, addDirs)
     })
     ipcMain.handle(AgentChannel.SendTurn, (_e, workingDirectory: string, addDirs: readonly string[], text: string): void => {
+        mcpServer.setRuleStore(store, workingDirectory)
         session.send(workingDirectory, addDirs, text)
     })
     ipcMain.handle(AgentChannel.Abort, (): void => {
@@ -78,5 +98,14 @@ export async function registerAgentHandlers(): Promise<void>
     // The renderer's problems list → unblock the get_problems tool call.
     ipcMain.handle(AgentChannel.GetProblemsResult, (_e, result: GetProblemsResult): void => {
         mcpServer.resolveProblems(result)
+    })
+    // The user's tool-approval verdict → unblock the approve_tool permission hook.
+    ipcMain.handle(AgentChannel.AnswerToolApproval, (_e, answer: ToolApprovalAnswer): void => {
+        mcpServer.resolveApproval(answer)
+    })
+    // Settings surface: read + revoke a project's persistent approval rules.
+    ipcMain.handle(AgentChannel.ListApprovalRules, (_e, projectKey: string): ApprovalRule[] => store.list(projectKey))
+    ipcMain.handle(AgentChannel.RevokeApprovalRule, (_e, projectKey: string, rule: ApprovalRule): void => {
+        store.remove(projectKey, rule)
     })
 }

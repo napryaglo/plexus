@@ -4,10 +4,16 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { PlexusMcpServer } from '../plexus-mcp-server.js'
 import {
     AgentEventKind, ASK_TOOL_NAME, REFRESH_TOOL_NAME, CREATE_PROJECT_TOOL_NAME, GET_PROBLEMS_TOOL_NAME,
-    ProblemSeverity,
+    ProblemSeverity, ToolApprovalDecision,
     type AgentEvent, type QuestionRequest, type RefreshProjectResult, type CreateProjectResult,
     type GetProblemsResult,
 } from '../../../shared/agent-api.js'
+import { RuleStore } from '../tool-approval-rules.js'
+
+function memStore(): RuleStore {
+    const io = new Map<string, string>()
+    return new RuleStore({ read: (p) => io.get(p), write: (p, s) => { io.set(p, s) } }, 'x.json')
+}
 
 // Proves the merged server hosts BOTH tools under one listener at the MCP protocol
 // level: a real MCP client can initialise over Streamable HTTP, list both tools,
@@ -140,6 +146,54 @@ describe('PlexusMcpServer — ask_user_question', () => {
         const result = await client.callTool({ name: ASK_TOOL_NAME, arguments: { questions: QUESTIONS } })
         const text = (result.content as Array<{ type: string; text: string }>)[0]!.text
         expect(JSON.parse(text)).toEqual({})
+    })
+})
+
+describe('PlexusMcpServer — approve_tool', () => {
+    test('requestApproval on a list MISS emits a ToolApproval event and blocks until answered', async () => {
+        const events: AgentEvent[] = []
+        const server = new PlexusMcpServer()
+        server.setSink((e) => events.push(e))
+        server.setRuleStore(memStore(), '/proj')
+        const p = server.requestApproval('Bash', { command: 'python foo.py' })
+        const evt = events.find((e) => e.Kind === AgentEventKind.ToolApproval)
+        expect(evt).toBeDefined()
+        const id = (evt as { Request: { id: string; prefix?: string } }).Request.id
+        expect((evt as { Request: { prefix?: string } }).Request.prefix).toBe('python')
+        server.resolveApproval({ id, decision: ToolApprovalDecision.AllowOnce })
+        expect(await p).toEqual({ behavior: 'allow', updatedInput: { command: 'python foo.py' } })
+    })
+
+    test('a persisted-rule HIT allows immediately without emitting an event', async () => {
+        const events: AgentEvent[] = []
+        const store = memStore()
+        store.add('/proj', { tool: 'Bash', prefix: 'python' })
+        const server = new PlexusMcpServer()
+        server.setSink((e) => events.push(e))
+        server.setRuleStore(store, '/proj')
+        const result = await server.requestApproval('Bash', { command: 'python bar.py' })
+        expect(result).toEqual({ behavior: 'allow', updatedInput: { command: 'python bar.py' } })
+        expect(events.some((e) => e.Kind === AgentEventKind.ToolApproval)).toBe(false)
+    })
+
+    test('allow-always persists a rule; a later matching call is auto-allowed', async () => {
+        const store = memStore()
+        const server = new PlexusMcpServer()
+        server.setSink(() => {})
+        server.setRuleStore(store, '/proj')
+        const p = server.requestApproval('Bash', { command: 'python a.py' })
+        server.resolveApproval({ id: server.LastApprovalId, decision: ToolApprovalDecision.AllowAlways })
+        await p
+        expect(store.list('/proj')).toEqual([{ tool: 'Bash', prefix: 'python' }])
+    })
+
+    test('deny returns a deny verdict', async () => {
+        const server = new PlexusMcpServer()
+        server.setSink(() => {})
+        server.setRuleStore(memStore(), '/proj')
+        const p = server.requestApproval('Bash', { command: 'rm -rf /' })
+        server.resolveApproval({ id: server.LastApprovalId, decision: ToolApprovalDecision.Deny })
+        expect(await p).toEqual({ behavior: 'deny', message: 'Denied by the user in Plexus.' })
     })
 })
 
