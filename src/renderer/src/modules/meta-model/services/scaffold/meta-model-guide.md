@@ -61,16 +61,16 @@ Decorate a concept with **annotations** to control how it is presented and to
 attach typed metadata a tool can read. Declare the annotation type once, then
 `annotate` the concept (see the manual §6):
 
-    annotation Icon { path : string; }
+    annotation icon { path : string; }
 
     concept Component
     {
-        annotate Icon  { path = "resources/component.svg"; }
-        annotate Label { text = "Component"; }
+        annotate icon  { path = "resources/component.svg"; }
+        annotate label { text = "Component"; }
         …
     }
 
-- **`Icon` and `Label` are well-known** — the generated presentation reads them to
+- **`icon` and `label` are well-known** — the generated presentation reads them to
   draw each concept's chip (a raw `icon =` / `label =` attribute, where present,
   still wins). Put the concept's SVG under `presentation/` and point `path` at it.
 - **Custom annotations** (`Category`, `Owner`, …) are your own typed metadata;
