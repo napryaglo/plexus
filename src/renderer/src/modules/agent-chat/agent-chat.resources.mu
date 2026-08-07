@@ -13,6 +13,7 @@ import QuestionVM from "./services/question-card.js"
 import OptionVM from "./services/question-card.js"
 import NewProjectCard from "./services/new-project-card.js"
 import ToolApprovalCard from "./services/approval-card.js"
+import ApprovalRuleRow from "./services/approval-rules.js"
 
 resources AgentChatResources {
     DataTemplate [ DataType = AgentService ] {
@@ -28,6 +29,13 @@ resources AgentChatResources {
                 Style [ TargetType = DockPanel ] {
                     on KeyDown { InvokeCommand [ Command = $SubmitCommand ] }
                 }
+            }
+            // Approved tools — the current project's persistent approval rules, each
+            // with a Revoke. Pinned to the top, shown only when the project has rules.
+            StackPanel [ DockPanel.Dock = Top, Orientation = Vertical,
+                         Visibility = $Approvals.HasRules << ToVisibility, Margin = (0,0,0,8) ] {
+                TextBlock [ Style = @LabelSmall, Text = "APPROVED TOOLS", Foreground = @OnSurfaceVariant, Margin = (0,0,0,4) ]
+                ItemsControl [ ItemsSource = $Approvals.Rules, ItemsPanel = @VerticalStackPanel ]
             }
             // Input row pinned to the bottom. Disabled ($CanInput = false) while a
             // question card is awaiting an answer — the user must resolve it first.
@@ -214,6 +222,16 @@ resources AgentChatResources {
                 TextBlock [ Text = $Recap, Visibility = $IsAnswered << ToVisibility,
                             Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
             }
+        }
+    }
+
+    // One approved-tool row: the rule label ("Bash: python" / "WebFetch") + Revoke.
+    DataTemplate [ DataType = ApprovalRuleRow ] {
+        DockPanel [ LastChildFill = true, Margin = (0,2,0,2) ] {
+            Button [ DockPanel.Dock = Right, Command = $RevokeCommand, Template = @CompactButton, Margin = (8,0,0,0) ] {
+                TextBlock [ Text = "Revoke" ]
+            }
+            TextBlock [ FontFamily = "Consolas", Text = $Label, Foreground = @OnSurface, VerticalAlignment = Center ]
         }
     }
 
