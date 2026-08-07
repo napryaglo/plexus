@@ -12,7 +12,7 @@ import {
 } from '../shared/file-system-api.js'
 import { EnvironmentChannel, type EnvironmentInfo } from '../shared/environment-api.js'
 import { SettingsChannel, type ISettingsBridge } from '../shared/settings-api.js'
-import { AgentChannel, type AgentEvent, type IAgentApi } from '../shared/agent-api.js'
+import { AgentChannel, type AgentEvent, type ApprovalRule, type IAgentApi } from '../shared/agent-api.js'
 import { TodlLspChannel, type ITodlLspApi } from '../shared/todl-lsp-api.js'
 import { FileWatchChannel, type FileChangeEvent, type IFileWatchApi } from '../shared/file-watch-api.js'
 
@@ -86,6 +86,9 @@ const agent: IAgentApi = {
   refreshProjectResult: (result): Promise<void> => ipcRenderer.invoke(AgentChannel.RefreshProjectResult, result),
   createProjectResult: (result): Promise<void> => ipcRenderer.invoke(AgentChannel.CreateProjectResult, result),
   getProblemsResult: (result): Promise<void> => ipcRenderer.invoke(AgentChannel.GetProblemsResult, result),
+  answerToolApproval: (answer): Promise<void> => ipcRenderer.invoke(AgentChannel.AnswerToolApproval, answer),
+  listApprovalRules: (projectKey): Promise<ApprovalRule[]> => ipcRenderer.invoke(AgentChannel.ListApprovalRules, projectKey),
+  revokeApprovalRule: (projectKey, rule): Promise<void> => ipcRenderer.invoke(AgentChannel.RevokeApprovalRule, projectKey, rule),
   onEvent: (handler: (event: AgentEvent) => void): (() => void) => {
     const listener = (_e: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AgentChannel.Event, listener)

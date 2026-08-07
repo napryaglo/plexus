@@ -36,6 +36,9 @@ export interface McpOptions
     // --append-system-prompt). Used to instruct the model to call refresh_project
     // after file-changing turns.
     appendSystemPrompt?: string;
+    // The fully-qualified MCP tool the headless CLI calls to approve tool use
+    // (`mcp__plexus__approve_tool`). Emitted as --permission-prompt-tool.
+    permissionPromptTool?: string;
 }
 
 // The subset of a spawned child this provider uses. Kept minimal + injectable so

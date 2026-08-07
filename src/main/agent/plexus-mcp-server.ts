@@ -28,20 +28,30 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import {
     AgentEventKind,
+    APPROVE_TOOL_NAME,
     ASK_TOOL_NAME,
     CREATE_PROJECT_TOOL_NAME,
     GET_PROBLEMS_TOOL_NAME,
     MCP_SERVER_KEY,
     ProblemSeverity,
     REFRESH_TOOL_NAME,
+    ToolApprovalDecision,
     type AgentEvent,
+    type ApprovalRule,
     type CreateProjectPrefill,
     type CreateProjectResult,
     type GetProblemsResult,
     type Question,
     type QuestionAnswer,
     type RefreshProjectResult,
+    type ToolApprovalAnswer,
 } from '../../shared/agent-api.js'
+import { ruleFor, matches, type RuleStore } from './tool-approval-rules.js'
+
+// The verdict JSON the CLI's permission hook expects: allow (optionally with an
+// echoed/edited input) or deny with a message. This is the sole resolver/return
+// type for the approval path.
+type Verdict = { behavior: 'allow'; updatedInput: unknown } | { behavior: 'deny'; message: string }
 
 const optionSchema = z.object({ label: z.string(), description: z.string().optional() })
 const questionSchema = z.object({
@@ -63,6 +73,20 @@ export class PlexusMcpServer
     private readonly pendingRefresh = new Map<string, (result: RefreshProjectResult) => void>()
     private readonly pendingCreate = new Map<string, (result: CreateProjectResult) => void>()
     private readonly pendingProblems = new Map<string, (result: GetProblemsResult) => void>()
+    // Pending tool-approval requests, keyed by minted id → a resolver that takes the
+    // user's decision (or a timeout-supplied AllowOnce).
+    private readonly pendingApprovals = new Map<string, (decision: ToolApprovalDecision) => void>()
+    // Session-scoped allow-list (cleared on process exit). The persistent per-project
+    // list lives in `ruleStore`; both are consulted on each request.
+    private readonly sessionRules: ApprovalRule[] = []
+    private ruleStore: RuleStore | undefined
+    private projectKey = ''
+    // Test aid: id of the most recent pending approval (lets a test resolve without
+    // scraping the emitted event).
+    public LastApprovalId = ''
+    // One-time log of the CLI's raw permission-tool args (its wire schema is
+    // undocumented — see Task 4 Step 6).
+    private loggedApprovalArgs = false
     // Monotonic id source — no Date.now/Math.random (keeps behaviour deterministic
     // and dependency-free).
     private seq = 0
@@ -87,6 +111,66 @@ export class PlexusMcpServer
         if (done === undefined) return
         this.pendingAnswers.delete(answer.id)
         done(answer.answers)
+    }
+
+    // Point the approval path at a persistent rule store scoped to a project (the
+    // agent's working directory). Re-called on each session start/turn so per-project
+    // scope stays correct.
+    public setRuleStore(store: RuleStore, projectKey: string): void { this.ruleStore = store; this.projectKey = projectKey }
+
+    // Deliver the user's verdict to a blocked approve_tool call; no-op if stale.
+    // First-wins (idempotent): the renderer's answer and the safety timeout can't
+    // both resolve the same request.
+    public resolveApproval(answer: ToolApprovalAnswer): void
+    {
+        const done = this.pendingApprovals.get(answer.id)
+        if (done === undefined) return
+        this.pendingApprovals.delete(answer.id)
+        done(answer.decision)
+    }
+
+    // The permission hook: decide whether `toolName`+`input` may run. A session or
+    // persistent rule HIT allows immediately (no card). A MISS emits a ToolApproval
+    // event and blocks until the user answers or a safety timer (< the CLI's 30s
+    // MCP_TIMEOUT) auto-allows once. AllowAlways persists a rule (session + store).
+    public requestApproval(toolName: string, input: unknown): Promise<Verdict>
+    {
+        // Allow-list check (session first, then persistent) — no card on a hit.
+        if (this.sessionRules.some((r) => matches(r, toolName, input))
+            || (this.ruleStore?.matches(this.projectKey, toolName, input) ?? false))
+        {
+            return Promise.resolve({ behavior: 'allow', updatedInput: input })
+        }
+        const id = `a${(this.seq += 1)}`
+        this.LastApprovalId = id
+        const sink = this.sink
+        const rule = ruleFor(toolName, input)
+        const command = typeof (input as { command?: unknown })?.command === 'string'
+            ? (input as { command: string }).command : undefined
+        // No sink (probe/headless) → auto allow-once so the tool round-trip completes.
+        if (sink === undefined) return Promise.resolve({ behavior: 'allow', updatedInput: input })
+        return new Promise<Verdict>((resolve) =>
+        {
+            // Safety net: if the renderer never answers (window closed), allow-once
+            // before the CLI's 30s MCP_TIMEOUT so it can't hang.
+            const timer = setTimeout(() =>
+            {
+                if (this.pendingApprovals.delete(id)) resolve({ behavior: 'allow', updatedInput: input })
+            }, 25000)
+            // Register BEFORE emitting so a fast reply can't race pending.set.
+            this.pendingApprovals.set(id, (decision) =>
+            {
+                clearTimeout(timer)
+                if (decision === ToolApprovalDecision.Deny) { resolve({ behavior: 'deny', message: 'Denied by the user in Plexus.' }); return }
+                if (decision === ToolApprovalDecision.AllowAlways)
+                {
+                    this.sessionRules.push(rule)
+                    this.ruleStore?.add(this.projectKey, rule)
+                }
+                resolve({ behavior: 'allow', updatedInput: input })
+            })
+            sink({ Kind: AgentEventKind.ToolApproval, Request: { id, toolName, command, prefix: rule.prefix } })
+        })
     }
 
     // Deliver the renderer's summary to a blocked refresh_project call; no-op if stale.
@@ -201,6 +285,7 @@ export class PlexusMcpServer
         for (const [id, done] of [...this.pendingRefresh]) { this.pendingRefresh.delete(id); done({ id, projects: [], error: 'Server closed.' }) }
         for (const [id, done] of [...this.pendingCreate]) { this.pendingCreate.delete(id); done({ id, created: false, error: 'Server closed.' }) }
         for (const [id, done] of [...this.pendingProblems]) { this.pendingProblems.delete(id); done({ id, problems: [], errorCount: 0, warningCount: 0, total: 0, truncated: false, error: 'Server closed.' }) }
+        for (const [id, done] of [...this.pendingApprovals]) { this.pendingApprovals.delete(id); done(ToolApprovalDecision.AllowOnce) }
         for (const transport of this.transports.values()) await transport.close()
         this.transports.clear()
         await new Promise<void>((resolve) => { if (this.httpServer) this.httpServer.close(() => resolve()); else resolve() })
@@ -292,6 +377,32 @@ export class PlexusMcpServer
             {
                 const result = await this.requestProblems(path, severity)
                 return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
+            },
+        )
+
+        // The permission hook — NOT called by the model directly; the CLI invokes it
+        // (via --permission-prompt-tool) for tools not otherwise allowed. Its input
+        // wire schema is undocumented, so parse tolerantly (tool_name|toolName,
+        // input|tool_input) and log the raw args once to confirm the real shape.
+        server.registerTool(
+            APPROVE_TOOL_NAME,
+            {
+                title: 'Approve a tool use',
+                description: 'Internal permission hook — not called by the model directly.',
+                inputSchema: {
+                    tool_name: z.string().optional(), toolName: z.string().optional(),
+                    input: z.unknown().optional(), tool_input: z.unknown().optional(),
+                    tool_use_id: z.string().optional(),
+                },
+            },
+            async (args) =>
+            {
+                if (!this.loggedApprovalArgs) { this.loggedApprovalArgs = true; console.error('[approve_tool] raw args:', JSON.stringify(args)) }
+                const a = args as Record<string, unknown>
+                const toolName = (a.tool_name ?? a.toolName ?? 'unknown') as string
+                const input = (a.input ?? a.tool_input ?? {})
+                const verdict = await this.requestApproval(toolName, input)
+                return { content: [{ type: 'text' as const, text: JSON.stringify(verdict) }] }
             },
         )
 

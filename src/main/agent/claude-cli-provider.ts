@@ -89,6 +89,8 @@ export class ClaudeCliProvider implements IAiProvider
             ? ['--disallowedTools', ...this.mcp.disallowedTools] : []
         const appendPrompt = this.mcp.appendSystemPrompt !== undefined && this.mcp.appendSystemPrompt.length > 0
             ? ['--append-system-prompt', this.mcp.appendSystemPrompt] : []
-        return ['--mcp-config', configPath, ...allow, ...disallow, ...appendPrompt]
+        const promptTool = this.mcp.permissionPromptTool !== undefined
+            ? ['--permission-prompt-tool', this.mcp.permissionPromptTool] : []
+        return ['--mcp-config', configPath, ...allow, ...disallow, ...appendPrompt, ...promptTool]
     }
 }

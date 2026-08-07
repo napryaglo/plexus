@@ -19,6 +19,9 @@ function fakeAgent(): { api: IAgentApi; turns: Array<{ cwd: string; addDirs: rea
         refreshProjectResult: () => Promise.resolve(),
         createProjectResult: () => Promise.resolve(),
         getProblemsResult: () => Promise.resolve(),
+        answerToolApproval: () => Promise.resolve(),
+        listApprovalRules: () => Promise.resolve([]),
+        revokeApprovalRule: () => Promise.resolve(),
         onEvent: () => () => {},
     }
     return { api, turns }
@@ -84,6 +87,9 @@ test('a CreateProject event adds a card, creates via the explorer, and posts the
         refreshProjectResult: () => Promise.resolve(),
         createProjectResult: (r) => { posted.push(r); return Promise.resolve() },
         getProblemsResult: () => Promise.resolve(),
+        answerToolApproval: () => Promise.resolve(),
+        listApprovalRules: () => Promise.resolve([]),
+        revokeApprovalRule: () => Promise.resolve(),
         onEvent: (h) => { push = h; return () => {} },
     }
     ;(globalThis as unknown as { api: unknown }).api = { agent: api }   // overrides beforeEach's bridge
