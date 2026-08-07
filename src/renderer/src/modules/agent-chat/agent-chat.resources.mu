@@ -205,18 +205,21 @@ resources AgentChatResources {
                     Border [ Style = @ToolMonoBox, Visibility = $HasCommand << ToVisibility, Margin = (0,6,0,0) ] {
                         TextBlock [ FontFamily = "Consolas", Text = $Command, Foreground = @OnSurface, TextWrapping = Wrap ]
                     }
-                    DockPanel [ LastChildFill = false, Margin = (0,10,0,0) ] {
-                        ProgressIndicator [ DockPanel.Dock = Right, Variant = Circular, Value = $Countdown,
-                                            Width = 20, Height = 20, Margin = (8,0,0,0) ]
-                        Button [ DockPanel.Dock = Left, Command = $ApproveOnceCommand, Template = @CompactButton, Margin = (0,0,6,0) ] {
+                    // Buttons then the countdown ring, laid out left-to-right so the
+                    // ring sits just right of Deny and stays inside the card border
+                    // (a Right-docked ring overflowed the card's visible edge).
+                    StackPanel [ Orientation = Horizontal, Margin = (0,10,0,0) ] {
+                        Button [ Command = $ApproveOnceCommand, Template = @CompactButton, Margin = (0,0,6,0) ] {
                             TextBlock [ Text = "Approve once" ]
                         }
-                        Button [ DockPanel.Dock = Left, Command = $AllowAlwaysCommand, Template = @CompactButton, Margin = (0,0,6,0) ] {
+                        Button [ Command = $AllowAlwaysCommand, Template = @CompactButton, Margin = (0,0,6,0) ] {
                             TextBlock [ Text = $AllowAlwaysLabel ]
                         }
-                        Button [ DockPanel.Dock = Left, Command = $DenyCommand, Template = @CompactButton ] {
+                        Button [ Command = $DenyCommand, Template = @CompactButton, Margin = (0,0,8,0) ] {
                             TextBlock [ Text = "Deny" ]
                         }
+                        ProgressIndicator [ Variant = Circular, Value = $Countdown,
+                                            Width = 20, Height = 20, VerticalAlignment = Center ]
                     }
                 }
                 TextBlock [ Text = $Recap, Visibility = $IsAnswered << ToVisibility,
