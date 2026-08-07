@@ -1,5 +1,17 @@
 import { ModelDraft, Repository, graphFromJSON, type TodlDocument, type JsonNode, type FieldSchema } from '@pragmatic-lab/todl'
 
+// `component` / `Component` / `AppComponent` → camelCase. Mirrors TODL's C-like
+// convention so generated instance ids are valid identifiers (no hyphens).
+function toCamel(id: string): string {
+    const words = id
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+        .split(/[-_\s]+/)
+        .filter((w) => w.length > 0)
+        .map((w) => w.toLowerCase())
+    return words.length === 0 ? '' : words[0]! + words.slice(1).map((w) => w[0]!.toUpperCase() + w.slice(1)).join('')
+}
+
 // The editable instance model behind an architecture-diagram document.
 //
 // A thin Plexus wrapper over TODL's mutable `ModelDraft`: the draft owns the
@@ -93,9 +105,9 @@ export class ArchInstanceModel
 
     private freshId(concept: string): string
     {
-        const stem = concept.slice(concept.lastIndexOf('.') + 1)
-        let id = `${stem}-${++this.seq}`
-        while (this.draft.has(id)) id = `${stem}-${++this.seq}`
+        const stem = toCamel(concept.slice(concept.lastIndexOf('.') + 1))
+        let id = `${stem}${++this.seq}`
+        while (this.draft.has(id)) id = `${stem}${++this.seq}`
         return id
     }
 

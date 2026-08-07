@@ -21,15 +21,20 @@ Full reference: `.claude/todl-manual.md`. The rules that trip up authors most:
   `namespace a.b.c {`, closed by a matching `}` at the end.
 - **Every statement ends with `;`** — fields, assignments, relationships,
   imports. A missing `;` is the most common syntax error.
-- **Identifiers are lowercase kebab-case**: `app-component`, never `AppComponent`
-  or `app_component`. Concept names, field names, and file stems too.
+- **Identifiers are C-like** (`[A-Za-z_][A-Za-z0-9_]*`, no hyphens): **types**
+  (concepts, primitives, taxonomies, annotations, enums, terms, classes) are
+  **PascalCase** (`AppComponent`, never `app-component`); **members** (field
+  names, relationship names, annotation params) are **camelCase**
+  (`implementedBy`); **keywords** and **namespace** segments are lowercase.
 - **Concepts are singular nouns; their taxonomy is that noun in plural.** A
-  `concept` names a single thing (`technology`, `component`, `location`); the
+  `concept` names a single thing (`Technology`, `Component`, `Location`); the
   `taxonomy` that enumerates that concept's classes is the **same noun,
   pluralized**, and `represents` it — e.g.
-  `taxonomy technologies : represents technology { … }`. (Still kebab-case:
-  `access-policy` → `taxonomy access-policies : represents access-policy`.)
-- **References use `&`**: `&location`, `&subnet.default`. The characters `@` and
+  `taxonomy Technologies : represents Technology { … }` (e.g.
+  `AccessPolicy` → `taxonomy AccessPolicies : represents AccessPolicy`).
+- **References are bare names — no sigil**: `location`, `subnet.default`. Whether
+  a value is a reference or a scalar is decided by the member's declared type
+  (concept/taxonomy → reference, primitive → scalar). The characters `@` and
   `$` are reserved for Mural and are hard syntax errors in TODL.
 - **Cardinality is a suffix on the field's type** — bare = exactly one,
   `?` = optional (0..1), `[]` = many (0..N), `[+]` = one-or-more (1..N). There is
@@ -41,8 +46,8 @@ Full reference: `.claude/todl-manual.md`. The rules that trip up authors most:
 - **Strings** are `"…"`; multi-line / raw strings are `"""…"""`.
 - **Annotations carry typed metadata.** Declare an `annotation name { param :
   type; }`, then `annotate name { param = value; }` inside a concept body (or a
-  `package { … }` block) to attach it. Well-known `annotate icon { path = "…"; }`
-  and `annotate label { text = "…"; }` drive the concept's generated presentation.
+  `package { … }` block) to attach it. Well-known `annotate Icon { path = "…"; }`
+  and `annotate Label { text = "…"; }` drive the concept's generated presentation.
   See the manual §6.
 
 ## Workflow
@@ -51,7 +56,7 @@ Full reference: `.claude/todl-manual.md`. The rules that trip up authors most:
 2. Watch the **Problems** panel — validation runs across the whole project on
    every change.
 3. Clear every **error** (warnings are advisory). Frequent ones: a missing `;`,
-   an unresolved `&ref`, a cardinality violation, or a `relationship` whose
+   an unresolved reference, a cardinality violation, or a `relationship` whose
    `target` isn't a concept.
 4. When the project is clean, the author runs **Publish** from the project menu →
    the compiled model plus the raw sources are written to the meta-models

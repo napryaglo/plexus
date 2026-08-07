@@ -5,12 +5,12 @@ import { ArchInstanceModel } from '../architecture-instance-model.js'
 import { resolveTermDrop } from '../drop-resolver.js'
 
 const META = `namespace ea {
-  concept technology { label : string; }
-  concept component { label : string; realised-by : technology?; }
-  concept location { label : string; }
+  concept Technology { label : string; }
+  concept Component { label : string; realisedBy : Technology?; }
+  concept Location { label : string; }
 }`
-const LIB = `namespace ms { taxonomy stack : represents technology {
-  technology azure-openai { label = "Azure OpenAI"; }
+const LIB = `namespace ms { taxonomy Stack : represents Technology {
+  Technology AzureOpenai { label = "Azure OpenAI"; }
 } }`
 
 function model(): ArchInstanceModel {
@@ -20,7 +20,7 @@ function model(): ArchInstanceModel {
 }
 
 test('resolves a technology term to the concept+member that can reference it', () => {
-    expect(resolveTermDrop(model(), 'stack.azure-openai')).toEqual([{ concept: 'component', member: 'realised-by' }])
+    expect(resolveTermDrop(model(), 'Stack.AzureOpenai')).toEqual([{ concept: 'Component', member: 'realisedBy' }])
 })
 
 test('an unknown term resolves to no targets', () => {

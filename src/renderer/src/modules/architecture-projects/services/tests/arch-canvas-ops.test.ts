@@ -21,9 +21,9 @@ function env(): { provider: ServiceProvider; project: FakeStorage } {
     reg.Register(META_MODELS_BACKEND_ID, () => meta)
     reg.Register(LIBRARIES_BACKEND_ID, () => libs)
     provider.registerInstance(StorageProviderRegistry.Key, reg)
-    const metaDoc = toJSON(check([{ uri: 'ea.todl', text: 'namespace ea { concept technology { label : string; } concept component { label : string; realised-by : technology?; } }' }]).model)
+    const metaDoc = toJSON(check([{ uri: 'ea.todl', text: 'namespace ea { concept Technology { label : string; } concept Component { label : string; realisedBy : Technology?; } }' }]).model)
     void meta.WriteText('ea/1/model.json', JSON.stringify(metaDoc))
-    const libDoc = toJSON(checkAgainst([metaDoc], [{ uri: 'ms.todl', text: 'namespace ms { taxonomy stack : represents technology { technology azure-openai { label = "Azure OpenAI"; } } }' }]).model)
+    const libDoc = toJSON(checkAgainst([metaDoc], [{ uri: 'ms.todl', text: 'namespace ms { taxonomy Stack : represents Technology { Technology AzureOpenai { label = "Azure OpenAI"; } } }' }]).model)
     void libs.WriteText('ms/1/model.json', JSON.stringify(libDoc))
     const project = new FakeStorage('fake://proj')
     void project.WriteText('project.plexus', JSON.stringify({ type: 'architecture', name: 'Proj', metaModel: { id: 'ea', version: '1' }, libraries: [{ id: 'ms', version: '1' }] }))
@@ -43,13 +43,13 @@ async function doc(): Promise<ArchDiagramDocument> {
 
 test('applyTermDrop creates a concept instance referencing the term, positioned + node added', async () => {
     const d = await doc()
-    const result = applyTermDrop(d, 'stack.azure-openai', 200, 140)
+    const result = applyTermDrop(d, 'Stack.AzureOpenai', 200, 140)
     expect('created' in result).toBe(true)
     const id = (result as { created: string }).created
     expect(d.Model.ownInstances()).toEqual([id])
     expect(d.LayoutOf(id)).toEqual({ x: 200, y: 140 })
     expect(d.Nodes.Count).toBe(1)
-    expect(d.Model.emit()).toContain('realised-by = stack.azure-openai;')
+    expect(d.Model.emit()).toContain('realisedBy = Stack.AzureOpenai;')
 })
 
 test('applyTermDrop is unresolved and mutates nothing when no concept can reference the term', async () => {
@@ -75,12 +75,12 @@ test('CreateNode on an out-of-scope term returns null and warns (graceful no-op)
 
 test('applyConnect sets the reference member linking two nodes', () => {
     // A minimal model: a component and a technology term to connect it to.
-    const metaDoc = toJSON(check([{ uri: 'ea.todl', text: 'namespace ea { concept technology { label : string; } concept component { label : string; realised-by : technology?; } }' }]).model)
-    const libDoc = toJSON(checkAgainst([metaDoc], [{ uri: 'ms.todl', text: 'namespace ms { taxonomy stack : represents technology { technology azure-openai { label = "Azure OpenAI"; } } }' }]).model)
+    const metaDoc = toJSON(check([{ uri: 'ea.todl', text: 'namespace ea { concept Technology { label : string; } concept Component { label : string; realisedBy : Technology?; } }' }]).model)
+    const libDoc = toJSON(checkAgainst([metaDoc], [{ uri: 'ms.todl', text: 'namespace ms { taxonomy Stack : represents Technology { Technology AzureOpenai { label = "Azure OpenAI"; } } }' }]).model)
     const model = ArchInstanceModel.load([metaDoc, libDoc], '', 'app')
-    const from = model.createInstance('component')
+    const from = model.createInstance('Component')
 
-    expect(applyConnect(model, from, 'stack.azure-openai')).toBe('ok')
-    expect(model.emit()).toContain('realised-by = stack.azure-openai;')
+    expect(applyConnect(model, from, 'Stack.AzureOpenai')).toBe('ok')
+    expect(model.emit()).toContain('realisedBy = Stack.AzureOpenai;')
     expect(applyConnect(model, from, 'nope.nope')).toBe('none')
 })

@@ -60,50 +60,50 @@ const hasNode = (bases: TodlDocument[], id: string): boolean => bases.some((b) =
 
 test('prefers an open producer\'s live document over the published artifact', async () => {
     const mm = await openProject('meta-model', 'ea', '0.1.0',
-        producer(ProducerKind.MetaModel, 'namespace ea { concept live-concept { label : string; } }'))
+        producer(ProducerKind.MetaModel, 'namespace ea { concept LiveConcept { label : string; } }'))
     const { provider, meta } = env([mm])
     // Published copy has a DIFFERENT node, so we can tell which was used.
-    await meta.WriteText('ea/0.1.0/model.json', JSON.stringify(toJSON(check([{ uri: 'x.todl', text: 'namespace ea { concept published-concept { label : string; } }' }]).model)))
+    await meta.WriteText('ea/0.1.0/model.json', JSON.stringify(toJSON(check([{ uri: 'x.todl', text: 'namespace ea { concept PublishedConcept { label : string; } }' }]).model)))
 
     const consumer = new FakeStorage('C:/arch')
     await consumer.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify({ type: 'architecture', metaModel: { id: 'ea', version: '0.1.0' } }))
 
     const resolver = new WorkspaceBaseResolver(provider)
     const { bases, problems } = await resolver.ResolveForStorage(consumer)
-    expect(hasNode(bases, 'live-concept')).toBe(true)
-    expect(hasNode(bases, 'published-concept')).toBe(false)
+    expect(hasNode(bases, 'LiveConcept')).toBe(true)
+    expect(hasNode(bases, 'PublishedConcept')).toBe(false)
     expect(problems).toEqual([])
 })
 
 test('falls back to the published artifact when the producer is not open', async () => {
     const { provider, meta } = env([])
-    await meta.WriteText('ea/0.1.0/model.json', JSON.stringify(toJSON(check([{ uri: 'x.todl', text: 'namespace ea { concept published-concept { label : string; } }' }]).model)))
+    await meta.WriteText('ea/0.1.0/model.json', JSON.stringify(toJSON(check([{ uri: 'x.todl', text: 'namespace ea { concept PublishedConcept { label : string; } }' }]).model)))
     const consumer = new FakeStorage('C:/arch')
     await consumer.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify({ type: 'architecture', metaModel: { id: 'ea', version: '0.1.0' } }))
 
     const resolver = new WorkspaceBaseResolver(provider)
     const { bases } = await resolver.ResolveForStorage(consumer)
-    expect(hasNode(bases, 'published-concept')).toBe(true)
+    expect(hasNode(bases, 'PublishedConcept')).toBe(true)
 })
 
 test('an id match on a different version uses local and notes it in problems', async () => {
     const mm = await openProject('meta-model', 'ea', '0.2.0',
-        producer(ProducerKind.MetaModel, 'namespace ea { concept live-concept { label : string; } }'))
+        producer(ProducerKind.MetaModel, 'namespace ea { concept LiveConcept { label : string; } }'))
     const { provider } = env([mm])
     const consumer = new FakeStorage('C:/arch')
     await consumer.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify({ type: 'architecture', metaModel: { id: 'ea', version: '0.1.0' } }))
 
     const resolver = new WorkspaceBaseResolver(provider)
     const { bases, problems } = await resolver.ResolveForStorage(consumer)
-    expect(hasNode(bases, 'live-concept')).toBe(true)
+    expect(hasNode(bases, 'LiveConcept')).toBe(true)
     expect(problems.some((p) => p.includes('0.1.0') && p.includes('0.2.0'))).toBe(true)
 })
 
 test('resolves recursively: architecture -> library -> meta-model, all local, meta-model first', async () => {
     const mm = await openProject('meta-model', 'ea', '0.1.0',
-        producer(ProducerKind.MetaModel, 'namespace ea { concept mm-node { label : string; } }'))
+        producer(ProducerKind.MetaModel, 'namespace ea { concept MmNode { label : string; } }'))
     const lib = await openProject('library', 'acme', '0.1.0',
-        producer(ProducerKind.Library, 'namespace acme { concept lib-node { label : string; } }'),
+        producer(ProducerKind.Library, 'namespace acme { concept LibNode { label : string; } }'),
         { metaModel: { id: 'ea', version: '0.1.0' } })
     const { provider } = env([mm, lib])
     const consumer = new FakeStorage('C:/arch')
@@ -112,14 +112,14 @@ test('resolves recursively: architecture -> library -> meta-model, all local, me
 
     const resolver = new WorkspaceBaseResolver(provider)
     const { bases, problems } = await resolver.ResolveForStorage(consumer)
-    expect(hasNode(bases, 'mm-node')).toBe(true)
-    expect(hasNode(bases, 'lib-node')).toBe(true)
+    expect(hasNode(bases, 'MmNode')).toBe(true)
+    expect(hasNode(bases, 'LibNode')).toBe(true)
     // The library also binds the meta-model the architecture binds (a diamond),
     // which must resolve cleanly — no false "cyclic local reference".
     expect(problems).toEqual([])
     // meta-model first (stable order the language server expects)
-    const mmIdx = bases.findIndex((b) => b.nodes.some((n) => n.id === 'mm-node'))
-    const libIdx = bases.findIndex((b) => b.nodes.some((n) => n.id === 'lib-node'))
+    const mmIdx = bases.findIndex((b) => b.nodes.some((n) => n.id === 'MmNode'))
+    const libIdx = bases.findIndex((b) => b.nodes.some((n) => n.id === 'LibNode'))
     expect(mmIdx).toBeLessThan(libIdx)
 })
 
@@ -128,12 +128,12 @@ test('diamond: architecture -> meta-model + two libraries that each bind it reso
     // microsoft and aws libraries, both of which are authored against
     // tech-architecture. Two sibling branches reach the same meta-model.
     const mm = await openProject('meta-model', 'tech', '0.1.0',
-        producer(ProducerKind.MetaModel, 'namespace tech { concept mm-node { label : string; } }'))
+        producer(ProducerKind.MetaModel, 'namespace tech { concept MmNode { label : string; } }'))
     const libA = await openProject('library', 'microsoft', '0.1.0',
-        producer(ProducerKind.Library, 'namespace microsoft { concept a-node { label : string; } }'),
+        producer(ProducerKind.Library, 'namespace microsoft { concept ANode { label : string; } }'),
         { metaModel: { id: 'tech', version: '0.1.0' } })
     const libB = await openProject('library', 'aws', '0.1.0',
-        producer(ProducerKind.Library, 'namespace aws { concept b-node { label : string; } }'),
+        producer(ProducerKind.Library, 'namespace aws { concept BNode { label : string; } }'),
         { metaModel: { id: 'tech', version: '0.1.0' } })
     const { provider } = env([mm, libA, libB])
     const consumer = new FakeStorage('C:/arch')
@@ -146,23 +146,23 @@ test('diamond: architecture -> meta-model + two libraries that each bind it reso
     const { bases, problems } = await resolver.ResolveForStorage(consumer)
     expect(problems.some((p) => p.includes('cyclic'))).toBe(false)
     expect(problems).toEqual([])
-    expect(hasNode(bases, 'mm-node')).toBe(true)
-    expect(hasNode(bases, 'a-node')).toBe(true)
-    expect(hasNode(bases, 'b-node')).toBe(true)
+    expect(hasNode(bases, 'MmNode')).toBe(true)
+    expect(hasNode(bases, 'ANode')).toBe(true)
+    expect(hasNode(bases, 'BNode')).toBe(true)
 })
 
 test('a producer editing its own source does not resolve against itself', async () => {
     // A library that (pathologically) lists itself as a library binding.
     const lib = await openProject('library', 'acme', '0.1.0',
-        producer(ProducerKind.Library, 'namespace acme { concept lib-node { label : string; } }'),
+        producer(ProducerKind.Library, 'namespace acme { concept LibNode { label : string; } }'),
         { libraries: [{ id: 'acme', version: '0.1.0' }] })
     const { provider, libs } = env([lib])
-    await libs.WriteText('acme/0.1.0/model.json', JSON.stringify(toJSON(check([{ uri: 'x.todl', text: 'namespace acme { concept published-lib { label : string; } }' }]).model)))
+    await libs.WriteText('acme/0.1.0/model.json', JSON.stringify(toJSON(check([{ uri: 'x.todl', text: 'namespace acme { concept PublishedLib { label : string; } }' }]).model)))
 
     const resolver = new WorkspaceBaseResolver(provider)
     const { bases } = await resolver.ResolveForStorage(lib.Storage)
     // Self-excluded → its self-binding falls back to published.
-    expect(hasNode(bases, 'published-lib')).toBe(true)
+    expect(hasNode(bases, 'PublishedLib')).toBe(true)
 })
 
 test('a local producer with compile errors surfaces problems and still returns its document', async () => {

@@ -31,9 +31,9 @@ function env(): { provider: ServiceProvider; project: FakeStorage } {
     reg.Register(LIBRARIES_BACKEND_ID, () => libs)
     provider.registerInstance(StorageProviderRegistry.Key, reg)
 
-    const metaDoc = toJSON(check([{ uri: 'ea.todl', text: 'namespace ea { concept technology { label : string; } concept component { label : string; realised-by : technology?; } }' }]).model)
+    const metaDoc = toJSON(check([{ uri: 'ea.todl', text: 'namespace ea { concept Technology { label : string; } concept Component { label : string; realisedBy : Technology?; } }' }]).model)
     void meta.WriteText('ea/1/model.json', JSON.stringify(metaDoc))
-    const libDoc = toJSON(checkAgainst([metaDoc], [{ uri: 'ms.todl', text: 'namespace ms { taxonomy stack : represents technology { technology azure-openai { label = "Azure OpenAI"; } } }' }]).model)
+    const libDoc = toJSON(checkAgainst([metaDoc], [{ uri: 'ms.todl', text: 'namespace ms { taxonomy Stack : represents Technology { Technology AzureOpenai { label = "Azure OpenAI"; } } }' }]).model)
     void libs.WriteText('ms/1/model.json', JSON.stringify(libDoc))
 
     const project = new FakeStorage('fake://proj')
@@ -46,7 +46,7 @@ function env(): { provider: ServiceProvider; project: FakeStorage } {
     // so the LibraryRegistry can lazily compile it for canvas nodes.
     void libs.WriteText('viz/0.1.0/library.json', JSON.stringify({
         id: 'viz', version: '0.1.0', name: 'Viz', metaModel: { id: 'ea', version: '1' },
-        classes: [{ id: 'stack.azure-openai', localId: 'azure-openai', label: 'Azure OpenAI', concept: 'technology', template: 'visuals/x.mural' }],
+        classes: [{ id: 'Stack.AzureOpenai', localId: 'AzureOpenai', label: 'Azure OpenAI', concept: 'Technology', template: 'visuals/x.mural' }],
         assets: [], docs: [], samples: [],
     }))
     void libs.WriteText('viz/0.1.0/visuals/x.mural', 'TextBlock [ Text = $Display ]')
@@ -60,16 +60,16 @@ test('newFile then Save writes a .archdiagram + sibling .todl; open restores mod
     const path = await f.newFile(project, 'system')
     const doc = await f.openFile(project, path) as ArchDiagramDocument
 
-    const id = doc.Model.createInstance('component')
+    const id = doc.Model.createInstance('Component')
     doc.Model.setField(id, 'label', 'Gateway')
-    doc.Model.addRelationship(id, 'realised-by', 'stack.azure-openai')
+    doc.Model.addRelationship(id, 'realisedBy', 'Stack.AzureOpenai')
     doc.SetLayout(id, 120, 80)
     await f.saveFile(doc)
 
     expect(await project.Exists('system.archdiagram')).toBe(true)
     const todl = await project.ReadText('system.todl')
-    expect(todl).toContain('component ')
-    expect(todl).toContain('realised-by = stack.azure-openai;')
+    expect(todl).toContain('Component ')
+    expect(todl).toContain('realisedBy = Stack.AzureOpenai;')
     const layout = JSON.parse(await project.ReadText('system.archdiagram'))
     expect(layout.layout[id]).toEqual({ x: 120, y: 80 })
 
@@ -84,14 +84,14 @@ test('CreateNode drops a term into a positioned concept instance referencing it'
     const { provider, project } = env()
     const doc = await openNew(provider, project)
 
-    const node = doc.CreateNode('stack.azure-openai', 40, 60) as InstanceNodeVM
+    const node = doc.CreateNode('Stack.AzureOpenai', 40, 60) as InstanceNodeVM
     expect(node).toBeInstanceOf(InstanceNodeVM)
-    expect(node.Concept).toBe('component')
-    expect(node.ReferencedTerm).toBe('stack.azure-openai')
+    expect(node.Concept).toBe('Component')
+    expect(node.ReferencedTerm).toBe('Stack.AzureOpenai')
     expect(node.Left).toBe(40)
     expect(node.Top).toBe(60)
     expect(doc.Nodes.Count).toBe(1)
-    expect(doc.Model.document.edges.some((e) => e.kind === 'Relationship' && e.from === node.Id && e.to === 'stack.azure-openai')).toBe(true)
+    expect(doc.Model.document.edges.some((e) => e.kind === 'Relationship' && e.from === node.Id && e.to === 'Stack.AzureOpenai')).toBe(true)
 })
 
 test('CreateNode returns null for a term nothing can reference (no node created)', async () => {
@@ -105,8 +105,8 @@ test('CreateConnector maps endpoint Figures to node ids and sets the reference m
     const { provider, project } = env()
     const doc = await openNew(provider, project)
 
-    const compId = doc.Model.createInstance('component')
-    const techId = doc.Model.createInstance('technology')
+    const compId = doc.Model.createInstance('Component')
+    const techId = doc.Model.createInstance('Technology')
     const compVm = doc.AddNode(compId)
     const techVm = doc.AddNode(techId)
     const src = new Figure(); src.Content = compVm
@@ -120,7 +120,7 @@ test('DeleteNodes removes the instance from the model and its node from the canv
     const { provider, project } = env()
     const doc = await openNew(provider, project)
 
-    const node = doc.CreateNode('stack.azure-openai', 10, 10) as InstanceNodeVM
+    const node = doc.CreateNode('Stack.AzureOpenai', 10, 10) as InstanceNodeVM
     expect(doc.Nodes.Count).toBe(1)
     doc.DeleteNodes([node])
     expect(doc.Nodes.Count).toBe(0)
@@ -135,10 +135,10 @@ test('a node visual upgrades from the default box when its class compiles (lazy)
 
     // Drop a node referencing a class that has a published visual. Its template
     // resolves to the default first (compile is scheduled), then upgrades.
-    const node = doc.CreateNode('stack.azure-openai', 10, 10) as InstanceNodeVM
+    const node = doc.CreateNode('Stack.AzureOpenai', 10, 10) as InstanceNodeVM
     if (node.Template === def) {
         await new Promise<void>((res) => {
-            const off = registry.onChanged((id) => { if (id === 'stack.azure-openai') { off(); res() } })
+            const off = registry.onChanged((id) => { if (id === 'Stack.AzureOpenai') { off(); res() } })
         })
     }
     expect(node.Template).not.toBe(def)

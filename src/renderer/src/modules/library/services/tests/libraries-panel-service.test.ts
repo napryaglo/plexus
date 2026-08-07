@@ -32,8 +32,8 @@ test('builds a Library -> Concept -> Class tree, concepts sorted, leaves carry t
         void b.WriteText('microsoft/0.1.0/library.json', JSON.stringify({
             id: 'microsoft', version: '0.1.0', name: 'Microsoft', metaModel: { id: 'ea', version: '5' },
             classes: [
-                { id: 'microsoft.azure', localId: 'azure', label: 'Azure', concept: 'location', template: 'visuals/a.mural' },
-                { id: 'stack.azure-openai', localId: 'azure-openai', label: 'Azure OpenAI', concept: 'technology', template: 'visuals/b.mural' },
+                { id: 'Microsoft.Azure', localId: 'azure', label: 'Azure', concept: 'location', template: 'visuals/a.mural' },
+                { id: 'Stack.AzureOpenai', localId: 'AzureOpenai', label: 'Azure OpenAI', concept: 'technology', template: 'visuals/b.mural' },
             ],
             assets: [], docs: [], samples: [],
         }))
@@ -55,7 +55,7 @@ test('builds a Library -> Concept -> Class tree, concepts sorted, leaves carry t
     expect(tech.Children.Count).toBe(1)
     const leaf = tech.Children.Get(0)!
     expect(leaf.Kind).toBe(LibraryNodeKind.Class)
-    expect(leaf.TermId).toBe('stack.azure-openai')
+    expect(leaf.TermId).toBe('Stack.AzureOpenai')
     expect(leaf.Concept).toBe('technology')
     expect(leaf.IsDraggable).toBe(true)
     // Lazy: leaves carry NO pre-compiled template — the tree is built from cheap
@@ -147,7 +147,7 @@ test('a Library node carries a Delete command that uninstalls it; Concept/Class 
     const provider = providerWith((b) => {
         void b.WriteText('microsoft/0.1.0/library.json', JSON.stringify({
             id: 'microsoft', version: '0.1.0', name: 'Microsoft', metaModel: { id: 'ea', version: '5' },
-            classes: [{ id: 'microsoft.azure', localId: 'azure', label: 'Azure', concept: 'location', template: 'visuals/a.mural' }],
+            classes: [{ id: 'Microsoft.Azure', localId: 'azure', label: 'Azure', concept: 'location', template: 'visuals/a.mural' }],
             assets: [], docs: [], samples: [],
         }))
         void b.WriteText('microsoft/0.1.0/visuals/a.mural', 'TextBlock [ Text = $Display ]')
