@@ -41,7 +41,9 @@ One `namespace` per file. Everything is declared inside it:
   allowed; no leading digit. By convention:
   - **Types** — `concept`, `primitive`, `taxonomy`, `annotation`, `enum`,
     `term`, and `class` names — are **PascalCase**: `AppComponent`,
-    `ComponentCategory`, `Identifier`.
+    `ComponentCategory`, `Sku`. The **built-in** primitives shipped in the
+    prelude are the exception: like `string`, they are **lowercase** —
+    `identifier`, `slug`, `resourceKey`.
   - **Members** — field names, relationship names, and annotation parameters —
     are **camelCase**: `implementedBy`, `realisedBy`, `category`.
   - **Keywords** (`concept`, `model`, `import`, …) and **namespace** segments
@@ -71,10 +73,10 @@ validates. It carries fields, relationships, and invariants.
             implementedBy, not in the name.
             """;
 
-        id : Identifier;
-        label : Label;
+        id : identifier;
+        label : string;
         category : ComponentCategory;
-        implementedBy : Identifier ?;
+        implementedBy : identifier ?;
 
         relationship in -> Location;
         relationship realisedBy -> Technology [];
@@ -87,7 +89,7 @@ validates. It carries fields, relationships, and invariants.
 
     <name> : <Type> <cardinality>? ;
 
-- `<Type>` is a **single name**: a primitive (`string`, `Identifier`), a taxonomy
+- `<Type>` is a **single name**: a primitive (`string`, `identifier`), a taxonomy
   (`ComponentCategory`), or another concept. There is **no inline object type** —
   for structured data, define a nested concept and reference it by name.
 - `<cardinality>` is a suffix:
@@ -100,7 +102,7 @@ validates. It carries fields, relationships, and invariants.
   | `[+]`  | one or more    | 1..N  |
 
   So `realisedBy : Technology [];` is "zero or more technologies", and
-  `implementedBy : Identifier ?;` is "at most one".
+  `implementedBy : identifier ?;` is "at most one".
 
 ### Inheritance
 
@@ -138,17 +140,19 @@ Problems panel.
 
 ## 4. `primitive` — a base data type
 
-    primitive Identifier : string
+    primitive Sku : string
     {
-        description = "A stable, machine-friendly id.";
-        regex = "[A-Za-z_][A-Za-z0-9_]*";
+        description = "A stock-keeping unit code.";
+        regex = "[A-Z0-9-]+";
     }
 
 - `primitive <Name> : <base>` optionally names a base primitive (`string`,
   `integer`, …). The body carries a `description` and, for string primitives, a
-  `regex` constraint.
-- Built-in primitives usable as a bare type without declaring them: `string`
-  (and, where a project defines them, ids/labels layered on top).
+  `regex` constraint. User-declared primitive names are PascalCase (`Sku`).
+- Built-in primitives usable as a bare type without declaring them: `string`,
+  `integer`, `boolean`, plus the prelude's **lowercase** `identifier`, `slug`,
+  and `resourceKey`. (There is no `Label` primitive — a label is just a
+  `string`.)
 
 ## 5. `taxonomy` — a controlled vocabulary (clabject classes)
 
@@ -202,7 +206,7 @@ each param a fixed value:
         annotate icon     { path = "resources/actor.svg"; }
         annotate Category { name = "actors"; order = 1; }
 
-        label : Label;
+        label : string;
     }
 
     package
@@ -315,9 +319,9 @@ spurious later diagnostics. Re-check after each fix.
     {
         annotate icon { path = "resources/thing.svg"; }   // decorate the concept
         description = """ … """;
-        name  : Label;              // exactly one
+        name  : string;             // exactly one
         tags  : SomeTaxonomy [];    // many
-        owner : Identifier ?;       // optional
+        owner : identifier ?;       // optional
         parts : Part [+];           // one or more
         relationship uses -> Other [];
         invariant "…";

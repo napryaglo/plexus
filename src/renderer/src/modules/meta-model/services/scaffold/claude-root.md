@@ -23,9 +23,11 @@ Full reference: `.claude/todl-manual.md`. The rules that trip up authors most:
   imports. A missing `;` is the most common syntax error.
 - **Identifiers are C-like** (`[A-Za-z_][A-Za-z0-9_]*`, no hyphens): **types**
   (concepts, primitives, taxonomies, annotations, enums, terms, classes) are
-  **PascalCase** (`AppComponent`, never `app-component`); **members** (field
-  names, relationship names, annotation params) are **camelCase**
-  (`implementedBy`); **keywords** and **namespace** segments are lowercase.
+  **PascalCase** (`AppComponent`, never `app-component`) — except the prelude's
+  **built-in primitives**, which are lowercase like `string` (`identifier`,
+  `slug`, `resourceKey`); **members** (field names, relationship names,
+  annotation params) are **camelCase** (`implementedBy`); **keywords** and
+  **namespace** segments are lowercase.
 - **Concepts are singular nouns; their taxonomy is that noun in plural.** A
   `concept` names a single thing (`Technology`, `Component`, `Location`); the
   `taxonomy` that enumerates that concept's classes is the **same noun,
