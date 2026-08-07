@@ -46,8 +46,8 @@ Full reference: `.claude/todl-manual.md`. The rules that trip up authors most:
 - **Strings** are `"…"`; multi-line / raw strings are `"""…"""`.
 - **Annotations carry typed metadata.** Declare an `annotation name { param :
   type; }`, then `annotate name { param = value; }` inside a concept body (or a
-  `package { … }` block) to attach it. Well-known `annotate Icon { path = "…"; }`
-  and `annotate Label { text = "…"; }` drive the concept's generated presentation.
+  `package { … }` block) to attach it. Well-known `annotate icon { path = "…"; }`
+  and `annotate label { text = "…"; }` drive the concept's generated presentation.
   See the manual §6.
 
 ## Workflow

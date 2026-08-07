@@ -188,7 +188,7 @@ presentation generator and the package manifest).
 
 Declare an annotation type like a concept, with typed params:
 
-    annotation Icon     { path : string; }
+    annotation icon     { path : string; }
     annotation Category { name : string; order : integer ?; }
     annotation Author   { name : string; email : string ?; }
 
@@ -199,7 +199,7 @@ each param a fixed value:
 
     concept Actor
     {
-        annotate Icon     { path = "resources/actor.svg"; }
+        annotate icon     { path = "resources/actor.svg"; }
         annotate Category { name = "actors"; order = 1; }
 
         label : Label;
@@ -211,12 +211,14 @@ each param a fixed value:
     }
 
 - Annotation **type** names are PascalCase; their **params** are camelCase, like
-  every other type/member.
+  every other type/member. The one exception: the four **well-known** annotations
+  tools switch on by name — `icon`, `label`, `toolbox`, `instance` — are
+  lowercase.
 - Each annotation applies **at most once per target**; a repeat is an error.
 - Params are **scalar** (string / integer / boolean). A required param must be
   given; an undeclared param is rejected.
-- **Well-known annotations drive presentation.** `annotate Icon { path = "…"; }`
-  and `annotate Label { text = "…"; }` on a concept feed the generated presentation
+- **Well-known annotations drive presentation.** `annotate icon { path = "…"; }`
+  and `annotate label { text = "…"; }` on a concept feed the generated presentation
   (a raw `icon =` / `label =` attribute, where present, still takes precedence).
   Custom annotations are queryable and bindable in author presentation overrides.
 
@@ -307,11 +309,11 @@ spurious later diagnostics. Re-check after each fix.
 
     primitive Id : string { description = "…"; regex = "…"; }
 
-    annotation Icon { path : string; }          // typed metadata type
+    annotation icon { path : string; }          // typed metadata type
 
     concept Thing : Parent
     {
-        annotate Icon { path = "resources/thing.svg"; }   // decorate the concept
+        annotate icon { path = "resources/thing.svg"; }   // decorate the concept
         description = """ … """;
         name  : Label;              // exactly one
         tags  : SomeTaxonomy [];    // many

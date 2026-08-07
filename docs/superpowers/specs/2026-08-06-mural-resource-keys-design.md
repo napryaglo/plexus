@@ -1,8 +1,57 @@
 # MuralResource Keys — Design
 
-**Date:** 2026-08-06
-**Status:** Approved, ready for planning
-**Repos:** TODL (`@pragmatic-lab/todl`, schema only) + Plexus (all key logic)
+**Date:** 2026-08-06 (reconciled 2026-08-07 — see §Reconciliation)
+**Status:** Approved, reconciled to the C-like identifier grammar
+**Repos:** TODL (`@pragmatic-lab/todl`, prelude schema) + Plexus (all key logic)
+
+> **Reconciliation (2026-08-07).** This spec predates the C-like identifier
+> migration (TODL 0.19.0 / Plexus SP2). The body below still uses the old
+> lowercase spelling; the authoritative deltas are here.
+>
+> **Casing.** User-defined annotation **type** names are PascalCase and **params**
+> are camelCase now. But the well-known `icon` annotation stays **lowercase** (see
+> the folded-prerequisite decision below), the base is `MuralResource` (Pascal),
+> and its param is **`key`** (not `Key`). Stamping writes `attrs['key']` onto
+> application nodes whose `typeOf === 'icon'`.
+>
+> **Version.** `0.19.0` is already published (the C-like release). The
+> MuralResource prelude change is **`@pragmatic-lab/todl@0.20.0`**; Plexus floor
+> → `^0.20.0`.
+>
+> **Folded prerequisite — well-known annotations are a lowercase exception
+> (decided 2026-08-07).** The four prelude "well-known" annotations that tools
+> switch on by name — **`icon`, `label`, `toolbox`, `instance`** — are lowercase,
+> a deliberate exception to types-are-PascalCase. User-defined annotations stay
+> PascalCase. SP1's C-like recaser over-eagerly PascalCased the prelude annotation
+> names (`Icon`/`Toolbox`/`Instance`), which broke every consumer — all of which
+> correctly read lowercase and were never changed:
+> - **TODL** `publish/reflect.js` `deriveClasses` reads `projectAnnotations(…).icon`.
+> - **Plexus** `presentation-generator.ts` (`n.typeOf === 'icon'`,
+>   `annotations['icon']?.['path']`) and `toolbox-projection.ts`
+>   (`projectAnnotations(…)['toolbox']`).
+>   With the prelude PascalCased, `annotate Icon` produced a `typeOf: "Icon"` app
+>   node these lowercase reads never matched → icon/toolbox projection silently
+>   produced nothing. The existing tests hand-build lowercase-`typeOf` graphs,
+>   which stayed green and masked it.
+>
+> **The fix is to revert the prelude, not the consumers.** In the TODL prelude:
+> `Icon`→`icon`, `Toolbox`→`toolbox`, `Instance`→`instance`, and **add** a real
+> `annotation label { text : string? }` (impossible while it was `Label` — that
+> name is taken by `primitive Label`; lowercase `label` coexists fine). All
+> consumers and fixtures stay unchanged and correct. This ships in the same
+> `0.20.0` bump as MuralResource.
+>
+> **Doc revert.** SP2's scaffold-doc rewrite PascalCased the well-known
+> `annotate Icon`/`annotate Label`/`annotation Icon` mentions in `todl-manual.md`,
+> `meta-model-guide.md`, and `claude-root.md`. Revert those four well-known names
+> to lowercase; user-defined-annotation examples (`Category`, `Author`, `Owner`)
+> stay PascalCase.
+>
+> **Casing under this decision:** the MuralResource base is `MuralResource`
+> (PascalCase — a base type, not a tool-switched key), its param is `key`
+> (camelCase), `icon : MuralResource` (lowercase well-known extends the Pascal
+> base), the primitive is `ResourceKey`, and stamping writes `attrs['key']` onto
+> `typeOf === 'icon'` application nodes.
 
 ## Goal
 

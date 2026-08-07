@@ -5,7 +5,7 @@ import {
 } from '@pragmatic-lab/mural/compiler'
 
 import type { IStorage } from '../../../services/storage/storage.js'
-import { distinctIcons, iconKey } from './presentation-generator.js'
+import { distinctIcons, assignResourceKeys } from './presentation-generator.js'
 import { scaffoldAuthorStubs, META_MODEL_ROLE } from './presentation-scaffold.js'
 
 const PRESENTATION_DIR = 'presentation'
@@ -116,7 +116,7 @@ function extractResourcesInner(text: string): string | undefined
 // the library publisher.
 export function combinedSource(doc: TodlDocument, dictName: string, authorInners: readonly string[]): string
 {
-    const includes = distinctIcons(doc).map((p) => `    include "${p}" as ${iconKey(p)}`)
+    const includes = [...assignResourceKeys(doc)].map(([p, k]) => `    include "${p}" as ${k}`)
     return [
         `resources ${dictName} {`,
         ...includes,

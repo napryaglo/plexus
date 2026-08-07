@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
-import { iconKey, humanize, ontologyEntities, classEntities, distinctIcons, generatePresentationAssets, isRasterIcon, resolveFacets } from '../presentation-generator.js'
+import { iconKey, humanize, ontologyEntities, classEntities, distinctIcons, generatePresentationAssets, isRasterIcon, resolveFacets, assignResourceKeys, resourceKeyFor, stampResourceKeys } from '../presentation-generator.js'
 
 function doc(nodes: TodlDocument['nodes']): TodlDocument { return { nodes, edges: [] } }
 
@@ -119,4 +119,66 @@ test('generatePresentationAssets is deterministic', () => {
     const b = generatePresentationAssets(m, 'LibraryPresentation')
     expect(a).toBe(b)
     expect(a).toMatch(/resources LibraryPresentation \{/)
+})
+
+test('assignResourceKeys gives distinct stems their base iconKey, sorted', () => {
+    const m = doc([
+        { id: 'a', tier: 'Instance', typeOf: 'x', attrs: { icon: 'resources/comp.svg' } },
+        { id: 'b', tier: 'Instance', typeOf: 'x', attrs: { icon: 'resources/actor.svg' } },
+    ])
+    expect([...assignResourceKeys(m)]).toEqual([
+        ['resources/actor.svg', 'mm_icon_actor'],
+        ['resources/comp.svg', 'mm_icon_comp'],
+    ])
+})
+
+test('assignResourceKeys suffixes colliding stems _2, _3 in sorted-path order', () => {
+    const m = doc([
+        { id: 'a', tier: 'Instance', typeOf: 'x', attrs: { icon: 'a/az.svg' } },
+        { id: 'b', tier: 'Instance', typeOf: 'x', attrs: { icon: 'b/az.svg' } },
+        { id: 'c', tier: 'Instance', typeOf: 'x', attrs: { icon: 'c/az.svg' } },
+        { id: 'd', tier: 'Instance', typeOf: 'x', attrs: { icon: 'x/other.svg' } },
+    ])
+    const keys = assignResourceKeys(m)
+    expect(keys.get('a/az.svg')).toBe('mm_icon_az')
+    expect(keys.get('b/az.svg')).toBe('mm_icon_az_2')
+    expect(keys.get('c/az.svg')).toBe('mm_icon_az_3')
+    expect(keys.get('x/other.svg')).toBe('mm_icon_other')
+})
+
+test('resourceKeyFor returns the assigned (possibly suffixed) key', () => {
+    const m = doc([
+        { id: 'a', tier: 'Instance', typeOf: 'x', attrs: { icon: 'a/az.svg' } },
+        { id: 'b', tier: 'Instance', typeOf: 'x', attrs: { icon: 'b/az.svg' } },
+    ])
+    expect(resourceKeyFor(m, 'a/az.svg')).toBe('mm_icon_az')
+    expect(resourceKeyFor(m, 'b/az.svg')).toBe('mm_icon_az_2')
+})
+
+test('generatePresentationAssets suffixes colliding icon stems in its includes', () => {
+    const m = doc([
+        { id: 'a', tier: 'Instance', typeOf: 'x', attrs: { icon: 'a/az.svg' } },
+        { id: 'b', tier: 'Instance', typeOf: 'x', attrs: { icon: 'b/az.svg' } },
+    ])
+    const out = generatePresentationAssets(m, 'MetaModelPresentation')
+    expect(out).toContain('include "a/az.svg" as mm_icon_az')
+    expect(out).toContain('include "b/az.svg" as mm_icon_az_2')
+})
+
+test('stampResourceKeys writes the assigned key onto icon application nodes only', () => {
+    const m = {
+        nodes: [
+            { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} },
+            { id: 'actor@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'a/az.svg' } },
+            { id: 'comp@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'b/az.svg' } },
+            { id: 'raw', tier: 'Instance', typeOf: 'x', attrs: { icon: 'c/other.svg' } }, // raw attr, not an app
+        ],
+        edges: [],
+    } as unknown as TodlDocument
+    stampResourceKeys(m)
+    const byId = (id: string) => m.nodes.find((n) => n.id === id)!.attrs as Record<string, unknown>
+    expect(byId('actor@icon')['key']).toBe('mm_icon_az')
+    expect(byId('comp@icon')['key']).toBe('mm_icon_az_2') // collision-aware, shares the assignment
+    expect(byId('raw')['key']).toBeUndefined()            // raw attrs.icon node is not stamped
+    expect(byId('actor')['key']).toBeUndefined()          // non-icon node untouched
 })

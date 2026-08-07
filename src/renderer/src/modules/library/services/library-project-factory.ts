@@ -20,7 +20,7 @@ import { StoragePackageSink } from '../../../services/storage/storage-package-si
 import { ensureLibrariesBackend } from './libraries-backend.js'
 import { collectTaxonomySources, extname, joinRel } from '../../meta-model/services/todl-sources.js'
 import { scanResources, type LibraryBundleManifest, type PublishedClass } from './library-bundle.js'
-import { generatePresentationAssets } from '../../meta-model/services/presentation-generator.js'
+import { generatePresentationAssets, stampResourceKeys } from '../../meta-model/services/presentation-generator.js'
 import { scaffoldAuthorStubs, LIBRARY_ROLE } from '../../meta-model/services/presentation-scaffold.js'
 import { publishLibraryPresentation } from './library-presentation-publisher.js'
 
@@ -131,6 +131,10 @@ export class LibraryProjectFactory extends ServiceBase
             return { ok: false, message: `Publish blocked: ${outcome.errors.length} error(s). Fix them first.` }
         const pkg = outcome.package
         const doc = pkg.document
+
+        // Write mural resource keys onto icon apps before persist (same shared
+        // pkg.document object), so the key lands in the library's model.json.
+        stampResourceKeys(doc)
 
         const classes: PublishedClass[] = pkg.classes.map((c) => ({ ...c }))
         const scanned = await scanResources(storage, classes.map((c) => c.id))
