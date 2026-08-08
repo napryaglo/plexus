@@ -49,6 +49,27 @@ test('onChanged fires once per aggregated key after discover', async () => {
     expect(fired).toContain('k1')
     expect(fired).toContain('k2')
     expect(fired).toContain('k3')
+    // Exact count: each of the 3 distinct keys notifies exactly once (no doubling).
+    expect(fired).toHaveLength(3)
+})
+
+test('a key declared by two sources notifies exactly once per discover', async () => {
+    const provider = new ServiceProvider()
+    const registry = new TodlPresentationRegistry(provider)
+
+    // Both sources declare 'shared'; source 'b' wins (registered/populated last).
+    registry.registerSource(src('a', [['shared', tmpl('shared-a')], ['onlyA', tmpl('onlyA')]]))
+    registry.registerSource(src('b', [['shared', tmpl('shared-b')]]))
+
+    const fired: string[] = []
+    registry.onChanged((key) => fired.push(key))
+
+    await registry.discover()
+
+    // The cross-source duplicate key notifies exactly once, not once per source.
+    expect(fired.filter((k) => k === 'shared').length).toBe(1)
+    expect(fired.filter((k) => k === 'onlyA').length).toBe(1)
+    expect(fired).toHaveLength(2)
 })
 
 test('registerSource is idempotent by id — registering the same id twice does not double entries', async () => {

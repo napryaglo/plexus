@@ -39,11 +39,10 @@ export class TodlPresentationRegistry extends ServiceBase
     constructor(provider: IServiceProvider)
     {
         super(provider)
-        // This dictionary is string-keyed (never control-type style keys), so its
-        // changes never affect implicit style lookup. Opt out of the style channel:
-        // populating it wakes DynamicResource consumers (general channel) but does
-        // zero per-element style work.
-        this.aggregate.StyleParticipating = false
+        // The initial empty aggregate is a placeholder so headless resolve() before
+        // any discover() returns undefined; it is replaced wholesale on the first
+        // discover(). The meaningful StyleParticipating opt-out lives on `next`
+        // inside discover() (the dict actually merged into the app resources).
     }
 
     // Register a source by id. Idempotent: re-registering the same id replaces the
@@ -66,15 +65,17 @@ export class TodlPresentationRegistry extends ServiceBase
         // Collect string keys as we populate, so we can fire typed notifications
         // after the swap without iterating ResourceDictionary.Entries() (whose
         // ResourceKey = string | Function type does not satisfy the string callback).
-        const keys: string[] = []
+        // Deduplicate: two sources may declare the same key, but a key must notify
+        // exactly once per discover().
+        const keys = new Set<string>()
         for (const source of this.sources.values()) {
             const map = await source.load()
-            for (const [k, v] of map) { next.Set(k, v); keys.push(k) }
+            for (const [k, v] of map) { next.Set(k, v); keys.add(k) }
         }
 
         // Swap into app resources. Skip an empty-and-never-merged swap so the
         // no-source case fires zero app-resource notifications.
-        if (keys.length > 0 || this.merged !== undefined) {
+        if (keys.size > 0 || this.merged !== undefined) {
             Application.current?.Resources.ReplaceMergedDictionary(this.merged, next)
             this.merged = next
         }
