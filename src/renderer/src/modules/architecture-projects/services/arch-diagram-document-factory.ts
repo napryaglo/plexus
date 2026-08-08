@@ -1,4 +1,4 @@
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, ServiceProvider, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import type { IDocument } from '@pragmatic-lab/mural/framework'
 
 import type { IDocumentFactory } from '../../../services/documents/document-factory.js'
@@ -7,6 +7,8 @@ import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base
 import { LibraryRegistry } from '../../library/services/library-registry.js'
 import { ArchInstanceModel } from './architecture-instance-model.js'
 import { ArchDiagramDocument, type ArchLayout } from './arch-diagram-document.js'
+import { registerArchToolboxAdapters } from '../../diagram/services/register-arch-toolbox-adapters.js'
+import { TodlPresentationRegistry } from '../../diagram/services/todl-presentation-registry.js'
 
 // The `.archdiagram` editor: an architecture-diagram file pairs a layout sidecar
 // (positions) with a sibling `.todl` (the emitted instance semantics). Open loads
@@ -30,6 +32,8 @@ export class ArchDiagramDocumentFactory extends ServiceBase implements IDocument
         // LibraryClassVisualResolver — independent of whether the Libraries panel
         // was ever opened. Cheap: metadata only.
         await this.Provider.get(LibraryRegistry.Key)?.discover()
+        registerArchToolboxAdapters(this.Provider as ServiceProvider)
+        await this.Provider.get(TodlPresentationRegistry.Key)?.discover()
         return new ArchDiagramDocument(path, model, storage, layoutDoc.todlFile, layoutDoc.layout ?? {}, basename(path))
     }
 

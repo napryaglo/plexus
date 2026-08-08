@@ -7,7 +7,7 @@ import { LIBRARIES_BACKEND_ID } from '../libraries-backend.js'
 import { LibraryRegistry } from '../library-registry.js'
 import { LibrariesPanelService } from '../libraries-panel-service.js'
 import { LibraryNodeKind, type LibraryTreeNode } from '../library-tree-node.js'
-import { LibraryClassVisualResolverKey } from '../../../diagram/services/library-class-visual-resolver.js'
+import { TodlVisualResolverKey } from '../../../diagram/services/todl-visual-resolver.js'
 
 // Synchronous seed (see the registry test) so all files exist before Reload lists.
 function providerWith(seed: (b: FakeStorage) => void): ServiceProvider {
@@ -61,7 +61,7 @@ test('builds a Library -> Concept -> Class tree, concepts sorted, leaves carry t
     expect(leaf.IsDraggable).toBe(true)
     // Leaves carry a library-class descriptor keyed on the term; the visual resolves
     // (and lazily compiles) through the shared presenter on preview/canvas.
-    expect(leaf.Descriptor?.ResolverKey).toBe(LibraryClassVisualResolverKey)
+    expect(leaf.Descriptor?.ResolverKey).toBe(TodlVisualResolverKey)
     expect(leaf.Descriptor?.Key).toBe('Stack.AzureOpenai')
 })
 

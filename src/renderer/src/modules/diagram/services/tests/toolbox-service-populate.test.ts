@@ -3,36 +3,35 @@ import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { ToolboxRepository, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 import type { ToolboxTaxonomy } from '../../../meta-model/services/toolbox-projection.js'
 import { ToolboxService, contributeTaxonomy } from '../diagram-panel-services.js'
-import { ConceptVisualResolver, ConceptVisualResolverKey } from '../concept-visual-resolver.js'
-import { LibraryClassVisualResolverKey } from '../library-class-visual-resolver.js'
+import { TodlVisualResolverKey } from '../todl-visual-resolver.js'
 import { ArchInstanceDropFactoryKey } from '../../../architecture-projects/services/arch-instance-drop-factory.js'
 
 const libTax: ToolboxTaxonomy = { id: 'Stack', label: 'Stack', terms: [{ id: 'Stack.AzureOpenAI', label: 'Azure OpenAI', concept: 'service' }] }
 const conceptTax: ToolboxTaxonomy = { id: 'actors', label: 'Actors', terms: [{ id: 'actors.internal', label: 'Internal', icon: '<svg/>', concept: 'actor' }] }
 
 describe('contributeTaxonomy', () => {
-  it('stamps library terms with the library resolver, meta-model terms with the concept resolver', () => {
+  it('stamps library terms and meta-model terms both with TodlVisualResolverKey; meta-model key prefixed mm:', () => {
     const repo = new ToolboxRepository()
-    const concept = new ConceptVisualResolver()
     const seen = new Set<string>()
-    contributeTaxonomy(repo, concept, libTax, true, seen)
-    contributeTaxonomy(repo, concept, conceptTax, false, seen)
+    contributeTaxonomy(repo, libTax, true, seen)
+    contributeTaxonomy(repo, conceptTax, false, seen)
     const stack = repo.Pages.ToArray().find((p) => p.Id === 'Stack')!
     const actors = repo.Pages.ToArray().find((p) => p.Id === 'actors')!
     const libItem = stack.Items.ToArray()[0]
     const conceptItem = actors.Items.ToArray()[0]
     expect(libItem.Id).toBe('term:Stack.AzureOpenAI')
-    expect((libItem.Descriptor as ToolboxVisualDescriptor).ResolverKey).toBe(LibraryClassVisualResolverKey)
+    expect((libItem.Descriptor as ToolboxVisualDescriptor).ResolverKey).toBe(TodlVisualResolverKey)
     expect((libItem.Descriptor as ToolboxVisualDescriptor).Key).toBe('Stack.AzureOpenAI')
-    expect((conceptItem.Descriptor as ToolboxVisualDescriptor).ResolverKey).toBe(ConceptVisualResolverKey)
+    expect((conceptItem.Descriptor as ToolboxVisualDescriptor).ResolverKey).toBe(TodlVisualResolverKey)
+    expect((conceptItem.Descriptor as ToolboxVisualDescriptor).Key).toBe('mm:actors.internal')
     expect(libItem.FactoryKey).toBe(ArchInstanceDropFactoryKey)
   })
 
   it('dedupes a term seen across sources', () => {
     const repo = new ToolboxRepository()
     const seen = new Set<string>()
-    contributeTaxonomy(repo, new ConceptVisualResolver(), libTax, true, seen)
-    contributeTaxonomy(repo, new ConceptVisualResolver(), libTax, true, seen)
+    contributeTaxonomy(repo, libTax, true, seen)
+    contributeTaxonomy(repo, libTax, true, seen)
     expect(repo.Pages.ToArray().find((p) => p.Id === 'Stack')!.Items.Count).toBe(1)
   })
 })

@@ -3,8 +3,7 @@ import { check, checkAgainst, toJSON, type TodlDocument } from '@pragmatic-lab/t
 
 import { ArchInstanceModel } from '../architecture-instance-model.js'
 import { InstanceNodeVM } from '../instance-node-vm.js'
-import { LibraryClassVisualResolverKey } from '../../../diagram/services/library-class-visual-resolver.js'
-import { ConceptVisualResolverKey } from '../../../diagram/services/concept-visual-resolver.js'
+import { TodlVisualResolverKey } from '../../../diagram/services/todl-visual-resolver.js'
 
 const META = `namespace ea {
   concept Technology { label : string; }
@@ -53,8 +52,8 @@ test('Descriptor uses the concept resolver when there is no referenced term', ()
     const m = model()
     const id = m.createInstance('Component')
     const vm = new InstanceNodeVM(m, id)
-    expect(vm.Descriptor?.ResolverKey).toBe(ConceptVisualResolverKey)
-    expect(vm.Descriptor?.Key).toBe('Component')
+    expect(vm.Descriptor?.ResolverKey).toBe(TodlVisualResolverKey)
+    expect(vm.Descriptor?.Key).toBe('mm:Component')
 })
 
 test('Descriptor switches to the library resolver keyed on the referenced term', () => {
@@ -62,6 +61,6 @@ test('Descriptor switches to the library resolver keyed on the referenced term',
     const id = m.createInstance('Component')
     const vm = new InstanceNodeVM(m, id)
     m.addRelationship(id, 'realisedBy', 'Stack.AzureOpenai')
-    expect(vm.Descriptor?.ResolverKey).toBe(LibraryClassVisualResolverKey)
+    expect(vm.Descriptor?.ResolverKey).toBe(TodlVisualResolverKey)
     expect(vm.Descriptor?.Key).toBe('Stack.AzureOpenai')
 })

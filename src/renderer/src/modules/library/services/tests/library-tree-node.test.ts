@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import { ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT } from '@pragmatic-lab/mural/framework'
 import { LibraryTreeNode, LibraryNodeKind } from '../library-tree-node.js'
-import { LibraryClassVisualResolverKey } from '../../../diagram/services/library-class-visual-resolver.js'
+import { TodlVisualResolverKey } from '../../../diagram/services/todl-visual-resolver.js'
 
 test('group node: kind, name, empty children, inert (not draggable, no drag payload)', () => {
   const n = LibraryTreeNode.group('Microsoft  ·  0.1.0', LibraryNodeKind.Library)
@@ -27,7 +27,7 @@ test('class leaf: exposes the render surface + a library-class descriptor + a re
   expect(n.LocalId).toBe('AzureOpenai')
   expect(n.TermId).toBe('Stack.AzureOpenai')
   expect(n.Concept).toBe('technology')
-  expect(n.Descriptor).toEqual(new ToolboxVisualDescriptor(LibraryClassVisualResolverKey, 'Stack.AzureOpenai'))
+  expect(n.Descriptor).toEqual(new ToolboxVisualDescriptor(TodlVisualResolverKey, 'Stack.AzureOpenai'))
   expect(n.IsLibrary).toBe(false)
   expect(n.IsDraggable).toBe(true)
 

@@ -1,6 +1,6 @@
 import { DataObject, DragDropEffects, MetaData, Model, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
 import { ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT } from '@pragmatic-lab/mural/framework'
-import { LibraryClassVisualResolverKey } from '../../diagram/services/library-class-visual-resolver.js'
+import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolver.js'
 
 // The three tiers of the Libraries tree. One node type carries all three, kept
 // apart by Kind (mirrors ProjectNode's single-type-plus-Kind shape).
@@ -100,7 +100,7 @@ export class LibraryTreeNode extends Model
         n.set_property_value(LibraryTreeNode.LocalIdKey, info.localId)
         n.set_property_value(LibraryTreeNode.TermIdKey, info.termId)
         n.set_property_value(LibraryTreeNode.ConceptKey, info.concept)
-        n.set_property_value(LibraryTreeNode.DescriptorKey, new ToolboxVisualDescriptor(LibraryClassVisualResolverKey, info.termId))
+        n.set_property_value(LibraryTreeNode.DescriptorKey, new ToolboxVisualDescriptor(TodlVisualResolverKey, info.termId))
         n.set_property_value(LibraryTreeNode.IsDraggableKey, true)
         const itemId = 'term:' + info.termId
         n.set_property_value(LibraryTreeNode.BeginDragDataKey, () => ({

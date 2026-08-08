@@ -1,26 +1,32 @@
 import type { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { LibraryRegistry } from '../../library/services/library-registry.js'
-import { LibraryClassVisualResolver, LibraryClassVisualResolverKey } from './library-class-visual-resolver.js'
-import { ConceptVisualResolver, ConceptVisualResolverKey } from './concept-visual-resolver.js'
 import { ArchInstanceDropFactory, ArchInstanceDropFactoryKey } from '../../architecture-projects/services/arch-instance-drop-factory.js'
+import { TodlPresentationRegistry } from './todl-presentation-registry.js'
+import { TodlVisualResolver, TodlVisualResolverKey } from './todl-visual-resolver.js'
+import { LibraryPresentationSource } from '../../library/services/library-presentation-source.js'
+import { MetaModelPresentationSource } from '../../meta-model/services/meta-model-presentation-source.js'
 
-// Idempotently register the Plexus toolbox resolvers + drop factory into the
-// service provider. Returns the ConceptVisualResolver so the populator can feed it
-// term icons. Safe to call on every reload — existing registrations are left as-is.
-export function registerArchToolboxAdapters(services: ServiceProvider): ConceptVisualResolver
+// Idempotently register the Plexus toolbox resolver + drop factory into the
+// service provider. Safe to call on every reload — existing registrations are
+// left as-is; registerSource is idempotent by id so re-registering the same
+// sources is harmless.
+export function registerArchToolboxAdapters(services: ServiceProvider): void
 {
-    if (!services.has(LibraryClassVisualResolverKey))
+    let registry = services.get(TodlPresentationRegistry.Key)
+    if (registry === undefined)
     {
-        const registry = services.get(LibraryRegistry.Key)
-        if (registry !== undefined) services.registerInstance(LibraryClassVisualResolverKey, new LibraryClassVisualResolver(registry))
+        registry = new TodlPresentationRegistry(services)
+        services.registerInstance(TodlPresentationRegistry.Key, registry)
     }
+    registry.registerSource(new LibraryPresentationSource(services, () => services.get(LibraryRegistry.Key)?.discover() ?? Promise.resolve([])))
+    registry.registerSource(new MetaModelPresentationSource(services))
+
     if (!services.has(ArchInstanceDropFactoryKey))
     {
         services.registerInstance(ArchInstanceDropFactoryKey, new ArchInstanceDropFactory())
     }
-    if (!services.has(ConceptVisualResolverKey))
+    if (!services.has(TodlVisualResolverKey))
     {
-        services.registerInstance(ConceptVisualResolverKey, new ConceptVisualResolver())
+        services.registerInstance(TodlVisualResolverKey, new TodlVisualResolver(registry))
     }
-    return services.getRequired(ConceptVisualResolverKey) as ConceptVisualResolver
 }
