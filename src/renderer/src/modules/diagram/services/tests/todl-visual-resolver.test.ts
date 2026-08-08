@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Border } from '@pragmatic-lab/mural/basic'
+import { Border, TextBlock } from '@pragmatic-lab/mural/basic'
 import { VisualContext, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 import type { Visual } from '@pragmatic-lab/mural/runtime'
 import { buildCtx, compileTemplate } from '../../../library/services/visual-library.js'
@@ -9,7 +9,7 @@ import { TodlVisualResolver, TodlVisualResolverKey } from '../todl-visual-resolv
 // True if any node in the visual tree is a TextBlock (a label). Figure-only visuals
 // have none — the host draws the caption.
 function hasText(v: Visual): boolean {
-    if (v.constructor.name === 'TextBlock') return true
+    if (v instanceof TextBlock) return true
     for (const c of [...v.logicalChildren, ...v.visualChildren]) if (hasText(c)) return true
     return false
 }

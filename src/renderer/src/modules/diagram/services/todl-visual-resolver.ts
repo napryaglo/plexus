@@ -11,14 +11,14 @@ export const TodlVisualResolverKey = new ServiceKey<IToolboxVisualResolver>('Tod
 export class TodlVisualResolver implements IToolboxVisualResolver
 {
     private readonly unsubs = new Map<(key: string) => void, () => void>()
-    private readonly default = buildDefaultTemplate(buildCtx())
+    private readonly defaultTemplate = buildDefaultTemplate(buildCtx())
 
     constructor(private readonly registry: TodlPresentationRegistry) {}
 
     public Resolve(descriptor: ToolboxVisualDescriptor, context: VisualContext): Visual
     {
         const t = this.registry.resolve(descriptor.Key)
-        const visual = (t ?? this.default).Apply({})
+        const visual = (t ?? this.defaultTemplate).Apply({})
         // Tiles are drag chrome: the enclosing Border owns the gesture, so the
         // rendered visual must not swallow hit-testing.
         if (context === VisualContext.Tile && visual instanceof Element) visual.IsHitTestVisible = false
