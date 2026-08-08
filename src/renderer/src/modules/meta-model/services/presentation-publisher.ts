@@ -1,6 +1,6 @@
 import type { TodlDocument } from '@pragmatic-lab/todl'
 import {
-    compile, DEFAULT_SYMBOLS, svgToGeometryJs,
+    compile, DEFAULT_SYMBOLS,
     type IncludeResolver, type IncludeResolution,
 } from '@pragmatic-lab/mural/compiler'
 
@@ -10,7 +10,7 @@ import { distinctIcons, assignResourceKeys, buildIconIndex } from './presentatio
 const PRESENTATION_DIR = 'presentation'
 const COMPILED_FILE = 'presentation.compiled.json'
 export const ICON_INDEX_FILE = 'icon-index.json'
-const VISUAL_ENGINE = '@pragmatic-lab/mural/visual-engine'
+const BASIC = '@pragmatic-lab/mural/basic'
 const DICT_NAME = 'MetaModelPresentation'
 
 // The self-contained, evaluable presentation payload written into the backend.
@@ -46,13 +46,16 @@ export async function publishPresentation(
 
     const source = combinedSource(doc, DICT_NAME, [])
 
+    // Bake each SVG as a COLORED IconDefinition (parseSvgIcon preserves per-shape
+    // fills/strokes) parsed at load — the default template's Icon draws it with
+    // Recolor=false so the icon's own colors show. The SVG text is embedded; no
+    // external file dependency.
     const include: IncludeResolver = (path, ctx): IncludeResolution => {
         const text = svgByPath.get(path)
         if (text === undefined) throw new Error(`presentation include not pre-read: ${path}`)
-        const { valueJs, names } = svgToGeometryJs(text)
         return {
-            entries: [{ key: ctx.key ?? path, valueJs }],
-            imports: [{ module: VISUAL_ENGINE, names: [...names] }],
+            entries: [{ key: ctx.key ?? path, valueJs: `parseSvgIcon(${JSON.stringify(text)})` }],
+            imports: [{ module: BASIC, names: ['parseSvgIcon'] }],
         }
     }
     const result = compile(source, { include, symbols: new Map(DEFAULT_SYMBOLS) })

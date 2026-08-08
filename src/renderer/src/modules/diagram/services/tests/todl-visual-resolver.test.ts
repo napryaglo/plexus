@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { Border, Shape, TextBlock } from '@pragmatic-lab/mural/basic'
+import { Border, Icon, TextBlock } from '@pragmatic-lab/mural/basic'
 import { VisualContext, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 import type { Visual } from '@pragmatic-lab/mural/runtime'
 
@@ -25,7 +25,7 @@ function fakeRegistry() {
     const index = new Map<string, string>([['mm:service', 'mm_icon_svc']])
     return {
         index,
-        resolve: (k: string) => (k === 'mm_icon_svc' ? { tag: 'geom' } : undefined),
+        resolve: (k: string) => (k === 'mm_icon_svc' ? { ViewBoxWidth: 24, ViewBoxHeight: 24, Shapes: [] } : undefined),
         iconKeyFor: (k: string) => index.get(k),
         onChanged: (cb: (key: string) => void) => { listeners.add(cb); return () => listeners.delete(cb) },
         fire(key: string) { for (const l of listeners) l(key) },
@@ -38,13 +38,13 @@ describe('TodlVisualResolver', () => {
         expect(TodlVisualResolverKey).toBeDefined()
     })
 
-    it('resolves a known entity through the default template (a Border with a Shape icon), Tile → IsHitTestVisible=false', () => {
+    it('resolves a known entity through the default template (a Border with an Icon), Tile → IsHitTestVisible=false', () => {
         const reg = fakeRegistry()
         setIconResourceResolver(reg.resolve)
         const r = new TodlVisualResolver(reg as unknown as TodlPresentationRegistry)
         const tile = r.Resolve(desc('mm:service'), VisualContext.Tile) as Border
         expect(tile).toBeInstanceOf(Border)
-        expect(hasType(tile, Shape)).toBe(true)
+        expect(hasType(tile, Icon)).toBe(true)
         expect(hasType(tile, TextBlock)).toBe(false)   // figure only; host draws caption
         expect(tile.IsHitTestVisible).toBe(false)
     })

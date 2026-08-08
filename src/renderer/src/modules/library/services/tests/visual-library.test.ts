@@ -1,5 +1,5 @@
 import { test, expect, afterEach } from 'vitest'
-import { Shape } from '@pragmatic-lab/mural/basic'
+import { Icon } from '@pragmatic-lab/mural/basic'
 import type { Visual } from '@pragmatic-lab/mural/runtime'
 
 import { buildCtx, compileTemplate, buildDefaultTemplate } from '../visual-library.js'
@@ -36,10 +36,10 @@ test('buildDefaultTemplate returns a usable DataTemplate', () => {
     expect(typeof tmpl.Apply).toBe('function')
 })
 
-test('buildDefaultTemplate carries a Shape icon and no label', () => {
-    setIconResourceResolver(() => ({}))   // any geometry
+test('buildDefaultTemplate carries an Icon and no label', () => {
+    setIconResourceResolver(() => ({ ViewBoxWidth: 24, ViewBoxHeight: 24, Shapes: [] }))
     const v = buildDefaultTemplate(buildCtx()).Apply({ IconKey: 'mm_icon_svc' }) as Visual
-    expect(hasType(v, Shape)).toBe(true)
+    expect(hasType(v, Icon)).toBe(true)
     expect(hasText(v)).toBe(false)
 })
 
