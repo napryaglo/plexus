@@ -28,6 +28,9 @@ resources DiagramResources {
         join_inner
         join_left
         difference
+        // Fallback glyph: the default figure for any published entity whose icon
+        // annotation resolves nothing (IconKeyConverter falls back to @category).
+        category
         // Input-mode toolbar: Connectors mode.
         polyline
         // Text-format toolbars: paragraph alignment within the label …
