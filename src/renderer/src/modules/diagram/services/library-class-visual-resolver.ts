@@ -7,8 +7,8 @@ export const LibraryClassVisualResolverKey = new ServiceKey<IToolboxVisualResolv
 // Resolves a library class descriptor to its visual through the LibraryRegistry
 // (compiled template / baked presentation / default box). Never sets DataContext —
 // the class template inherits the presenter's (the item / node / preview row), so
-// $Display binds to that host. Bridges registry.onChanged so a lazily-compiled
-// class upgrades the presenter's content in place.
+// $Display binds to that host. Bridges registry.onChanged so a re-discover
+// (library install/uninstall) upgrades the presenter's content in place.
 export class LibraryClassVisualResolver implements IToolboxVisualResolver
 {
     private readonly unsubs = new Map<(key: string) => void, () => void>()
