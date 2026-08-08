@@ -177,12 +177,10 @@ test('regeneratePresentation writes presentation.generated.mu with a template pe
 
   const out = await storage.ReadText('presentation.generated.mu')
   expect(out).toContain('resources LibraryPresentation {')
-  expect(out).not.toContain('DataTemplate')  // assets dict only — templates are author-owned
-  expect(out).not.toContain('merge ')        // no merge clauses; templates are inlined at publish
-  // Every class's template lives in the single scaffolded author-templates file.
-  const templates = await storage.ReadText('presentation/templates.mu')
-  expect(templates).toContain('resources LibraryPresentationTemplates {')
-  expect(templates).toContain('DataTemplate x:key="Microsoft.Azure" [ DataType = LibraryClassData ]')
+  expect(out).not.toContain('DataTemplate')  // assets dict only — no per-entity templates
+  expect(out).not.toContain('merge ')
+  // No template scaffolding: every class renders through Plexus's one default template.
+  expect(await storage.Exists('presentation/templates.mu')).toBe(false)
 })
 
 test('regeneratePresentation is a no-op when the project has no .todl sources', async () => {

@@ -1,37 +1,38 @@
-import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { DataTemplate } from '@pragmatic-lab/mural/basic'
+import { ResourceDictionary, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 
-import type { PresentationSource } from '../../diagram/services/todl-presentation-registry.js'
+import type { IStorage } from '../../../services/storage/storage.js'
+import type { PresentationContribution, PresentationSource } from '../../diagram/services/todl-presentation-registry.js'
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
 import { scanPublishedModels } from './meta-model-tree-builder.js'
 import { loadCompiledPresentation } from './compiled-presentation.js'
-import { MetaModelEntity } from './meta-model-entity.js'
+import { readIconIndex } from './icon-index.js'
 
-// A PresentationSource that loads all published meta-model visual templates for
-// the TodlPresentationRegistry. For each published <id>/<version> it reads the
-// baked presentation artifact (if present) and adds every mm:<entity-id> key to
-// the map. Presentation-only: no authored .mural tier, no Problems publishing.
-// A version whose artifact is absent contributes nothing (no throw).
+// A PresentationSource contributing all published meta-models' icon assets +
+// entityKey→resource-key index for the TodlPresentationRegistry. For each published
+// <id>/<version> it merges the baked asset dictionary and reads icon-index.json
+// (keyed mm:<entity-id>). A version whose artifact is absent contributes nothing.
 export class MetaModelPresentationSource implements PresentationSource
 {
     readonly id = 'meta-model'
 
     constructor(private readonly provider: IServiceProvider) {}
 
-    public async load(): Promise<Map<string, DataTemplate>>
+    public async load(): Promise<PresentationContribution>
     {
-        let backend
+        let backend: IStorage
         try { backend = ensureMetaModelsBackend(this.provider) }
-        catch { return new Map() }   // no meta-models backend (headless / not wired) — degrade gracefully
-        const map = new Map<string, DataTemplate>()
+        catch { return { assets: new ResourceDictionary(), iconKeys: new Map() } }   // headless / not wired
+
+        const assets = new ResourceDictionary()
+        const iconKeys = new Map<string, string>()
         for (const { id, versions } of await scanPublishedModels(backend)) {
             for (const version of versions) {
-                const pres = await loadCompiledPresentation(backend, `${id}/${version}`, { MetaModelEntity })
-                if (pres !== undefined) {
-                    for (const [k, v] of pres.Entries()) map.set(k as string, v as DataTemplate)
-                }
+                const base = `${id}/${version}`
+                const pres = await loadCompiledPresentation(backend, base)
+                if (pres !== undefined) for (const [k, v] of pres.Entries()) assets.Set(k, v)
+                for (const [k, v] of await readIconIndex(backend, base)) iconKeys.set(k, v)
             }
         }
-        return map
+        return { assets, iconKeys }
     }
 }

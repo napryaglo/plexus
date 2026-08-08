@@ -1,18 +1,16 @@
-import { test, expect } from 'vitest'
-import { parseSvgIcon, Icon } from '@pragmatic-lab/mural/basic'
+import { test, expect, afterEach } from 'vitest'
+import { Shape } from '@pragmatic-lab/mural/basic'
 import type { Visual } from '@pragmatic-lab/mural/runtime'
 
-import { buildCtx, compileTemplate, buildDefaultTemplate, buildIconTemplate } from '../visual-library.js'
+import { buildCtx, compileTemplate, buildDefaultTemplate } from '../visual-library.js'
+import { setIconResourceResolver } from '../../../diagram/services/icon-key-converter.js'
 
-const SVG = '<svg viewBox="0 0 10 10"><path d="M0 0 L10 0 L10 10 Z"/></svg>'
+afterEach(() => setIconResourceResolver(undefined))
 
-function findIcon(v: Visual): Icon | undefined {
-    if (v instanceof Icon) return v
-    for (const c of [...v.logicalChildren, ...v.visualChildren]) {
-        const f = findIcon(c)
-        if (f !== undefined) return f
-    }
-    return undefined
+function hasType(v: Visual, ctor: Function): boolean {
+    if (v instanceof ctor) return true
+    for (const c of [...v.logicalChildren, ...v.visualChildren]) if (hasType(c, ctor)) return true
+    return false
 }
 
 // True if any node in the tree is a TextBlock (a label). Figure-only visuals
@@ -38,8 +36,10 @@ test('buildDefaultTemplate returns a usable DataTemplate', () => {
     expect(typeof tmpl.Apply).toBe('function')
 })
 
-test('buildDefaultTemplate is figure-only: a neutral box with no label', () => {
-    const v = buildDefaultTemplate(buildCtx()).Apply({}) as Visual
+test('buildDefaultTemplate carries a Shape icon and no label', () => {
+    setIconResourceResolver(() => ({}))   // any geometry
+    const v = buildDefaultTemplate(buildCtx()).Apply({ IconKey: 'mm_icon_svc' }) as Visual
+    expect(hasType(v, Shape)).toBe(true)
     expect(hasText(v)).toBe(false)
 })
 
@@ -47,17 +47,3 @@ test('a malformed fragment throws (caller catches and falls back)', () => {
     expect(() => compileTemplate('This is not valid mural [[[', buildCtx())).toThrow()
 })
 
-test('buildIconTemplate applies a tree containing an Icon with the given Source', () => {
-    const ctx = buildCtx()
-    const iconDef = parseSvgIcon(SVG)
-    const v = buildIconTemplate(iconDef, ctx).Apply({ Display: 'Azure' }) as Visual
-    const icon = findIcon(v)
-    expect(icon).toBeDefined()
-    expect(icon!.Source).toBe(iconDef)
-})
-
-test('buildIconTemplate is figure-only: an icon with no label', () => {
-    const v = buildIconTemplate(parseSvgIcon(SVG), buildCtx()).Apply({}) as Visual
-    expect(findIcon(v)).toBeDefined()
-    expect(hasText(v)).toBe(false)
-})

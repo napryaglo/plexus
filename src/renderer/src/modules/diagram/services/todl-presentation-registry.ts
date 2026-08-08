@@ -1,22 +1,32 @@
 import { Application, ResourceDictionary, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { DataTemplate } from '@pragmatic-lab/mural/basic'
+import { setIconResourceResolver } from './icon-key-converter.js'
 
-// A single visual-template source contributing to the registry. Each source has a
-// stable id (idempotency key for registerSource) and returns an async map of
-// string key → DataTemplate on each discover() run.
+// What a source contributes on each discover(): its baked icon ASSETS (geometries
+// / ImageBrushes keyed by resource key) and an entityKey → resource-key index
+// (library term/class → '<id>'; meta-model entity → 'mm:<id>').
+export interface PresentationContribution
+{
+    assets: ResourceDictionary
+    iconKeys: Map<string, string>
+}
+
+// A single presentation source contributing to the registry. Each has a stable id
+// (idempotency key for registerSource) and loads its contribution on each discover().
 export interface PresentationSource
 {
     id: string
-    load(): Promise<Map<string, DataTemplate>>
+    load(): Promise<PresentationContribution>
 }
 
-// App-global registry that aggregates every registered PresentationSource's visual
-// templates into one ResourceDictionary, merged into Application.Resources as a
-// single atomic swap so downstream DynamicResource consumers receive one
-// merged-dictionary notification (O(1)) rather than one per key entry.
+// App-global registry that aggregates every registered PresentationSource's icon
+// assets into one ResourceDictionary — merged into Application.Resources as a single
+// atomic swap so DynamicResource consumers receive one merged-dictionary
+// notification (O(1)) — and unions their entityKey → resource-key indexes.
 //
-// resolve() reads the owned aggregate reference so it works headless (no
-// Application.current). onChanged notifies subscribers after each discover().
+// The one default visual template resolves an entity's icon by looking its
+// resource key up in this index (iconKeyFor) and drawing the geometry that key
+// names. resolveAsset() reads the owned aggregate so the IconKeyConverter works
+// headless (no Application.current); discover() bridges the converter to it.
 export class TodlPresentationRegistry extends ServiceBase
 {
     public static readonly Key = new ServiceKey<TodlPresentationRegistry>('TodlPresentationRegistry')
@@ -25,13 +35,13 @@ export class TodlPresentationRegistry extends ServiceBase
     // same id replaces the previous entry.
     private readonly sources = new Map<string, PresentationSource>()
 
-    // The currently owned aggregate ResourceDictionary. resolve() reads from here,
-    // so headless (no Application.current) callers still work. Rebuilt wholesale on
-    // each discover().
+    // The currently owned aggregate of icon assets. resolveAsset() reads from here,
+    // so headless callers still work. Rebuilt wholesale on each discover().
     private aggregate = new ResourceDictionary()
-    // The currently merged ResourceDictionary instance (may be undefined when no
-    // discover() has succeeded yet or the last discover produced zero entries and
-    // the skip-if-empty rule applied).
+    // entityKey → resource key, unioned across sources. Rebuilt on each discover().
+    private index = new Map<string, string>()
+    // The currently merged ResourceDictionary instance (undefined until the first
+    // non-empty discover()).
     private merged: ResourceDictionary | undefined
 
     private readonly listeners = new Set<(key: string) => void>()
@@ -39,60 +49,63 @@ export class TodlPresentationRegistry extends ServiceBase
     constructor(provider: IServiceProvider)
     {
         super(provider)
-        // The initial empty aggregate is a placeholder so headless resolve() before
-        // any discover() returns undefined; it is replaced wholesale on the first
-        // discover(). The meaningful StyleParticipating opt-out lives on `next`
-        // inside discover() (the dict actually merged into the app resources).
     }
 
     // Register a source by id. Idempotent: re-registering the same id replaces the
-    // previous entry (the new source's entries take effect on the next discover()).
+    // previous entry (the new source's contribution takes effect on next discover()).
     public registerSource(src: PresentationSource): void
     {
         this.sources.set(src.id, src)
     }
 
-    // Run all registered sources and atomically swap the aggregate into
-    // Application.Resources (one merged-dictionary swap → O(1) notifications).
-    // Skip the swap when the next dict is empty AND was never merged, so a
-    // zero-entry discover fires zero app-resource notifications.
-    // resolve() and onChanged work headless (no Application.current needed).
+    // Run all registered sources, merge their assets app-global (one swap → O(1)
+    // notifications), and rebuild the entityKey index. Skip the swap when the next
+    // asset dict is empty AND was never merged, so a zero-asset discover fires zero
+    // app-resource notifications. Bridges the IconKeyConverter to the owned
+    // aggregate. onChanged fires once per indexed entity key.
     public async discover(): Promise<void>
     {
         const next = new ResourceDictionary()
         next.StyleParticipating = false
+        const nextIndex = new Map<string, string>()
 
-        // Collect string keys as we populate, so we can fire typed notifications
-        // after the swap without iterating ResourceDictionary.Entries() (whose
-        // ResourceKey = string | Function type does not satisfy the string callback).
-        // Deduplicate: two sources may declare the same key, but a key must notify
-        // exactly once per discover().
-        const keys = new Set<string>()
+        let assetCount = 0
         for (const source of this.sources.values()) {
-            const map = await source.load()
-            for (const [k, v] of map) { next.Set(k, v); keys.add(k) }
+            const { assets, iconKeys } = await source.load()
+            for (const [k, v] of assets.Entries()) { next.Set(k, v); assetCount++ }
+            for (const [k, v] of iconKeys) nextIndex.set(k, v)
         }
 
-        // Swap into app resources. Skip an empty-and-never-merged swap so the
-        // no-source case fires zero app-resource notifications.
-        if (keys.size > 0 || this.merged !== undefined) {
+        if (assetCount > 0 || this.merged !== undefined) {
             Application.current?.Resources.ReplaceMergedDictionary(this.merged, next)
             this.merged = next
         }
-        // Update owned reference so resolve() always reads the latest dict.
         this.aggregate = next
+        this.index = nextIndex
 
-        // Notify subscribers for every key in the newly populated aggregate.
-        for (const key of keys) {
+        // Headless-safe resource lookup for the IconKeyConverter (reads the owned
+        // aggregate, not Application.Resources).
+        setIconResourceResolver((k) => this.aggregate.Resolve(k))
+
+        // Notify subscribers so live presenters re-resolve their icon.
+        for (const key of nextIndex.keys()) {
             for (const cb of [...this.listeners]) cb(key)
         }
     }
 
-    // Look up a key in the owned aggregate. Fully synchronous; returns undefined for
-    // unknown keys. Works headless (reads this.aggregate, not Application.Resources).
-    public resolve(key: string): DataTemplate | undefined
+    // The icon resource key for an entity (descriptor key), or undefined when the
+    // entity has no indexed icon (→ the default glyph). Reads the owned index, so
+    // it works headless.
+    public iconKeyFor(entityKey: string): string | undefined
     {
-        return this.aggregate.Resolve(key) as DataTemplate | undefined
+        return this.index.get(entityKey)
+    }
+
+    // Resolve a baked icon asset (geometry / ImageBrush) by its resource key from
+    // the owned aggregate. Headless-safe.
+    public resolveAsset(resourceKey: string): unknown
+    {
+        return this.aggregate.Resolve(resourceKey)
     }
 
     // Subscribe to key-level change notifications fired after each discover().
