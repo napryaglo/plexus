@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
-import { iconKey, humanize, ontologyEntities, classEntities, distinctIcons, generatePresentationAssets, isRasterIcon, resolveFacets, assignResourceKeys, resourceKeyFor, stampResourceKeys } from '../presentation-generator.js'
+import { iconKey, humanize, ontologyEntities, classEntities, distinctIcons, generatePresentationAssets, isRasterIcon, resolveFacets, assignResourceKeys, resourceKeyFor, stampResourceKeys, buildIconIndex } from '../presentation-generator.js'
 
 function doc(nodes: TodlDocument['nodes']): TodlDocument { return { nodes, edges: [] } }
 
@@ -163,6 +163,28 @@ test('generatePresentationAssets suffixes colliding icon stems in its includes',
     const out = generatePresentationAssets(m, 'MetaModelPresentation')
     expect(out).toContain('include "a/az.svg" as mm_icon_az')
     expect(out).toContain('include "b/az.svg" as mm_icon_az_2')
+})
+
+// ── buildIconIndex — entityKey → icon resource key ───────────────────────────
+
+test('buildIconIndex maps each icon-bearing entity to its resource key under the prefix', () => {
+    const m = doc([
+        { id: 'service', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'resources/svc.svg' } },
+        { id: 'db', tier: 'Instance', typeOf: 'component', attrs: { class: true, icon: 'resources/db.svg' } },
+        { id: 'plain', tier: 'Ontology', typeOf: 'concept', attrs: {} },   // no icon → omitted
+    ])
+    const idx = buildIconIndex(m, 'mm:')
+    expect(idx.get('mm:service')).toBe('mm_icon_svc')
+    expect(idx.get('mm:db')).toBe('mm_icon_db')
+    expect(idx.has('mm:plain')).toBe(false)
+})
+
+test('buildIconIndex applies an empty prefix for the library keyspace', () => {
+    const m = doc([
+        { id: 'service', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'resources/svc.svg' } },
+    ])
+    const idx = buildIconIndex(m, '')
+    expect(idx.get('service')).toBe('mm_icon_svc')
 })
 
 test('stampResourceKeys writes the assigned key onto icon application nodes only', () => {

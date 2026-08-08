@@ -2,7 +2,7 @@
 // resource dictionary. No I/O, no mural import; deterministic text only. All
 // model/filesystem access lives in the factory that calls this.
 
-import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
+import { projectAnnotations, type TodlDocument, type JsonNode } from '@pragmatic-lab/todl'
 
 // The ontology-tier typeOf values presented as first-class entities. `field`
 // (concept attributes) is intentionally excluded.
@@ -144,6 +144,22 @@ export function humanize(id: string): string
     return id.split(/[-._]/).filter(Boolean)
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(' ')
+}
+
+// entityKey (prefix + id) → icon resource key, for every presentable entity
+// (ontology + class) that resolves an icon. `prefix` is '' (library keyspace) or
+// 'mm:' (meta-model keyspace), matching the descriptor keys the resolver looks up.
+// Icon-less entities are omitted. Emitted at publish time into icon-index.json so
+// load never re-derives keys.
+export function buildIconIndex(doc: TodlDocument, prefix: string): Map<string, string>
+{
+    const out = new Map<string, string>()
+    for (const n of [...ontologyEntities(doc), ...classEntities(doc)]) {
+        const { icon } = resolveFacets(n, projectAnnotations(doc, n.id))
+        if (icon === undefined) continue
+        out.set(prefix + n.id, resourceKeyFor(doc, icon))
+    }
+    return out
 }
 
 export interface PresentationFacets { icon?: string; label: string }
