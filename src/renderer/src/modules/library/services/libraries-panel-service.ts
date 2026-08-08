@@ -24,13 +24,13 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
     public static readonly IsLoadingKey = Model.RegisterProperty<boolean>(LibrariesPanelService, 'IsLoading', false, MetaData.None)
 
     // Bottom preview pane, driven by the selected class leaf. The preview hosts
-    // the selected NODE itself (Content = $PreviewData); the node carries its own
-    // resolved Template (set below) + self-referential Data + Concept, which the
-    // preview DataTemplate renders. Driving the preview off the node — rather than
-    // off a service-level template DP — is deliberate: a bare ContentPresenter
-    // pins its own DataContext to the content it renders, which would break a
-    // service-scoped $PreviewTemplate binding after the first class (the preview
-    // then froze on the first selection). See [[library-preview-datacontext]].
+    // the selected NODE itself (Content = $PreviewData); the node carries its visual
+    // Descriptor + Concept, which the preview DataTemplate renders through the shared
+    // ToolboxVisualPresenter (which owns the lazy-compile upgrade). Driving the
+    // preview off the node — rather than off a service-level DP — is deliberate: a
+    // bare ContentPresenter pins its own DataContext to the content it renders, which
+    // would break a service-scoped binding after the first class (the preview then
+    // froze on the first selection). See [[library-preview-datacontext]].
     public static readonly PreviewDataKey = Model.RegisterProperty<LibraryTreeNode | undefined>(
         LibrariesPanelService, 'PreviewData', undefined, MetaData.None)
     public static readonly HasPreviewKey = Model.RegisterProperty<boolean>(LibrariesPanelService, 'HasPreview', false, MetaData.None)
@@ -41,15 +41,9 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
     {
         super(provider)
         this.set_property_value(LibrariesPanelService.RootsKey, new ObservableCollection<LibraryTreeNode>())
-        // When a class's template finishes compiling, upgrade the preview if that
-        // class is the one currently selected (default → its real template). The
-        // node carries the template, so the preview re-renders in place.
-        this.Provider.get(LibraryRegistry.Key)?.onChanged((classId) => {
-            const sel = this.SelectedNode
-            if (sel !== undefined && sel.Kind === LibraryNodeKind.Class && sel.TermId === classId) {
-                sel.Template = this.Provider.get(LibraryRegistry.Key)?.resolve(classId, sel.Concept)
-            }
-        })
+        // The preview's ToolboxVisualPresenter owns the lazy-compile upgrade (it
+        // subscribes to the library resolver's changed signal), so the panel no
+        // longer tracks onChanged or resolves templates itself.
         void this.Reload()
     }
 
@@ -111,7 +105,6 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
                 const display = cls.label ?? cls.localId ?? cls.id
                 conceptNode.Children.Add(LibraryTreeNode.leaf(
                     { display, label: cls.label ?? '', localId: cls.localId ?? '', termId: cls.id, concept: cls.concept },
-                    undefined,   // no pre-compiled template — resolved lazily on select/drop
                 ))
             }
             for (const conceptName of [...byConcept.keys()].sort()) libNode.Children.Add(byConcept.get(conceptName)!)
@@ -129,10 +122,8 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
         if (descriptor.Name !== 'SelectedNode') return
         const node = newValue instanceof LibraryTreeNode ? newValue : undefined
         if (node !== undefined && node.Kind === LibraryNodeKind.Class) {
-            // Give the node its resolved template BEFORE it drives the pane, so the
-            // preview never sees a template-less node (default now, upgraded via the
-            // registry's onChanged subscription once the class compiles).
-            node.Template = this.Provider.get(LibraryRegistry.Key)?.resolve(node.TermId, node.Concept)
+            // The node's Descriptor drives the preview through ToolboxVisualPresenter,
+            // which resolves + upgrades the class visual itself.
             this.set_property_value(LibrariesPanelService.PreviewDataKey, node)
             this.set_property_value(LibrariesPanelService.HasPreviewKey, true)
         } else {

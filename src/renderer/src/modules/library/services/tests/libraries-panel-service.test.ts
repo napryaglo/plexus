@@ -7,6 +7,7 @@ import { LIBRARIES_BACKEND_ID } from '../libraries-backend.js'
 import { LibraryRegistry } from '../library-registry.js'
 import { LibrariesPanelService } from '../libraries-panel-service.js'
 import { LibraryNodeKind, type LibraryTreeNode } from '../library-tree-node.js'
+import { LibraryClassVisualResolverKey } from '../../../diagram/services/library-class-visual-resolver.js'
 
 // Synchronous seed (see the registry test) so all files exist before Reload lists.
 function providerWith(seed: (b: FakeStorage) => void): ServiceProvider {
@@ -58,9 +59,10 @@ test('builds a Library -> Concept -> Class tree, concepts sorted, leaves carry t
     expect(leaf.TermId).toBe('Stack.AzureOpenai')
     expect(leaf.Concept).toBe('technology')
     expect(leaf.IsDraggable).toBe(true)
-    // Lazy: leaves carry NO pre-compiled template — the tree is built from cheap
-    // discovery; a class compiles only when previewed/placed.
-    expect(leaf.Template).toBeUndefined()
+    // Leaves carry a library-class descriptor keyed on the term; the visual resolves
+    // (and lazily compiles) through the shared presenter on preview/canvas.
+    expect(leaf.Descriptor?.ResolverKey).toBe(LibraryClassVisualResolverKey)
+    expect(leaf.Descriptor?.Key).toBe('Stack.AzureOpenai')
 })
 
 test('IsLoading is true while discovering and false once the tree is built', async () => {
@@ -76,30 +78,6 @@ test('IsLoading is true while discovering and false once the tree is built', asy
     expect(svc.IsLoading).toBe(true)     // set synchronously before the discover await
     await p
     expect(svc.IsLoading).toBe(false)
-})
-
-test('selecting a class resolves its preview template lazily, upgrading when it compiles', async () => {
-    const provider = providerWith((b) => {
-        void b.WriteText('ms/0.1.0/library.json', JSON.stringify({
-            id: 'ms', version: '0.1.0', name: 'MS', metaModel: { id: 'ea', version: '5' },
-            classes: [{ id: 'stack.a', localId: 'a', label: 'A', concept: 'technology', template: 'visuals/a.mural' }],
-            assets: [], docs: [], samples: [],
-        }))
-        void b.WriteText('ms/0.1.0/visuals/a.mural', 'TextBlock [ Text = $Display ]')
-    })
-    const registry = provider.getRequired(LibraryRegistry.Key)
-    const svc = new LibrariesPanelService(provider)
-    await svc.Reload()
-    const a = leaves(svc.Roots.Get(0)!)[0]!
-
-    const compiled = new Promise<void>((res) => {
-        const off = registry.onChanged((id) => { if (id === 'stack.a') { off(); res() } })
-    })
-    svc.SelectedNode = a
-    const def = registry.resolve('nobody', 'x')
-    expect(a.Template).toBe(def)   // the selected node carries the default first (compile scheduled)
-    await compiled
-    expect(a.Template).not.toBe(def)   // upgraded to the class's own template, in place on the node
 })
 
 test('selecting a class drives the bottom preview pane; selecting another moves it; a group clears it', async () => {
@@ -125,11 +103,11 @@ test('selecting a class drives the bottom preview pane; selecting another moves 
     expect(svc.HasPreview).toBe(true)
     expect(svc.PreviewData).toBe(a)
     expect(a.Concept).toBe('technology')
-    expect(typeof a.Template!.Apply).toBe('function')   // node carries its resolved template (default or compiled)
+    expect(a.Descriptor?.Key).toBe('stack.a')   // node carries its own visual descriptor
 
     svc.SelectedNode = b
     expect(svc.PreviewData).toBe(b)
-    expect(typeof b.Template!.Apply).toBe('function')   // the newly-selected node gets its own template too
+    expect(b.Descriptor?.Key).toBe('stack.b')   // the newly-selected node has its own too
 
     svc.SelectedNode = lib          // a group node clears the preview
     expect(svc.HasPreview).toBe(false)
