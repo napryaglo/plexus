@@ -179,6 +179,14 @@ test('buildIconIndex maps each icon-bearing entity to its resource key under the
     expect(idx.has('mm:plain')).toBe(false)
 })
 
+test('buildIconIndex indexes raster (PNG) icons too — they render via the Image element', () => {
+    const m = doc([
+        { id: 'aml', tier: 'Instance', typeOf: 'component', attrs: { class: true, icon: 'resources/aml.png' } },
+    ])
+    const idx = buildIconIndex(m, 'mm:')
+    expect(idx.get('mm:aml')).toBe('mm_icon_aml')
+})
+
 test('buildIconIndex applies an empty prefix for the library keyspace', () => {
     const m = doc([
         { id: 'service', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'resources/svc.svg' } },
