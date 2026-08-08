@@ -43,8 +43,9 @@ export function compileTemplate(source: string, ctx: Record<string, unknown>): D
 // fills; Foreground themes any currentColor shapes. It carries NO label: the host
 // (tile / canvas node / preview) draws the caption.
 const DEFAULT_SOURCE =
-      'Border [ Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (10,6,10,6) ] {'
-    + ' Icon [ Source = $IconKey << IconKeyConverter, Recolor = false, Foreground = @OnSurface, Width = 32, Height = 32 ] }'
+      'Border [ Background = @SurfaceContainerHigh, CornerRadius = 6 ] {'
+    + ' Icon [ Source = $IconKey << IconKeyConverter, Recolor = false, Foreground = @OnSurface,'
+    + ' Width = $IconWidth, Height = $IconHeight, HorizontalAlignment = Center, VerticalAlignment = Center ] }'
 
 export function buildDefaultTemplate(ctx: Record<string, unknown>): DataTemplate
 {
