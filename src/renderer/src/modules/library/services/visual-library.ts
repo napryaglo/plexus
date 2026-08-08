@@ -37,13 +37,14 @@ export function compileTemplate(source: string, ctx: Record<string, unknown>): D
 }
 
 // The always-installed default visual — the ONE template every published-package
-// entity renders through. A neutral figure-only box whose Shape draws the entity's
-// icon geometry, resolved from the bound $IconKey via IconKeyConverter (empty or
-// unknown key → the shipped @category default glyph). It carries NO label: the host
+// entity renders through. A neutral figure-only box whose Icon draws the entity's
+// colored IconDefinition, resolved from the bound $IconKey via IconKeyConverter
+// (empty/unknown key → the default glyph). Recolor=false keeps each icon's own
+// fills; Foreground themes any currentColor shapes. It carries NO label: the host
 // (tile / canvas node / preview) draws the caption.
 const DEFAULT_SOURCE =
       'Border [ Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (10,6,10,6) ] {'
-    + ' Shape [ Geometry = $IconKey << IconKeyConverter, Fill = @OnSurface, Width = 16, Height = 16 ] }'
+    + ' Icon [ Source = $IconKey << IconKeyConverter, Recolor = false, Foreground = @OnSurface, Width = 32, Height = 32 ] }'
 
 export function buildDefaultTemplate(ctx: Record<string, unknown>): DataTemplate
 {

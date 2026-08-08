@@ -6,7 +6,7 @@
 // with no project file blocks publish (nothing written).
 import type { TodlDocument } from '@pragmatic-lab/todl'
 import {
-    compile, DEFAULT_SYMBOLS, svgToGeometryJs,
+    compile, DEFAULT_SYMBOLS,
     type IncludeResolver, type IncludeResolution,
 } from '@pragmatic-lab/mural/compiler'
 
@@ -19,6 +19,7 @@ import { distinctIcons, isRasterIcon, buildIconIndex } from '../../meta-model/se
 const PRESENTATION_DIR = 'presentation'
 const COMPILED_FILE = 'presentation.compiled.json'
 const VISUAL_ENGINE = '@pragmatic-lab/mural/visual-engine'
+const BASIC = '@pragmatic-lab/mural/basic'
 const DICT_NAME = 'LibraryPresentation'
 
 // Raster icon extensions → MIME type for the baked data URI.
@@ -82,10 +83,10 @@ export async function publishLibraryPresentation(
                 imports: [{ module: VISUAL_ENGINE, names: ['BitmapImage', 'ImageBrush'] }],
             }
         }
+        // SVG → COLORED IconDefinition (parseSvgIcon preserves fills), parsed at load.
         const text = svgByPath.get(path)
         if (text === undefined) throw new Error(`presentation include not pre-read: ${path}`)
-        const { valueJs, names } = svgToGeometryJs(text)
-        return { entries: [{ key: ctx.key ?? path, valueJs }], imports: [{ module: VISUAL_ENGINE, names: [...names] }] }
+        return { entries: [{ key: ctx.key ?? path, valueJs: `parseSvgIcon(${JSON.stringify(text)})` }], imports: [{ module: BASIC, names: ['parseSvgIcon'] }] }
     }
     const result = compile(source, { include, symbols: new Map(DEFAULT_SYMBOLS) })
 
