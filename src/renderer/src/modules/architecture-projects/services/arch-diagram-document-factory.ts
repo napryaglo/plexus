@@ -4,7 +4,6 @@ import type { IDocument } from '@pragmatic-lab/mural/framework'
 import type { IDocumentFactory } from '../../../services/documents/document-factory.js'
 import type { IStorage } from '../../../services/storage/storage.js'
 import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base-resolver.js'
-import { LibraryRegistry } from '../../library/services/library-registry.js'
 import { ArchInstanceModel } from './architecture-instance-model.js'
 import { ArchDiagramDocument, type ArchLayout } from './arch-diagram-document.js'
 import { registerArchToolboxAdapters } from '../../diagram/services/register-arch-toolbox-adapters.js'
@@ -30,9 +29,9 @@ export class ArchDiagramDocumentFactory extends ServiceBase implements IDocument
         // Register the presentation sources + resolver, then discover, so the
         // diagram's nodes resolve their visuals through the shared TodlVisualResolver
         // / TodlPresentationRegistry — independent of whether the Libraries or
-        // Meta-models panels were ever opened. discover() rebuilds from the backends
-        // (cheap: metadata + the eager compile the library source owns).
-        await this.Provider.get(LibraryRegistry.Key)?.discover()
+        // Meta-models panels were ever opened. LibraryPresentationSource (registered
+        // here via registerArchToolboxAdapters) calls LibraryRegistry.discover()
+        // internally through its thunk, so no separate direct discover() is needed.
         registerArchToolboxAdapters(this.Provider as ServiceProvider)
         await this.Provider.get(TodlPresentationRegistry.Key)?.discover()
         return new ArchDiagramDocument(path, model, storage, layoutDoc.todlFile, layoutDoc.layout ?? {}, basename(path))
