@@ -1,5 +1,6 @@
 import { Application } from '@pragmatic-lab/mural/runtime'
 import { parseSvgIcon, type IconDefinition } from '@pragmatic-lab/mural/basic'
+import { BitmapImage } from '@pragmatic-lab/mural/visual-engine'
 
 // The fallback glyph an entity renders when its icon resource key is empty or
 // resolves nothing. A neutral "category" grid, monochrome (currentColor → themed
@@ -25,15 +26,41 @@ function resolve(key: string): unknown
     return Application.current?.Resources.Resolve(key)
 }
 
-// Binding converter: an icon resource-key string → its colored IconDefinition, or
-// the default glyph when the key is empty or resolves nothing. Instantiated
-// zero-arg by markup (`$IconKey << IconKeyConverter`); receives the bound value only.
+// A resolved asset that is a raster bitmap (baked BitmapImage) rather than a vector
+// IconDefinition. Raster icons render through the default template's Image element,
+// so the Icon converter yields nothing for them.
+function isBitmap(asset: unknown): asset is BitmapImage
+{
+    return asset instanceof BitmapImage
+}
+
+// Binding converter for the default template's Icon (vector): an icon resource-key
+// string → its colored IconDefinition, or the default glyph when the key is empty or
+// resolves nothing. Returns undefined when the key resolves to a RASTER asset, so the
+// Image element draws it and no glyph shows behind. Instantiated zero-arg by markup
+// (`$IconKey << IconKeyConverter`); receives the bound value only.
 export class IconKeyConverter
 {
     public convert(key: unknown): unknown
     {
         const k = typeof key === 'string' ? key : ''
-        const hit = k === '' ? undefined : resolve(k)
-        return hit ?? DEFAULT_ICON
+        if (k === '') return DEFAULT_ICON
+        const hit = resolve(k)
+        if (hit === undefined || hit === null) return DEFAULT_ICON
+        return isBitmap(hit) ? undefined : hit
+    }
+}
+
+// Binding converter for the default template's Image (raster): an icon resource-key
+// string → its BitmapImage when the key resolves to one, else undefined (an empty
+// Image draws nothing; a vector icon is drawn by the Icon element instead).
+export class ImageKeyConverter
+{
+    public convert(key: unknown): unknown
+    {
+        const k = typeof key === 'string' ? key : ''
+        if (k === '') return undefined
+        const hit = resolve(k)
+        return isBitmap(hit) ? hit : undefined
     }
 }
