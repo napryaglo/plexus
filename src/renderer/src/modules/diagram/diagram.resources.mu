@@ -241,8 +241,9 @@ resources DiagramResources {
     // shape figure; library/meta-model terms → the class icon, upgraded in place
     // when a lazily-compiled class arrives). Dragging emits the item id under
     // TOOLBOX_ITEM_FORMAT; dropping on the canvas routes id → repository → factory.
-    // Presenter-only: the class visual carries its own label; shape tiles show the
-    // figure alone. ──
+    // The presenter renders the figure/icon ONLY; the tile owns the caption below
+    // it ($Label, wrapping), so shapes and class terms read the same and long names
+    // wrap within the tile instead of clipping into the 48×48 figure. ──
     DataTemplate [DataType = ToolboxItem] {
         Border x:root
             [ IsDraggable     = true,
@@ -261,6 +262,14 @@ resources DiagramResources {
                       Width               = 48,
                       Height              = 48,
                       HorizontalAlignment = Center ]
+                TextBlock
+                    [ Text                = $Label,
+                      Style               = @BodySmall,
+                      Foreground          = @OnSurfaceVariant,
+                      TextWrapping        = Wrap,
+                      TextAlignment       = Center,
+                      HorizontalAlignment = Center,
+                      Margin              = (0,4,0,0) ]
             }
         }
     }

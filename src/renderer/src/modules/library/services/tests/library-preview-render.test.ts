@@ -53,6 +53,7 @@ test('the preview template resolves by type and hosts a descriptor-bound present
     const presenter = find(root!, (v) => v instanceof ToolboxVisualPresenter) as ToolboxVisualPresenter | undefined
     expect(presenter).toBeDefined()
     expect(presenter!.Descriptor?.Key).toBe('t.Azure')   // bound to the node's descriptor
+    expect(findText(root!, 'Azure')).toBe(true)           // the host-owned $Display caption
     expect(findText(root!, 'location')).toBe(true)        // the concept label rendered
 })
 

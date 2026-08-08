@@ -46,7 +46,8 @@ resources LibraryResources {
     DataTemplate [ DataType = LibraryTreeNode ] {
         StackPanel [ Orientation = Vertical ] {
             ToolboxVisualPresenter [ Descriptor = $Descriptor, Context = VisualContext.Tile ]
-            TextBlock [ Text = $Concept, Style = @BodySmall, Foreground = @OnSurfaceVariant, Margin = (0,4,0,0) ]
+            TextBlock [ Text = $Display, Style = @BodyMedium, Foreground = @OnSurface, TextWrapping = Wrap, Margin = (0,4,0,0) ]
+            TextBlock [ Text = $Concept, Style = @BodySmall, Foreground = @OnSurfaceVariant, TextWrapping = Wrap, Margin = (0,2,0,0) ]
         }
     }
 

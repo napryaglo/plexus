@@ -12,6 +12,10 @@ import { projectAnnotations, type TodlDocument, type JsonNode } from '@pragmatic
 import type { IStorage } from '../../../services/storage/storage.js'
 import { ontologyEntities, classEntities, resolveFacets, resourceKeyFor, isRasterIcon } from './presentation-generator.js'
 
+// Note: stubs are FIGURE-ONLY (icon or a neutral box, never a label). The host —
+// toolbox tile, canvas node, library preview — draws the caption, so a single
+// visual reads correctly wherever it is presented and nothing double-labels.
+
 // Which domain a stub is authored for. Markup-facing (drives DataType), so a
 // real enum with stable values.
 export enum PresentationRoleKind
@@ -21,16 +25,14 @@ export enum PresentationRoleKind
 }
 
 // A role parameterises the per-domain differences: which nodes are presentable,
-// how a node maps to a template key, the template's DataType, the label
-// expression (a mural attribute value — a baked string vs a `$Display` binding),
-// and the `resources <Name>` identifier of the single scaffolded templates file.
+// how a node maps to a template key, the template's DataType, and the
+// `resources <Name>` identifier of the single scaffolded templates file.
 export interface PresentationRole
 {
     kind: PresentationRoleKind
     entities(doc: TodlDocument): JsonNode[]
     key(node: JsonNode): string
     dataType: string
-    labelExpr(doc: TodlDocument, node: JsonNode): string
     templatesDict: string
 }
 
@@ -39,7 +41,6 @@ export const META_MODEL_ROLE: PresentationRole = {
     entities: (doc) => [...ontologyEntities(doc), ...classEntities(doc)],
     key: (n) => `mm:${n.id}`,
     dataType: 'MetaModelEntity',
-    labelExpr: (doc, n) => `"${escapeMu(resolveFacets(n, projectAnnotations(doc, n.id)).label)}"`,
     templatesDict: 'MetaModelPresentationTemplates',
 }
 
@@ -48,7 +49,6 @@ export const LIBRARY_ROLE: PresentationRole = {
     entities: (doc) => classEntities(doc),
     key: (n) => n.id,
     dataType: 'LibraryClassData',
-    labelExpr: () => '$Display',
     templatesDict: 'LibraryPresentationTemplates',
 }
 
@@ -119,25 +119,21 @@ async function existingKeys(storage: IStorage, dir: string): Promise<Set<string>
 }
 
 // One editable author template (a DataTemplate declaration, indented to sit
-// inside the templates `resources` block): a Border wrapping an icon + label
-// (or label only).
+// inside the templates `resources` block): a figure-only Border — the icon when
+// the node resolves one, otherwise an empty neutral box. The host draws the label.
 function templateBlock(role: PresentationRole, doc: TodlDocument, node: JsonNode): string
 {
     const { icon } = resolveFacets(node, projectAnnotations(doc, node.id))
-    const label = `TextBlock [ Text = ${role.labelExpr(doc, node)}, Foreground = @OnSurface ]`
-    const inner = icon === undefined
-        ? [`            ${label}`]
+    const border = icon === undefined
+        ? [`        Border [ Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (8,6,8,6) ]`]
         : [
-            `            StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {`,
-            `                ${iconElement(doc, icon)}`,
-            `                ${label}`,
-            `            }`,
+            `        Border [ Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (8,6,8,6) ] {`,
+            `            ${iconElement(doc, icon)}`,
+            `        }`,
           ]
     return [
         `    DataTemplate x:key="${role.key(node)}" [ DataType = ${role.dataType} ] {`,
-        `        Border [ Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (8,6,8,6) ] {`,
-        ...inner,
-        `        }`,
+        ...border,
         `    }`,
     ].join('\n')
 }
@@ -151,6 +147,3 @@ function iconElement(doc: TodlDocument, icon: string): string
         ? `Border [ Width = 16, Height = 16, Margin = (0,0,6,0), Background = @${key} ]`
         : `Shape [ Geometry = @${key}, Fill = @OnSurface, Width = 16, Height = 16, Margin = (0,0,6,0) ]`
 }
-
-// Escape a string for a double-quoted mural attribute value.
-function escapeMu(s: string): string { return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') }
