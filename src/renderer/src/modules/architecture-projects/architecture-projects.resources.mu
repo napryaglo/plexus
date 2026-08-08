@@ -42,11 +42,22 @@ resources ArchitectureProjectsResources {
         }
     }
 
-    // ── One node: present the vm through the shared ToolboxVisualPresenter (Figure
-    // context). The presenter resolves $Descriptor via the library/concept resolver
-    // and upgrades in place when a lazily-compiled class arrives; the presenter's
-    // DataContext is this vm, so the class template's $Display binds to the node. ──
+    // ── One node: present the vm's figure through the shared ToolboxVisualPresenter
+    // (Figure context) with the node's caption ($Display, wrapping) beneath it. The
+    // presenter renders the figure/icon ONLY and upgrades in place when a
+    // lazily-compiled class arrives; the node — not the visual — owns the label, so
+    // nothing double-labels. ──
     DataTemplate [ DataType = InstanceNodeVM ] {
-        ToolboxVisualPresenter [ Descriptor = $Descriptor, Context = VisualContext.Figure ]
+        StackPanel [ Orientation = Vertical, HorizontalAlignment = Center ] {
+            ToolboxVisualPresenter [ Descriptor = $Descriptor, Context = VisualContext.Figure ]
+            TextBlock
+                [ Text                = $Display,
+                  Style               = @BodySmall,
+                  Foreground          = @OnSurface,
+                  TextWrapping        = Wrap,
+                  TextAlignment       = Center,
+                  HorizontalAlignment = Center,
+                  Margin              = (0,4,0,0) ]
+        }
     }
 }

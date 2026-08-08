@@ -25,7 +25,8 @@ export class ConceptVisualResolver implements IToolboxVisualResolver
         const template = svg !== undefined
             ? buildIconTemplate(parseSvgIcon(svg), this.ctx)
             : buildDefaultTemplate(this.ctx)
-        const visual = template.Apply({ Display: descriptor.Key })
+        // Figure-only: nothing binds $Display, the host draws the caption.
+        const visual = template.Apply({})
         if (context === VisualContext.Tile && visual instanceof Element) visual.IsHitTestVisible = false
         return visual
     }

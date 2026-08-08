@@ -27,28 +27,26 @@ export function compileTemplate(source: string, ctx: Record<string, unknown>): D
     return new DataTemplate(wrapped)
 }
 
-// The always-installed default visual — a labelled box for any class without its
-// own template. Authored as a fragment so it goes through the same compile path.
-// $Display is the class's display string (see ClassData).
+// The always-installed default visual — a neutral, figure-only box for any class
+// without its own template. Authored as a fragment so it goes through the same
+// compile path. It carries NO label: the host (tile / canvas node / preview) draws
+// the caption, so a no-icon class reads as a plain box under its host-owned name.
 const DEFAULT_SOURCE =
-      'Border [ Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (10,6,10,6) ] {'
-    + ' TextBlock [ Text = $Display, Foreground = @OnSurface ] }'
+      'Border [ Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (10,6,10,6) ]'
 
 export function buildDefaultTemplate(ctx: Record<string, unknown>): DataTemplate
 {
     return compileTemplate(DEFAULT_SOURCE, ctx)
 }
 
-// An icon+label template for a class with an `icon` annotation but no authored
-// `.mural`. The chrome + `$Display` label compile through the same fragment path
-// as the default; the parsed IconDefinition (fixed per class) is set onto the one
-// Icon element after the tree is built (found by a visual-tree walk), so no
-// per-instance binding is needed for it.
+// A figure-only icon template for a class with an `icon` annotation but no authored
+// `.mural`. The chrome compiles through the same fragment path as the default; the
+// parsed IconDefinition (fixed per class) is set onto the one Icon element after the
+// tree is built (found by a visual-tree walk), so no per-instance binding is needed
+// for it. No label — the host draws the caption.
 const ICON_SOURCE =
       'Border [ Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (10,6,10,6) ] {'
-    + ' StackPanel [ Orientation = Horizontal ] {'
-    + '  Icon [ Foreground = @OnSurface, Width = 16, Height = 16, Margin = (0,0,6,0) ]'
-    + '  TextBlock [ Text = $Display, Foreground = @OnSurface ] } }'
+    + ' Icon [ Foreground = @OnSurface, Width = 16, Height = 16 ] }'
 
 export function buildIconTemplate(iconDef: IconDefinition, ctx: Record<string, unknown>): DataTemplate
 {

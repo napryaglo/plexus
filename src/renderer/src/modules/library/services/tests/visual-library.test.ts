@@ -15,6 +15,16 @@ function findIcon(v: Visual): Icon | undefined {
     return undefined
 }
 
+// True if any node in the tree is a TextBlock (a label). Figure-only visuals
+// have none — the host draws the caption.
+function hasText(v: Visual): boolean {
+    if (v.constructor.name === 'TextBlock') return true
+    for (const c of [...v.logicalChildren, ...v.visualChildren]) {
+        if (hasText(c)) return true
+    }
+    return false
+}
+
 test('compiles a bare-element fragment into a DataTemplate that materialises a Visual with the data context', () => {
     const ctx = buildCtx()
     const tmpl = compileTemplate('TextBlock [ Text = $Display ]', ctx)
@@ -28,6 +38,11 @@ test('buildDefaultTemplate returns a usable DataTemplate', () => {
     expect(typeof tmpl.Apply).toBe('function')
 })
 
+test('buildDefaultTemplate is figure-only: a neutral box with no label', () => {
+    const v = buildDefaultTemplate(buildCtx()).Apply({}) as Visual
+    expect(hasText(v)).toBe(false)
+})
+
 test('a malformed fragment throws (caller catches and falls back)', () => {
     expect(() => compileTemplate('This is not valid mural [[[', buildCtx())).toThrow()
 })
@@ -39,4 +54,10 @@ test('buildIconTemplate applies a tree containing an Icon with the given Source'
     const icon = findIcon(v)
     expect(icon).toBeDefined()
     expect(icon!.Source).toBe(iconDef)
+})
+
+test('buildIconTemplate is figure-only: an icon with no label', () => {
+    const v = buildIconTemplate(parseSvgIcon(SVG), buildCtx()).Apply({}) as Visual
+    expect(findIcon(v)).toBeDefined()
+    expect(hasText(v)).toBe(false)
 })

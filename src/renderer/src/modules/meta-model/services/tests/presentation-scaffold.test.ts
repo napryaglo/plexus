@@ -24,8 +24,8 @@ describe('scaffoldAuthorStubs', () => {
     expect(text).toContain('resources MetaModelPresentationTemplates {')
     expect(text).toContain('DataTemplate x:key="mm:actor" [ DataType = MetaModelEntity ]')
     expect(text).toContain('DataTemplate x:key="mm:component" [ DataType = MetaModelEntity ]')
-    expect(text).toContain('Text = "Actor"')
     expect(text).toContain('@mm_icon_actor')
+    expect(text).not.toContain('TextBlock')   // figure-only: no baked label
   })
 
   test('library role: binds $Display + class-id key, vector icon → Shape', async () => {
@@ -35,8 +35,8 @@ describe('scaffoldAuthorStubs', () => {
     const text = await s.ReadText('presentation/templates.mu')
     expect(text).toContain('resources LibraryPresentationTemplates {')
     expect(text).toContain('DataTemplate x:key="lib.button" [ DataType = LibraryClassData ]')
-    expect(text).toContain('Text = $Display')
     expect(text).toContain('Shape [ Geometry = @mm_icon_b')
+    expect(text).not.toContain('TextBlock')   // figure-only: no $Display label
   })
 
   test('raster icon → a Border filled with the ImageBrush, not a Shape', async () => {
@@ -59,32 +59,34 @@ describe('scaffoldAuthorStubs', () => {
 
   test('regeneration APPENDS a new entity without rewriting existing declarations', async () => {
     const s = new FakeStorage()
-    const m1 = doc([{ id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'Actor' } }])
+    const m1 = doc([{ id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'resources/a.svg', label: 'Actor' } }])
     expect(await scaffoldAuthorStubs(s, m1, META_MODEL_ROLE, 'presentation')).toBe(1)
 
-    // Author edits the existing template; then a new entity appears.
-    const edited = (await s.ReadText('presentation/templates.mu')).replace('Text = "Actor"', 'Text = "MY ACTOR"')
+    // Author edits the existing template (swaps its icon reference); then a new entity appears.
+    const edited = (await s.ReadText('presentation/templates.mu')).replace('@mm_icon_a', '@mm_icon_a_EDITED')
     await s.WriteText('presentation/templates.mu', edited)
 
     const m2 = doc([
-      { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'Actor' } },
+      { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'resources/a.svg', label: 'Actor' } },
       { id: 'gateway', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'Gateway' } },
     ])
     expect(await scaffoldAuthorStubs(s, m2, META_MODEL_ROLE, 'presentation')).toBe(1) // only the new one
 
     const text = await s.ReadText('presentation/templates.mu')
-    expect(text).toContain('Text = "MY ACTOR"')                         // author edit preserved
+    expect(text).toContain('@mm_icon_a_EDITED')                         // author edit preserved
     expect(text).toContain('DataTemplate x:key="mm:gateway"')           // new one appended
     expect((text.match(/DataTemplate/g) ?? []).length).toBe(2)
     expect((text.match(/\bresources\b/g) ?? []).length).toBe(1)         // still one block
   })
 
-  test('label-only template when the entity resolves no icon', async () => {
+  test('empty figure box when the entity resolves no icon', async () => {
     const s = new FakeStorage()
     const m = doc([{ id: 'partner', tier: 'Ontology', typeOf: 'concept', attrs: {} }])
     await scaffoldAuthorStubs(s, m, META_MODEL_ROLE, 'presentation')
     const text = await s.ReadText('presentation/templates.mu')
-    expect(text).not.toContain('Shape [')
-    expect(text).toContain('Text = "Partner"') // humanized fallback label
+    expect(text).not.toContain('Shape [')      // no icon
+    expect(text).not.toContain('TextBlock')     // figure-only: no label
+    expect(text).toContain('Border [')          // just a neutral box
+    expect(text).toContain('DataTemplate x:key="mm:partner"')
   })
 })
