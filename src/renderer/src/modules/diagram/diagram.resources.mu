@@ -259,8 +259,8 @@ resources DiagramResources {
                 ToolboxVisualPresenter
                     [ Descriptor          = $Descriptor,
                       Context             = VisualContext.Tile,
-                      Width               = 48,
-                      Height              = 48,
+                      Width               = @ToolboxItemWidth,
+                      Height              = @ToolboxItemHeight,
                       HorizontalAlignment = Center ]
                 TextBlock
                     [ Text                = $Label,

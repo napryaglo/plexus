@@ -14,12 +14,15 @@ import {
     MetaData,
     Model,
     ObservableCollection,
+    ResourceDictionary,
     ServiceKey,
     type IServiceProvider,
     type ServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
 import {
+    ApplicationSettings,
     ensureToolboxDefaults,
+    Setting,
     ToolboxRepository,
     ToolboxPage,
     ToolboxVisualDescriptor,
@@ -39,6 +42,25 @@ import { ArchInstanceDropFactoryKey } from '../../architecture-projects/services
 import { registerArchToolboxAdapters } from './register-arch-toolbox-adapters.js'
 import { TodlPresentationRegistry } from './todl-presentation-registry.js'
 import { TodlVisualResolverKey } from './todl-visual-resolver.js'
+
+// Setting keys (match the SettingDefinitions in diagram.module.mu) and the app
+// resource keys the toolbox tile template binds via @ToolboxItemWidth/@ToolboxItemHeight.
+const ITEM_WIDTH_SETTING = 'toolbox.item.width'
+const ITEM_HEIGHT_SETTING = 'toolbox.item.height'
+export const ITEM_WIDTH_RESOURCE = 'ToolboxItemWidth'
+export const ITEM_HEIGHT_RESOURCE = 'ToolboxItemHeight'
+const ITEM_SIZE_FALLBACK = 48
+
+// Mirror the toolbox item size settings into the resource dictionary the tile
+// template binds. A non-number value falls back to 48. Pure over its inputs so it
+// is unit-testable without an Application.
+export function applyToolboxItemSize(settings: { Get(key: string): unknown }, resources: ResourceDictionary): void
+{
+    const w = settings.Get(ITEM_WIDTH_SETTING)
+    const h = settings.Get(ITEM_HEIGHT_SETTING)
+    resources.Set(ITEM_WIDTH_RESOURCE, typeof w === 'number' ? w : ITEM_SIZE_FALLBACK)
+    resources.Set(ITEM_HEIGHT_RESOURCE, typeof h === 'number' ? h : ITEM_SIZE_FALLBACK)
+}
 
 // Add one taxonomy's page + items to the repository. Both library and meta-model
 // terms are keyed through TodlVisualResolver; library terms use the term id as
@@ -79,7 +101,27 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
     {
         super(provider, [])
         this.set_property_value(ToolboxService.PagesKey, new ObservableCollection<ToolboxPage>())
+        this.syncItemSize()
         void this.reload()
+    }
+
+    // Mirror the toolbox item size settings into app resources (@ToolboxItemWidth /
+    // @ToolboxItemHeight) that the tile template binds, and keep them live: a
+    // change to either setting re-applies, so the DynamicResource-bound tiles
+    // resize without a reload. No-op headless (no Application) or before settings
+    // are wired.
+    private syncItemSize(): void
+    {
+        const app = Application.current
+        if (app === null || app === undefined) return
+        const settings = this.services().get(ApplicationSettings.Key)
+        if (settings === undefined) return
+
+        const apply = (): void => applyToolboxItemSize(settings, app.Resources)
+        apply()
+        for (const key of [ITEM_WIDTH_SETTING, ITEM_HEIGHT_SETTING]) {
+            settings.GetSetting(key)?.AddPropertyChangedListener(Setting.ValueKey, apply)
+        }
     }
 
     // The mural ToolboxRepository singleton — the drop router and the presenter both
