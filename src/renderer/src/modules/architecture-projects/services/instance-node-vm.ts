@@ -2,8 +2,7 @@ import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
 import { ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 
 import type { ArchInstanceModel } from './architecture-instance-model.js'
-import { LibraryClassVisualResolverKey } from '../../diagram/services/library-class-visual-resolver.js'
-import { ConceptVisualResolverKey } from '../../diagram/services/concept-visual-resolver.js'
+import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolver.js'
 
 // A bindable view of one own instance node — the DataContext a class template
 // renders against on the canvas. Reads the node from the JSON-backed model and
@@ -71,12 +70,12 @@ export class InstanceNodeVM extends Model
         const ref = this.model.document.edges.find((e) => e.kind === 'Relationship' && e.from === this.Id)
         const term = ref !== undefined ? String(ref.to) : ''
         this.set_property_value(InstanceNodeVM.ReferencedTermKey, term)
-        // A referenced library term resolves through the library-class resolver; a
-        // bare instance through the concept resolver. Same keying the old
-        // ResolveTemplate used (referenced term wins, else concept).
+        // A referenced library term resolves through TodlVisualResolver with the
+        // term id as key; a bare instance uses 'mm:' + concept prefix so the
+        // meta-model presentation source can supply a template for it.
         const descriptor = term !== ''
-            ? new ToolboxVisualDescriptor(LibraryClassVisualResolverKey, term)
-            : new ToolboxVisualDescriptor(ConceptVisualResolverKey, node?.typeOf ?? '')
+            ? new ToolboxVisualDescriptor(TodlVisualResolverKey, term)
+            : new ToolboxVisualDescriptor(TodlVisualResolverKey, 'mm:' + (node?.typeOf ?? ''))
         this.set_property_value(InstanceNodeVM.DescriptorKey, descriptor)
     }
 }

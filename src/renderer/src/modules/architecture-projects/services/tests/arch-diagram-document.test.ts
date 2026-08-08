@@ -10,7 +10,7 @@ import { LIBRARIES_BACKEND_ID } from '../../../library/services/libraries-backen
 import { ProjectExplorerService } from '../../../project-explorer/services/project-explorer-service.js'
 import { WorkspaceBaseResolver } from '../../../../services/projects/workspace-base-resolver.js'
 import { LibraryRegistry } from '../../../library/services/library-registry.js'
-import { LibraryClassVisualResolverKey } from '../../../diagram/services/library-class-visual-resolver.js'
+import { TodlVisualResolverKey } from '../../../diagram/services/todl-visual-resolver.js'
 import { ArchDiagramDocumentFactory } from '../arch-diagram-document-factory.js'
 import { ArchDiagramDocument } from '../arch-diagram-document.js'
 import { InstanceNodeVM } from '../instance-node-vm.js'
@@ -136,6 +136,6 @@ test('a dropped node carries a library-class descriptor keyed on its term', asyn
     // (which owns the lazy-compile upgrade via the resolver's changed signal); the
     // document no longer resolves or upgrades templates itself.
     const node = doc.CreateNode('Stack.AzureOpenai', 10, 10) as InstanceNodeVM
-    expect(node.Descriptor?.ResolverKey).toBe(LibraryClassVisualResolverKey)
+    expect(node.Descriptor?.ResolverKey).toBe(TodlVisualResolverKey)
     expect(node.Descriptor?.Key).toBe('Stack.AzureOpenai')
 })

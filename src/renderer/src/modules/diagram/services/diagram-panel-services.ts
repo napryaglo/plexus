@@ -35,18 +35,18 @@ import { ensureLibrariesBackend } from '../../library/services/libraries-backend
 import { scanPublishedModels } from '../../meta-model/services/meta-model-tree-builder.js'
 import { projectToolbox, type ToolboxTaxonomy } from '../../meta-model/services/toolbox-projection.js'
 import { ArchToolboxItem } from './arch-toolbox-item.js'
-import { LibraryClassVisualResolverKey } from './library-class-visual-resolver.js'
-import { ConceptVisualResolverKey, type ConceptVisualResolver } from './concept-visual-resolver.js'
 import { ArchInstanceDropFactoryKey } from '../../architecture-projects/services/arch-instance-drop-factory.js'
 import { registerArchToolboxAdapters } from './register-arch-toolbox-adapters.js'
+import { TodlPresentationRegistry } from './todl-presentation-registry.js'
+import { TodlVisualResolverKey } from './todl-visual-resolver.js'
 
-// Add one taxonomy's page + items to the repository. Library terms get the
-// library-class resolver; meta-model terms the concept resolver (and their icon is
-// registered on it). `seen` is caller-owned so a term appearing in more than one
-// source is added once. EnsurePage merges terms from repeated taxonomy ids.
+// Add one taxonomy's page + items to the repository. Both library and meta-model
+// terms are keyed through TodlVisualResolver; library terms use the term id as
+// key, meta-model terms are prefixed 'mm:' to avoid collisions. `seen` is
+// caller-owned so a term appearing in more than one source is added once.
+// EnsurePage merges terms from repeated taxonomy ids.
 export function contributeTaxonomy(
     repo: ToolboxRepository,
-    conceptResolver: ConceptVisualResolver,
     tax: ToolboxTaxonomy,
     isLibrary: boolean,
     seen: Set<string>,
@@ -56,9 +56,8 @@ export function contributeTaxonomy(
     for (const term of tax.terms) {
         if (seen.has(term.id)) continue
         seen.add(term.id)
-        const resolverKey = isLibrary ? LibraryClassVisualResolverKey : ConceptVisualResolverKey
-        if (!isLibrary) conceptResolver.Register(term.id, term.icon)
-        const descriptor = new ToolboxVisualDescriptor(resolverKey, term.id)
+        const key = isLibrary ? term.id : 'mm:' + term.id
+        const descriptor = new ToolboxVisualDescriptor(TodlVisualResolverKey, key)
         page.Items.Add(new ArchToolboxItem('term:' + term.id, term.label, descriptor, ArchInstanceDropFactoryKey))
     }
 }
@@ -110,7 +109,13 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
         const services = this.services()
         ensureToolboxDefaults(services)
         const repo = services.getRequired(ToolboxRepository.Key)
-        const conceptResolver = registerArchToolboxAdapters(services)
+        registerArchToolboxAdapters(services)
+        // Only discover when storage is wired — sourceBackends() already skips
+        // meta-model/library backends when StorageProviderRegistry is absent, so
+        // guard here with the same check to avoid errors in headless tests.
+        if (services.get(StorageProviderRegistry.Key) !== undefined) {
+            await services.get(TodlPresentationRegistry.Key)?.discover()
+        }
         this.set_property_value(ToolboxService.PagesKey, repo.Pages)
 
         for (const pid of this.contributedPageIds) repo.RemovePage(pid)
@@ -119,15 +124,15 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
         const seen = new Set<string>()
         const pageIds = new Set<string>()
         for (const { tax, isLibrary } of collected) {
-            contributeTaxonomy(repo, conceptResolver, tax, isLibrary, seen)
+            contributeTaxonomy(repo, tax, isLibrary, seen)
             pageIds.add(tax.id)
         }
         this.contributedPageIds = [...pageIds]
     }
 
     // Scan the published-content backends into (taxonomy, source) pairs. Overridable
-    // seam for tests. Library terms → LibraryClassVisualResolver; meta-model terms →
-    // ConceptVisualResolver, chosen from the backend the taxonomy came from.
+    // seam for tests. Every term's visual resolves through the shared TodlVisualResolver;
+    // the `isLibrary` flag only decides the descriptor key (bare class id vs `mm:` term id).
     protected async collectTaxonomies(): Promise<Array<{ tax: ToolboxTaxonomy; isLibrary: boolean }>>
     {
         const out: Array<{ tax: ToolboxTaxonomy; isLibrary: boolean }> = []
@@ -151,7 +156,7 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
 
     // The published-content backends to scan, each best-effort: a missing backend
     // (headless, or storage not wired) contributes nothing rather than throwing.
-    // Meta-models → concept terms; libraries → library classes.
+    // Meta-models → `mm:`-keyed terms; libraries → class-id-keyed terms.
     private sourceBackends(): Array<{ backend: IStorage; isLibrary: boolean }>
     {
         if (this.Provider.get(StorageProviderRegistry.Key) === undefined) return []

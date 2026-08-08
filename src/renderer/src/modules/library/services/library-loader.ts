@@ -1,11 +1,7 @@
-import * as MuralRuntime from '@pragmatic-lab/mural/runtime'
-import * as MuralBasic from '@pragmatic-lab/mural/basic'
-import * as MuralFramework from '@pragmatic-lab/mural/framework'
-import * as MuralEngine from '@pragmatic-lab/mural/visual-engine'
 import { ResourceDictionary } from '@pragmatic-lab/mural/runtime'
 
 import type { IStorage } from '../../../services/storage/storage.js'
-import type { CompiledPresentation } from '../../meta-model/services/presentation-publisher.js'
+import { loadCompiledPresentation } from '../../meta-model/services/compiled-presentation.js'
 import { LibraryClassData } from './library-class-data.js'
 
 export interface LoadProblem { uri: string | null; message: string; severity: 'error' | 'warning' }
@@ -98,22 +94,10 @@ export async function readIconSource(backend: IStorage, lib: LoadedLibrary, cls:
 
 // Load a library's baked presentation (class-keyed DataTemplates, geometry inlined)
 // by evaluating the compiled artifact — no parse, no compile, no SVG read. Returns
-// undefined when the bundle predates the feature (no artifact). Mirrors the
-// meta-model's presentation-loader; LibraryClassData is the templates' inert
-// DataType, supplied via ctx.
-const COMPILED_PRESENTATION = 'presentation/presentation.compiled.json'
-
+// undefined when the bundle predates the feature (no artifact). Delegates to the
+// shared loadCompiledPresentation kernel; LibraryClassData is the templates' inert
+// DataType, supplied via ctxExtra.
 export async function loadLibraryPresentation(backend: IStorage, id: string, version: string): Promise<ResourceDictionary | undefined>
 {
-    let raw: string
-    try { raw = await backend.ReadText(`${id}/${version}/${COMPILED_PRESENTATION}`) }
-    catch { return undefined }
-    const { body, symbols, className } = JSON.parse(raw) as CompiledPresentation
-    const ctx: Record<string, unknown> = {
-        ...MuralRuntime, ...MuralEngine, ...MuralBasic, ...MuralFramework, LibraryClassData,
-    }
-    const destructure = symbols.length > 0 ? `const { ${symbols.join(', ')} } = _ctx;\n` : ''
-    const bodyR = body.replace(/^export class /gm, 'class ')
-    const fn = new Function('_ctx', `${destructure}${bodyR}\nreturn ${className}.Clone();`)
-    return fn(ctx) as ResourceDictionary
+    return loadCompiledPresentation(backend, `${id}/${version}`, { LibraryClassData })
 }

@@ -17,11 +17,13 @@
 
 import ToolboxService from "./services/diagram-panel-services.js"
 import DiagramDocumentFactory from "./services/diagram-document-factory.js"
+import TodlPresentationRegistry from "./services/todl-presentation-registry.js"
 
 module DiagramModule [ Name = "Diagram" ] {
     .services: {
         ToolboxService
         DiagramDocumentFactory
+        TodlPresentationRegistry
     }
 
     // Settings this module contributes to the app's ApplicationSettings. Each is

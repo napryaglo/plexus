@@ -1,12 +1,13 @@
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, ServiceProvider, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import type { IDocument } from '@pragmatic-lab/mural/framework'
 
 import type { IDocumentFactory } from '../../../services/documents/document-factory.js'
 import type { IStorage } from '../../../services/storage/storage.js'
 import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base-resolver.js'
-import { LibraryRegistry } from '../../library/services/library-registry.js'
 import { ArchInstanceModel } from './architecture-instance-model.js'
 import { ArchDiagramDocument, type ArchLayout } from './arch-diagram-document.js'
+import { registerArchToolboxAdapters } from '../../diagram/services/register-arch-toolbox-adapters.js'
+import { TodlPresentationRegistry } from '../../diagram/services/todl-presentation-registry.js'
 
 // The `.archdiagram` editor: an architecture-diagram file pairs a layout sidecar
 // (positions) with a sibling `.todl` (the emitted instance semantics). Open loads
@@ -25,11 +26,14 @@ export class ArchDiagramDocumentFactory extends ServiceBase implements IDocument
         const { bases } = await this.Provider.getRequired(WorkspaceBaseResolver.Key).ResolveForStorage(storage)
         const source = (await storage.Exists(layoutDoc.todlFile)) ? await storage.ReadText(layoutDoc.todlFile) : ''
         const model = ArchInstanceModel.load(bases, source, layoutDoc.namespace)
-        // Ensure the registry has discovered its libraries so the diagram's nodes
-        // can resolve (and lazily compile) their class visuals through the shared
-        // LibraryClassVisualResolver — independent of whether the Libraries panel
-        // was ever opened. Cheap: metadata only.
-        await this.Provider.get(LibraryRegistry.Key)?.discover()
+        // Register the presentation sources + resolver, then discover, so the
+        // diagram's nodes resolve their visuals through the shared TodlVisualResolver
+        // / TodlPresentationRegistry — independent of whether the Libraries or
+        // Meta-models panels were ever opened. LibraryPresentationSource (registered
+        // here via registerArchToolboxAdapters) calls LibraryRegistry.discover()
+        // internally through its thunk, so no separate direct discover() is needed.
+        registerArchToolboxAdapters(this.Provider as ServiceProvider)
+        await this.Provider.get(TodlPresentationRegistry.Key)?.discover()
         return new ArchDiagramDocument(path, model, storage, layoutDoc.todlFile, layoutDoc.layout ?? {}, basename(path))
     }
 

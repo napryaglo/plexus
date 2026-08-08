@@ -1,12 +1,10 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DataTemplate } from '@pragmatic-lab/mural/basic'
-import type { TodlDocument } from '@pragmatic-lab/todl'
 
-import { publishPresentation } from '../presentation-publisher.js'
 import { MetaModelNodeKind } from '../meta-model-tree-node.js'
 import { buildCatalog } from '../meta-model-tree-builder.js'
 import { MetaModelsService, dependentLibraryNames } from '../meta-models-service.js'
+import { TodlPresentationRegistry } from '../../../diagram/services/todl-presentation-registry.js'
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { META_MODELS_BACKEND_ID } from '../meta-models-backend.js'
@@ -88,59 +86,38 @@ test('deleteTarget removes a whole model (all versions)', async () => {
     expect(svc.Nodes.Count).toBe(0)
 })
 
-// ── openEntity / drawer ──────────────────────────────────────────────────
+// ── discover on reload ────────────────────────────────────────────────────
 
-const MODEL_JSON = JSON.stringify({
-    nodes: [
-        { id: 'application', tier: 'Ontology', typeOf: 'concept', attrs: {} },
-        { id: 'application.kind', tier: 'Ontology', typeOf: 'field', attrs: { name: 'kind', type: 'ApplicationKind', cardinality: 0 } },
-    ],
-    edges: [{ kind: 'HasField', via: null, from: 'application', to: 'application.kind' }],
-})
-
-// Produce the compiled presentation artifact the loader consumes (the same
-// self-contained JSON publish writes), for a doc carrying the `application`
-// concept — no icon, so no SVG is needed.
-async function compiledPresentation(): Promise<string> {
-    const doc = {
-        nodes: [{ id: 'application', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'Application' } }],
-        edges: [],
-    } as unknown as TodlDocument
-    const tmp = new FakeStorage('fake://tmp')
-    const res = await publishPresentation(new FakeStorage('fake://proj'), tmp, 'tech-architecture/0.1.0', doc)
-    expect(res.ok).toBe(true)
-    return tmp.ReadText('tech-architecture/0.1.0/presentation/presentation.compiled.json')
-}
-
-// A MetaModelsService over a fake meta-models backend seeded with `files`.
-function serviceOver(files: Array<[string, string]>): MetaModelsService {
+// Verify that reload() triggers TodlPresentationRegistry.discover() so a
+// just-published meta-model's visuals become available immediately after reload.
+test('reload() calls TodlPresentationRegistry.discover() when the registry is registered', async () => {
     const provider = new ServiceProvider()
     const registry = new StorageProviderRegistry(provider)
-    const meta = new FakeStorage('fake://meta-models')
-    for (const [path, text] of files) void meta.WriteText(path, text)
-    registry.Register(META_MODELS_BACKEND_ID, () => meta)
+    const mm = new FakeStorage('fake://meta-models')
+    registry.Register(META_MODELS_BACKEND_ID, () => mm)
     provider.registerInstance(StorageProviderRegistry.Key, registry)
-    return new MetaModelsService(provider)
-}
 
-test('openEntity loads the dict, builds the entity, resolves UITemplate, and opens', async () => {
-    const svc = serviceOver([
-        ['tech-architecture/0.1.0/model.json', MODEL_JSON],
-        ['tech-architecture/0.1.0/presentation/presentation.compiled.json', await compiledPresentation()],
-    ])
-    await svc.openEntity({ modelId: 'tech-architecture', version: '0.1.0', id: 'application' })
+    let discoverCalled = false
+    const fakeRegistry = {
+        discover: async () => { discoverCalled = true },
+    }
+    provider.registerInstance(TodlPresentationRegistry.Key, fakeRegistry as unknown as TodlPresentationRegistry)
 
-    expect(svc.IsDrawerOpen).toBe(true)
-    expect(svc.DrawerEntity?.Id).toBe('application')
-    expect(svc.DrawerEntity?.Fields.Count).toBe(1)
-    expect(svc.DrawerEntity?.UITemplate).toBeInstanceOf(DataTemplate)   // mm:application resolved
+    const svc = new MetaModelsService(provider)
+    // The ctor calls reload() asynchronously; run an explicit reload to assert.
+    await svc.reload()
+
+    expect(discoverCalled).toBe(true)
 })
 
-test('openEntity still opens (UITemplate undefined) when the presentation is missing', async () => {
-    const svc = serviceOver([['tech-architecture/0.1.0/model.json', MODEL_JSON]])
-    await svc.openEntity({ modelId: 'tech-architecture', version: '0.1.0', id: 'application' })
+test('reload() does not throw when TodlPresentationRegistry is absent', async () => {
+    const provider = new ServiceProvider()
+    const registry = new StorageProviderRegistry(provider)
+    const mm = new FakeStorage('fake://meta-models')
+    registry.Register(META_MODELS_BACKEND_ID, () => mm)
+    provider.registerInstance(StorageProviderRegistry.Key, registry)
+    // No TodlPresentationRegistry registered — the ?.discover() guard must not throw.
 
-    expect(svc.IsDrawerOpen).toBe(true)
-    expect(svc.DrawerEntity?.Id).toBe('application')
-    expect(svc.DrawerEntity?.UITemplate).toBeUndefined()
+    const svc = new MetaModelsService(provider)
+    await expect(svc.reload()).resolves.toBeUndefined()
 })

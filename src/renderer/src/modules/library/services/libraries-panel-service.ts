@@ -1,9 +1,12 @@
-import { MetaData, Model, ObservableCollection, RelayCommand, ServiceBase, ServiceKey, type IServiceProvider, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { Application, MetaData, Model, ObservableCollection, RelayCommand, ServiceBase, ServiceKey, type IServiceProvider, type PropertyDescriptor, type ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { DialogService, type IActivatable } from '@pragmatic-lab/mural/framework'
 
 import { LibraryRegistry } from './library-registry.js'
 import { LibraryTreeNode, LibraryNodeKind } from './library-tree-node.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
+import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'
+import { registerArchToolboxAdapters } from '../../diagram/services/register-arch-toolbox-adapters.js'
+import { TodlPresentationRegistry } from '../../diagram/services/todl-presentation-registry.js'
 
 // The Libraries capability's panel content: a TreeView of published libraries
 // grouped Library -> Concept -> Class. Class leaves are draggable onto the
@@ -87,8 +90,9 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
             return
         }
         this.set_property_value(LibrariesPanelService.IsLoadingKey, true)
-        // Cheap discovery only — the tree is built from metadata; each class's
-        // template compiles lazily (on preview/canvas), so the panel is instant.
+        // Cheap metadata discovery only — the tree is built from library metadata;
+        // visual compilation is eager in the presentation sources (done by discover()
+        // below), not deferred to preview/canvas.
         const libs = await registry.discover()
         if (seq !== this.reloadSeq) return
 
@@ -112,6 +116,15 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
         }
         this.set_property_value(LibrariesPanelService.IsEmptyKey, roots.Count === 0)
         this.set_property_value(LibrariesPanelService.IsLoadingKey, false)
+
+        // Refresh the shared visual aggregate so the panel's preview (and any open
+        // canvas) reflects installs/uninstalls even when the toolbox/canvas hasn't
+        // been the trigger.
+        const services = (Application.current?.Services ?? this.Provider) as ServiceProvider
+        if (services.get(StorageProviderRegistry.Key) !== undefined) {
+            registerArchToolboxAdapters(services)
+            await services.get(TodlPresentationRegistry.Key)?.discover()
+        }
     }
 
     // Selection drives the bottom preview pane: a Class leaf populates it with the

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { ToolboxRepository, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 import { ToolboxService } from '../diagram-panel-services.js'
-import { ConceptVisualResolverKey } from '../concept-visual-resolver.js'
+import { TodlVisualResolverKey } from '../todl-visual-resolver.js'
 import { ArchInstanceDropFactoryKey } from '../../../architecture-projects/services/arch-instance-drop-factory.js'
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
@@ -48,7 +48,7 @@ describe('ToolboxService', () => {
     expect(actors.Items.Count).toBe(1)
     const item = actors.Items.ToArray()[0]
     expect(item.Id).toBe('term:actors.internal')
-    expect((item.Descriptor as ToolboxVisualDescriptor).ResolverKey).toBe(ConceptVisualResolverKey)
+    expect((item.Descriptor as ToolboxVisualDescriptor).ResolverKey).toBe(TodlVisualResolverKey)
     expect(item.FactoryKey).toBe(ArchInstanceDropFactoryKey)
   })
 
