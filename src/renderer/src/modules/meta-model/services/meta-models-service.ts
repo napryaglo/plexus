@@ -16,22 +16,17 @@ import {
     ServiceBase,
     ServiceKey,
     type IServiceProvider,
-    type ResourceDictionary,
 } from '@pragmatic-lab/mural/runtime'
 import { DialogService, type IActivatable } from '@pragmatic-lab/mural/framework'
-import { DataTemplate } from '@pragmatic-lab/mural/basic'
-import type { TodlDocument } from '@pragmatic-lab/todl'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
 import { ensureLibrariesBackend } from '../../library/services/libraries-backend.js'
 import { discoverLibraries, type LoadedLibrary } from '../../library/services/library-loader.js'
+import { TodlPresentationRegistry } from '../../diagram/services/todl-presentation-registry.js'
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
 import { buildCatalog, type DeleteTarget } from './meta-model-tree-builder.js'
-import { loadPresentation } from './presentation-loader.js'
-import { buildEntity } from './meta-model-entity-builder.js'
-import { MetaModelEntity } from './meta-model-entity.js'
-import type { MetaModelTreeNode, EntityRef } from './meta-model-tree-node.js'
+import type { MetaModelTreeNode } from './meta-model-tree-node.js'
 
 export class MetaModelsService extends ServiceBase implements IActivatable
 {
@@ -45,20 +40,9 @@ export class MetaModelsService extends ServiceBase implements IActivatable
     public static readonly IsEmptyKey = Model.RegisterProperty<boolean>(
         MetaModelsService, 'IsEmpty', false, MetaData.None)
 
-    // The double-clicked entity shown in the drawer, and whether the drawer is
-    // open — the panel's Modal SideSheet binds both.
-    public static readonly DrawerEntityKey = Model.RegisterProperty<MetaModelEntity | undefined>(
-        MetaModelsService, 'DrawerEntity', undefined, MetaData.None)
-    public static readonly IsDrawerOpenKey = Model.RegisterProperty<boolean>(
-        MetaModelsService, 'IsDrawerOpen', false, MetaData.None)
-
     // Bumped each reload; a slower earlier scan whose seq is stale is discarded,
     // so overlapping OnActivated/ctor reloads can't clobber the newest result.
     private reloadSeq = 0
-
-    // Presentation dictionaries keyed `modelId@version` — published versions are
-    // immutable, so a loaded dict is reusable for the session. Cleared on reload.
-    private readonly dictCache = new Map<string, ResourceDictionary>()
 
     constructor(provider: IServiceProvider)
     {
@@ -74,22 +58,19 @@ export class MetaModelsService extends ServiceBase implements IActivatable
 
     public get IsEmpty(): boolean { return this.get_property_value(MetaModelsService.IsEmptyKey) }
 
-    public get DrawerEntity(): MetaModelEntity | undefined { return this.get_property_value(MetaModelsService.DrawerEntityKey) }
-    public get IsDrawerOpen(): boolean { return this.get_property_value(MetaModelsService.IsDrawerOpenKey) }
-
     // IActivatable: re-scan whenever this panel becomes the active capability.
     public OnActivated(): void { void this.reload() }
 
     // Re-read the backend and rebuild the node tree in place (the bound
-    // ObservableCollection updates the panel reactively).
+    // ObservableCollection updates the panel reactively). Triggers a presentation
+    // discover() so a just-published meta-model's visuals become available.
     public async reload(): Promise<void>
     {
         const seq = ++this.reloadSeq
-        this.dictCache.clear()
         const backend = ensureMetaModelsBackend(this.Provider)
         const built = await buildCatalog(
             backend,
-            (ref) => { void this.openEntity(ref) },
+            () => {},
             (t) => { void this.deleteTarget(t) },
         )
         if (seq !== this.reloadSeq) return   // a newer reload superseded this one
@@ -98,6 +79,7 @@ export class MetaModelsService extends ServiceBase implements IActivatable
         nodes.Clear()
         for (const n of built) nodes.Add(n)
         this.set_property_value(MetaModelsService.IsEmptyKey, built.length === 0)
+        await this.Provider.get(TodlPresentationRegistry.Key)?.discover()
     }
 
     // Delete a published meta-model — one version (`<id>/<version>`) or a whole id
@@ -156,58 +138,6 @@ export class MetaModelsService extends ServiceBase implements IActivatable
             + `They'll fail to resolve until rebound. (Architecture projects that bind it aren't tracked here.)`
     }
 
-    // Open the drawer for a double-clicked entity: load-or-cache the version's
-    // presentation dictionary, build the entity from model.json, resolve its
-    // mm:<id> template onto the entity, and open. The drawer's ContentPresenter
-    // applies the template (Content = entity, ContentTemplate = UITemplate) — the
-    // presenter owns the built visual, so we never Apply here. A load/resolve
-    // failure still opens the drawer (UITemplate undefined → the note shows).
-    public async openEntity(ref: EntityRef): Promise<void>
-    {
-        const backend = ensureMetaModelsBackend(this.Provider)
-        const base = `${ref.modelId}/${ref.version}`
-
-        let entity: MetaModelEntity
-        try
-        {
-            const doc = JSON.parse(await backend.ReadText(`${base}/model.json`)) as TodlDocument
-            entity = buildEntity(doc, ref.id)
-        }
-        catch
-        {
-            entity = new MetaModelEntity()
-            entity.Id = ref.id
-        }
-
-        try
-        {
-            let dict = this.dictCache.get(base)
-            if (dict === undefined)
-            {
-                dict = await loadPresentation(backend, base)
-                this.dictCache.set(base, dict)
-            }
-            const key = `mm:${ref.id}`
-            if (dict.CanResolve(key))
-            {
-                const tmpl = dict.Resolve(key)
-                if (tmpl instanceof DataTemplate) entity.UITemplate = tmpl
-                else console.warn(`[meta-model] ${key} resolved to a non-DataTemplate:`, tmpl)
-            }
-            else
-            {
-                console.warn(`[meta-model] ${key} not found in the presentation dictionary for ${base}`)
-            }
-        }
-        catch (err)
-        {
-            // Presentation unavailable — degrade to detail-only, but surface why.
-            console.warn(`[meta-model] presentation load failed for ${base}:`, err)
-        }
-
-        this.set_property_value(MetaModelsService.DrawerEntityKey, entity)
-        this.set_property_value(MetaModelsService.IsDrawerOpenKey, true)
-    }
 }
 
 // The names of installed libraries that bind the given meta-model — all versions

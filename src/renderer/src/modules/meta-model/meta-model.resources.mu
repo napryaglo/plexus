@@ -10,8 +10,6 @@
 import MetaModelsService from "./services/meta-models-service.js"
 import MetaModelTreeNode from "./services/meta-model-tree-node.js"
 import MetaModelKindToGeometry from "./services/meta-model-node-icon.js"
-import MetaModelField from "./services/meta-model-entity.js"
-import IsNullToVisibility from "./services/meta-model-converters.js"
 
 resources MetaModelResources {
     // The panel body: a virtualized tree of the published models, plus an
@@ -30,69 +28,11 @@ resources MetaModelResources {
                   Foreground     = @OnSurfaceVariant,
                   TextWrapping   = Wrap,
                   Visibility     = $IsEmpty << ToVisibility ]
-            // The entity drawer. Modal → out of flow (mounts on the overlay when
-            // open), so it measures to zero here; docking it Top keeps it target-
-            // attached (needed for IsOpen to mount) without disturbing the tree,
-            // which stays the LastChildFill.
-            // The body's DataContext binds to $DrawerEntity so the detail bindings
-            // ($TypeOf/$Label/$Fields) re-resolve when a different entity is opened.
-            // The presentation ContentPresenter, however, OWNS the applied visual
-            // (Content = the entity, ContentTemplate = its resolved mm:<id> template)
-            // — so its two bindings must NOT be DataContext-relative: a
-            // ContentPresenter reassigns its own DataContext to the slotted content,
-            // which would freeze a DataContext-relative Content binding after the
-            // first open. Bind them to the service instead ($service(...)), a fixed
-            // source that stays reactive across opens and through the Modal overlay.
-            SideSheet
-                [ DockPanel.Dock = Top,
-                  Variant        = Modal,
-                  SheetSize      = 360,
-                  IsOpen         = $IsDrawerOpen ] {
-                StackPanel
-                    [ DataContext = $DrawerEntity,
-                      Orientation = Vertical,
-                      Margin      = (16,16,16,16) ] {
-                    ContentPresenter
-                        [ Content         = $service(MetaModelsService).DrawerEntity,
-                          ContentTemplate = $service(MetaModelsService).DrawerEntity.UITemplate,
-                          Margin          = (0,0,0,12) ]
-                    TextBlock
-                        [ Text         = "Presentation unavailable — republish the meta-model.",
-                          Style        = @BodySmall,
-                          Foreground   = @OnSurfaceVariant,
-                          TextWrapping = Wrap,
-                          Visibility   = $UITemplate << IsNullToVisibility,
-                          Margin       = (0,0,0,12) ]
-                    TextBlock
-                        [ Text       = $TypeOf,
-                          Style      = @LabelSmall,
-                          Foreground = @OnSurfaceVariant ]
-                    TextBlock
-                        [ Text       = $Label,
-                          Style      = @TitleMedium,
-                          Foreground = @OnSurface,
-                          Margin     = (0,0,0,8) ]
-                    TextBlock
-                        [ Text       = "Fields",
-                          Style      = @LabelMedium,
-                          Foreground = @OnSurfaceVariant ]
-                    ItemsControl [ ItemsSource = $Fields, ItemTemplate = @MetaModelFieldTemplate ]
-                }
-            }
             TreeView
                 [ Indent         = 14,
                   IsVirtualizing = true,
                   ItemsSource    = $Nodes,
                   ItemTemplate   = @MetaModelNodeTemplate ]
-        }
-    }
-
-    // One field row in the drawer's detail list: name : type.
-    DataTemplate x:key="MetaModelFieldTemplate" [DataType = MetaModelField] {
-        StackPanel [ Orientation = Horizontal, Margin = (0,2,0,2) ] {
-            TextBlock [ Text = $Name, Style = @BodyMedium, Foreground = @OnSurface ]
-            TextBlock [ Text = " : ", Style = @BodyMedium, Foreground = @OnSurfaceVariant ]
-            TextBlock [ Text = $Type, Style = @BodyMedium, Foreground = @OnSurfaceVariant ]
         }
     }
 

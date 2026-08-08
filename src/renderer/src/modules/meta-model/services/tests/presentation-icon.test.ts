@@ -27,11 +27,11 @@ function firstOfType(v: Visual | undefined, typeName: string): Visual | undefine
 }
 
 // The entity template's icon is a Shape whose Geometry is the included SVG,
-// referenced by `@mm_icon_<id>`. Because the applied template is rendered in the
-// drawer OUTSIDE the presentation dictionary's resource scope, that reference
-// must be BAKED IN at compile (mural inlines a same-dictionary `@key`), not left
-// as a runtime DynamicResource that would resolve to nothing. Guards the drawer
-// icon end to end: publish → load → apply → the Shape carries real geometry.
+// referenced by `@mm_icon_<id>`. Because the applied template is rendered OUTSIDE
+// the presentation dictionary's resource scope (e.g. on the canvas or toolbox),
+// that reference must be BAKED IN at compile (mural inlines a same-dictionary
+// `@key`), not left as a runtime DynamicResource that would resolve to nothing.
+// Guards the icon end to end: publish → load → apply → the Shape carries real geometry.
 test('an applied entity template has its icon geometry baked in (resolves standalone)', async () => {
     const project = new FakeStorage('fake://proj')
     await project.WriteText('resources/actor.svg', '<svg viewBox="0 0 16 16"><path d="M2 2 L14 2 L14 14 Z"/></svg>')
@@ -40,7 +40,7 @@ test('an applied entity template has its icon geometry baked in (resolves standa
 
     const dict = await loadPresentation(backend, 'x/1.0.0')
     const tmpl = dict.Resolve('mm:actor') as DataTemplate
-    const entity = new MetaModelEntity(); entity.Id = 'actor'
+    const entity = new MetaModelEntity()
     const root = tmpl.Apply(entity) as Visual
 
     const shape = firstOfType(root, 'Shape') as (Visual & { Geometry?: unknown }) | undefined
