@@ -20,7 +20,9 @@ export class MetaModelPresentationSource implements PresentationSource
 
     public async load(): Promise<Map<string, DataTemplate>>
     {
-        const backend = ensureMetaModelsBackend(this.provider)
+        let backend
+        try { backend = ensureMetaModelsBackend(this.provider) }
+        catch { return new Map() }   // no meta-models backend (headless / not wired) — degrade gracefully
         const map = new Map<string, DataTemplate>()
         for (const { id, versions } of await scanPublishedModels(backend)) {
             for (const version of versions) {

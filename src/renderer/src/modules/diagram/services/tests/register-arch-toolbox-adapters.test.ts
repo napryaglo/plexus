@@ -8,7 +8,7 @@ import { ArchInstanceDropFactoryKey } from '../../../architecture-projects/servi
 
 function providerWithRegistry(): ServiceProvider {
   const p = new ServiceProvider()
-  p.registerInstance(LibraryRegistry.Key, { resolve: () => undefined, onChanged: () => () => {}, discover: async () => {} } as never)
+  p.registerInstance(LibraryRegistry.Key, { discover: async () => [] } as never)
   return p
 }
 

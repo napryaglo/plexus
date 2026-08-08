@@ -8,6 +8,7 @@ import { LibraryRegistry } from '../library-registry.js'
 import { LibrariesPanelService } from '../libraries-panel-service.js'
 import { LibraryNodeKind, type LibraryTreeNode } from '../library-tree-node.js'
 import { TodlVisualResolverKey } from '../../../diagram/services/todl-visual-resolver.js'
+import { TodlPresentationRegistry } from '../../../diagram/services/todl-presentation-registry.js'
 
 // Synchronous seed (see the registry test) so all files exist before Reload lists.
 function providerWith(seed: (b: FakeStorage) => void): ServiceProvider {
@@ -119,6 +120,29 @@ test('IsEmpty is true when nothing is published', async () => {
     await svc.Reload()
     expect(svc.IsEmpty).toBe(true)
     expect(svc.Roots.Count).toBe(0)
+})
+
+test('Reload() calls TodlPresentationRegistry.discover() when storage is wired', async () => {
+    const provider = new ServiceProvider()
+    const storageRegistry = new StorageProviderRegistry(provider)
+    const backend = new FakeStorage('fake://libraries')
+    storageRegistry.Register(LIBRARIES_BACKEND_ID, () => backend)
+    provider.registerInstance(StorageProviderRegistry.Key, storageRegistry)
+    provider.registerInstance(LibraryRegistry.Key, new LibraryRegistry(provider))
+
+    let discoverCalled = false
+    const fakeRegistry = {
+        registerSource: () => {},   // absorb idempotent registerSource calls from registerArchToolboxAdapters
+        discover: async () => { discoverCalled = true },
+    }
+    // Pre-register the fake BEFORE LibrariesPanelService is constructed so
+    // registerArchToolboxAdapters (get-or-create) leaves it in place.
+    provider.registerInstance(TodlPresentationRegistry.Key, fakeRegistry as unknown as TodlPresentationRegistry)
+
+    const svc = new LibrariesPanelService(provider)
+    await svc.Reload()
+
+    expect(discoverCalled).toBe(true)
 })
 
 test('a Library node carries a Delete command that uninstalls it; Concept/Class nodes do not', async () => {

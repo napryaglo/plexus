@@ -49,7 +49,7 @@ test('discover returns LoadedLibrary[] with id, version, name, classes and metaM
     expect(libs[0].classes[0].id).toBe('microsoft.azure')
 })
 
-test('discover returns an empty array and IsEmpty when nothing is published', async () => {
+test('discover returns an empty array when nothing is published', async () => {
     const { provider } = env(() => {})
     const reg = new LibraryRegistry(provider)
     const libs = await reg.discover()
