@@ -5,26 +5,31 @@ import { ensureLibrariesBackend } from './libraries-backend.js'
 import { discoverLibraries, loadLibraryPresentation, readTemplateSource, readIconSource, type LoadedClass, type LoadedLibrary, type LoadProblem } from './library-loader.js'
 import { buildCtx, compileTemplate, buildDefaultTemplate, buildIconTemplate } from './visual-library.js'
 import { parseSvgIcon } from '@pragmatic-lab/mural/basic'
+import type { IStorage } from '../../../services/storage/storage.js'
 import { DiagnosticsService } from '../../../services/diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity, type Diagnostic } from '../../../services/diagnostics/diagnostic.js'
 
 const OWNER = 'libraries'
 
 // Loads published library bundles and resolves a class id → its visual template.
-// Discovery (reading each library.json) is cheap and eager; per-class template
-// compilation is LAZY — a class's .mural/icon compiles on first resolve() and is
-// cached, so a large library lists instantly and only the visuals actually shown
-// (preview pane, canvas nodes) pay to compile. onChanged notifies consumers when a
-// class's real template becomes available so they can upgrade from the default.
-// Compiled templates merge into Application.Resources (string-keyed by class id)
-// so the canvas can resolve them by key. Load/compile failures report to the
-// Problems dock, one slice per library (auto-clears on re-discover).
+// Both discovery (reading each library.json) AND per-class visual compilation are
+// EAGER: discover() compiles every class's authored .mural / legacy icon up front,
+// so resolve() is fully synchronous and returns the final visual with no async
+// "default box → real visual" upgrade. Compiled templates merge into
+// Application.Resources (string-keyed by class id) so the canvas resolves them by
+// key. onChanged still notifies consumers (a re-discover refreshes open canvases).
+// Load/compile failures report to the Problems dock, one slice per library
+// (auto-clears on re-discover).
 export class LibraryRegistry extends ServiceBase
 {
     public static readonly Key = new ServiceKey<LibraryRegistry>('LibraryRegistry')
 
     private readonly ctx = buildCtx()
-    private readonly libraryVisuals = new ResourceDictionary()
+    // Class-keyed authored/icon templates, compiled eagerly in discover() and
+    // swapped into the app resources like presentationVisuals below. Rebuilt
+    // wholesale each discover; libraryMerged tracks the currently-merged instance.
+    private libraryVisuals = new ResourceDictionary()
+    private libraryMerged: ResourceDictionary | undefined
     // Baked per-library presentation templates (class-keyed), aggregated. Rebuilt
     // wholesale on each discover(); the middle resolution tier between an authored
     // .mural (wins) and the shared default box. Merged into the app resources so
@@ -37,13 +42,9 @@ export class LibraryRegistry extends ServiceBase
     private presentationVisuals = new ResourceDictionary()
     private presentationMerged: ResourceDictionary | undefined
     private readonly defaultTemplate: DataTemplate
-    private merged = false
 
-    // Lazy-compile bookkeeping, rebuilt on each discover().
-    private readonly classIndex = new Map<string, { lib: LoadedLibrary; cls: LoadedClass }>()
+    // Per-library Problems slices, rebuilt on each discover().
     private readonly slices = new Map<string, { lib: LoadedLibrary; problems: LoadProblem[] }>()
-    private readonly inFlight = new Set<string>()
-    private readonly attempted = new Set<string>()
     private readonly listeners = new Set<(classId: string) => void>()
 
     constructor(provider: IServiceProvider)
@@ -66,102 +67,106 @@ export class LibraryRegistry extends ServiceBase
         return () => { this.listeners.delete(listener) }
     }
 
-    // class id → its compiled template if already mounted, else the single shared
-    // default (and, on first miss for a known class, schedule its lazy compile).
-    // `concept` is accepted for a future per-concept default tier (unused today).
+    // class id → its compiled visual. Fully synchronous: everything was compiled in
+    // discover(). Authored .mural wins, then the baked presentation template
+    // (geometry inlined), else the single shared default box. `concept` is accepted
+    // for a future per-concept default tier (unused today).
     public resolve(classId: string, _concept: string): DataTemplate
     {
-        // Authored .mural (lazy-compiled) wins; schedule its compile on first miss.
         const authored = this.libraryVisuals.Resolve(classId)
         if (authored !== undefined) return authored as DataTemplate
-        if (this.classIndex.has(classId) && !this.attempted.has(classId) && !this.inFlight.has(classId)) {
-            this.inFlight.add(classId)
-            void this.compileClass(classId)
-        }
-        // Then the baked presentation template (geometry inlined), else the default.
         const pres = this.presentationVisuals.Resolve(classId)
         if (pres !== undefined) return pres as DataTemplate
         return this.defaultTemplate
     }
 
-    // Discover every published library (cheap: reads each library.json). Rebuilds
-    // the lazy-compile index + per-library Problems slices and publishes discovery
-    // problems. Compiles NO templates. Returns the loaded set for the panel.
+    // Discover every published library (reads each library.json) and EAGERLY compile
+    // every class's visual. Rebuilds the per-library Problems slices, compiles all
+    // authored .mural / legacy icons, swaps the two class-keyed dictionaries into the
+    // app resources, and notifies consumers. Returns the loaded set for the panel.
     public async discover(): Promise<LoadedLibrary[]>
     {
-        this.ensureMerged()
-        this.classIndex.clear()
         this.slices.clear()
-        this.inFlight.clear()
-        this.attempted.clear()
         const backend = ensureLibrariesBackend(this.Provider)
         const libs = await discoverLibraries(backend)
-        // Build the presentation aggregate DETACHED — its Set()s notify nobody,
-        // since nothing is subscribed to a dictionary that isn't merged yet — then
-        // swap it in for the previous one in a single ReplaceMergedDictionary
-        // (one notification total). Marked non-participating like libraryVisuals so
-        // that one notification does no per-element style work either.
+        // Build both aggregates DETACHED — their Set()s notify nobody until the
+        // single ReplaceMergedDictionary swap — and marked non-participating so that
+        // swap does no per-element style work. Presentation must be built before a
+        // library's classes so the legacy-icon fallback can see what it covers.
+        const nextLibrary = new ResourceDictionary()
+        nextLibrary.StyleParticipating = false
         const nextPresentation = new ResourceDictionary()
         nextPresentation.StyleParticipating = false
+        let libraryCount = 0
         for (const lib of libs) {
             const pid = this.projectIdOf(lib)
             this.slices.set(pid, { lib, problems: [...lib.problems] })
             this.publishSlice(pid)
-            for (const cls of lib.classes) this.classIndex.set(cls.id, { lib, cls })
-            // Load this library's baked presentation (if any) into the aggregate.
             const pres = await loadLibraryPresentation(backend, lib.id, lib.version)
             if (pres !== undefined) for (const [k, v] of pres.Entries()) nextPresentation.Set(k, v)
+            for (const cls of lib.classes) {
+                if (await this.compileClassInto(nextLibrary, nextPresentation, backend, lib, cls)) libraryCount++
+            }
         }
-        // Swap into the app resources (last-merged, so it stays after libraryVisuals
-        // — same precedence as before). resolve() reads presentationVisuals directly,
-        // so headless (no Application.current) still works via the owned reference.
+        // Swap into the app resources, library BEFORE presentation so authored wins
+        // over presentation in the app's by-key lookup. Skip an empty library swap
+        // that was never merged, so the no-authored-template case stays at zero
+        // library notifications. resolve() reads the owned references, so headless
+        // (no Application.current) still works.
+        if (libraryCount > 0 || this.libraryMerged !== undefined) {
+            Application.current?.Resources.ReplaceMergedDictionary(this.libraryMerged, nextLibrary)
+            this.libraryMerged = nextLibrary
+        }
+        this.libraryVisuals = nextLibrary
         Application.current?.Resources.ReplaceMergedDictionary(this.presentationMerged, nextPresentation)
         this.presentationMerged = nextPresentation
         this.presentationVisuals = nextPresentation
+        // Notify consumers so open canvas presenters re-resolve to the freshly
+        // compiled visuals (first load has no subscribers yet, so it's a no-op there).
+        for (const lib of libs) for (const cls of lib.classes) for (const l of [...this.listeners]) l(cls.id)
         return libs
     }
 
-    // Compile one class's template (or icon) on demand, cache it, republish that
-    // library's Problems slice with any compile failure, then fire onChanged. Runs
-    // once per class per discover() (guarded by inFlight during, attempted after).
-    private async compileClass(classId: string): Promise<void>
+    // Eagerly compile one class's visual into `into`. Authored .mural wins; else the
+    // legacy loose-SVG icon, but only when no baked presentation already covers the
+    // class. Compile/parse failures publish a per-library Problem. Returns whether an
+    // entry was added (so discover() knows if the library dictionary is non-empty).
+    private async compileClassInto(
+        into: ResourceDictionary,
+        presentation: ResourceDictionary,
+        backend: IStorage,
+        lib: LoadedLibrary,
+        cls: LoadedClass,
+    ): Promise<boolean>
     {
-        const entry = this.classIndex.get(classId)
-        try {
-            if (entry !== undefined) {
-                const { lib, cls } = entry
-                const pid = this.projectIdOf(lib)
-                const backend = ensureLibrariesBackend(this.Provider)
-                const source = await readTemplateSource(backend, lib, cls)
-                if (source !== undefined) {
-                    try {
-                        this.libraryVisuals.Set(cls.id, compileTemplate(source, this.ctx))
-                    } catch (e) {
-                        this.addProblem(pid, { severity: 'error', uri: cls.templatePath ?? null,
-                            message: `Template for ${cls.id} failed to compile: ${(e as Error).message}` })
-                    }
-                } else if (cls.icon !== undefined && !this.presentationVisuals.CanResolve(cls.id)) {
-                    // Legacy icon fallback — only when no baked presentation covers
-                    // this class (older bundles); otherwise the presentation tier
-                    // already supplies the iconful default.
-                    const svg = await readIconSource(backend, lib, cls)
-                    if (svg === undefined) {
-                        this.addProblem(pid, { severity: 'warning', uri: cls.icon, message: `Icon asset is missing: ${cls.icon}` })
-                    } else {
-                        try {
-                            this.libraryVisuals.Set(cls.id, buildIconTemplate(parseSvgIcon(svg), this.ctx))
-                        } catch (e) {
-                            this.addProblem(pid, { severity: 'warning', uri: cls.icon,
-                                message: `Icon ${cls.icon} failed to parse: ${(e as Error).message}` })
-                        }
-                    }
-                }
+        const pid = this.projectIdOf(lib)
+        const source = await readTemplateSource(backend, lib, cls)
+        if (source !== undefined) {
+            try {
+                into.Set(cls.id, compileTemplate(source, this.ctx))
+                return true
+            } catch (e) {
+                this.addProblem(pid, { severity: 'error', uri: cls.templatePath ?? null,
+                    message: `Template for ${cls.id} failed to compile: ${(e as Error).message}` })
+                return false
             }
-        } finally {
-            this.inFlight.delete(classId)
-            this.attempted.add(classId)
-            for (const l of [...this.listeners]) l(classId)
         }
+        if (cls.icon !== undefined && !presentation.CanResolve(cls.id)) {
+            const svg = await readIconSource(backend, lib, cls)
+            if (svg === undefined) {
+                this.addProblem(pid, { severity: 'warning', uri: cls.icon, message: `Icon asset is missing: ${cls.icon}` })
+                return false
+            }
+            try {
+                into.Set(cls.id, buildIconTemplate(parseSvgIcon(svg), this.ctx))
+                return true
+            } catch (e) {
+                this.addProblem(pid, { severity: 'warning', uri: cls.icon,
+                    message: `Icon ${cls.icon} failed to parse: ${(e as Error).message}` })
+                return false
+            }
+        }
+        return false
     }
 
     private projectIdOf(lib: LoadedLibrary): string { return `library:${lib.id}@${lib.version}` }
@@ -189,20 +194,6 @@ export class LibraryRegistry extends ServiceBase
         const backend = ensureLibrariesBackend(this.Provider)
         await backend.Delete(`${id}/${version}`)
         this.Provider.get(DiagnosticsService.Key)?.Publish(OWNER, `library:${id}@${version}`, [])
-    }
-
-    // Merge the library-visuals dictionary into the app resources once (guarded:
-    // Application.current may be absent in headless tests, where resolve() still
-    // works off the owned dictionary).
-    private ensureMerged(): void
-    {
-        if (this.merged) return
-        // Merge only libraryVisuals here (once). presentationVisuals is merged —
-        // and re-merged on every discover — via ReplaceMergedDictionary, which
-        // adds it AFTER libraryVisuals so authored-vs-presentation precedence in
-        // the app's by-key lookup is unchanged.
-        Application.current?.Resources.AddMergedDictionary(this.libraryVisuals)
-        this.merged = true
     }
 
     private publish(lib: LoadedLibrary, problems: readonly LoadProblem[]): void
