@@ -131,8 +131,8 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
     }
 
     // Scan the published-content backends into (taxonomy, source) pairs. Overridable
-    // seam for tests. Library terms → LibraryClassVisualResolver; meta-model terms →
-    // ConceptVisualResolver, chosen from the backend the taxonomy came from.
+    // seam for tests. Every term's visual resolves through the shared TodlVisualResolver;
+    // the `isLibrary` flag only decides the descriptor key (bare class id vs `mm:` term id).
     protected async collectTaxonomies(): Promise<Array<{ tax: ToolboxTaxonomy; isLibrary: boolean }>>
     {
         const out: Array<{ tax: ToolboxTaxonomy; isLibrary: boolean }> = []
@@ -156,7 +156,7 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
 
     // The published-content backends to scan, each best-effort: a missing backend
     // (headless, or storage not wired) contributes nothing rather than throwing.
-    // Meta-models → concept terms; libraries → library classes.
+    // Meta-models → `mm:`-keyed terms; libraries → class-id-keyed terms.
     private sourceBackends(): Array<{ backend: IStorage; isLibrary: boolean }>
     {
         if (this.Provider.get(StorageProviderRegistry.Key) === undefined) return []

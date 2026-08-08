@@ -27,10 +27,11 @@ export class ArchDiagramDocumentFactory extends ServiceBase implements IDocument
         const { bases } = await this.Provider.getRequired(WorkspaceBaseResolver.Key).ResolveForStorage(storage)
         const source = (await storage.Exists(layoutDoc.todlFile)) ? await storage.ReadText(layoutDoc.todlFile) : ''
         const model = ArchInstanceModel.load(bases, source, layoutDoc.namespace)
-        // Ensure the registry has discovered its libraries so the diagram's nodes
-        // can resolve (and lazily compile) their class visuals through the shared
-        // LibraryClassVisualResolver — independent of whether the Libraries panel
-        // was ever opened. Cheap: metadata only.
+        // Register the presentation sources + resolver, then discover, so the
+        // diagram's nodes resolve their visuals through the shared TodlVisualResolver
+        // / TodlPresentationRegistry — independent of whether the Libraries or
+        // Meta-models panels were ever opened. discover() rebuilds from the backends
+        // (cheap: metadata + the eager compile the library source owns).
         await this.Provider.get(LibraryRegistry.Key)?.discover()
         registerArchToolboxAdapters(this.Provider as ServiceProvider)
         await this.Provider.get(TodlPresentationRegistry.Key)?.discover()
