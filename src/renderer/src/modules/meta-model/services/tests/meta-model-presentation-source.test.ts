@@ -1,6 +1,5 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { DataTemplate } from '@pragmatic-lab/mural/basic'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
@@ -18,8 +17,6 @@ const DOC: TodlDocument = {
 } as unknown as TodlDocument
 
 // Wire a provider whose meta-models backend is the given FakeStorage.
-// Mirrors the meta-models-service.test.ts pattern (registerInstance the registry,
-// register the backend id so ensureMetaModelsBackend finds it via Has/Create).
 function envWith(backend: FakeStorage): ServiceProvider {
     const provider = new ServiceProvider()
     const storageRegistry = new StorageProviderRegistry(provider)
@@ -29,7 +26,6 @@ function envWith(backend: FakeStorage): ServiceProvider {
 }
 
 // Bake a real compiled presentation for DOC into `backend` under `<id>/<version>/…`.
-// Uses the real publishPresentation so the artifact format is always in sync.
 async function bakePresentation(backend: FakeStorage, id: string, version: string): Promise<void> {
     const project = new FakeStorage('fake://proj')
     await project.WriteText('resources/app.svg', SVG)
@@ -40,48 +36,44 @@ async function bakePresentation(backend: FakeStorage, id: string, version: strin
 
 // ── happy path ────────────────────────────────────────────────────────────────
 
-test('load() returns a map containing mm:application DataTemplate for a baked meta-model', async () => {
+test('load() contributes the baked icon asset + a mm: icon-key index for a baked meta-model', async () => {
     const backend = new FakeStorage('fake://meta-models')
     await bakePresentation(backend, 'ea', '1.0.0')
     const source = new MetaModelPresentationSource(envWith(backend))
-    const map = await source.load()
-    const tmpl = map.get('mm:application')
-    expect(tmpl).toBeDefined()
-    expect(typeof (tmpl as DataTemplate).Apply).toBe('function')
+    const { assets, iconKeys } = await source.load()
+    expect(assets.CanResolve('mm_icon_app')).toBe(true)
+    expect(iconKeys.get('mm:application')).toBe('mm_icon_app')
 })
 
 // ── missing presentation artifact ────────────────────────────────────────────
 
 test('a published model dir with no presentation artifact contributes nothing (no throw)', async () => {
-    // Seed the backend with a model directory but no compiled presentation file.
     const backend = new FakeStorage('fake://meta-models')
-    // Create a directory by placing a different file (model.json) so scanPublishedModels lists it.
     await backend.WriteText('ea/1.0.0/model.json', JSON.stringify({ nodes: [], edges: [] }))
     const source = new MetaModelPresentationSource(envWith(backend))
-    const map = await source.load()
-    expect(map.size).toBe(0)
+    const { assets, iconKeys } = await source.load()
+    expect(assets.CanResolve('mm_icon_app')).toBe(false)
+    expect(iconKeys.size).toBe(0)
 })
 
 // ── empty backend ─────────────────────────────────────────────────────────────
 
-test('empty backend yields an empty map', async () => {
+test('empty backend yields an empty contribution', async () => {
     const backend = new FakeStorage('fake://meta-models')
     const source = new MetaModelPresentationSource(envWith(backend))
-    const map = await source.load()
-    expect(map.size).toBe(0)
+    const { iconKeys } = await source.load()
+    expect(iconKeys.size).toBe(0)
 })
 
 // ── multiple models / versions ────────────────────────────────────────────────
 
-test('multiple published versions each contribute their mm: keys', async () => {
+test('multiple published versions each contribute their mm: keys (last wins)', async () => {
     const backend = new FakeStorage('fake://meta-models')
-    // Bake two versions of 'ea' — each with the same DOC (same key mm:application).
     await bakePresentation(backend, 'ea', '1.0.0')
     await bakePresentation(backend, 'ea', '2.0.0')
     const source = new MetaModelPresentationSource(envWith(backend))
-    const map = await source.load()
-    // Both versions produce mm:application — last one wins but map still has the key.
-    expect(map.has('mm:application')).toBe(true)
+    const { iconKeys } = await source.load()
+    expect(iconKeys.has('mm:application')).toBe(true)
 })
 
 // ── stable source id ──────────────────────────────────────────────────────────

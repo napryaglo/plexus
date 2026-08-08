@@ -1,8 +1,4 @@
-import { ResourceDictionary } from '@pragmatic-lab/mural/runtime'
-
 import type { IStorage } from '../../../services/storage/storage.js'
-import { loadCompiledPresentation } from '../../meta-model/services/compiled-presentation.js'
-import { LibraryClassData } from './library-class-data.js'
 
 export interface LoadProblem { uri: string | null; message: string; severity: 'error' | 'warning' }
 
@@ -76,28 +72,3 @@ export async function loadLibrary(backend: IStorage, id: string, version: string
     return { id: manifest.id, version: manifest.version, name: manifest.name, metaModel: manifest.metaModel, classes, problems }
 }
 
-// Read a class's template source on demand; undefined if absent/unreadable.
-export async function readTemplateSource(backend: IStorage, lib: LoadedLibrary, cls: LoadedClass): Promise<string | undefined>
-{
-    if (cls.templatePath === undefined) return undefined
-    try { return await backend.ReadText(`${lib.id}/${lib.version}/${cls.templatePath}`) }
-    catch { return undefined }
-}
-
-// Read a class's icon SVG source on demand; undefined if absent/unreadable.
-export async function readIconSource(backend: IStorage, lib: LoadedLibrary, cls: LoadedClass): Promise<string | undefined>
-{
-    if (cls.icon === undefined) return undefined
-    try { return await backend.ReadText(`${lib.id}/${lib.version}/${cls.icon}`) }
-    catch { return undefined }
-}
-
-// Load a library's baked presentation (class-keyed DataTemplates, geometry inlined)
-// by evaluating the compiled artifact — no parse, no compile, no SVG read. Returns
-// undefined when the bundle predates the feature (no artifact). Delegates to the
-// shared loadCompiledPresentation kernel; LibraryClassData is the templates' inert
-// DataType, supplied via ctxExtra.
-export async function loadLibraryPresentation(backend: IStorage, id: string, version: string): Promise<ResourceDictionary | undefined>
-{
-    return loadCompiledPresentation(backend, `${id}/${version}`, { LibraryClassData })
-}

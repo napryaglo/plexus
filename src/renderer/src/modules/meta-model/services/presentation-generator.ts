@@ -156,7 +156,9 @@ export function buildIconIndex(doc: TodlDocument, prefix: string): Map<string, s
     const out = new Map<string, string>()
     for (const n of [...ontologyEntities(doc), ...classEntities(doc)]) {
         const { icon } = resolveFacets(n, projectAnnotations(doc, n.id))
-        if (icon === undefined) continue
+        // Only geometry-backed (SVG) icons are indexed: the default template draws
+        // a Shape[Geometry], so raster icons are omitted and fall to the default glyph.
+        if (icon === undefined || isRasterIcon(icon)) continue
         out.set(prefix + n.id, resourceKeyFor(doc, icon))
     }
     return out

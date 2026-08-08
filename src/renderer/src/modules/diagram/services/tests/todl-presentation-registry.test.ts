@@ -1,166 +1,134 @@
-import { test, expect } from 'vitest'
-import { Application, ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { Border, DataTemplate } from '@pragmatic-lab/mural/basic'
+import { test, expect, afterEach } from 'vitest'
+import { Application, ResourceDictionary, ServiceProvider } from '@pragmatic-lab/mural/runtime'
 
-import type { PresentationSource } from '../todl-presentation-registry.js'
+import type { PresentationContribution, PresentationSource } from '../todl-presentation-registry.js'
 import { TodlPresentationRegistry } from '../todl-presentation-registry.js'
+import { setIconResourceResolver } from '../icon-key-converter.js'
 
-// Minimal fake DataTemplate factory — each call returns a new template so identity
-// comparisons work between different keys/sources.
-const tmpl = (name: string) => new DataTemplate(() => { const b = new Border(); b.Tag = name; return b })
+afterEach(() => setIconResourceResolver(undefined))   // discover() bridges the converter; reset between tests
 
-// Fake PresentationSource — synchronously returns a Map of key→template.
-const src = (id: string, entries: [string, DataTemplate][]): PresentationSource => ({
+// Build a contribution: icon assets (resource key → value) + an entityKey → resource-key index.
+function contribution(assets: [string, unknown][], keys: [string, string][]): PresentationContribution {
+    const dict = new ResourceDictionary()
+    for (const [k, v] of assets) dict.Set(k, v)
+    return { assets: dict, iconKeys: new Map(keys) }
+}
+
+const src = (id: string, assets: [string, unknown][], keys: [string, string][]): PresentationSource => ({
     id,
-    load: async () => new Map(entries),
+    load: async () => contribution(assets, keys),
 })
 
-test('after registerSource + discover, resolve returns each source template; unknown key → undefined', async () => {
-    const provider = new ServiceProvider()
-    const registry = new TodlPresentationRegistry(provider)
-
-    const t1 = tmpl('k1')
-    const t2 = tmpl('k2')
-    registry.registerSource(src('a', [['k1', t1]]))
-    registry.registerSource(src('b', [['k2', t2]]))
+test('after discover, iconKeyFor maps entity → resource key and resolveAsset resolves it; unknown → undefined', async () => {
+    const registry = new TodlPresentationRegistry(new ServiceProvider())
+    registry.registerSource(src('a', [['r1', { tag: 'g1' }]], [['e1', 'r1']]))
+    registry.registerSource(src('b', [['r2', { tag: 'g2' }]], [['mm:e2', 'r2']]))
 
     await registry.discover()
 
-    expect(registry.resolve('k1')).toBe(t1)
-    expect(registry.resolve('k2')).toBe(t2)
-    expect(registry.resolve('nope')).toBeUndefined()
+    expect(registry.iconKeyFor('e1')).toBe('r1')
+    expect(registry.iconKeyFor('mm:e2')).toBe('r2')
+    expect(registry.resolveAsset('r1')).toEqual({ tag: 'g1' })
+    expect(registry.iconKeyFor('nope')).toBeUndefined()
+    expect(registry.resolveAsset('nope')).toBeUndefined()
 })
 
-test('onChanged fires once per aggregated key after discover', async () => {
-    const provider = new ServiceProvider()
-    const registry = new TodlPresentationRegistry(provider)
-
-    const t1 = tmpl('k1')
-    const t2 = tmpl('k2')
-    const t3 = tmpl('k3')
-    registry.registerSource(src('a', [['k1', t1], ['k2', t2]]))
-    registry.registerSource(src('b', [['k3', t3]]))
+test('onChanged fires once per indexed entity key after discover', async () => {
+    const registry = new TodlPresentationRegistry(new ServiceProvider())
+    registry.registerSource(src('a', [['r1', {}], ['r2', {}]], [['e1', 'r1'], ['e2', 'r2']]))
+    registry.registerSource(src('b', [['r3', {}]], [['e3', 'r3']]))
 
     const fired: string[] = []
     registry.onChanged((key) => fired.push(key))
-
     await registry.discover()
 
-    expect(fired).toContain('k1')
-    expect(fired).toContain('k2')
-    expect(fired).toContain('k3')
-    // Exact count: each of the 3 distinct keys notifies exactly once (no doubling).
+    expect(fired).toContain('e1')
+    expect(fired).toContain('e2')
+    expect(fired).toContain('e3')
     expect(fired).toHaveLength(3)
 })
 
-test('a key declared by two sources notifies exactly once per discover', async () => {
-    const provider = new ServiceProvider()
-    const registry = new TodlPresentationRegistry(provider)
-
-    // Both sources declare 'shared'; source 'b' wins (registered/populated last).
-    registry.registerSource(src('a', [['shared', tmpl('shared-a')], ['onlyA', tmpl('onlyA')]]))
-    registry.registerSource(src('b', [['shared', tmpl('shared-b')]]))
+test('an entity key declared by two sources notifies exactly once per discover', async () => {
+    const registry = new TodlPresentationRegistry(new ServiceProvider())
+    registry.registerSource(src('a', [['ra', {}]], [['shared', 'ra'], ['onlyA', 'ra']]))
+    registry.registerSource(src('b', [['rb', {}]], [['shared', 'rb']]))
 
     const fired: string[] = []
     registry.onChanged((key) => fired.push(key))
-
     await registry.discover()
 
-    // The cross-source duplicate key notifies exactly once, not once per source.
     expect(fired.filter((k) => k === 'shared').length).toBe(1)
     expect(fired.filter((k) => k === 'onlyA').length).toBe(1)
     expect(fired).toHaveLength(2)
 })
 
-test('registerSource is idempotent by id — registering the same id twice does not double entries', async () => {
-    const provider = new ServiceProvider()
-    const registry = new TodlPresentationRegistry(provider)
-
-    const t1 = tmpl('k1')
-    const t2 = tmpl('k1-updated')
-    // Register 'a' twice — the second call should overwrite, not duplicate.
-    registry.registerSource(src('a', [['k1', t1]]))
-    registry.registerSource(src('a', [['k1', t2]]))
+test('registerSource is idempotent by id — last registration wins', async () => {
+    const registry = new TodlPresentationRegistry(new ServiceProvider())
+    registry.registerSource(src('a', [['r1', {}]], [['e1', 'r1']]))
+    registry.registerSource(src('a', [['r1b', {}]], [['e1', 'r1b']]))
 
     const fired: string[] = []
     registry.onChanged((key) => fired.push(key))
-
     await registry.discover()
 
-    // Only one source 'a' should have run — exactly one k1 entry, with the last value.
-    expect(registry.resolve('k1')).toBe(t2)
-    // Only one notification for k1 (not duplicated).
-    expect(fired.filter((k) => k === 'k1').length).toBe(1)
+    expect(registry.iconKeyFor('e1')).toBe('r1b')
+    expect(fired.filter((k) => k === 'e1').length).toBe(1)
 })
 
 test('onChanged returns an unsubscribe function that stops further notifications', async () => {
-    const provider = new ServiceProvider()
-    const registry = new TodlPresentationRegistry(provider)
-
-    registry.registerSource(src('a', [['k1', tmpl('k1')]]))
+    const registry = new TodlPresentationRegistry(new ServiceProvider())
+    registry.registerSource(src('a', [['r1', {}]], [['e1', 'r1']]))
 
     const fired: string[] = []
     const unsub = registry.onChanged((key) => fired.push(key))
-
     await registry.discover()
-    expect(fired).toContain('k1')
+    expect(fired).toContain('e1')
 
     unsub()
     fired.length = 0
-
     await registry.discover()
     expect(fired).toHaveLength(0)
 })
 
-test('a second discover re-runs sources and swaps — new entries resolve correctly', async () => {
-    const provider = new ServiceProvider()
-    const registry = new TodlPresentationRegistry(provider)
-
-    const t1 = tmpl('k1-v1')
-    const t1v2 = tmpl('k1-v2')
+test('a second discover re-runs sources and swaps — new index resolves correctly', async () => {
+    const registry = new TodlPresentationRegistry(new ServiceProvider())
     let version = 0
-    const dynamicSrc: PresentationSource = {
+    registry.registerSource({
         id: 'dynamic',
-        load: async () => {
-            version++
-            return new Map([['k1', version === 1 ? t1 : t1v2]])
-        },
-    }
-    registry.registerSource(dynamicSrc)
+        load: async () => { version++; return contribution([['r', {}]], [['e1', version === 1 ? 'rv1' : 'rv2']]) },
+    })
 
     await registry.discover()
-    expect(registry.resolve('k1')).toBe(t1)
+    expect(registry.iconKeyFor('e1')).toBe('rv1')
 
     await registry.discover()
-    expect(registry.resolve('k1')).toBe(t1v2)
+    expect(registry.iconKeyFor('e1')).toBe('rv2')
 })
 
-test('populating N keys fires O(1) app-resource notifications, not one per key', async () => {
+test('populating N assets fires O(1) app-resource notifications, not one per key', async () => {
     const prior = Application.current
     try {
         const app = new Application()
         Application.current = app
 
-        const provider = new ServiceProvider()
-        const registry = new TodlPresentationRegistry(provider)
-
+        const registry = new TodlPresentationRegistry(new ServiceProvider())
         const N = 10
-        const entries: [string, DataTemplate][] = Array.from({ length: N }, (_, i) => [`key${i}`, tmpl(`key${i}`)])
-        registry.registerSource(src('big', entries))
+        const assets: [string, unknown][] = Array.from({ length: N }, (_, i) => [`r${i}`, {}])
+        registry.registerSource(src('big', assets, [['e', 'r0']]))
 
         let general = 0, style = 0
         app.Resources.Subscribe(() => { general++ })
         app.Resources.SubscribeStyle(() => { style++ })
 
         await registry.discover()
-        expect(general).toBeLessThan(N)   // O(1): one swap, not one per key
+        expect(general).toBeLessThan(N)   // one swap, not one per key
 
         const afterFirst = general
         const afterFirstStyle = style
 
         await registry.discover()
-        expect(general - afterFirst).toBe(1)          // exactly one general notification for the swap
-        expect(style - afterFirstStyle).toBe(1)       // one structural style signal
+        expect(general - afterFirst).toBe(1)
+        expect(style - afterFirstStyle).toBe(1)
     } finally {
         Application.current = prior
     }

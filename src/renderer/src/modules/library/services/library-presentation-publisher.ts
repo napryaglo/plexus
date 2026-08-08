@@ -12,10 +12,9 @@ import {
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import {
-    type CompiledPresentation, readAuthorTemplates, combinedSource,
+    type CompiledPresentation, combinedSource, ICON_INDEX_FILE,
 } from '../../meta-model/services/presentation-publisher.js'
-import { distinctIcons, isRasterIcon } from '../../meta-model/services/presentation-generator.js'
-import { scaffoldAuthorStubs, LIBRARY_ROLE } from '../../meta-model/services/presentation-scaffold.js'
+import { distinctIcons, isRasterIcon, buildIconIndex } from '../../meta-model/services/presentation-generator.js'
 
 const PRESENTATION_DIR = 'presentation'
 const COMPILED_FILE = 'presentation.compiled.json'
@@ -44,16 +43,17 @@ function bytesToBase64(bytes: Uint8Array): string
 }
 
 export type PublishLibraryPresentationResult =
-    | { ok: true; templates: number; icons: number }
+    | { ok: true; icons: number }
     | { ok: false; missing: string[] }
 
+// Assets-only, mirroring the meta-model publisher: bake one geometry/ImageBrush per
+// distinct icon plus an icon-index.json (classId → resource key). No DataTemplates;
+// classes render through Plexus's one default template. A referenced icon with no
+// project file blocks publish (nothing written).
 export async function publishLibraryPresentation(
     project: IStorage, dest: IStorage, base: string, doc: TodlDocument,
 ): Promise<PublishLibraryPresentationResult>
 {
-    // Ensure every class has an editable author-template stub (write-once).
-    await scaffoldAuthorStubs(project, doc, LIBRARY_ROLE, PRESENTATION_DIR)
-
     // Pre-read every referenced icon (compiler include resolution is sync). SVGs are
     // read as text and baked to geometry; raster images are read as bytes and baked
     // as an ImageBrush data URI.
@@ -71,8 +71,7 @@ export async function publishLibraryPresentation(
     }
     if (missing.length > 0) return { ok: false, missing }
 
-    const author = await readAuthorTemplates(project, PRESENTATION_DIR)
-    const source = combinedSource(doc, DICT_NAME, author.inners)
+    const source = combinedSource(doc, DICT_NAME, [])
 
     const include: IncludeResolver = (path, ctx): IncludeResolution => {
         if (isRasterIcon(path)) {
@@ -88,11 +87,7 @@ export async function publishLibraryPresentation(
         const { valueJs, names } = svgToGeometryJs(text)
         return { entries: [{ key: ctx.key ?? path, valueJs }], imports: [{ module: VISUAL_ENGINE, names: [...names] }] }
     }
-    // LibraryClassData is the inert DataType the generated templates declare; add
-    // it to the symbol table so the compiler resolves it. The import line it emits
-    // is stripped from the artifact body below (the loader supplies it via ctx).
-    const symbols = new Map([...DEFAULT_SYMBOLS, ['LibraryClassData', './library-class-data.js']])
-    const result = compile(source, { include, symbols })
+    const result = compile(source, { include, symbols: new Map(DEFAULT_SYMBOLS) })
 
     const names = new Set<string>()
     for (const set of result.imports.values()) for (const n of set) names.add(n)
@@ -103,5 +98,11 @@ export async function publishLibraryPresentation(
     const artifact: CompiledPresentation = { body, symbols: [...names].sort(), className }
     await dest.WriteText(`${base}/${PRESENTATION_DIR}/${COMPILED_FILE}`, JSON.stringify(artifact))
 
-    return { ok: true, templates: author.count, icons: svgByPath.size + rasterUriByPath.size }
+    // Sidecar: classId → icon resource key (library keyspace, no prefix).
+    await dest.WriteText(
+        `${base}/${PRESENTATION_DIR}/${ICON_INDEX_FILE}`,
+        JSON.stringify(Object.fromEntries(buildIconIndex(doc, ''))),
+    )
+
+    return { ok: true, icons: svgByPath.size + rasterUriByPath.size }
 }

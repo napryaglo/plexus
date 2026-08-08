@@ -182,12 +182,10 @@ test('regeneratePresentation writes an assets dict merging author + scaffolded s
 
     const out = await storage.ReadText('presentation.generated.mu')
     expect(out).toContain('resources MetaModelPresentation {')
-    expect(out).not.toContain('DataTemplate')  // assets dict only — templates are author-owned
-    expect(out).not.toContain('merge ')        // no merge clauses; templates are inlined at publish
-    // Every entity's template lives in the single scaffolded author-templates file.
-    const templates = await storage.ReadText('presentation/templates.mu')
-    expect(templates).toContain('resources MetaModelPresentationTemplates {')
-    expect(templates).toContain('DataTemplate x:key="mm:model" [ DataType = MetaModelEntity ]')
+    expect(out).not.toContain('DataTemplate')  // assets dict only — no per-entity templates
+    expect(out).not.toContain('merge ')
+    // No template scaffolding: every entity renders through Plexus's one default template.
+    expect(await storage.Exists('presentation/templates.mu')).toBe(false)
 })
 
 test('regeneratePresentation is a no-op when the project has no .todl sources', async () => {
@@ -213,8 +211,8 @@ test('publish also (re)writes presentation.generated.mu into the project', async
     expect(result.ok).toBe(true)
     expect(await storage.Exists('presentation.generated.mu')).toBe(true)
     expect(await storage.ReadText('presentation.generated.mu')).not.toContain('merge ')
-    // The template lives in the single scaffolded author-templates file.
-    expect(await storage.ReadText('presentation/templates.mu')).toContain('DataTemplate x:key="mm:model"')
+    // No template scaffolding — assets-only presentation.
+    expect(await storage.Exists('presentation/templates.mu')).toBe(false)
 })
 
 test('publish ships the presentation payload into the backend', async () => {

@@ -21,7 +21,7 @@ const COMPILED = 'presentation/presentation.compiled.json'
 export async function loadCompiledPresentation(
     storage: IStorage,
     base: string,
-    ctxExtra: Record<string, unknown>,
+    ctxExtra: Record<string, unknown> = {},
 ): Promise<ResourceDictionary | undefined>
 {
     let raw: string
