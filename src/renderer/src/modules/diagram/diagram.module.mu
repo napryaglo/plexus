@@ -52,6 +52,27 @@ module DiagramModule [ Name = "Diagram" ] {
               Kind     = Color,
               Default  = #E0E0E0,
               Category = "Diagram" ]
+        // Toolbox item figure size. The toolbox tile's visual slot
+        // (ToolboxVisualPresenter) binds @ToolboxItemWidth/@ToolboxItemHeight,
+        // which ToolboxService mirrors from these settings.
+        SettingDefinition
+            [ Key         = "toolbox.item.width",
+              Label       = "Toolbox item width",
+              Description = "Width of a toolbox item's figure, in pixels.",
+              Kind        = Number,
+              Default     = 48,
+              Min         = 16,
+              Max         = 256,
+              Category    = "Toolbox" ]
+        SettingDefinition
+            [ Key         = "toolbox.item.height",
+              Label       = "Toolbox item height",
+              Description = "Height of a toolbox item's figure, in pixels.",
+              Kind        = Number,
+              Default     = 48,
+              Min         = 16,
+              Max         = 256,
+              Category    = "Toolbox" ]
     }
 
     // The document type this module edits. Declarative schema aggregated by the
