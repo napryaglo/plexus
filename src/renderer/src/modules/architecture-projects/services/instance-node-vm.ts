@@ -1,7 +1,9 @@
 import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
-import type { DataTemplate } from '@pragmatic-lab/mural/basic'
+import { ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 
 import type { ArchInstanceModel } from './architecture-instance-model.js'
+import { LibraryClassVisualResolverKey } from '../../diagram/services/library-class-visual-resolver.js'
+import { ConceptVisualResolverKey } from '../../diagram/services/concept-visual-resolver.js'
 
 // A bindable view of one own instance node — the DataContext a class template
 // renders against on the canvas. Reads the node from the JSON-backed model and
@@ -16,17 +18,13 @@ export class InstanceNodeVM extends Model
     // The library term the node references (its first reference edge target) — the
     // key the canvas resolves the visual template with. '' when none.
     public static readonly ReferencedTermKey = Model.RegisterProperty<string>(InstanceNodeVM, 'ReferencedTerm', '', MetaData.None)
-    // The resolved visual template (its referenced term's, via LibraryRegistry).
-    // Set by the canvas when the node's container is built; a
-    // `DataTemplate[InstanceNodeVM]` binds a ContentPresenter's ContentTemplate to it.
-    public static readonly TemplateKey = Model.RegisterProperty<DataTemplate | undefined>(
-        InstanceNodeVM, 'Template', undefined, MetaData.None)
-    // Self-reference: the node template presents the vm THROUGH its per-term
-    // Template via `ContentPresenter [ Content = $Data, ContentTemplate = $Template ]`
-    // (mirrors library ClassRow). `$Data` must be a registered property, hence a DP
-    // that holds `this` rather than a plain getter — bindings only walk DPs.
-    public static readonly DataKey = Model.RegisterProperty<InstanceNodeVM>(
-        InstanceNodeVM, 'Data', undefined as unknown as InstanceNodeVM, MetaData.None)
+    // The visual descriptor the node's ToolboxVisualPresenter renders (Figure
+    // context). Rebuilt on refresh from the referenced term (library class) or,
+    // absent one, the concept — the same keying the canvas used to resolve a
+    // template with. The node template binds `Descriptor = $Descriptor`; the
+    // presenter's DataContext is this VM, so the class template's $Display binds here.
+    public static readonly DescriptorKey = Model.RegisterProperty<ToolboxVisualDescriptor | undefined>(
+        InstanceNodeVM, 'Descriptor', undefined, MetaData.None)
     // Canvas position. The Diagram's ItemContainerStyle binds the node Figure's
     // Left/Top to these (the item is the container's DataContext); Figure.Left/Top
     // is two-way-by-default, so dragging the node writes back here, and Save reads
@@ -42,7 +40,6 @@ export class InstanceNodeVM extends Model
     )
     {
         super()
-        this.set_property_value(InstanceNodeVM.DataKey, this)
         this.unsubscribe = model.onChanged(() => this.refresh())
         this.refresh()
     }
@@ -50,9 +47,7 @@ export class InstanceNodeVM extends Model
     public get Display(): string { return this.get_property_value(InstanceNodeVM.DisplayKey) }
     public get Concept(): string { return this.get_property_value(InstanceNodeVM.ConceptKey) }
     public get ReferencedTerm(): string { return this.get_property_value(InstanceNodeVM.ReferencedTermKey) }
-    public get Template(): DataTemplate | undefined { return this.get_property_value(InstanceNodeVM.TemplateKey) }
-    public set Template(v: DataTemplate | undefined) { this.set_property_value(InstanceNodeVM.TemplateKey, v) }
-    public get Data(): InstanceNodeVM { return this.get_property_value(InstanceNodeVM.DataKey) }
+    public get Descriptor(): ToolboxVisualDescriptor | undefined { return this.get_property_value(InstanceNodeVM.DescriptorKey) }
     public get Left(): number { return this.get_property_value(InstanceNodeVM.LeftKey) }
     public set Left(v: number) { this.set_property_value(InstanceNodeVM.LeftKey, v) }
     public get Top(): number { return this.get_property_value(InstanceNodeVM.TopKey) }
@@ -74,6 +69,14 @@ export class InstanceNodeVM extends Model
         this.set_property_value(InstanceNodeVM.DisplayKey, typeof label === 'string' ? label : this.Id)
         this.set_property_value(InstanceNodeVM.ConceptKey, node?.typeOf ?? '')
         const ref = this.model.document.edges.find((e) => e.kind === 'Relationship' && e.from === this.Id)
-        this.set_property_value(InstanceNodeVM.ReferencedTermKey, ref !== undefined ? String(ref.to) : '')
+        const term = ref !== undefined ? String(ref.to) : ''
+        this.set_property_value(InstanceNodeVM.ReferencedTermKey, term)
+        // A referenced library term resolves through the library-class resolver; a
+        // bare instance through the concept resolver. Same keying the old
+        // ResolveTemplate used (referenced term wins, else concept).
+        const descriptor = term !== ''
+            ? new ToolboxVisualDescriptor(LibraryClassVisualResolverKey, term)
+            : new ToolboxVisualDescriptor(ConceptVisualResolverKey, node?.typeOf ?? '')
+        this.set_property_value(InstanceNodeVM.DescriptorKey, descriptor)
     }
 }
