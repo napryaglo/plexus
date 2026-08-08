@@ -1,10 +1,19 @@
-import { test, expect } from 'vitest'
-import { parseSvgIcon, Icon } from '@pragmatic-lab/mural/basic'
+import { test, expect, afterEach } from 'vitest'
+import { parseSvgIcon, Icon, Shape } from '@pragmatic-lab/mural/basic'
 import type { Visual } from '@pragmatic-lab/mural/runtime'
 
 import { buildCtx, compileTemplate, buildDefaultTemplate, buildIconTemplate } from '../visual-library.js'
+import { setIconResourceResolver } from '../../../diagram/services/icon-key-converter.js'
 
 const SVG = '<svg viewBox="0 0 10 10"><path d="M0 0 L10 0 L10 10 Z"/></svg>'
+
+afterEach(() => setIconResourceResolver(undefined))
+
+function hasType(v: Visual, ctor: Function): boolean {
+    if (v instanceof ctor) return true
+    for (const c of [...v.logicalChildren, ...v.visualChildren]) if (hasType(c, ctor)) return true
+    return false
+}
 
 function findIcon(v: Visual): Icon | undefined {
     if (v instanceof Icon) return v
@@ -38,8 +47,10 @@ test('buildDefaultTemplate returns a usable DataTemplate', () => {
     expect(typeof tmpl.Apply).toBe('function')
 })
 
-test('buildDefaultTemplate is figure-only: a neutral box with no label', () => {
-    const v = buildDefaultTemplate(buildCtx()).Apply({}) as Visual
+test('buildDefaultTemplate carries a Shape icon and no label', () => {
+    setIconResourceResolver(() => ({}))   // any geometry
+    const v = buildDefaultTemplate(buildCtx()).Apply({ IconKey: 'mm_icon_svc' }) as Visual
+    expect(hasType(v, Shape)).toBe(true)
     expect(hasText(v)).toBe(false)
 })
 
