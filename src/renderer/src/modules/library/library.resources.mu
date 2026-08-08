@@ -24,7 +24,7 @@ resources LibraryResources {
     // `when($IsLibrary)` trigger attaches the right-click uninstall menu to
     // Library rows only.
     HierarchicalDataTemplate x:key="LibraryNodeTemplate" [ DataType = LibraryTreeNode, itemsselector = Children ] {
-        Border [ Background = #00000000, IsDraggable = $IsDraggable, OnDragStart = $BeginKindDragData ] {
+        Border [ Background = #00000000, IsDraggable = $IsDraggable, OnDragStart = $BeginDragData ] {
             StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
                 Shape [ Geometry = @Libraries, Fill = @OnSurfaceVariant, Width = 14, Height = 14,
                         Margin = (0,0,6,0), VerticalAlignment = Center,
@@ -36,25 +36,16 @@ resources LibraryResources {
     }
 
     // Bottom-pane preview for a selected class LEAF. Implicit-by-type (DataType =
-    // LibraryTreeNode, no x:key), so the ContentControl in the panel resolves it
-    // for the node it hosts; the TreeView rows use the EXPLICIT @LibraryNodeTemplate,
-    // so this template only ever renders in the preview pane. The inner
-    // ContentPresenter applies the node's OWN resolved Template to the node ($Data
-    // is the self-reference), so the class's mounted visual shows; $Concept labels
-    // it. The panel service sets the node's Template before it drives the pane, so
-    // the inner presenter always has a template and never recurses into this one.
+    // LibraryTreeNode, no x:key), so the ContentControl in the panel resolves it for
+    // the node it hosts; the TreeView rows use the EXPLICIT @LibraryNodeTemplate, so
+    // this template only ever renders in the preview pane. The shared
+    // ToolboxVisualPresenter resolves the node's Descriptor (Tile context) and
+    // upgrades the class visual in place when it lazily compiles; the presenter's
+    // DataContext is the node, so the class template's $Display binds here. $Concept
+    // labels it.
     DataTemplate [ DataType = LibraryTreeNode ] {
         StackPanel [ Orientation = Vertical ] {
-            // ContentTemplate is listed BEFORE Content deliberately. Both bind to
-            // the node's DataContext; mural fires DataContext listeners in
-            // registration = source order. If Content resolved first, the presenter
-            // would run with Content = the node but ContentTemplate still unset, and
-            // an unset ContentTemplate makes ContentPresenter fall back to the
-            // implicit template for the content's type — which is THIS template —
-            // recursing until the stack blows and the pane renders blank. Binding
-            // ContentTemplate first means the node's own Template is in place before
-            // Content ever triggers a resolve, so the class visual renders directly.
-            ContentPresenter [ ContentTemplate = $Template, Content = $Data ]
+            ToolboxVisualPresenter [ Descriptor = $Descriptor, Context = VisualContext.Tile ]
             TextBlock [ Text = $Concept, Style = @BodySmall, Foreground = @OnSurfaceVariant, Margin = (0,4,0,0) ]
         }
     }

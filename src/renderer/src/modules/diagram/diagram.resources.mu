@@ -10,8 +10,6 @@
 // for the active diagram document (materializing the Diagram control in-tree).
 
 import ToolboxService from "./services/diagram-panel-services.js"
-import ToolboxPage from "./services/toolbox-page.js"
-import TermTile from "./services/toolbox-page.js"
 import LayoutPipelineService from "./layout/layout-pipeline-service.js"
 
 resources DiagramResources {
@@ -236,31 +234,32 @@ resources DiagramResources {
         WrapPanel [ IsUniformChildren = true ]
     }
 
-    // ── Toolbox tile — a draggable picture + label. The picture is the
-    // ToolboxShape's PreviewNode (a per-Kind Figure sized 48×48) slotted into a
-    // ContentControl. Dragging emits the `mural/node-kind` payload; dropping on
-    // the canvas fires the Diagram's ItemDropped → Document.CreateNode. ──
-    DataTemplate [DataType = ToolboxShape] {
+    // ── Toolbox tile — one draggable tile for every repository item (both mural
+    // ShapeToolboxItems and Plexus ArchToolboxItems extend ToolboxItem, so the
+    // base-type match serves both). The picture is the item's descriptor resolved
+    // for the Tile context through the shared ToolboxVisualPresenter (shapes → the
+    // shape figure; library/meta-model terms → the class icon, upgraded in place
+    // when a lazily-compiled class arrives). Dragging emits the item id under
+    // TOOLBOX_ITEM_FORMAT; dropping on the canvas routes id → repository → factory.
+    // Presenter-only: the class visual carries its own label; shape tiles show the
+    // figure alone. ──
+    DataTemplate [DataType = ToolboxItem] {
         Border x:root
             [ IsDraggable     = true,
-              OnDragStart     = $BeginKindDragData,
+              OnDragStart     = $BeginDragData,
               Background      = @Surface,
               BorderBrush     = @OutlineVariant,
               BorderThickness = (1),
               CornerRadius    = 4,
               Padding         = (4,8,4,8),
-              Margin          = (2,0,2,4) ] {
+              Margin          = (2,0,2,4),
+              MaxWidth        = 104 ] {
             StackPanel [ Orientation = Vertical, HorizontalAlignment = Center ] {
-                ContentControl
-                    [ Content             = $PreviewNode,
+                ToolboxVisualPresenter
+                    [ Descriptor          = $Descriptor,
+                      Context             = VisualContext.Tile,
                       Width               = 48,
                       Height              = 48,
-                      HorizontalAlignment = Center ]
-                TextBlock
-                    [ Text                = $Label,
-                      FontSize            = 10,
-                      Foreground          = @OnSurface,
-                      Margin              = (0,4,0,0),
                       HorizontalAlignment = Center ]
             }
         }
@@ -289,61 +288,15 @@ resources DiagramResources {
         }
     }
 
-    // Chromeless accordion header chrome: a full-width, hit-testable row (no
-    // default ToggleButton pill) whose leading chevron flips ▸→▾ when expanded
-    // (IsChecked). The ContentPresenter shows the ToggleButton's content (title).
-    Template x:key="ToolboxAccordionHeaderChrome" [TargetType = ToggleButton] {
-        Border x:name="Root" [ Background = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (4,6,4,6) ] {
-            DockPanel [ LastChildFill = true ] {
-                TextBlock x:name="Chevron"
-                    [ DockPanel.Dock = Left, Text = "▸", Foreground = @OnSurfaceVariant,
-                      Margin = (0,0,8,0), VerticalAlignment = Center ]
-                ContentPresenter [ VerticalAlignment = Center ]
-            }
-        }
-        when ( IsMouseOver ) { Root.Background = @StateHoverOverlay; }
-        when ( IsChecked )   { Chevron.Text = "▾"; }
-    }
-
-    // One accordion section: a header ToggleButton (two-ways IsExpanded) over the
-    // page's tiles in the uniform wrap grid, collapsed when the section is closed.
-    // The tiles dispatch by DataType (ToolboxShape → shape tile; TermTile → term
-    // tile). The outer ScrollViewer scrolls; no per-section scroll region.
+    // One toolbox section: a title over the page's tiles in the uniform wrap grid.
+    // v1 drops the single-expand accordion (mural's ToolboxPage carries no expand
+    // state); every section is shown, and the outer ScrollViewer scrolls the whole
+    // stack. Tiles dispatch by DataType through the single [DataType = ToolboxItem]
+    // template above.
     DataTemplate x:key="ToolboxAccordionItem" [DataType = ToolboxPage] {
-        StackPanel [ Orientation = Vertical, Margin = (0,0,0,2) ] {
-            ToggleButton
-                [ Template            = @ToolboxAccordionHeaderChrome,
-                  IsChecked           = $IsExpanded,
-                  HorizontalAlignment = Stretch ] {
-                TextBlock [ Text = $Title, Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
-            }
-            Border [ Visibility = $IsExpanded << ToVisibility, Padding = (0,4,0,6) ] {
-                ItemsControl [ ItemsSource = $Items, ItemsPanel = @DiagramToolboxPanel ]
-            }
-        }
-    }
-
-    // One draggable term tile (a taxonomy term). Dragging emits the term id under
-    // the canvas-drop format; dropping on the arch canvas fires CreateNode →
-    // applyTermDrop. Mirrors the ToolboxShape tile's drag wiring.
-    DataTemplate [DataType = TermTile] {
-        Border x:root
-            [ IsDraggable     = true,
-              OnDragStart     = $BeginKindDragData,
-              Background      = @Surface,
-              BorderBrush     = @OutlineVariant,
-              BorderThickness = (1),
-              CornerRadius    = 4,
-              Padding         = (8,6,8,6),
-              Margin          = (2,0,2,4),
-              MaxWidth        = 104 ] {
-            // Cap the tile width and wrap long term labels (e.g. AWS service
-            // names) to it. Without the cap the tile is as wide as its longest
-            // label, so the uniform-cell toolbox grid sizes every cell to that
-            // width — one over-wide column that spills past the narrow pane.
-            // MaxWidth bounds the wrap width, so the label wraps at 104, the
-            // uniform cell is small, and the tiles pack into a multi-column grid.
-            TextBlock [ Text = $Display, FontSize = 12, Foreground = @OnSurface, TextWrapping = Wrap ]
+        StackPanel [ Orientation = Vertical, Margin = (0,0,0,6) ] {
+            TextBlock [ Text = $Title, Style = @LabelMedium, Foreground = @OnSurfaceVariant, Margin = (0,0,0,4) ]
+            ItemsControl [ ItemsSource = $Items, ItemsPanel = @DiagramToolboxPanel ]
         }
     }
 }

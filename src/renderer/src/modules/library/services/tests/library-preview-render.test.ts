@@ -1,21 +1,16 @@
 import { test, expect, afterEach } from 'vitest'
 import { Application, type Visual } from '@pragmatic-lab/mural/runtime'
 import { DataTemplate, TextBlock } from '@pragmatic-lab/mural/basic'
+import { ToolboxVisualPresenter } from '@pragmatic-lab/mural/framework'
 
 import { LibraryResources } from '../../library.resources.mu.js'
 import { LibraryTreeNode } from '../library-tree-node.js'
 
-// View-level regression for the bottom preview pane. The preview renders a
-// selected class LEAF through an implicit DataTemplate[LibraryTreeNode] whose
-// inner ContentPresenter applies the node's OWN Template. Two traps this guards:
-//   1. Recursion — if the inner presenter resolves Content before ContentTemplate,
-//      it runs template-less and falls back to the implicit template for the
-//      content's type (this same template), recursing until the stack blows and
-//      the pane renders blank. The markup binds ContentTemplate before Content to
-//      close that window; this test drives the REAL compiled template so a
-//      reordering regresses here, not silently in the app.
-//   2. Freeze — the node's self-referential Data + own Template survive the
-//      ContentPresenter's DataContext pin, so the class visual actually shows.
+// View-level regression for the bottom preview pane. The preview renders a selected
+// class LEAF through an implicit DataTemplate[LibraryTreeNode] that hosts a shared
+// ToolboxVisualPresenter bound to the node's Descriptor (which resolves + upgrades
+// the class visual) plus the concept label. Applying it for a class node must
+// resolve by type and not throw.
 
 let priorApp: Application | null = null
 
@@ -23,30 +18,27 @@ function withApp(): Application {
     priorApp = Application.current
     const app = new Application()
     Application.current = app
-    // Merge the real library resources so findDataTemplateForType (the fallback
-    // the recursion would ride) resolves the implicit preview template exactly as
-    // it does in the running app.
+    // Merge the real library resources so findDataTemplateForType resolves the
+    // implicit preview template exactly as it does in the running app.
     app.Resources.AddMergedDictionary(LibraryResources.Clone())
     return app
 }
 
 afterEach(() => { Application.current = priorApp })
 
+function find(root: Visual, pred: (v: Visual) => boolean): Visual | undefined {
+    if (pred(root)) return root
+    for (const c of root.visualChildren) { const r = find(c, pred); if (r !== undefined) return r }
+    return undefined
+}
 function findText(root: Visual, text: string): boolean {
-    if (root instanceof TextBlock && root.Text === text) return true
-    for (const c of root.visualChildren) if (findText(c, text)) return true
-    return false
+    return find(root, (v) => v instanceof TextBlock && v.Text === text) !== undefined
 }
-
 function classLeaf(display: string, concept: string): LibraryTreeNode {
-    const node = LibraryTreeNode.leaf({ display, label: display, localId: display, termId: `t.${display}`, concept }, undefined)
-    // The class's mounted visual — a marker TextBlock so we can assert the node's
-    // OWN template rendered (not a fallback / stringify / recursion artifact).
-    node.Template = new DataTemplate(() => { const tb = new TextBlock(); tb.Text = `VISUAL:${display}`; return tb })
-    return node
+    return LibraryTreeNode.leaf({ display, label: display, localId: display, termId: `t.${display}`, concept })
 }
 
-test('the preview template renders a class node without recursing, showing the class visual + concept', () => {
+test('the preview template resolves by type and hosts a descriptor-bound presenter + concept label', () => {
     const app = withApp()
     const preview = app.Resources.Resolve(LibraryTreeNode) as DataTemplate
     expect(preview).toBeInstanceOf(DataTemplate)   // implicit-by-type template is registered
@@ -54,15 +46,17 @@ test('the preview template renders a class node without recursing, showing the c
     const node = classLeaf('Azure', 'location')
 
     // Applying the template + propagating DataContext is exactly what the hosting
-    // ContentControl does; a broken (Content-first) ordering throws RangeError here.
+    // ContentControl does.
     let root: Visual | undefined
     expect(() => { root = preview.Apply(node); root.DataContext = node }).not.toThrow()
 
-    expect(findText(root!, 'VISUAL:Azure')).toBe(true)   // the node's OWN template rendered
-    expect(findText(root!, 'location')).toBe(true)       // the concept label rendered
+    const presenter = find(root!, (v) => v instanceof ToolboxVisualPresenter) as ToolboxVisualPresenter | undefined
+    expect(presenter).toBeDefined()
+    expect(presenter!.Descriptor?.Key).toBe('t.Azure')   // bound to the node's descriptor
+    expect(findText(root!, 'location')).toBe(true)        // the concept label rendered
 })
 
-test('each class node renders its own visual — independent applications, no staleness', () => {
+test('each class node binds its own descriptor — no staleness across applications', () => {
     const app = withApp()
     const preview = app.Resources.Resolve(LibraryTreeNode) as DataTemplate
 
@@ -71,8 +65,8 @@ test('each class node renders its own visual — independent applications, no st
     const nodeB = classLeaf('Kafka', 'technology')
     const rootB = preview.Apply(nodeB); rootB.DataContext = nodeB
 
-    // Each rendered its own class visual — B is not a stale copy of A.
-    expect(findText(rootA, 'VISUAL:Azure')).toBe(true)
-    expect(findText(rootB, 'VISUAL:Kafka')).toBe(true)
-    expect(findText(rootB, 'VISUAL:Azure')).toBe(false)
+    const presA = find(rootA, (v) => v instanceof ToolboxVisualPresenter) as ToolboxVisualPresenter
+    const presB = find(rootB, (v) => v instanceof ToolboxVisualPresenter) as ToolboxVisualPresenter
+    expect(presA.Descriptor?.Key).toBe('t.Azure')
+    expect(presB.Descriptor?.Key).toBe('t.Kafka')
 })

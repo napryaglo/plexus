@@ -2,20 +2,29 @@
 // visual architecture content.
 //
 // One global left-panel Capability (rendered by `DataTemplate [DataType =
-// ToolboxService]` in diagram.resources.mu). It presents draggable content as
-// pages: a built-in *Shapes* page (the diagram's live ToolboxShapes) plus one
-// page per taxonomy an author marked `annotate toolbox { visible = true }`,
-// aggregated across every published meta-model and library. A term marked
-// `toolbox { visible = false }` is dropped from its page.
+// ToolboxService]` in diagram.resources.mu). It POPULATES the mural
+// ToolboxRepository: mural's built-in *Shapes* page (via ensureToolboxDefaults)
+// plus one page per taxonomy an author marked `annotate toolbox { visible = true
+// }`, aggregated across every published meta-model and library. Each toolbox item
+// carries a visual descriptor resolved by the tile/canvas/preview through the
+// shared ToolboxVisualPresenter, and a drop factory key. A term marked `toolbox {
+// visible = false }` is dropped from its page.
 import {
+    Application,
     MetaData,
     Model,
     ObservableCollection,
     ServiceKey,
     type IServiceProvider,
+    type ServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
-import type { IActivatable } from '@pragmatic-lab/mural/framework'
-import type { ToolboxShape } from '@pragmatic-lab/mural/framework'
+import {
+    ensureToolboxDefaults,
+    ToolboxRepository,
+    ToolboxPage,
+    ToolboxVisualDescriptor,
+    type IActivatable,
+} from '@pragmatic-lab/mural/framework'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
 import { PlexusPanelService } from '../../../services/panels/panel-services.js'
@@ -24,21 +33,48 @@ import type { IStorage } from '../../../services/storage/storage.js'
 import { ensureMetaModelsBackend } from '../../meta-model/services/meta-models-backend.js'
 import { ensureLibrariesBackend } from '../../library/services/libraries-backend.js'
 import { scanPublishedModels } from '../../meta-model/services/meta-model-tree-builder.js'
-import { projectToolbox } from '../../meta-model/services/toolbox-projection.js'
-import { LibraryRegistry } from '../../library/services/library-registry.js'
-import { DiagramWorkspaceService } from './diagram-workspace-service.js'
-import { ToolboxPage, ToolboxPageKind, TermTile } from './toolbox-page.js'
-import { resolveTermTemplate } from './toolbox-term-template.js'
+import { projectToolbox, type ToolboxTaxonomy } from '../../meta-model/services/toolbox-projection.js'
+import { ArchToolboxItem } from './arch-toolbox-item.js'
+import { LibraryClassVisualResolverKey } from './library-class-visual-resolver.js'
+import { ConceptVisualResolverKey, type ConceptVisualResolver } from './concept-visual-resolver.js'
+import { ArchInstanceDropFactoryKey } from '../../architecture-projects/services/arch-instance-drop-factory.js'
+import { registerArchToolboxAdapters } from './register-arch-toolbox-adapters.js'
+
+// Add one taxonomy's page + items to the repository. Library terms get the
+// library-class resolver; meta-model terms the concept resolver (and their icon is
+// registered on it). `seen` is caller-owned so a term appearing in more than one
+// source is added once. EnsurePage merges terms from repeated taxonomy ids.
+export function contributeTaxonomy(
+    repo: ToolboxRepository,
+    conceptResolver: ConceptVisualResolver,
+    tax: ToolboxTaxonomy,
+    isLibrary: boolean,
+    seen: Set<string>,
+): void
+{
+    const page = repo.EnsurePage(tax.id, tax.label)
+    for (const term of tax.terms) {
+        if (seen.has(term.id)) continue
+        seen.add(term.id)
+        const resolverKey = isLibrary ? LibraryClassVisualResolverKey : ConceptVisualResolverKey
+        if (!isLibrary) conceptResolver.Register(term.id, term.icon)
+        const descriptor = new ToolboxVisualDescriptor(resolverKey, term.id)
+        page.Items.Add(new ArchToolboxItem('term:' + term.id, term.label, descriptor, ArchInstanceDropFactoryKey))
+    }
+}
 
 export class ToolboxService extends PlexusPanelService implements IActivatable
 {
     public static readonly Key = new ServiceKey<ToolboxService>('ToolboxService')
 
+    // The palette panel binds `$Pages`; this DP is pointed at the repository's
+    // Pages collection on the first reload so the panel reflects it live.
     public static readonly PagesKey = Model.RegisterProperty<ObservableCollection<ToolboxPage>>(
         ToolboxService, 'Pages',
         undefined as unknown as ObservableCollection<ToolboxPage>, MetaData.None)
 
     private reloadSeq = 0
+    private contributedPageIds: string[] = []
 
     constructor(provider: IServiceProvider)
     {
@@ -47,89 +83,81 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
         void this.reload()
     }
 
+    // The mural ToolboxRepository singleton — the drop router and the presenter both
+    // key off Application.current.Services, so populate the repository there. Falls
+    // back to the injected provider in headless tests without an Application.
+    public get Repository(): ToolboxRepository
+    {
+        return this.services().getRequired(ToolboxRepository.Key)
+    }
+
     public get Pages(): ObservableCollection<ToolboxPage> { return this.get_property_value(ToolboxService.PagesKey) }
 
     // IActivatable: re-scan whenever the Toolbox becomes the active capability, so
     // a just-published meta-model/library shows up without a restart.
     public OnActivated(): void { void this.reload() }
 
-    // Rebuild Pages: the Shapes page first, then one deduped page per visible
-    // taxonomy across all published meta-models + libraries.
+    // Rebuild the repository's taxonomy pages: ensure the repo + Shapes exist, then
+    // replace only our contributed taxonomy pages (leaving mural's Shapes page) with
+    // one deduped page per visible taxonomy across all published meta-models +
+    // libraries.
     public async reload(): Promise<void>
     {
         const seq = ++this.reloadSeq
+        const collected = await this.collectTaxonomies()
+        if (seq !== this.reloadSeq) return                                 // a newer reload superseded this one
 
-        const shapesPage = this.buildShapesPage()
-        const registry = this.Provider.get(LibraryRegistry.Key)
-        const byTaxonomy = new Map<string, { page: ToolboxPage; seen: Set<string> }>()
+        const services = this.services()
+        ensureToolboxDefaults(services)
+        const repo = services.getRequired(ToolboxRepository.Key)
+        const conceptResolver = registerArchToolboxAdapters(services)
+        this.set_property_value(ToolboxService.PagesKey, repo.Pages)
 
-        for (const backend of this.sourceBackends()) {
+        for (const pid of this.contributedPageIds) repo.RemovePage(pid)
+        this.contributedPageIds = []
+
+        const seen = new Set<string>()
+        const pageIds = new Set<string>()
+        for (const { tax, isLibrary } of collected) {
+            contributeTaxonomy(repo, conceptResolver, tax, isLibrary, seen)
+            pageIds.add(tax.id)
+        }
+        this.contributedPageIds = [...pageIds]
+    }
+
+    // Scan the published-content backends into (taxonomy, source) pairs. Overridable
+    // seam for tests. Library terms → LibraryClassVisualResolver; meta-model terms →
+    // ConceptVisualResolver, chosen from the backend the taxonomy came from.
+    protected async collectTaxonomies(): Promise<Array<{ tax: ToolboxTaxonomy; isLibrary: boolean }>>
+    {
+        const out: Array<{ tax: ToolboxTaxonomy; isLibrary: boolean }> = []
+        for (const { backend, isLibrary } of this.sourceBackends()) {
             const models = await scanPublishedModels(backend)
             for (const { id, versions } of models) {
                 for (const version of versions) {
                     const doc = await this.readModel(backend, `${id}/${version}`)
                     if (doc === undefined) continue
-                    for (const tax of projectToolbox(doc)) {
-                        let entry = byTaxonomy.get(tax.id)
-                        if (entry === undefined) {
-                            entry = { page: new ToolboxPage(tax.label, ToolboxPageKind.Taxonomy), seen: new Set() }
-                            byTaxonomy.set(tax.id, entry)
-                        }
-                        for (const term of tax.terms) {
-                            if (entry.seen.has(term.id)) continue          // dedupe terms across sources
-                            entry.seen.add(term.id)
-                            const template = resolveTermTemplate(registry, term.id, term.concept, term.label)
-                            entry.page.Items.Add(new TermTile(term.id, term.label, term.concept, template))
-                        }
-                    }
+                    for (const tax of projectToolbox(doc)) out.push({ tax, isLibrary })
                 }
             }
         }
-
-        if (seq !== this.reloadSeq) return                                 // a newer reload superseded this one
-
-        const pages = this.Pages
-        pages.Clear()
-        pages.Add(shapesPage)
-        for (const { page } of byTaxonomy.values()) pages.Add(page)
-        this.wireAccordion(pages)
+        return out
     }
 
-    // Single-expand accordion: opening a section collapses the others, and the
-    // first section (Shapes) starts open. Each reload builds fresh ToolboxPage
-    // instances, so the listeners are new — nothing to unsubscribe. Setting a
-    // sibling false re-enters the listener with IsExpanded === false, which the
-    // guard ignores, so there is no cascade.
-    private wireAccordion(pages: ObservableCollection<ToolboxPage>): void
+    private services(): ServiceProvider
     {
-        const all = pages.ToArray()
-        for (const page of all) {
-            page.AddPropertyChangedListener(ToolboxPage.IsExpandedKey, () => {
-                if (!page.IsExpanded) return
-                for (const other of all) if (other !== page) other.IsExpanded = false
-            })
-        }
-        if (all.length > 0) all[0].IsExpanded = true
-    }
-
-    // The built-in Shapes page: a snapshot of the diagram's live ToolboxShapes.
-    private buildShapesPage(): ToolboxPage
-    {
-        const page = new ToolboxPage('Shapes', ToolboxPageKind.Shapes)
-        const workspace = this.Provider.get(DiagramWorkspaceService.Key)
-        const shapes = workspace?.Document.ToolboxShapes as ObservableCollection<ToolboxShape> | undefined
-        if (shapes !== undefined) for (const s of shapes) page.Items.Add(s)
-        return page
+        return (Application.current?.Services ?? this.Provider) as ServiceProvider
     }
 
     // The published-content backends to scan, each best-effort: a missing backend
     // (headless, or storage not wired) contributes nothing rather than throwing.
-    private sourceBackends(): IStorage[]
+    // Meta-models → concept terms; libraries → library classes.
+    private sourceBackends(): Array<{ backend: IStorage; isLibrary: boolean }>
     {
         if (this.Provider.get(StorageProviderRegistry.Key) === undefined) return []
-        const out: IStorage[] = []
-        try { out.push(ensureMetaModelsBackend(this.Provider)) } catch { /* no meta-models backend */ }
-        try { out.push(ensureLibrariesBackend(this.Provider)) } catch { /* no libraries backend */ }
+        const out: Array<{ backend: IStorage; isLibrary: boolean }> = []
+        try { out.push({ backend: ensureMetaModelsBackend(this.Provider), isLibrary: false }) } catch { /* no meta-models backend */ }
+        try { out.push({ backend: ensureLibrariesBackend(this.Provider), isLibrary: true }) } catch { /* no libraries backend */ }
         return out
     }
 

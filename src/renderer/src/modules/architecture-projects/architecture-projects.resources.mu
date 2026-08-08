@@ -6,11 +6,12 @@
 // the Diagram auto-wires it (drop -> CreateNode, connect -> CreateConnector,
 // delete -> DeleteNodes) with no Diagram subclass (a subclass can't be a `.mu`
 // element). Each node (InstanceNodeVM) is wrapped by the Diagram in a Figure whose
-// Content is the vm; the Figure's ContentPresenter resolves DataTemplate[InstanceNodeVM]
-// by type, which presents the vm THROUGH its per-term library template (mirrors
-// library ClassRow). The ItemContainerStyle binds each node Figure's Left/Top to the
-// vm's, so saved positions place the nodes. Palette tiles (TermTile) are draggable
-// Borders emitting the term id under the canvas-drop format (BeginKindDragData).
+// Content is the vm; the Figure resolves DataTemplate[InstanceNodeVM] by type, which
+// presents the vm through the shared ToolboxVisualPresenter (Figure context) — the
+// presenter resolves the vm's Descriptor and upgrades lazily-compiled class visuals
+// in place. The ItemContainerStyle binds each node Figure's Left/Top to the vm's, so
+// saved positions place the nodes. Palette tiles live in the global Toolbox; drop
+// routes the item id through the repository to the ArchInstanceDropFactory.
 
 import ArchDiagramDocument from "./services/arch-diagram-document.js"
 import InstanceNodeVM from "./services/instance-node-vm.js"
@@ -41,10 +42,11 @@ resources ArchitectureProjectsResources {
         }
     }
 
-    // ── One node: present the vm through its resolved per-term template ───
-    // $Data is the vm itself; $Template is its referenced term's DataTemplate
-    // (LibraryRegistry-resolved by the document). Default is a labelled box.
+    // ── One node: present the vm through the shared ToolboxVisualPresenter (Figure
+    // context). The presenter resolves $Descriptor via the library/concept resolver
+    // and upgrades in place when a lazily-compiled class arrives; the presenter's
+    // DataContext is this vm, so the class template's $Display binds to the node. ──
     DataTemplate [ DataType = InstanceNodeVM ] {
-        ContentPresenter [ Content = $Data, ContentTemplate = $Template ]
+        ToolboxVisualPresenter [ Descriptor = $Descriptor, Context = VisualContext.Figure ]
     }
 }

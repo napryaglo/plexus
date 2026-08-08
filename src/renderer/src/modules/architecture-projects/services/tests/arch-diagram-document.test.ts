@@ -10,6 +10,7 @@ import { LIBRARIES_BACKEND_ID } from '../../../library/services/libraries-backen
 import { ProjectExplorerService } from '../../../project-explorer/services/project-explorer-service.js'
 import { WorkspaceBaseResolver } from '../../../../services/projects/workspace-base-resolver.js'
 import { LibraryRegistry } from '../../../library/services/library-registry.js'
+import { LibraryClassVisualResolverKey } from '../../../diagram/services/library-class-visual-resolver.js'
 import { ArchDiagramDocumentFactory } from '../arch-diagram-document-factory.js'
 import { ArchDiagramDocument } from '../arch-diagram-document.js'
 import { InstanceNodeVM } from '../instance-node-vm.js'
@@ -127,19 +128,14 @@ test('DeleteNodes removes the instance from the model and its node from the canv
     expect(doc.Model.ownInstances()).toEqual([])
 })
 
-test('a node visual upgrades from the default box when its class compiles (lazy)', async () => {
+test('a dropped node carries a library-class descriptor keyed on its term', async () => {
     const { provider, project } = env()
     const doc = await openNew(provider, project)
-    const registry = provider.getRequired(LibraryRegistry.Key)
-    const def = registry.resolve('nobody', 'x')   // the shared default
 
-    // Drop a node referencing a class that has a published visual. Its template
-    // resolves to the default first (compile is scheduled), then upgrades.
+    // The node's visual now flows through its Descriptor + ToolboxVisualPresenter
+    // (which owns the lazy-compile upgrade via the resolver's changed signal); the
+    // document no longer resolves or upgrades templates itself.
     const node = doc.CreateNode('Stack.AzureOpenai', 10, 10) as InstanceNodeVM
-    if (node.Template === def) {
-        await new Promise<void>((res) => {
-            const off = registry.onChanged((id) => { if (id === 'Stack.AzureOpenai') { off(); res() } })
-        })
-    }
-    expect(node.Template).not.toBe(def)
+    expect(node.Descriptor?.ResolverKey).toBe(LibraryClassVisualResolverKey)
+    expect(node.Descriptor?.Key).toBe('Stack.AzureOpenai')
 })

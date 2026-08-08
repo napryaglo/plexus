@@ -1,10 +1,8 @@
 import { MetaData, Model, ObservableCollection } from '@pragmatic-lab/mural/runtime'
 import { Figure } from '@pragmatic-lab/mural/framework'
 import type { IDocument, Connector, DiagramMutator, ConnectorEndpoint, GeometryCombineMode } from '@pragmatic-lab/mural/framework'
-import type { DataTemplate } from '@pragmatic-lab/mural/basic'
 
 import type { IStorage } from '../../../services/storage/storage.js'
-import type { LibraryRegistry } from '../../library/services/library-registry.js'
 import type { ArchInstanceModel } from './architecture-instance-model.js'
 import { InstanceNodeVM } from './instance-node-vm.js'
 import { applyTermDrop, applyConnect } from './arch-canvas-ops.js'
@@ -51,7 +49,6 @@ export class ArchDiagramDocument extends Model implements IDocument, DiagramMuta
         public readonly todlFile: string,
         layout: Record<string, { x: number; y: number }>,
         title: string,
-        private readonly registry?: LibraryRegistry,
     )
     {
         super()
@@ -61,20 +58,9 @@ export class ArchDiagramDocument extends Model implements IDocument, DiagramMuta
         for (const [id, p] of Object.entries(layout)) this.positions.set(id, p)
         for (const id of Model.ownInstances()) this.AddNode(id)
         Model.onChanged(() => { this.dirty = true })
-        // A node's visual resolves to the default box until its class compiles
-        // (lazy). Upgrade the affected nodes' templates when the registry reports a
-        // class became available. (Same no-cleanup pattern as Model.onChanged above.)
-        registry?.onChanged((classId) => this.upgradeTemplatesFor(classId))
-    }
-
-    // Re-resolve the template of every node whose visual key is `classId` — called
-    // when that class's real template finishes compiling.
-    private upgradeTemplatesFor(classId: string): void
-    {
-        for (const vm of this.Nodes.ToArray()) {
-            const key = vm.ReferencedTerm !== '' ? vm.ReferencedTerm : vm.Concept
-            if (key === classId) vm.Template = this.ResolveTemplate(vm)
-        }
+        // A node's visual (its Descriptor → ToolboxVisualPresenter) upgrades in place
+        // when a lazily-compiled class arrives — the presenter subscribes to the
+        // library resolver's changed signal, so the document no longer tracks it.
     }
 
     public get Title(): string { return this.get_property_value(ArchDiagramDocument.TitleKey) }
@@ -82,25 +68,15 @@ export class ArchDiagramDocument extends Model implements IDocument, DiagramMuta
     public get Nodes(): ObservableCollection<InstanceNodeVM> { return this.get_property_value(ArchDiagramDocument.NodesKey) }
     public get Connectors(): ObservableCollection<Connector> { return this.get_property_value(ArchDiagramDocument.ConnectorsKey) }
 
-    // The visual template for a node — its referenced term's template (else its
-    // concept), resolved through the LibraryRegistry (which returns the default box
-    // when nothing is mounted). Undefined only when no registry is wired.
-    public ResolveTemplate(vm: InstanceNodeVM): DataTemplate | undefined
-    {
-        const key = vm.ReferencedTerm !== '' ? vm.ReferencedTerm : vm.Concept
-        return this.registry?.resolve(key, vm.Concept)
-    }
-
     public LayoutOf(id: string): { x: number; y: number } | undefined { return this.positions.get(id) }
     public SetLayout(id: string, x: number, y: number): void { this.positions.set(id, { x, y }); this.dirty = true }
 
-    // Materialise a node VM for an instance id (on open + on drop-create). Seeds the
-    // node's resolved term template + its saved canvas position so the container the
-    // Diagram builds renders the right visual at the right place.
+    // Materialise a node VM for an instance id (on open + on drop-create). The VM
+    // computes its own visual Descriptor from the model; seeds its saved canvas
+    // position so the container the Diagram builds renders at the right place.
     public AddNode(id: string): InstanceNodeVM
     {
         const vm = new InstanceNodeVM(this.Model, id)
-        vm.Template = this.ResolveTemplate(vm)
         const p = this.positions.get(id)
         if (p !== undefined) { vm.Left = p.x; vm.Top = p.y }
         this.Nodes.Add(vm)
