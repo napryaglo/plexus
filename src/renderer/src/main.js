@@ -27,6 +27,7 @@ import { FileWatchService } from './services/file-watch/file-watch-service.js'
 import { EditorReloadService } from './services/file-watch/editor-reload-service.js'
 import { ProjectRescanService } from './services/file-watch/project-rescan-service.js'
 import { WorkspaceBaseResolver } from './services/projects/workspace-base-resolver.js'
+import { ArchDiagramBindingService } from './modules/architecture-projects/services/arch-diagram-binding-service.js'
 import { registerTodlLanguage } from './modules/meta-model/todl-language.js'
 import { registerMuralLanguage } from './modules/code-editor/mural-language.js'
 import { TodlLanguageClient } from './services/todl/todl-language-client.js'
@@ -68,6 +69,9 @@ try {
     // Local-first base resolver: construct now so its OpenProjects subscription
     // (refresh dependents on open/close) is live before session restore.
     app.Services.get(WorkspaceBaseResolver.Key)
+    // Arch diagram binding: construct now so it observes opened documents and
+    // binds architecture diagrams to their ArchModel from boot.
+    app.Services.get(ArchDiagramBindingService.Key)
     // Wire the out-of-process TODL language client: build the JSON-RPC connection
     // over the preload pipe, handshake with the forked server, register the Monaco
     // provider adapters, and resync every project after a server restart.

@@ -33,6 +33,13 @@ export class FileDiagramStorage implements DiagramStorage
         this.snapshot = seed
     }
 
+    // The project IStorage this diagram is persisted through — used by the
+    // architecture-projects binding to match a diagram to its owning project.
+    public get ProjectStorage(): IStorage
+    {
+        return this.storage
+    }
+
     public GetItem(_key: string): string | null
     {
         return this.snapshot

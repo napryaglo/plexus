@@ -131,6 +131,7 @@ import DockTabsResources from "./services/dock-tabs/dock-tabs.resources.mu.js"
 import TodlLanguageClient from "./services/todl/todl-language-client.js"
 import WorkspaceBaseResolver from "./services/projects/workspace-base-resolver.js"
 import ArchitectureModelService from "./modules/architecture-projects/services/architecture-model-service.js"
+import ArchDiagramBindingService from "./modules/architecture-projects/services/arch-diagram-binding-service.js"
 import DiagnosticsService from "./services/diagnostics/diagnostics-service.js"
 import WorkspaceRefreshService from "./services/workspace/workspace-refresh-service.js"
 import FileWatchService from "./services/file-watch/file-watch-service.js"
@@ -241,6 +242,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // ModelDraft.fromSources. Built lazily on first modelFor; its
         // OpenProjects subscription drops a model when its project closes.
         ArchitectureModelService
+        // Observes opened documents and binds architecture-project diagrams to
+        // their ArchModel (label sync + orphan removal); eagerly resolved in
+        // main.js so its OpenDocuments subscription is live from boot.
+        ArchDiagramBindingService
         // Agent workspace tools: subscribes to the agent event stream and services
         // refresh_project (re-scan + re-validate + reply). Eagerly resolved in
         // main.js so it's listening before the first turn.
