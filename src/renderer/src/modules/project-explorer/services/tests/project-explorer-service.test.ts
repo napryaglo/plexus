@@ -154,7 +154,7 @@ function makeExplorer(openFiles: Picked[] | null = null, confirm = true, os: Fak
     const rec: Rec = { opened: [], saved: [], relocated: [] }
     provider.registerInstance(ServiceProvider.tokenFor(TodlDocFactoryToken), fakeDocFactory(rec))
     provider.registerInstance(DocumentTypeRegistry.Key, {
-        GetByExtension: (ext: string) => ((ext === '.todl' || ext === '.archdiagram') ? { Factory: TodlDocFactoryToken } : undefined),
+        GetByExtension: (ext: string) => ((ext === '.todl' || ext === '.diagram') ? { Factory: TodlDocFactoryToken } : undefined),
     } as unknown as DocumentTypeRegistry)
     const service = new ProjectExplorerService(provider)
     return { service, host, store, priv: service as unknown as ExplorerPrivates, provider, shownDialogs, rec, occupied }
@@ -515,8 +515,8 @@ function twoFormatFactory(): IProjectFactory
 {
     return {
         formats: [
-            { extension: '.archdiagram', kind: 'diagram', displayName: 'Architecture Diagram' },
-            { extension: '.todl',        kind: 'todl',    displayName: 'TODL Definition' },
+            { extension: '.diagram', kind: 'diagram', displayName: 'Diagram' },
+            { extension: '.todl',    kind: 'todl',    displayName: 'TODL Definition' },
         ],
         createProject: async (_s, name) => projectWith(name, 'C:/x'),
         openProject: async () => projectWith('P', 'C:/x'),
@@ -528,9 +528,9 @@ test('a two-format project builds one Add-New choice per format on the project a
     const { priv } = makeExplorer()
     const op = await priv.addOpenProject(projectWith('A', 'C:/a'), twoFormatFactory(), new FakeStorage('C:/a'))
 
-    expect(op.NewItemChoices.ToArray().map((c) => c.Label)).toEqual(['Architecture Diagram', 'TODL Definition'])
+    expect(op.NewItemChoices.ToArray().map((c) => c.Label)).toEqual(['Diagram', 'TODL Definition'])
     const child = op.Root.Children.ToArray()[0]!
-    expect(child.NewItemChoices.ToArray().map((c) => c.Label)).toEqual(['Architecture Diagram', 'TODL Definition'])
+    expect(child.NewItemChoices.ToArray().map((c) => c.Label)).toEqual(['Diagram', 'TODL Definition'])
 })
 
 test('a New choice creates and opens a file of THAT format, not just the primary', async () => {
@@ -543,7 +543,7 @@ test('a New choice creates and opens a file of THAT format, not just the primary
 
     op.NewItemChoices.ToArray()[0]!.Command!.Execute(undefined)     // the Diagram choice
     await new Promise((r) => setTimeout(r, 0))
-    expect(rec.opened).toContain('diagram.archdiagram')
+    expect(rec.opened).toContain('diagram.diagram')
 })
 
 test('a folder node is wired to create inside itself (container-aware)', async () => {

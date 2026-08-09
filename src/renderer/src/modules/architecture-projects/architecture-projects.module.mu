@@ -2,29 +2,16 @@
 //
 // A ShellModule with NO nav Capability (like code-editor/problems/agent-chat):
 // it carries only the BACKEND for architecture projects — the `architecture`
-// project type (ArchitectureProjectFactory) and the `.archdiagram` concept-aware
-// editor (ArchDiagramDocumentFactory) — with no left-panel entry. The editor's
-// view resources are merged app-global from architecture-projects.resources.mu.
+// project type (ArchitectureProjectFactory) — with no left-panel entry. Its
+// `.todl` files are the architecture model; `.diagram` files inside are edited
+// by the diagram module's generic DiagramDocumentFactory (resolved by extension),
+// standalone today and model-bound once the ArchitectureModelService lands.
 
 import ArchitectureProjectFactory from "./services/architecture-project-factory.js"
-import ArchDiagramDocumentFactory from "./services/arch-diagram-document-factory.js"
 
 module ArchitectureProjectsModule [ Name = "Architecture Projects" ] {
     .services: {
         ArchitectureProjectFactory
-        ArchDiagramDocumentFactory
-    }
-
-    // The `.archdiagram` editor — a concept-aware canvas that drops library terms
-    // as meta-model concept instances and emits a sibling `.todl`. Resolved by the
-    // ProjectExplorerService for open/save/new of any `.archdiagram` file.
-    .documents: {
-        DocumentDefinition
-            [ Type           = "architecture-diagram",
-              Title          = "Architecture Diagram",
-              Description    = "A concept-aware architecture canvas backed by TODL.",
-              FileExtensions = [".archdiagram"],
-              Factory        = ArchDiagramDocumentFactory ]
     }
 
     // The 'architecture' project type — this module owns it (editors own files,

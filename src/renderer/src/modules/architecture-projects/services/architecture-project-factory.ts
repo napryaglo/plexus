@@ -38,8 +38,8 @@ export class ArchitectureProjectFactory extends ServiceBase implements IProjectF
     public readonly offersLibraries = true
 
     public readonly formats: readonly ProjectFileFormat[] = [
-        { extension: '.archdiagram', kind: 'diagram', displayName: 'Architecture Diagram' },
-        { extension: '.todl',        kind: 'todl',    displayName: 'TODL Definition' },
+        { extension: '.diagram', kind: 'diagram', displayName: 'Diagram' },
+        { extension: '.todl',    kind: 'todl',    displayName: 'TODL Definition' },
     ]
 
     constructor(provider: IServiceProvider) { super(provider) }
@@ -89,7 +89,7 @@ export class ArchitectureProjectFactory extends ServiceBase implements IProjectF
             const childPath = joinRel(node.Path, e.Name)
             const kind: ProjectNodeKind = e.IsDirectory
                 ? 'folder'
-                : extname(e.Name) === '.archdiagram' ? 'diagram'
+                : extname(e.Name) === '.diagram' ? 'diagram'
                     : extname(e.Name) === '.todl' ? 'todl' : 'file'
             const child = new ProjectNode(e.Name, childPath, kind)
             node.Children.Add(child)
