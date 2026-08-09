@@ -23,9 +23,14 @@ test('isRasterIcon detects bitmap extensions, not svg', () => {
     expect(isRasterIcon('resources/a.svg')).toBe(false)
 })
 
-test('includeLine emits `colored` for SVG icons and a plain include for raster', () => {
-    expect(includeLine('resources/a.svg', 'mm_icon_a')).toBe('    include colored "resources/a.svg" as mm_icon_a')
-    expect(includeLine('resources/a.png', 'mm_icon_a')).toBe('    include "resources/a.png" as mm_icon_a')
+test('includeLine: colored mode uses `colored` for SVG, plain for raster', () => {
+    expect(includeLine('resources/a.svg', 'mm_icon_a', true)).toBe('    include colored "resources/a.svg" as mm_icon_a')
+    expect(includeLine('resources/a.png', 'mm_icon_a', true)).toBe('    include "resources/a.png" as mm_icon_a')
+})
+
+test('includeLine: monochrome mode uses a plain include for SVG too', () => {
+    expect(includeLine('resources/a.svg', 'mm_icon_a', false)).toBe('    include "resources/a.svg" as mm_icon_a')
+    expect(includeLine('resources/a.png', 'mm_icon_a', false)).toBe('    include "resources/a.png" as mm_icon_a')
 })
 
 test('ontologyEntities keeps concept/relationship/taxonomy/primitive, drops field + instances', () => {
@@ -94,7 +99,7 @@ test('generatePresentationAssets emits icon includes only — no DataTemplates, 
         { id: 'app-component', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'resources/comp.svg' } },
         { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'resources/actor.svg' } },
     ])
-    const out = generatePresentationAssets(m, 'MetaModelPresentation')
+    const out = generatePresentationAssets(m, 'MetaModelPresentation', true)
     expect(out).toMatch(/resources MetaModelPresentation \{/)
     expect(out).toContain('include colored "resources/actor.svg" as mm_icon_actor')
     expect(out).toContain('include colored "resources/comp.svg" as mm_icon_comp')
@@ -113,15 +118,24 @@ test('generatePresentationAssets includes annotation-sourced icons', () => {
         ],
         edges: [{ kind: 'Annotated', via: null, from: 'actor', to: 'actor@icon' }],
     } as unknown as TodlDocument
-    const out = generatePresentationAssets(m, 'MetaModelPresentation')
+    const out = generatePresentationAssets(m, 'MetaModelPresentation', true)
     expect(out).toContain('include colored "resources/actor.svg" as mm_icon_actor')
     expect(out).not.toContain('DataTemplate')
 })
 
+test('generatePresentationAssets in monochrome mode emits plain includes (no `colored`)', () => {
+    const m = doc([
+        { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'resources/actor.svg' } },
+    ])
+    const out = generatePresentationAssets(m, 'MetaModelPresentation', false)
+    expect(out).toContain('include "resources/actor.svg" as mm_icon_actor')
+    expect(out).not.toContain('include colored')
+})
+
 test('generatePresentationAssets is deterministic', () => {
     const m = doc([{ id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} }])
-    const a = generatePresentationAssets(m, 'LibraryPresentation')
-    const b = generatePresentationAssets(m, 'LibraryPresentation')
+    const a = generatePresentationAssets(m, 'LibraryPresentation', true)
+    const b = generatePresentationAssets(m, 'LibraryPresentation', true)
     expect(a).toBe(b)
     expect(a).toMatch(/resources LibraryPresentation \{/)
 })
@@ -165,7 +179,7 @@ test('generatePresentationAssets suffixes colliding icon stems in its includes',
         { id: 'a', tier: 'Instance', typeOf: 'x', attrs: { icon: 'a/az.svg' } },
         { id: 'b', tier: 'Instance', typeOf: 'x', attrs: { icon: 'b/az.svg' } },
     ])
-    const out = generatePresentationAssets(m, 'MetaModelPresentation')
+    const out = generatePresentationAssets(m, 'MetaModelPresentation', true)
     expect(out).toContain('include colored "a/az.svg" as mm_icon_az')
     expect(out).toContain('include colored "b/az.svg" as mm_icon_az_2')
 })

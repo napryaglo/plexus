@@ -148,8 +148,9 @@ export class MetaModelProjectFactory extends ServiceBase
             annotations: projectAnnotations(doc, PACKAGE_NODE),
         }
         await dest.WriteText(`${base}/manifest.json`, JSON.stringify(manifestFile, null, 2))
-        // Keep the project's presentation dictionary current with what was published.
-        await this.writePresentation(storage, doc)
+        // Keep the project's presentation dictionary current with what was published
+        // (colored — matches the colored runtime bake).
+        await this.writePresentation(storage, doc, true)
         return {
             ok: true,
             message: `Published ${manifest.id}@${manifest.modelVersion} (${sources.length} file(s), `
@@ -161,23 +162,24 @@ export class MetaModelProjectFactory extends ServiceBase
     // project's .todl to a model, then write the presentation dictionary. No .todl
     // → no-op; a TODL error → leave the file untouched (the Problems dock already
     // surfaces the errors).
-    public async regeneratePresentation(storage: IStorage): Promise<void>
+    public async regeneratePresentation(storage: IStorage, colored: boolean): Promise<void>
     {
         const sources = await collectTodlSources(storage)
         if (sources.length === 0) return
         const { model, diagnostics } = check(sources)
         if (diagnostics.some((d) => d.severity === Severity.Error)) return
-        await this.writePresentation(storage, toJSON(model))
+        await this.writePresentation(storage, toJSON(model), colored)
     }
 
     // Write presentation.generated.mu (icons-only assets dict) from an already-
-    // compiled document. Shared by regeneratePresentation and publish (which passes
-    // its own compiled doc, avoiding a second compile).
-    private async writePresentation(storage: IStorage, doc: TodlDocument): Promise<void>
+    // compiled document. `colored` selects colorful vs monochrome icon includes.
+    // Shared by regeneratePresentation (honors the chosen mode) and publish (always
+    // colored — the inspection .mu tracks the colored runtime bake).
+    private async writePresentation(storage: IStorage, doc: TodlDocument, colored: boolean): Promise<void>
     {
         await storage.WriteText(
             MetaModelProjectFactory.PRESENTATION_FILE,
-            generatePresentationAssets(doc, 'MetaModelPresentation'))
+            generatePresentationAssets(doc, 'MetaModelPresentation', colored))
     }
 
     private async buildProject(storage: IStorage, manifest: MetaModelManifest): Promise<Project>

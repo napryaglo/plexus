@@ -140,7 +140,9 @@ export async function publishPresentation(
 // Shared with the library publisher.
 export function combinedSource(doc: TodlDocument, dictName: string, authorInners: readonly string[]): string
 {
-    const includes = [...assignResourceKeys(doc)].map(([p, k]) => includeLine(p, k))
+    // Publish always bakes colored — the compiled runtime artifact keeps each icon's
+    // own colors; the Generate command's monochrome mode is for the inspection .mu only.
+    const includes = [...assignResourceKeys(doc)].map(([p, k]) => includeLine(p, k, true))
     return [
         `resources ${dictName} {`,
         ...includes,

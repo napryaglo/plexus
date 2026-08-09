@@ -173,7 +173,7 @@ test('regeneratePresentation writes presentation.generated.mu with a template pe
   await storage.WriteText('microsoft.todl', LIB)
   await storage.WriteText('presentation/custom.mu', 'resources LibraryPresentationCustom { }')
 
-  await f.regeneratePresentation(storage)
+  await f.regeneratePresentation(storage, true)
 
   const out = await storage.ReadText('presentation.generated.mu')
   expect(out).toContain('resources LibraryPresentation {')
@@ -190,7 +190,7 @@ test('regeneratePresentation is a no-op when the project has no .todl sources', 
   const f = factoryWith(provider)
   await f.createProject(storage, 'empty', { metaModel: { id: 'ea', version: '5' } })
 
-  await f.regeneratePresentation(storage)
+  await f.regeneratePresentation(storage, true)
 
   expect(await storage.Exists('presentation.generated.mu')).toBe(false)
 })
@@ -203,7 +203,7 @@ test('regeneratePresentation is a no-op when a .todl has a compile error', async
   await f.createProject(storage, 'microsoft', { metaModel: { id: 'ea', version: '5' } })
   await storage.WriteText('bad.todl', 'namespace lib { taxonomy microsoft : represents nonesuch { } }')
 
-  await f.regeneratePresentation(storage)
+  await f.regeneratePresentation(storage, true)
 
   expect(await storage.Exists('presentation.generated.mu')).toBe(false)
 })

@@ -176,9 +176,12 @@ test('a presentation-capable factory gets an enabled Generate Presentation comma
 
     const a = service.OpenProjects.Get(0)!
     const b = service.OpenProjects.Get(1)!
-    expect(a.GeneratePresentationCommand).toBeDefined()
-    expect(a.GeneratePresentationCommand!.CanExecute()).toBe(true)
-    expect(b.GeneratePresentationCommand!.CanExecute()).toBe(false)   // plain factory: no presentation
+    expect(a.GeneratePresentationColorfulCommand).toBeDefined()
+    expect(a.GeneratePresentationMonochromeCommand).toBeDefined()
+    expect(a.GeneratePresentationColorfulCommand!.CanExecute()).toBe(true)
+    expect(a.GeneratePresentationMonochromeCommand!.CanExecute()).toBe(true)
+    expect(b.GeneratePresentationColorfulCommand!.CanExecute()).toBe(false)   // plain factory: no presentation
+    expect(b.GeneratePresentationMonochromeCommand!.CanExecute()).toBe(false)
 })
 
 test('opening two projects adds two roots; reopening one dedupes', async () => {
@@ -312,7 +315,7 @@ test('Publish is disabled for a non-publishable project', async () => {
 function factoryReturning(result: { ok: boolean; message: string }): IProjectFactory & IPublishableProjectFactory {
     return { ...fakeProjectFactory(true), publish: async () => result } as IProjectFactory & IPublishableProjectFactory
 }
-interface PublishPrivates { publishProject(op: OpenProject): Promise<void>; generatePresentation(op: OpenProject): Promise<void> }
+interface PublishPrivates { publishProject(op: OpenProject): Promise<void>; generatePresentation(op: OpenProject, colored: boolean): Promise<void> }
 
 test('a failed publish surfaces its message as a project-level diagnostic in the Problems store', async () => {
     const { service, priv, provider } = makeExplorer()
@@ -362,7 +365,7 @@ test('a failed generate-presentation surfaces its error as a project-level diagn
     }
     const op = await priv.addOpenProject(projectWith('A', 'C:/a'), presFactory, new FakeStorage('C:/a'))
 
-    await (service as unknown as PublishPrivates).generatePresentation(op)
+    await (service as unknown as PublishPrivates).generatePresentation(op, true)
 
     const diags = [...diagnostics.All].filter((d) => d.owner === 'presentation')
     expect(diags).toHaveLength(1)

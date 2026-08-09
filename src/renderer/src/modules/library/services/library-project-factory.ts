@@ -173,8 +173,9 @@ export class LibraryProjectFactory extends ServiceBase
         for (const folder of ['visuals', 'assets', 'docs', 'samples', 'thumbnails', 'resources'])
             copied += await this.copyResourceFolder(storage, dest, folder, base)
 
-        // Keep the project's presentation dictionary current with what was published.
-        await this.writePresentation(storage, doc)
+        // Keep the project's presentation dictionary current with what was published
+        // (colored — matches the colored runtime bake).
+        await this.writePresentation(storage, doc, true)
 
         const warn = scanned.warnings.length > 0
             ? ` (${scanned.warnings.length} warning(s): ${scanned.warnings.join('; ')})`
@@ -192,7 +193,7 @@ export class LibraryProjectFactory extends ServiceBase
     // presentation dictionary. No .todl / unbound or unresolvable base / TODL
     // error → no-op (leave any existing file untouched; the Problems dock surfaces
     // the reasons).
-    public async regeneratePresentation(storage: IStorage): Promise<void>
+    public async regeneratePresentation(storage: IStorage, colored: boolean): Promise<void>
     {
         const sources = await collectTaxonomySources(storage)
         if (sources.length === 0) return
@@ -202,16 +203,18 @@ export class LibraryProjectFactory extends ServiceBase
         if (problems.length > 0) return
         const { model, diagnostics } = checkAgainst(bases, sources)
         if (diagnostics.some((d) => d.severity === Severity.Error)) return
-        await this.writePresentation(storage, toJSON(model))
+        await this.writePresentation(storage, toJSON(model), colored)
     }
 
     // Write presentation.generated.mu (icons-only assets dict) from an already-
-    // compiled document. Shared by regeneratePresentation and publish.
-    private async writePresentation(storage: IStorage, doc: TodlDocument): Promise<void>
+    // compiled document. `colored` selects colorful vs monochrome icon includes.
+    // Shared by regeneratePresentation (honors the chosen mode) and publish (always
+    // colored — the inspection .mu tracks the colored runtime bake).
+    private async writePresentation(storage: IStorage, doc: TodlDocument, colored: boolean): Promise<void>
     {
         await storage.WriteText(
             LibraryProjectFactory.PRESENTATION_FILE,
-            generatePresentationAssets(doc, 'LibraryPresentation'))
+            generatePresentationAssets(doc, 'LibraryPresentation', colored))
     }
 
     // Recursively copy one resource folder from the project storage into the
