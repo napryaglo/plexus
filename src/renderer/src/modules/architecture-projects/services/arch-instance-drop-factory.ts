@@ -20,26 +20,28 @@ export class ArchInstanceDropFactory implements IToolboxDropFactory
     public CreateDropped(context: ToolboxDropContext): unknown | null
     {
         const doc = context.Mutator as unknown as IDocument
-        const model = this.provider.get(ArchDiagramBindingService.Key)?.modelForDocument(doc)
+        const bindingSvc = this.provider.get(ArchDiagramBindingService.Key)
+        const model = bindingSvc?.modelForDocument(doc)
         if (model === undefined) {
             // Standalone diagram: keep the old generic behavior.
             return context.Mutator.CreateNode(context.Descriptor.Key, context.Position.X, context.Position.Y) ?? null
         }
 
-        const scope = new Set(model.viewpoints().map((v) => v.id))
+        // Read-filter: candidates + routing are scoped to the diagram's selected
+        // viewpoints (default all when the binding service has no scope).
+        const scope = bindingSvc?.scopeForDocument(doc) ?? new Set(model.viewpoints().map((v) => v.id))
         const actions = resolveDropActions(model.repository(), context.Descriptor.Key, scope)
         if (actions.length === 0) return null
-        if (actions.length === 1) return this.apply(model, context, actions[0])
+        if (actions.length === 1) return this.apply(model, context, scope, actions[0])
 
-        this.provider.getRequired(DropCandidateChooserService.Key).Show(actions, (chosen) => { this.apply(model, context, chosen) })
+        this.provider.getRequired(DropCandidateChooserService.Key).Show(actions, (chosen) => { this.apply(model, context, scope, chosen) })
         return null
     }
 
     // Create the entity for `action`, wire any reference, materialize the bound
     // Figure, and persist. Returns the Figure (null if no framing viewpoint).
-    private apply(model: ArchModel, context: ToolboxDropContext, action: DropAction): Figure | null
+    private apply(model: ArchModel, context: ToolboxDropContext, scope: Set<string>, action: DropAction): Figure | null
     {
-        const scope = new Set(model.viewpoints().map((v) => v.id))
         const vp = [...model.repository().viewpointsFraming(action.concept)].find((v) => scope.has(v))
         if (vp === undefined) return null
 

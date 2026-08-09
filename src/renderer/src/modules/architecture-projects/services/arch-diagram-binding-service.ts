@@ -7,6 +7,7 @@ import type { OpenProject } from '../../../services/projects/open-project.js'
 import { ArchitectureModelService } from './architecture-model-service.js'
 import { ArchDiagramBinding } from './arch-diagram-binding.js'
 import type { ArchModel } from './arch-model.js'
+import { readDiagramViewpoints, writeDiagramViewpoints } from './diagram-viewpoints.js'
 
 // App-scoped observer: watches the open-documents set and, for each opened
 // DiagramDocument whose owning project is an architecture project, attaches an
@@ -50,6 +51,11 @@ export class ArchDiagramBindingService extends ServiceBase
                 if (host.OpenDocuments.ToArray().includes(doc)) {
                     const binding = new ArchDiagramBinding(doc, model)
                     binding.attach()
+                    const store = doc.Storage
+                    if (store instanceof FileDiagramStorage) {
+                        const vps = await readDiagramViewpoints(store.ProjectStorage, store.Path)
+                        if (vps !== undefined) binding.setScope(vps)
+                    }
                     this.bindings.set(doc, binding)
                 }
             } finally {
@@ -63,6 +69,24 @@ export class ArchDiagramBindingService extends ServiceBase
     public modelForDocument(doc: IDocument): ArchModel | undefined
     {
         return this.bindings.get(doc)?.model
+    }
+
+    // The selected-viewpoint scope of an attached architecture diagram.
+    public scopeForDocument(doc: IDocument): Set<string> | undefined
+    {
+        return this.bindings.get(doc)?.scopeSet()
+    }
+
+    // Narrow (or widen) a diagram's scope: update the binding, persist to the
+    // manifest, and re-notify so any live view refreshes.
+    public async setDocumentScope(doc: IDocument, viewpoints: string[]): Promise<void>
+    {
+        const binding = this.bindings.get(doc)
+        if (binding === undefined) return
+        binding.setScope(viewpoints)
+        const store = (doc as DiagramDocument).Storage
+        if (store instanceof FileDiagramStorage) await writeDiagramViewpoints(store.ProjectStorage, store.Path, viewpoints)
+        binding.model.notifyChanged()
     }
 
     // The architecture OpenProject that owns this diagram's storage, if any.
