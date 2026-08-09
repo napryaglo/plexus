@@ -1,0 +1,40 @@
+import { test, expect } from 'vitest'
+import { load } from '@pragmatic-lab/todl'
+import { resolveDropActions, DropActionKind } from '../arch-drop-resolver.js'
+
+const MM = `namespace archmm {
+  concept technology {}
+  concept component { relationship realisedBy -> technology; }
+  concept node { relationship hosts -> component; }
+  concept lonely {}
+  viewpoint ComponentView : frames component
+  viewpoint DeploymentView : frames node, component
+  taxonomy Stack : represents technology { term azure {} }
+  taxonomy Kinds : represents component { term webKind {} }
+  taxonomy Solo : represents lonely { term hermit {} }
+}`
+
+function repo() { return load([{ uri: 'mm.todl', text: MM }]).model }
+const scope = new Set(['ComponentView', 'DeploymentView'])
+
+// Toolbox term ids are qualified by their taxonomy (e.g. `Stack.azure`), and a
+// term's typeOf is the concept its taxonomy represents.
+test('a library term (type technology) yields the single reference candidate that targets it', () => {
+    const actions = resolveDropActions(repo(), 'Stack.azure', scope)
+    expect(actions).toHaveLength(1)
+    expect(actions[0]).toMatchObject({ kind: DropActionKind.Reference, concept: 'component', member: 'realisedBy', term: 'Stack.azure' })
+})
+
+test('a term whose type is a framed concept yields an Instance action plus reference candidates (chooser)', () => {
+    const actions = resolveDropActions(repo(), 'mm:Kinds.webKind', scope)   // 'mm:' prefix stripped
+    const kinds = actions.map((a) => `${a.kind}:${a.concept}${a.member ? '.' + a.member : ''}`)
+    expect(kinds).toContain('instance:component')     // C_t = component, framed → direct instance
+    expect(kinds).toContain('reference:node.hosts')   // node.hosts targets component
+    expect(actions.length).toBe(2)
+})
+
+test('a term framed by nothing and unreferenced yields no candidates (reject)', () => {
+    // hermit is type `lonely`; lonely is framed by no viewpoint and no framed
+    // concept has a member targeting lonely → 0 actions.
+    expect(resolveDropActions(repo(), 'Solo.hermit', scope)).toEqual([])
+})
