@@ -23,9 +23,9 @@ diagram document builds and owns its own single-file `ModelDraft`.
 
 ## 2. Core concepts
 
-- **Viewpoint** — a first-class meta-model construct: `viewpoint V frames A, B`
+- **Viewpoint** — a first-class meta-model construct: `viewpoint V : frames A, B`
   lists the concepts (element *types*) visible through `V`. Structurally
-  analogous to `taxonomy T represents A, B`.
+  analogous to `taxonomy T : represents A, B`.
 - **Shared multi-file model** — one namespace, one logical `model`, split across
   as many `.todl` files as the author wants (Option B / partial-style). Same
   namespace across files composes into one model; bare cross-file references
@@ -60,8 +60,8 @@ Meta-model declares viewpoints alongside its concepts:
 ```todl
 namespace archmm {
   concept Component { … }   concept Node { … }   concept Interface { … }
-  viewpoint ComponentView  frames Component, Interface
-  viewpoint DeploymentView frames Node, Component      // Component visible here too
+  viewpoint ComponentView  : frames Component, Interface
+  viewpoint DeploymentView : frames Node, Component      // Component visible here too
 }
 ```
 
@@ -156,10 +156,12 @@ no Plexus yet — this is the vocabulary layer everything else consumes.
 ### 6.1 Surface syntax
 
 ```
-viewpoint <Name> frames <Concept> [, <Concept>]*
+viewpoint <Name> : frames <Concept> [, <Concept>]*
 ```
 
 - A top-level declaration inside a `namespace`, like `concept`/`taxonomy`.
+- Mirrors `taxonomy Name : represents …` (colon before the keyword); **no body
+  block** since a viewpoint has no terms.
 - `frames` names one or more concepts (references, subject to namespace
   reachability, exactly like a taxonomy's `represents`).
 
