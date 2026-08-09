@@ -6,12 +6,11 @@ import {
     type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
 import {
-    ConnectorEndpoint,
     DiagramDocument,
 } from '@pragmatic-lab/mural/framework'
 
-// DiagramWorkspaceService — owns Plexus's seeded diagram DOCUMENT (an IDocument),
-// ported from the Diagrammer demo (demo/demos/diagram).
+// DiagramWorkspaceService — owns Plexus's in-memory diagram DOCUMENT (an
+// IDocument), ported from the Diagrammer demo (demo/demos/diagram).
 //
 // The service no longer builds or holds a Diagram control. The document is what
 // the editor hosts: the app opens it into the DocumentsContentHostService (see
@@ -23,8 +22,9 @@ import {
 // Commands / Inspector regions reach its editing commands + selection-format
 // state via `$service(ContentHostService).ActiveDocument.ActiveView.<X>`.
 //
-// In-memory only: no DiagramStorageKey backend, so the seeded scene resets each
-// session (matches the demo's optional-storage default).
+// The document opens EMPTY — the seeded demo canvas (sample shapes/connectors)
+// was retired in SP4a; architecture diagrams get their content from the bound
+// ArchModel, standalone diagrams from their own `.diagram` file.
 export class DiagramWorkspaceService extends ServiceBase
 {
     public static readonly Key = new ServiceKey<DiagramWorkspaceService>('DiagramWorkspaceService')
@@ -38,29 +38,8 @@ export class DiagramWorkspaceService extends ServiceBase
 
         const doc = new DiagramDocument()
         doc.Title = 'Untitled Diagram'
-        this.seed(doc)
         this.set_property_value(DiagramWorkspaceService.DocumentKey, doc)
     }
 
     public get Document(): DiagramDocument { return this.get_property_value(DiagramWorkspaceService.DocumentKey) }
-
-    // Seed a small scene so the editor doesn't open empty — same shapes and
-    // connectors the demo bootstrap places.
-    private seed(doc: DiagramDocument): void
-    {
-        const rect    = doc.CreateNode('rectangle', 60, 60)
-        const ellipse = doc.CreateNode('ellipse', 220, 60)
-        const squir   = doc.CreateNode('squircle', 60, 200)
-        const flower  = doc.CreateNode('flower', 220, 200)
-        doc.CreateNode('heart', 380, 60)
-        if (rect !== null && ellipse !== null)
-        {
-            doc.CreateConnector(new ConnectorEndpoint({ Node: rect }), new ConnectorEndpoint({ Node: ellipse }))
-        }
-        if (squir !== null && flower !== null)
-        {
-            doc.CreateConnector(new ConnectorEndpoint({ Node: squir }), new ConnectorEndpoint({ Node: flower }))
-        }
-        doc.Status = `Ready. ${doc.Nodes.Count} nodes, ${doc.Connectors.Count} connectors.`
-    }
 }
