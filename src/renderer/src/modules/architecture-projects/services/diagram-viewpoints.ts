@@ -12,7 +12,15 @@ interface ManifestWithDiagrams
 
 export async function readDiagramViewpoints(storage: IStorage, path: string): Promise<string[] | undefined>
 {
-    const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as ManifestWithDiagrams
+    // Optional per-diagram config: a missing or unreadable manifest just means
+    // "no selection" (the caller defaults to all viewpoints).
+    let text: string
+    try {
+        text = await storage.ReadText(PROJECT_MANIFEST_FILENAME)
+    } catch {
+        return undefined
+    }
+    const manifest = JSON.parse(text) as ManifestWithDiagrams
     return manifest.diagrams?.[path]?.viewpoints
 }
 

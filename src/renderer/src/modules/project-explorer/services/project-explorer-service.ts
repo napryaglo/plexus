@@ -47,6 +47,7 @@ import {
     type ProjectManifestEnvelope,
 } from '../../../services/projects/project-factory.js'
 import { isRelocatable, isRelocatableAcrossStorage, type IDocumentFactory } from '../../../services/documents/document-factory.js'
+import { NewFileParticipantKey } from '../../../services/documents/new-file-participant.js'
 import { copyTree } from '../../../services/storage/copy-tree.js'
 import type { FileFilter } from '../../../../../shared/file-system-api.js'
 import { ProjectNode } from '../../../services/projects/project.js'
@@ -462,6 +463,8 @@ export class ProjectExplorerService extends ServiceBase
             // Refresh the project's tree so the new file appears, then open it.
             op.Adopt(await op.Factory.openProject(op.Storage))
             this.wireNodes(op.Root, op)
+            // Optional per-project-type hook (e.g. the arch viewpoint picker).
+            await this.Provider.get(NewFileParticipantKey)?.OnCreated(op, path)
             await this.openDocument(op, path, factory)
             this.Status = `New ${format.displayName} at ${basename(path)}.`
         } catch (e) {
