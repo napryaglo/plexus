@@ -49,21 +49,21 @@ test('openProject tags .todl files as openable todl nodes; the manifest is hidde
     expect([...kinds.keys()]).not.toContain(PROJECT_MANIFEST_FILENAME)
 })
 
-test('architecture factory lists Architecture Diagram first, then TODL Definition', () => {
+test('architecture factory lists Diagram first, then TODL Definition', () => {
     const f = factory()
-    expect(f.formats.map((x) => x.extension)).toEqual(['.archdiagram', '.todl'])
-    expect(f.formats[0]).toEqual({ extension: '.archdiagram', kind: 'diagram', displayName: 'Architecture Diagram' })
+    expect(f.formats.map((x) => x.extension)).toEqual(['.diagram', '.todl'])
+    expect(f.formats[0]).toEqual({ extension: '.diagram', kind: 'diagram', displayName: 'Diagram' })
     expect(f.formats[1]).toEqual({ extension: '.todl', kind: 'todl', displayName: 'TODL Definition' })
 })
 
-test('openProject marks a .archdiagram as a diagram node and a .todl as a todl node', async () => {
+test('openProject marks a .diagram as a diagram node and a .todl as a todl node', async () => {
     const storage = new FakeStorage('fake://City')
     await factory().createProject(storage, 'City')
-    await storage.WriteText('city.archdiagram', '{}')
+    await storage.WriteText('city.diagram', '{}')
     await storage.WriteText('city.todl', 'namespace city\n{\n}\n')
 
     const project = await factory().openProject(storage)
     const kinds = new Map(project.Root.Children.ToArray().map((n) => [n.Name, n.Kind]))
-    expect(kinds.get('city.archdiagram')).toBe('diagram')
+    expect(kinds.get('city.diagram')).toBe('diagram')
     expect(kinds.get('city.todl')).toBe('todl')
 })

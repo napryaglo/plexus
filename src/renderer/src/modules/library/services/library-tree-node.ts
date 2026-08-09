@@ -10,8 +10,8 @@ export enum LibraryNodeKind { Library = 'library', Concept = 'concept', Class = 
 // Children; Class leaves additionally carry the render surface a class template
 // binds against ($Display/$Label/$LocalId/$Concept), a visual Descriptor (rendered
 // by the preview's ToolboxVisualPresenter), and a drag payload emitting the term's
-// repository item id (TOOLBOX_ITEM_FORMAT) so the leaf can be dropped onto an
-// .archdiagram — the drop router no-ops for a class that isn't a toolbox item.
+// repository item id (TOOLBOX_ITEM_FORMAT) so the leaf can be dropped onto a
+// diagram — the drop router no-ops for a class that isn't a toolbox item.
 export class LibraryTreeNode extends Model
 {
     public static readonly NameKey = Model.RegisterProperty<string>(LibraryTreeNode, 'Name', '', MetaData.None)
