@@ -1,6 +1,6 @@
 import type { TodlDocument } from '@pragmatic-lab/todl'
 import {
-    compile, DEFAULT_SYMBOLS, svgToIconJs, svgToGeometryJs,
+    compile, DEFAULT_SYMBOLS, svgToGeometryJs,
     type IncludeResolver, type IncludeResolution,
 } from '@pragmatic-lab/mural/compiler'
 
@@ -10,6 +10,7 @@ import { distinctIcons, assignResourceKeys, buildIconIndex, isRasterIcon, includ
 const PRESENTATION_DIR = 'presentation'
 const COMPILED_FILE = 'presentation.compiled.json'
 export const ICON_INDEX_FILE = 'icon-index.json'
+const BASIC = '@pragmatic-lab/mural/basic'
 const VISUAL_ENGINE = '@pragmatic-lab/mural/visual-engine'
 const DICT_NAME = 'MetaModelPresentation'
 
@@ -58,12 +59,17 @@ export async function readIcons(project: IStorage, doc: TodlDocument): Promise<R
 }
 
 // Compiler include resolver over pre-read icon content, honoring the `colored` flag
-// the markup carries. An SVG under `include colored` bakes to a COLORED IconDefinition
-// via the framework's svgToIconJs (geometry + per-shape paint inlined into JS, no
-// load-time parse); a plain `include` bakes monochrome geometry (svgToGeometryJs). A
-// raster bakes to a BitmapImage over an inline data URI. The default template draws an
-// IconDefinition through its Icon and a BitmapImage through its Image — nothing has an
-// external file dependency.
+// the markup carries. An SVG under `include colored` bakes to `parseSvgIcon(text)` —
+// a COLORED IconDefinition that KEEPS the currentColor sentinel, so a monochrome
+// (currentColor / gradient / unspecified-fill) icon themes to the Icon's Foreground
+// instead of a baked black, while an explicit-color icon paints its own colors. A
+// plain `include` bakes monochrome geometry (svgToGeometryJs). A raster bakes to a
+// BitmapImage over an inline data URI. The default template draws an IconDefinition
+// through its Icon and a BitmapImage through its Image — no external file dependency.
+//
+// NB: parseSvgIcon runs at load, not bake time. The framework's svgToIconJs bakes the
+// geometry inline but serializes currentColor to opaque black — wrong for currentColor
+// icon sets (Fabric etc.), so it is intentionally NOT used here.
 export function iconIncludeResolver(svgByPath: Map<string, string>, rasterUriByPath: Map<string, string>): IncludeResolver
 {
     return (path, ctx): IncludeResolution => {
@@ -78,8 +84,10 @@ export function iconIncludeResolver(svgByPath: Map<string, string>, rasterUriByP
         const text = svgByPath.get(path)
         if (text === undefined) throw new Error(`presentation include not pre-read: ${path}`)
         if (ctx.colored) {
-            const { valueJs, imports } = svgToIconJs(text)
-            return { entries: [{ key: ctx.key ?? path, valueJs }], imports }
+            return {
+                entries: [{ key: ctx.key ?? path, valueJs: `parseSvgIcon(${JSON.stringify(text)})` }],
+                imports: [{ module: BASIC, names: ['parseSvgIcon'] }],
+            }
         }
         const { valueJs, names } = svgToGeometryJs(text)
         return { entries: [{ key: ctx.key ?? path, valueJs }], imports: [{ module: VISUAL_ENGINE, names }] }
