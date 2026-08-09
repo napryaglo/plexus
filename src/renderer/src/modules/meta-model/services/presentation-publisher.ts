@@ -1,11 +1,11 @@
 import type { TodlDocument } from '@pragmatic-lab/todl'
 import {
-    compile, DEFAULT_SYMBOLS,
+    compile, DEFAULT_SYMBOLS, svgToGeometryJs,
     type IncludeResolver, type IncludeResolution,
 } from '@pragmatic-lab/mural/compiler'
 
 import type { IStorage } from '../../../services/storage/storage.js'
-import { distinctIcons, assignResourceKeys, buildIconIndex, isRasterIcon } from './presentation-generator.js'
+import { distinctIcons, assignResourceKeys, buildIconIndex, isRasterIcon, includeLine } from './presentation-generator.js'
 
 const PRESENTATION_DIR = 'presentation'
 const COMPILED_FILE = 'presentation.compiled.json'
@@ -58,11 +58,18 @@ export async function readIcons(project: IStorage, doc: TodlDocument): Promise<R
     return { svgByPath, rasterUriByPath, missing }
 }
 
-// Compiler include resolver over pre-read icon content: an SVG bakes to a COLORED
-// IconDefinition (parseSvgIcon preserves per-shape fills, parsed at load); a raster
-// bakes to a BitmapImage over an inline data URI. The default template draws the
-// former through its Icon and the latter through its Image element — nothing has an
-// external file dependency.
+// Compiler include resolver over pre-read icon content, honoring the `colored` flag
+// the markup carries. An SVG under `include colored` bakes to `parseSvgIcon(text)` —
+// a COLORED IconDefinition that KEEPS the currentColor sentinel, so a monochrome
+// (currentColor / gradient / unspecified-fill) icon themes to the Icon's Foreground
+// instead of a baked black, while an explicit-color icon paints its own colors. A
+// plain `include` bakes monochrome geometry (svgToGeometryJs). A raster bakes to a
+// BitmapImage over an inline data URI. The default template draws an IconDefinition
+// through its Icon and a BitmapImage through its Image — no external file dependency.
+//
+// NB: parseSvgIcon runs at load, not bake time. The framework's svgToIconJs bakes the
+// geometry inline but serializes currentColor to opaque black — wrong for currentColor
+// icon sets (Fabric etc.), so it is intentionally NOT used here.
 export function iconIncludeResolver(svgByPath: Map<string, string>, rasterUriByPath: Map<string, string>): IncludeResolver
 {
     return (path, ctx): IncludeResolution => {
@@ -76,10 +83,14 @@ export function iconIncludeResolver(svgByPath: Map<string, string>, rasterUriByP
         }
         const text = svgByPath.get(path)
         if (text === undefined) throw new Error(`presentation include not pre-read: ${path}`)
-        return {
-            entries: [{ key: ctx.key ?? path, valueJs: `parseSvgIcon(${JSON.stringify(text)})` }],
-            imports: [{ module: BASIC, names: ['parseSvgIcon'] }],
+        if (ctx.colored) {
+            return {
+                entries: [{ key: ctx.key ?? path, valueJs: `parseSvgIcon(${JSON.stringify(text)})` }],
+                imports: [{ module: BASIC, names: ['parseSvgIcon'] }],
+            }
         }
+        const { valueJs, names } = svgToGeometryJs(text)
+        return { entries: [{ key: ctx.key ?? path, valueJs }], imports: [{ module: VISUAL_ENGINE, names }] }
     }
 }
 
@@ -137,7 +148,9 @@ export async function publishPresentation(
 // Shared with the library publisher.
 export function combinedSource(doc: TodlDocument, dictName: string, authorInners: readonly string[]): string
 {
-    const includes = [...assignResourceKeys(doc)].map(([p, k]) => `    include "${p}" as ${k}`)
+    // Publish always bakes colored — the compiled runtime artifact keeps each icon's
+    // own colors; the Generate command's monochrome mode is for the inspection .mu only.
+    const includes = [...assignResourceKeys(doc)].map(([p, k]) => includeLine(p, k, true))
     return [
         `resources ${dictName} {`,
         ...includes,

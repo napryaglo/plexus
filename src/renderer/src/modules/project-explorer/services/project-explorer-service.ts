@@ -426,8 +426,10 @@ export class ProjectExplorerService extends ServiceBase
         op.ImportFolderCommand = new RelayCommand(() => void this.importFolderInto(op, ''))
         op.TreeKeyCommand = new RelayCommand((arg) => this.handleTreeKey(op, arg as KeyEventArgs))
         op.PublishCommand = new RelayCommand(() => void this.publishProject(op), () => isPublishable(op.Factory))
-        op.GeneratePresentationCommand = new RelayCommand(
-            () => void this.generatePresentation(op), () => canGeneratePresentation(op.Factory))
+        op.GeneratePresentationColorfulCommand = new RelayCommand(
+            () => void this.generatePresentation(op, true), () => canGeneratePresentation(op.Factory))
+        op.GeneratePresentationMonochromeCommand = new RelayCommand(
+            () => void this.generatePresentation(op, false), () => canGeneratePresentation(op.Factory))
         // Re-resolve the project's declared bases after a base was republished —
         // only meaningful for a type that binds one (library/architecture).
         op.RefreshBasesCommand = new RelayCommand(
@@ -911,16 +913,17 @@ export class ProjectExplorerService extends ServiceBase
         }
     }
 
-    // (Re)generate the project's presentation dictionary through its factory, then
-    // rescan so the generated file appears in the tree. Menu item is disabled for
-    // factories that don't support it, but guard anyway.
-    private async generatePresentation(op: OpenProject): Promise<void>
+    // (Re)generate the project's presentation dictionary through its factory in the
+    // chosen icon mode (colorful / monochrome), then rescan so the generated file
+    // appears in the tree. Menu items are disabled for factories that don't support
+    // it, but guard anyway.
+    private async generatePresentation(op: OpenProject, colored: boolean): Promise<void>
     {
         if (!canGeneratePresentation(op.Factory)) { this.Status = 'This project type has no presentation.'; return }
         try {
-            await op.Factory.regeneratePresentation(op.Storage)
+            await op.Factory.regeneratePresentation(op.Storage, colored)
             await this.rescan(op)
-            this.Status = 'Presentation regenerated.'
+            this.Status = `Presentation regenerated (${colored ? 'colorful' : 'monochrome'}).`
             this.reportProjectProblem(op, 'presentation', undefined)   // clear any prior failure
         } catch (e) {
             const message = `Generate presentation failed: ${(e as Error).message}`

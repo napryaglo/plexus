@@ -178,7 +178,7 @@ test('regeneratePresentation writes an assets dict merging author + scaffolded s
     // an author override dictionary under presentation/
     await storage.WriteText('presentation/custom.mu', 'resources MetaModelPresentationCustom { }')
 
-    await f.regeneratePresentation(storage)
+    await f.regeneratePresentation(storage, true)
 
     const out = await storage.ReadText('presentation.generated.mu')
     expect(out).toContain('resources MetaModelPresentation {')
@@ -193,7 +193,7 @@ test('regeneratePresentation is a no-op when the project has no .todl sources', 
     const f = factory()
     await f.createProject(storage, 'Empty')
 
-    await f.regeneratePresentation(storage)
+    await f.regeneratePresentation(storage, true)
 
     expect(await storage.Exists('presentation.generated.mu')).toBe(false)
 })

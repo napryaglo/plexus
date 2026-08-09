@@ -57,7 +57,10 @@ resources ProjectExplorerResources {
             [ Header = "Publish",
               Command = $PublishCommand,
               Icon = Shape [ Geometry = @Publish, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
-        MenuItem [ Header = "Generate Presentation", Command = $GeneratePresentationCommand ]
+        MenuItem [ Header = "Generate Presentation" ] {
+            MenuItem [ Header = "Colorful",   Command = $GeneratePresentationColorfulCommand ]
+            MenuItem [ Header = "Monochrome", Command = $GeneratePresentationMonochromeCommand ]
+        }
         MenuItem [ Header = "Add Library Reference…", Command = $AddLibraryReferenceCommand ]
         MenuItem [ Header = "Refresh Bases", Command = $RefreshBasesCommand ]
         MenuSeparator

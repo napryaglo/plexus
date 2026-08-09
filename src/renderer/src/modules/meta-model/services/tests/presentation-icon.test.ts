@@ -12,11 +12,12 @@ const DOC: TodlDocument = {
     edges: [],
 } as unknown as TodlDocument
 
-// The icon geometry is BAKED into the assets artifact at compile (svgToGeometryJs),
-// keyed by its resource key, so it resolves standalone with no SVG file present.
-// Guards the icon end to end: publish → load → the resource key resolves to real
-// geometry (the IconKeyConverter then draws it in the one default template).
-test('the baked icon geometry resolves standalone from the assets artifact', async () => {
+// The colored icon is embedded into the assets artifact at compile (parseSvgIcon over
+// the SVG text, via the `include colored` keyword), keyed by its resource key, so it
+// resolves standalone with no SVG file present. Guards the icon end to end: publish →
+// load → the resource key resolves to a real IconDefinition (the IconKeyConverter then
+// draws it in the one default template).
+test('the baked colored icon resolves standalone from the assets artifact', async () => {
     const project = new FakeStorage('fake://proj')
     await project.WriteText('resources/actor.svg', '<svg viewBox="0 0 16 16"><path d="M2 2 L14 2 L14 14 Z"/></svg>')
     const backend = new FakeStorage('fake://meta-models')

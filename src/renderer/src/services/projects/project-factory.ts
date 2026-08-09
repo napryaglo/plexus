@@ -87,12 +87,13 @@ export function isPublishable(factory: IProjectFactory): factory is IProjectFact
 }
 
 // Optional capability a factory MAY also implement: (re)generating a presentation
-// resource dictionary into the project from its compiled model. The explorer
-// feature-tests with canGeneratePresentation before offering its Generate
-// Presentation command — same pattern as isPublishable.
+// resource dictionary into the project from its compiled model. `colored` picks the
+// icon mode (true → colorful IconDefinitions, false → monochrome geometry). The
+// explorer feature-tests with canGeneratePresentation before offering its Generate
+// Presentation submenu (Colorful / Monochrome) — same pattern as isPublishable.
 export interface IPresentationProjectFactory
 {
-    regeneratePresentation(storage: IStorage): Promise<void>
+    regeneratePresentation(storage: IStorage, colored: boolean): Promise<void>
 }
 
 // Type guard: can this factory (re)generate a presentation?
