@@ -11,6 +11,7 @@
 
 import ToolboxService from "./services/diagram-panel-services.js"
 import LayoutPipelineService from "./layout/layout-pipeline-service.js"
+import DropCandidateChooserService from "../architecture-projects/services/drop-candidate-chooser-service.js"
 
 resources DiagramResources {
     // ── Icon geometries ─────────────────────────────────────────────────
@@ -80,19 +81,27 @@ resources DiagramResources {
     // entry), and the font editors moved to the command bar (@FontFormatEditor).
     DataTemplate [DataType = DiagramDocument] {
         DockPanel {
-            Diagram x:name="canvas"
-                [ ItemsSource                  = $Nodes,
-                  Connectors                   = $Connectors,
-                  ItemsPanel                   = @DiagramCanvasPanel,
-                  SelectionMode                = Extended,
-                  AllowMarqueeSelection        = true,
-                  AlignmentGuidesEnabled       = true,
-                  SelectionResizeEnabled       = true,
-                  ConnectorInteractionsEnabled = true,
-                  ReflectSelectionToItems      = true,
-                  DropReceiver                 = $Self,
-                  Focusable                    = true,
-                  ContextMenuService.ContextMenu = @DiagramContextMenu ]
+            // Grid so the drop-candidate chooser overlay floats over the canvas.
+            Grid {
+                Diagram x:name="canvas"
+                    [ ItemsSource                  = $Nodes,
+                      Connectors                   = $Connectors,
+                      ItemsPanel                   = @DiagramCanvasPanel,
+                      SelectionMode                = Extended,
+                      AllowMarqueeSelection        = true,
+                      AlignmentGuidesEnabled       = true,
+                      SelectionResizeEnabled       = true,
+                      ConnectorInteractionsEnabled = true,
+                      ReflectSelectionToItems      = true,
+                      DropReceiver                 = $Self,
+                      Focusable                    = true,
+                      ContextMenuService.ContextMenu = @DiagramContextMenu ]
+                // Ambiguous term-drop chooser: implicit DataTemplate[
+                // DropCandidateChooserService] renders a hidden MenuButton whose
+                // popup lists the candidates. Content is the app-scoped service.
+                ContentControl [ Content = $service(DropCandidateChooserService),
+                                 HorizontalAlignment = Left, VerticalAlignment = Top ]
+            }
         }
     }
 
