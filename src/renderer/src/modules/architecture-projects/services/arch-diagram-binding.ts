@@ -11,6 +11,7 @@ export class ArchDiagramBinding
 {
     private off: (() => void) | undefined
     private readonly bound = new Map<string, Figure>()   // entityId -> figure
+    private scope: string[] = []                         // selected viewpoints ([] = all)
 
     public constructor(
         private readonly doc: DiagramDocument,
@@ -43,6 +44,20 @@ export class ArchDiagramBinding
                 this.bound.delete(id)
             }
         }
+    }
+
+    // Replace the diagram's selected-viewpoint scope (empty = all).
+    public setScope(viewpoints: string[]): void
+    {
+        this.scope = [...viewpoints]
+    }
+
+    // The scope as a set; empty falls back to every viewpoint the model declares.
+    public scopeSet(): Set<string>
+    {
+        return this.scope.length > 0
+            ? new Set(this.scope)
+            : new Set(this.model.viewpoints().map((v) => v.id))
     }
 
     public dispose(): void
