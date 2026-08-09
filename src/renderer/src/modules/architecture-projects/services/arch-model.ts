@@ -42,4 +42,53 @@ export class ArchModel
             members: ents.filter((e) => repo.viewpointsFraming(e.concept).includes(id)),
         }))
     }
+
+    // Subscribers notified after any mutation, so SP4 diagrams can refresh.
+    // ModelDraft has no events; ArchModel owns them.
+    private readonly listeners = new Set<() => void>()
+
+    public onChanged(cb: () => void): () => void
+    {
+        this.listeners.add(cb)
+        return () => { this.listeners.delete(cb) }
+    }
+
+    private fire(): void
+    {
+        for (const cb of this.listeners) cb()
+    }
+
+    // Create an own instance. homeUri routes it to a source file for save();
+    // viewpoint→file routing (first-suitable) is SP4's concern.
+    public create(concept: string, id: string, homeUri?: string): Entity
+    {
+        const e = this.draft.create(concept, id, homeUri)
+        this.fire()
+        return e
+    }
+
+    public setField(id: string, name: string, value: string): void
+    {
+        this.draft.setField(id, name, value)
+        this.fire()
+    }
+
+    public addRef(from: string, member: string, to: string): void
+    {
+        this.draft.addRef(from, member, to)
+        this.fire()
+    }
+
+    public remove(id: string): void
+    {
+        this.draft.remove(id)
+        this.fire()
+    }
+
+    // Persist every home file the draft partitions its own delta into.
+    public async save(): Promise<void>
+    {
+        for (const [uri, text] of this.draft.toTodlByFile())
+            await this.storage.WriteText(uri, text)
+    }
 }
