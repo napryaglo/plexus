@@ -27,6 +27,7 @@ interface ArchitectureManifest extends ProjectManifestEnvelope
 {
     metaModel?: BaseRef                  // the meta-model this architecture conforms to
     libraries?: readonly BaseRef[]       // the technology libraries it draws on
+    diagrams?: { [path: string]: { viewpoints: string[] } }   // per-diagram viewpoint selection (SP4c)
 }
 
 export class ArchitectureProjectFactory extends ServiceBase implements IProjectFactory
