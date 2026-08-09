@@ -3,7 +3,8 @@ import { ModelDraft, Repository, graphFromJSON, parse, type SourceFile } from '@
 
 import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base-resolver.js'
 import { collectTodlSources } from '../../meta-model/services/todl-sources.js'
-import type { OpenProject } from '../../project-explorer/services/open-project.js'
+import { ProjectExplorerService } from '../../project-explorer/services/project-explorer-service.js'
+import type { OpenProject } from '../../../services/projects/open-project.js'
 import { ArchModel } from './arch-model.js'
 
 // App-scoped: one live ArchModel per open architecture project, keyed by the
@@ -16,7 +17,19 @@ export class ArchitectureModelService extends ServiceBase
 
     private readonly models = new Map<string, ArchModel>()
 
-    public constructor(provider: IServiceProvider) { super(provider) }
+    public constructor(provider: IServiceProvider)
+    {
+        super(provider)
+        // Drop a project's model when it leaves the open set. Subscribe is a
+        // generic change callback, so diff the live RootPaths against the cache
+        // (mirrors WorkspaceBaseResolver's OpenProjects.Subscribe pattern).
+        const explorer = this.Provider.get(ProjectExplorerService.Key)
+        explorer?.OpenProjects.Subscribe(() => {
+            const live = new Set(explorer.OpenProjects.ToArray().map((op) => op.Project.RootPath))
+            for (const key of [...this.models.keys()])
+                if (!live.has(key)) this.close(key)
+        })
+    }
 
     // Lazy build + cache. Idempotent: a second call returns the cached model.
     public async modelFor(op: OpenProject): Promise<ArchModel>

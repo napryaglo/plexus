@@ -4,7 +4,7 @@ import { load, toJSON, type TodlDocument } from '@pragmatic-lab/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { WorkspaceBaseResolver } from '../../../../services/projects/workspace-base-resolver.js'
 import { Project, ProjectNode } from '../../../../services/projects/project.js'
-import type { OpenProject } from '../../../project-explorer/services/open-project.js'
+import type { OpenProject } from '../../../../services/projects/open-project.js'
 import { ArchitectureModelService } from '../architecture-model-service.js'
 
 const MM = `namespace archmm {
