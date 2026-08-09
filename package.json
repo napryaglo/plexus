@@ -22,7 +22,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@pragmatic-lab/fresco": "^0.3.1",
     "@pragmatic-lab/mural": "^0.3.4",
-    "@pragmatic-lab/todl": "^0.21.0",
+    "@pragmatic-lab/todl": "^0.23.0",
     "chokidar": "^5.0.0",
     "monaco-editor": "^0.55.1",
     "vscode-jsonrpc": "^8.2.0",
