@@ -2,12 +2,11 @@ import { DiagramDocument, Figure } from '@pragmatic-lab/mural/framework'
 import type { Entity } from '@pragmatic-lab/todl'
 import type { ArchModel } from './arch-model.js'
 
-// Binds a single opened diagram to a project's ArchModel: mural Figures whose
-// Id is a model entity id are tracked and labelled from the entity; on model
-// change their labels re-sync and figures whose entity was deleted are removed.
-// Figures whose Id matches no entity are freeform shapes and left untouched.
-// SP4a owns identity + label + orphan removal only; visuals/Kind belong to
-// whoever created the node (SP4b's drop).
+// Binds an opened diagram to a project's ArchModel. On every model change it
+// rescans doc.Nodes: Figures whose Id is a live entity are tracked + labelled
+// (this binds drop-created figures too, since the drop fires notifyChanged after
+// setting Figure.Id); tracked figures whose entity was deleted are removed.
+// Figures whose Id matches no entity are freeform shapes, left untouched.
 export class ArchDiagramBinding
 {
     private off: (() => void) | undefined
@@ -15,12 +14,19 @@ export class ArchDiagramBinding
 
     public constructor(
         private readonly doc: DiagramDocument,
-        private readonly model: ArchModel,
+        public readonly model: ArchModel,
     ) {}
 
     public attach(): void
     {
+        this.rescan()
+        this.off = this.model.onChanged(() => this.rescan())
+    }
+
+    private rescan(): void
+    {
         const byId = new Map(this.model.entities().map((e) => [e.id, e]))
+        // Bind + label every figure that maps to a live entity.
         for (const node of this.doc.Nodes.ToArray()) {
             if (!(node instanceof Figure)) continue
             const id = node.Id
@@ -30,19 +36,11 @@ export class ArchDiagramBinding
             this.bound.set(id, node)
             node.LabelText = displayLabel(entity)
         }
-        this.off = this.model.onChanged(() => this.refresh())
-    }
-
-    private refresh(): void
-    {
-        const byId = new Map(this.model.entities().map((e) => [e.id, e]))
+        // Remove tracked figures whose entity is gone.
         for (const [id, figure] of [...this.bound]) {
-            const entity = byId.get(id)
-            if (entity === undefined) {
+            if (!byId.has(id)) {
                 this.doc.DeleteNodes([figure])
                 this.bound.delete(id)
-            } else {
-                figure.LabelText = displayLabel(entity)
             }
         }
     }
