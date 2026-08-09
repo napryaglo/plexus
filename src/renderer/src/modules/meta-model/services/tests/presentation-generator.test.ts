@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 
-import { iconKey, humanize, ontologyEntities, classEntities, distinctIcons, generatePresentationAssets, isRasterIcon, resolveFacets, assignResourceKeys, resourceKeyFor, stampResourceKeys, buildIconIndex } from '../presentation-generator.js'
+import { iconKey, humanize, ontologyEntities, classEntities, distinctIcons, generatePresentationAssets, isRasterIcon, includeLine, resolveFacets, assignResourceKeys, resourceKeyFor, stampResourceKeys, buildIconIndex } from '../presentation-generator.js'
 
 function doc(nodes: TodlDocument['nodes']): TodlDocument { return { nodes, edges: [] } }
 
@@ -21,6 +21,11 @@ test('isRasterIcon detects bitmap extensions, not svg', () => {
     expect(isRasterIcon('resources/logo.png')).toBe(true)
     expect(isRasterIcon('resources/logo.JPG')).toBe(true)
     expect(isRasterIcon('resources/a.svg')).toBe(false)
+})
+
+test('includeLine emits `colored` for SVG icons and a plain include for raster', () => {
+    expect(includeLine('resources/a.svg', 'mm_icon_a')).toBe('    include colored "resources/a.svg" as mm_icon_a')
+    expect(includeLine('resources/a.png', 'mm_icon_a')).toBe('    include "resources/a.png" as mm_icon_a')
 })
 
 test('ontologyEntities keeps concept/relationship/taxonomy/primitive, drops field + instances', () => {
@@ -91,8 +96,8 @@ test('generatePresentationAssets emits icon includes only — no DataTemplates, 
     ])
     const out = generatePresentationAssets(m, 'MetaModelPresentation')
     expect(out).toMatch(/resources MetaModelPresentation \{/)
-    expect(out).toContain('include "resources/actor.svg" as mm_icon_actor')
-    expect(out).toContain('include "resources/comp.svg" as mm_icon_comp')
+    expect(out).toContain('include colored "resources/actor.svg" as mm_icon_actor')
+    expect(out).toContain('include colored "resources/comp.svg" as mm_icon_comp')
     expect(out).toMatch(/Embedded content \(base64\)/) // reserved seam
     expect(out).not.toContain('DataTemplate') // templates are author-owned now
     expect(out).not.toContain('merge ')       // author templates are inlined by the publisher, not merged
@@ -109,7 +114,7 @@ test('generatePresentationAssets includes annotation-sourced icons', () => {
         edges: [{ kind: 'Annotated', via: null, from: 'actor', to: 'actor@icon' }],
     } as unknown as TodlDocument
     const out = generatePresentationAssets(m, 'MetaModelPresentation')
-    expect(out).toContain('include "resources/actor.svg" as mm_icon_actor')
+    expect(out).toContain('include colored "resources/actor.svg" as mm_icon_actor')
     expect(out).not.toContain('DataTemplate')
 })
 
@@ -161,8 +166,8 @@ test('generatePresentationAssets suffixes colliding icon stems in its includes',
         { id: 'b', tier: 'Instance', typeOf: 'x', attrs: { icon: 'b/az.svg' } },
     ])
     const out = generatePresentationAssets(m, 'MetaModelPresentation')
-    expect(out).toContain('include "a/az.svg" as mm_icon_az')
-    expect(out).toContain('include "b/az.svg" as mm_icon_az_2')
+    expect(out).toContain('include colored "a/az.svg" as mm_icon_az')
+    expect(out).toContain('include colored "b/az.svg" as mm_icon_az_2')
 })
 
 // ── buildIconIndex — entityKey → icon resource key ───────────────────────────

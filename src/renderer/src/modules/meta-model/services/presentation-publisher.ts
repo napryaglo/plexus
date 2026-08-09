@@ -1,16 +1,15 @@
 import type { TodlDocument } from '@pragmatic-lab/todl'
 import {
-    compile, DEFAULT_SYMBOLS,
+    compile, DEFAULT_SYMBOLS, svgToIconJs, svgToGeometryJs,
     type IncludeResolver, type IncludeResolution,
 } from '@pragmatic-lab/mural/compiler'
 
 import type { IStorage } from '../../../services/storage/storage.js'
-import { distinctIcons, assignResourceKeys, buildIconIndex, isRasterIcon } from './presentation-generator.js'
+import { distinctIcons, assignResourceKeys, buildIconIndex, isRasterIcon, includeLine } from './presentation-generator.js'
 
 const PRESENTATION_DIR = 'presentation'
 const COMPILED_FILE = 'presentation.compiled.json'
 export const ICON_INDEX_FILE = 'icon-index.json'
-const BASIC = '@pragmatic-lab/mural/basic'
 const VISUAL_ENGINE = '@pragmatic-lab/mural/visual-engine'
 const DICT_NAME = 'MetaModelPresentation'
 
@@ -58,10 +57,12 @@ export async function readIcons(project: IStorage, doc: TodlDocument): Promise<R
     return { svgByPath, rasterUriByPath, missing }
 }
 
-// Compiler include resolver over pre-read icon content: an SVG bakes to a COLORED
-// IconDefinition (parseSvgIcon preserves per-shape fills, parsed at load); a raster
-// bakes to a BitmapImage over an inline data URI. The default template draws the
-// former through its Icon and the latter through its Image element — nothing has an
+// Compiler include resolver over pre-read icon content, honoring the `colored` flag
+// the markup carries. An SVG under `include colored` bakes to a COLORED IconDefinition
+// via the framework's svgToIconJs (geometry + per-shape paint inlined into JS, no
+// load-time parse); a plain `include` bakes monochrome geometry (svgToGeometryJs). A
+// raster bakes to a BitmapImage over an inline data URI. The default template draws an
+// IconDefinition through its Icon and a BitmapImage through its Image — nothing has an
 // external file dependency.
 export function iconIncludeResolver(svgByPath: Map<string, string>, rasterUriByPath: Map<string, string>): IncludeResolver
 {
@@ -76,10 +77,12 @@ export function iconIncludeResolver(svgByPath: Map<string, string>, rasterUriByP
         }
         const text = svgByPath.get(path)
         if (text === undefined) throw new Error(`presentation include not pre-read: ${path}`)
-        return {
-            entries: [{ key: ctx.key ?? path, valueJs: `parseSvgIcon(${JSON.stringify(text)})` }],
-            imports: [{ module: BASIC, names: ['parseSvgIcon'] }],
+        if (ctx.colored) {
+            const { valueJs, imports } = svgToIconJs(text)
+            return { entries: [{ key: ctx.key ?? path, valueJs }], imports }
         }
+        const { valueJs, names } = svgToGeometryJs(text)
+        return { entries: [{ key: ctx.key ?? path, valueJs }], imports: [{ module: VISUAL_ENGINE, names }] }
     }
 }
 
@@ -137,7 +140,7 @@ export async function publishPresentation(
 // Shared with the library publisher.
 export function combinedSource(doc: TodlDocument, dictName: string, authorInners: readonly string[]): string
 {
-    const includes = [...assignResourceKeys(doc)].map(([p, k]) => `    include "${p}" as ${k}`)
+    const includes = [...assignResourceKeys(doc)].map(([p, k]) => includeLine(p, k))
     return [
         `resources ${dictName} {`,
         ...includes,
