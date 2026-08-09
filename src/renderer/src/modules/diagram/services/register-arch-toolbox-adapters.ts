@@ -23,7 +23,7 @@ export function registerArchToolboxAdapters(services: ServiceProvider): void
 
     if (!services.has(ArchInstanceDropFactoryKey))
     {
-        services.registerInstance(ArchInstanceDropFactoryKey, new ArchInstanceDropFactory())
+        services.registerInstance(ArchInstanceDropFactoryKey, new ArchInstanceDropFactory(services))
     }
     if (!services.has(TodlVisualResolverKey))
     {

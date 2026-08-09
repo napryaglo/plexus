@@ -132,6 +132,8 @@ import TodlLanguageClient from "./services/todl/todl-language-client.js"
 import WorkspaceBaseResolver from "./services/projects/workspace-base-resolver.js"
 import ArchitectureModelService from "./modules/architecture-projects/services/architecture-model-service.js"
 import ArchDiagramBindingService from "./modules/architecture-projects/services/arch-diagram-binding-service.js"
+import DropCandidateChooserService from "./modules/architecture-projects/services/drop-candidate-chooser-service.js"
+import ChooserResources from "./modules/architecture-projects/services/chooser.resources.mu.js"
 import DiagnosticsService from "./services/diagnostics/diagnostics-service.js"
 import WorkspaceRefreshService from "./services/workspace/workspace-refresh-service.js"
 import FileWatchService from "./services/file-watch/file-watch-service.js"
@@ -246,6 +248,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // their ArchModel (label sync + orphan removal); eagerly resolved in
         // main.js so its OpenDocuments subscription is live from boot.
         ArchDiagramBindingService
+        // Popup for ambiguous term-drops: lists candidate (X,m) actions and
+        // completes the drop with the chosen one. Mounted as a diagram-canvas
+        // overlay (see DiagramResources); resolved on demand by the drop factory.
+        DropCandidateChooserService
         // Agent workspace tools: subscribes to the agent event stream and services
         // refresh_project (re-scan + re-validate + reply). Eagerly resolved in
         // main.js so it's listening before the first turn.
@@ -309,6 +315,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
 
         // Problems dock (StatusBar DataTemplate[ProblemsService] + ProblemsRow rows).
         merge ProblemsResources
+
+        // Drop-candidate chooser popup (DataTemplate[DropCandidateChooserService] +
+        // ChooserRow rows), overlaid on the diagram canvas.
+        merge ChooserResources
 
         // Code editor (DataTemplate[CodeDocument] declares a CodeEditor — a
         // DomHost subclass hosting Monaco, self-bound to the document's Content).

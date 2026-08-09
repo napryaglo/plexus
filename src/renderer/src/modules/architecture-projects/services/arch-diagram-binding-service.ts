@@ -6,6 +6,7 @@ import { ProjectExplorerService } from '../../project-explorer/services/project-
 import type { OpenProject } from '../../../services/projects/open-project.js'
 import { ArchitectureModelService } from './architecture-model-service.js'
 import { ArchDiagramBinding } from './arch-diagram-binding.js'
+import type { ArchModel } from './arch-model.js'
 
 // App-scoped observer: watches the open-documents set and, for each opened
 // DiagramDocument whose owning project is an architecture project, attaches an
@@ -55,6 +56,13 @@ export class ArchDiagramBindingService extends ServiceBase
                 this.attaching.delete(doc)
             }
         }
+    }
+
+    // The ArchModel bound to an open document, if it is an attached architecture
+    // diagram. Used by the drop factory to route a term-drop.
+    public modelForDocument(doc: IDocument): ArchModel | undefined
+    {
+        return this.bindings.get(doc)?.model
     }
 
     // The architecture OpenProject that owns this diagram's storage, if any.
