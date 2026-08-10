@@ -1,7 +1,28 @@
 import { test, expect } from 'vitest'
 import { Graph } from '@pragmatic-lab/fresco'
 
-import { extract, computeOutcome, applySides } from '../diagram-graph-adapter.js'
+import { extract, computeOutcome, applySides, nodeSize } from '../diagram-graph-adapter.js'
+
+const FALLBACK = { width: 80, height: 40 }
+
+test('nodeSize prefers the authored Width/Height (VM nodes have no RenderSize)', () => {
+    // A node VM: Width/Height set, RenderSize absent (Model, not Visual).
+    expect(nodeSize({ Width: 72, Height: 56 }, FALLBACK)).toEqual({ width: 72, height: 56 })
+})
+
+test('nodeSize falls back to RenderSize when Width/Height are unset', () => {
+    expect(nodeSize({ RenderSize: { Width: 120, Height: 44 } }, FALLBACK)).toEqual({ width: 120, height: 44 })
+})
+
+test('nodeSize prefers Width/Height over RenderSize when both present', () => {
+    expect(nodeSize({ Width: 72, Height: 56, RenderSize: { Width: 999, Height: 999 } }, FALLBACK))
+        .toEqual({ width: 72, height: 56 })
+})
+
+test('nodeSize returns the fallback when nothing is measurable', () => {
+    expect(nodeSize({}, FALLBACK)).toEqual(FALLBACK)
+    expect(nodeSize({ Width: 0, Height: 0 }, FALLBACK)).toEqual(FALLBACK)
+})
 
 test('extract assigns stable ids to figures missing one and indexes them', () => {
     const a = { Id: undefined as string | undefined, Left: 0, Top: 0 }

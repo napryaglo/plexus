@@ -8,6 +8,7 @@ import {
     type ICommand,
     type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
+import { ContentHostService, DiagramDocument, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
 import {
     GetPipelineCatalog,
     BuildPipeline,
@@ -22,18 +23,19 @@ import {
     extract,
     computeOutcome,
     applySides,
+    nodeSize,
     type FigureLike,
     type ConnectorLike,
     type ConnectorEdge,
     type EdgeSideLike,
     type NodeSize,
     type PositionSet,
+    type SizedLike,
 } from './diagram-graph-adapter.js'
 import { planForMode, type RunMode } from './run-modes.js'
 import { LayoutPresetsStore } from './layout-presets-store.js'
 import { LayoutInspector } from './layout-inspector.js'
 import { LayoutStageVM } from './layout-stage-vm.js'
-import { DiagramWorkspaceService } from '../services/diagram-workspace-service.js'
 
 // Maps a catalog strategy-slot id to its PipelineConfiguration.layout field.
 // graph-transforms is intentionally absent — it is a transform list, not a
@@ -192,7 +194,8 @@ export class LayoutPipelineService extends ServiceBase
     // and an explicit Apply (see applyPreview).
     public Run(): void
     {
-        const doc = this.Provider.getRequired(DiagramWorkspaceService.Key).Document
+        const doc = this.activeDiagram()
+        if (doc === undefined) { this.Status = 'Active document is not a diagram.'; return }
 
         // Figures (not Groups) carry Left/Top; treat those as the node set.
         const figures = (doc.Nodes.ToArray() as unknown as FigureLike[]).filter(
@@ -258,7 +261,8 @@ export class LayoutPipelineService extends ServiceBase
     public applyPreview(): void
     {
         if (this.PreviewPositions === undefined) return
-        const doc = this.Provider.getRequired(DiagramWorkspaceService.Key).Document
+        const doc = this.activeDiagram()
+        if (doc === undefined) { this.Status = 'Active document is not a diagram.'; return }
         const index = new Map<string, FigureLike>()
         for (const n of doc.Nodes.ToArray()) {
             const f = n as FigureLike
@@ -285,10 +289,23 @@ export class LayoutPipelineService extends ServiceBase
         }
     }
 
+    // The active tab's document when it's a diagram. In the multi-document
+    // shell each diagram (architecture or standalone) opens as its OWN
+    // DiagramDocument via the content host; layout must run on whichever is
+    // active, not the fixed workspace singleton — same ActiveDocument source
+    // the arch binding / viewpoint-scope services read.
+    private activeDiagram(): DiagramDocument | undefined
+    {
+        const host = this.Provider.get(ContentHostService.Key) as DocumentsContentHostService | undefined
+        const doc = host?.ActiveDocument
+        return doc instanceof DiagramDocument ? doc : undefined
+    }
+
+    // Node footprint: VM nodes (Model) expose Width/Height but no RenderSize;
+    // Figures expose both. nodeSize prefers Width/Height so VMs don't collapse
+    // to the fallback size. See diagram-graph-adapter.nodeSize.
     private sizeOf(fig: FigureLike): NodeSize
     {
-        const rs = (fig as unknown as { RenderSize?: { Width: number; Height: number } }).RenderSize
-        if (rs && rs.Width > 0 && rs.Height > 0) return { width: rs.Width, height: rs.Height }
-        return FALLBACK_SIZE
+        return nodeSize(fig as unknown as SizedLike, FALLBACK_SIZE)
     }
 }
