@@ -8,6 +8,7 @@ import { ArchitectureModelService } from './architecture-model-service.js'
 import { ArchDiagramBinding } from './arch-diagram-binding.js'
 import type { ArchModel } from './arch-model.js'
 import { readDiagramViewpoints, writeDiagramViewpoints } from './diagram-viewpoints.js'
+import { registerArchNodeSerializer } from './arch-node-serializer.js'
 
 // App-scoped observer: watches the open-documents set and, for each opened
 // DiagramDocument whose owning project is an architecture project, attaches an
@@ -23,6 +24,7 @@ export class ArchDiagramBindingService extends ServiceBase
     public constructor(provider: IServiceProvider)
     {
         super(provider)
+        registerArchNodeSerializer()
         const host = this.Provider.get(ContentHostService.Key) as DocumentsContentHostService | undefined
         host?.OpenDocuments.Subscribe(() => { void this.sync(host) })
     }
