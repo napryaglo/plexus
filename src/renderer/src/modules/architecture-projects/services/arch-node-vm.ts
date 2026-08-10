@@ -1,7 +1,11 @@
 import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
-import { NodeViewModel, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { SideConnectableNodeVM, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 
-export class ArchNodeVM extends NodeViewModel {
+// Extends SideConnectableNodeVM (not NodeViewModel) so connector endpoints
+// anchored to an arch item distribute across its sides, rebalance, and show
+// port markers — the same side-endpoint host surface ShapeNodeVM has. Without
+// it, side-slot registration silently no-ops for arch items.
+export class ArchNodeVM extends SideConnectableNodeVM {
     static readonly LabelKey = Model.RegisterProperty<string>(ArchNodeVM, 'Label', '', MetaData.None)
     static readonly DescriptorKey = Model.RegisterProperty<ToolboxVisualDescriptor | undefined>(
         ArchNodeVM,
