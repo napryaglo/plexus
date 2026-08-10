@@ -1,9 +1,11 @@
 import { test, expect } from 'vitest'
 import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
-import { DiagramDocument, Figure } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument, ShapeNodeVM, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { TodlVisualResolverKey } from '../../../diagram/services/todl-visual-resolver.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 import { ArchDiagramBinding } from '../arch-diagram-binding.js'
+import { ArchNodeVM } from '../arch-node-vm.js'
 
 const MM = `namespace archmm {
   concept Component {}
@@ -25,44 +27,48 @@ function buildModel(): ArchModel {
     return new ArchModel(draft, new FakeStorage('fake://Arch'), 'archmm')
 }
 
-// Add a Figure to a doc and give it a specific Id (CreateNode auto-assigns one).
-function addFigure(doc: DiagramDocument, id: string): Figure {
-    const f = doc.CreateNode('rectangle', 0, 0)
-    if (f === null) throw new Error('CreateNode returned null')
-    f.Id = id
-    return f
+// Add an ArchNodeVM to a doc with a specific Id.
+function addVM(doc: DiagramDocument, id: string): ArchNodeVM {
+    const vm = new ArchNodeVM()
+    vm.Id = id
+    doc.Nodes.Add(vm)
+    return vm
 }
 
-test('attach binds figures whose Id is an entity and labels them; unknown figures untouched', () => {
+test('attach binds ArchNodeVMs whose Id is an entity: derives Label + Descriptor; unknown VMs untouched', () => {
     const model = buildModel()
     const doc = new DiagramDocument()
-    const web = addFigure(doc, 'web')
-    const ghost = addFigure(doc, 'ghost')
-    ghost.LabelText = 'freeform'
-    const host = addFigure(doc, 'host')
+    const web = addVM(doc, 'web')
+    const ghost = addVM(doc, 'ghost')
+    ghost.Label = 'freeform'
+    const host = addVM(doc, 'host')
 
     new ArchDiagramBinding(doc, model).attach()
 
-    expect(web.LabelText).toBe('web')     // id fallback (no label/name field)
-    expect(host.LabelText).toBe('host')
-    expect(ghost.LabelText).toBe('freeform')   // not an entity — left as-is
+    // web and host map to entities, get their Label and Descriptor derived.
+    expect(web.Label).toBe('web')     // id fallback (no label/name field)
+    expect(host.Label).toBe('host')
+    expect(web.Descriptor).toEqual(new ToolboxVisualDescriptor(TodlVisualResolverKey, 'Component'))
+    expect(host.Descriptor).toEqual(new ToolboxVisualDescriptor(TodlVisualResolverKey, 'Node'))
+    // ghost has no matching entity — left as-is.
+    expect(ghost.Label).toBe('freeform')
 })
 
-test('model label change re-syncs the bound figure; delete removes its figure', () => {
+test('model label change re-syncs the bound VM; delete removes its VM', () => {
     const model = buildModel()
     const doc = new DiagramDocument()
-    const web = addFigure(doc, 'web')
-    const host = addFigure(doc, 'host')
+    const web = addVM(doc, 'web')
+    const host = addVM(doc, 'host')
     const binding = new ArchDiagramBinding(doc, model)
     binding.attach()
     void web
     void host
 
     model.setField('web', 'label', 'Web App')
-    expect(web.LabelText).toBe('Web App')
+    expect(web.Label).toBe('Web App')
 
     model.remove('host')
-    const ids = doc.Nodes.ToArray().filter((n): n is Figure => n instanceof Figure).map((f) => f.Id)
+    const ids = doc.Nodes.ToArray().map((n) => n instanceof ArchNodeVM ? n.Id : undefined)
     expect(ids).toContain('web')
     expect(ids).not.toContain('host')
 })
@@ -70,13 +76,26 @@ test('model label change re-syncs the bound figure; delete removes its figure', 
 test('dispose stops further syncing', () => {
     const model = buildModel()
     const doc = new DiagramDocument()
-    const web = addFigure(doc, 'web')
+    const web = addVM(doc, 'web')
     const binding = new ArchDiagramBinding(doc, model)
     binding.attach()
     model.setField('web', 'label', 'First')
-    expect(web.LabelText).toBe('First')
+    expect(web.Label).toBe('First')
 
     binding.dispose()
     model.setField('web', 'label', 'Second')
-    expect(web.LabelText).toBe('First')   // no longer updating
+    expect(web.Label).toBe('First')   // no longer updating
+})
+
+test('freeform ShapeNodeVM (no entity) is left untouched by attach', () => {
+    const model = buildModel()
+    const doc = new DiagramDocument()
+    // A raw ShapeNodeVM whose Id doesn't match any entity — binding must leave it alone.
+    const shape = doc.CreateNode('rectangle', 0, 0)!
+    shape.Id = 'freeform-shape'
+
+    new ArchDiagramBinding(doc, model).attach()
+
+    // The shape is not an ArchNodeVM and has no matching entity — it stays in the doc.
+    expect(doc.Nodes.ToArray().some((n) => n instanceof ShapeNodeVM && n.Id === 'freeform-shape')).toBe(true)
 })

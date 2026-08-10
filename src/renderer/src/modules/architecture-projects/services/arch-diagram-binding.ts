@@ -1,17 +1,19 @@
-import { DiagramDocument, Figure } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument, Figure, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 import type { Entity } from '@pragmatic-lab/todl'
+import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolver.js'
 import type { ArchModel } from './arch-model.js'
+import { ArchNodeVM } from './arch-node-vm.js'
 
 // Binds an opened diagram to a project's ArchModel. On every model change it
-// rescans doc.Nodes: Figures whose Id is a live entity are tracked + labelled
-// (this binds drop-created figures too, since the drop fires notifyChanged after
-// setting Figure.Id); tracked figures whose entity was deleted are removed.
-// Figures whose Id matches no entity are freeform shapes, left untouched.
+// rescans doc.Nodes: ArchNodeVMs (and legacy Figures) whose Id is a live entity
+// are tracked + labelled (this binds drop-created nodes too, since the drop fires
+// notifyChanged after setting the Id); tracked nodes whose entity was deleted are
+// removed. Nodes whose Id matches no entity are freeform shapes, left untouched.
 export class ArchDiagramBinding
 {
     private off: (() => void) | undefined
-    private readonly bound = new Map<string, Figure>()   // entityId -> figure
-    private scope: string[] = []                         // selected viewpoints ([] = all)
+    private readonly bound = new Map<string, Figure | ArchNodeVM>()   // entityId -> node
+    private scope: string[] = []                                       // selected viewpoints ([] = all)
 
     public constructor(
         private readonly doc: DiagramDocument,
@@ -27,20 +29,30 @@ export class ArchDiagramBinding
     private rescan(): void
     {
         const byId = new Map(this.model.entities().map((e) => [e.id, e]))
-        // Bind + label every figure that maps to a live entity.
+        // Bind + derive label/icon for every node that maps to a live entity.
         for (const node of this.doc.Nodes.ToArray()) {
-            if (!(node instanceof Figure)) continue
-            const id = node.Id
-            if (id === undefined) continue
-            const entity = byId.get(id)
-            if (entity === undefined) continue
-            this.bound.set(id, node)
-            node.LabelText = displayLabel(entity)
+            if (node instanceof ArchNodeVM) {
+                const id = node.Id
+                if (id === undefined) continue
+                const entity = byId.get(id)
+                if (entity === undefined) continue
+                this.bound.set(id, node)
+                node.Label = displayLabel(entity)
+                node.Descriptor = new ToolboxVisualDescriptor(TodlVisualResolverKey, entity.concept)
+            } else if (node instanceof Figure) {
+                // Back-compat for any freeform Figure with a matching entity id.
+                const id = node.Id
+                if (id === undefined) continue
+                const entity = byId.get(id)
+                if (entity === undefined) continue
+                this.bound.set(id, node)
+                node.LabelText = displayLabel(entity)
+            }
         }
-        // Remove tracked figures whose entity is gone.
-        for (const [id, figure] of [...this.bound]) {
+        // Remove tracked nodes whose entity is gone.
+        for (const [id, node] of [...this.bound]) {
             if (!byId.has(id)) {
-                this.doc.DeleteNodes([figure])
+                this.doc.DeleteNodes([node])
                 this.bound.delete(id)
             }
         }

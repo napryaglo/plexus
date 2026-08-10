@@ -1,9 +1,11 @@
 import { test, expect } from 'vitest'
 import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
-import { DiagramDocument, Figure } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { TodlVisualResolverKey } from '../../../diagram/services/todl-visual-resolver.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 import { ArchDiagramBinding } from '../arch-diagram-binding.js'
+import { ArchNodeVM } from '../arch-node-vm.js'
 
 const MM = `namespace archmm {
   concept component {}
@@ -14,23 +16,64 @@ function buildModel(): ArchModel {
     return new ArchModel(draft, new FakeStorage('fake://Arch'), 'archmm')
 }
 
-test('a figure added after attach is bound + labelled on the next model change', () => {
+test('an ArchNodeVM added after attach gets Label + Descriptor derived from the entity on notifyChanged', () => {
     const model = buildModel()
     const doc = new DiagramDocument()
     const binding = new ArchDiagramBinding(doc, model)
     binding.attach()
 
-    // Simulate a drop: create the entity, add a figure, set its Id, notify.
+    // Simulate a drop: create the entity, add an ArchNodeVM, set its Id, notify.
     const e = model.createInViewpoint('component', 'ComponentView')
-    const fig = doc.CreateNode('rectangle', 0, 0)!
-    fig.Id = e.id
+    const vm = new ArchNodeVM()
+    vm.Id = e.id
+    doc.Nodes.Add(vm)
     model.notifyChanged()
 
-    expect(fig.LabelText).toBe(e.id)     // bound via rescan (no label field → id)
+    // Label is derived from entity (no label/name field → id fallback).
+    expect(vm.Label).toBe(e.id)
+    // Descriptor uses entity.concept (the concept id, bare — library-term case).
+    expect(vm.Descriptor).toEqual(new ToolboxVisualDescriptor(TodlVisualResolverKey, e.concept))
+})
 
-    // Deleting the entity removes the figure.
+test('reload-shaped: ArchNodeVM with empty Label/Descriptor has both derived by rescan after attach', () => {
+    const model = buildModel()
+    const doc = new DiagramDocument()
+
+    // Pre-populate an entity in the model.
+    const e = model.createInViewpoint('component', 'ComponentView')
+
+    // Simulate post-deserialize state: ArchNodeVM has Id (persisted) but empty Label/Descriptor.
+    const vm = new ArchNodeVM()
+    vm.Id = e.id
+    // Label defaults to '' and Descriptor to undefined — as after deserialize.
+    expect(vm.Label).toBe('')
+    expect(vm.Descriptor).toBeUndefined()
+
+    doc.Nodes.Add(vm)
+
+    const binding = new ArchDiagramBinding(doc, model)
+    binding.attach()   // triggers rescan()
+
+    expect(vm.Label).toBe(e.id)   // id fallback (no label/name)
+    expect(vm.Descriptor).toEqual(new ToolboxVisualDescriptor(TodlVisualResolverKey, e.concept))
+})
+
+test('deleting the entity removes the ArchNodeVM from the doc', () => {
+    const model = buildModel()
+    const doc = new DiagramDocument()
+    const binding = new ArchDiagramBinding(doc, model)
+    binding.attach()
+
+    const e = model.createInViewpoint('component', 'ComponentView')
+    const vm = new ArchNodeVM()
+    vm.Id = e.id
+    doc.Nodes.Add(vm)
+    model.notifyChanged()
+
+    // Now remove the entity — the VM should disappear.
     model.remove(e.id)
-    expect(doc.Nodes.ToArray().filter((n): n is Figure => n instanceof Figure).map((f) => f.Id)).not.toContain(e.id)
+    const ids = doc.Nodes.ToArray().map((n) => n instanceof ArchNodeVM ? n.Id : undefined)
+    expect(ids).not.toContain(e.id)
 })
 
 test('model is exposed for the binding service', () => {
