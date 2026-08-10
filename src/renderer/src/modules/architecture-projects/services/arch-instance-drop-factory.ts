@@ -1,10 +1,11 @@
 import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { Figure, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
 
 import { resolveDropActions, DropActionKind, type DropAction } from './arch-drop-resolver.js'
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
 import type { ArchModel } from './arch-model.js'
+import { ArchNodeVM } from './arch-node-vm.js'
 
 export const ArchInstanceDropFactoryKey = new ServiceKey<IToolboxDropFactory>('ArchInstanceDropFactory')
 
@@ -38,9 +39,11 @@ export class ArchInstanceDropFactory implements IToolboxDropFactory
         return null
     }
 
-    // Create the entity for `action`, wire any reference, materialize the bound
-    // Figure, and persist. Returns the Figure (null if no framing viewpoint).
-    private apply(model: ArchModel, context: ToolboxDropContext, scope: Set<string>, action: DropAction): Figure | null
+    // Create the entity for `action`, wire any reference, materialise an
+    // ArchNodeVM at the drop position, and persist. Returns the VM (null if
+    // no framing viewpoint). Label + Descriptor are left unset here; the
+    // binding's rescan() (T6) is the sole authority that derives them.
+    private apply(model: ArchModel, context: ToolboxDropContext, scope: Set<string>, action: DropAction): ArchNodeVM | null
     {
         const vp = [...model.repository().viewpointsFraming(action.concept)].find((v) => scope.has(v))
         if (vp === undefined) return null
@@ -49,16 +52,14 @@ export class ArchInstanceDropFactory implements IToolboxDropFactory
         if (action.kind === DropActionKind.Reference && action.member !== undefined && action.term !== undefined)
             model.addRef(entity.id, action.member, action.term)
 
-        // Materialize the node. CreateNode is shape-catalog-gated, so an arch
-        // term key (not a built-in shape) yields null — fall back to a neutral
-        // placeholder shape. The term-specific icon is a canvas visual-resolution
-        // concern (live-smoke follow-up), not part of this routing backbone.
         const { X, Y } = context.Position
-        const fig = (context.Mutator.CreateNode(context.Descriptor.Key, X, Y)
-            ?? context.Mutator.CreateNode('rectangle', X, Y)) as Figure | null
-        if (fig !== null) fig.Id = entity.id
-        model.notifyChanged()      // rescan binds + labels the new figure
+        const vm = new ArchNodeVM()
+        vm.Id = entity.id
+        vm.Left = X
+        vm.Top = Y
+        context.Mutator.AddNode(vm)
+        model.notifyChanged()      // rescan binds + labels the new node (T6)
         void model.save()          // persist the .todl (fire-and-forget)
-        return fig
+        return vm
     }
 }
