@@ -12,6 +12,7 @@
 import ToolboxService from "./services/diagram-panel-services.js"
 import LayoutPipelineService from "./layout/layout-pipeline-service.js"
 import DropCandidateChooserService from "../architecture-projects/services/drop-candidate-chooser-service.js"
+import ArchNodeVM from "../architecture-projects/services/arch-node-vm.js"
 
 resources DiagramResources {
     // ── Icon geometries ─────────────────────────────────────────────────
@@ -280,6 +281,29 @@ resources DiagramResources {
                       HorizontalAlignment = Center,
                       Margin              = (0,4,0,0) ]
             }
+        }
+    }
+
+    // ── Architecture node tile — icon + label for an ArchNodeVM dropped on an
+    // architecture diagram. ToolboxVisualPresenter renders the term's icon via the
+    // Figure context (same resolver path as the toolbox tile, but sized for the
+    // canvas); the TextBlock shows the entity's display label below the icon.
+    DataTemplate [DataType = ArchNodeVM] {
+        StackPanel [ Orientation = Vertical, HorizontalAlignment = Center ] {
+            ToolboxVisualPresenter
+                [ Descriptor          = $Descriptor,
+                  Context             = VisualContext.Figure,
+                  Width               = 40,
+                  Height              = 40,
+                  HorizontalAlignment = Center ]
+            TextBlock
+                [ Text                = $Label,
+                  Style               = @BodySmall,
+                  Foreground          = @OnSurfaceVariant,
+                  TextWrapping        = Wrap,
+                  TextAlignment       = Center,
+                  HorizontalAlignment = Center,
+                  Margin              = (0,4,0,0) ]
         }
     }
 
