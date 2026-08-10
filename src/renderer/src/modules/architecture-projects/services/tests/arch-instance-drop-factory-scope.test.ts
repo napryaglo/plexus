@@ -1,6 +1,7 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, Figure, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { ArchNodeVM } from '../arch-node-vm.js'
 import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
@@ -40,8 +41,8 @@ test('scope=ComponentView → the drop creates a component (node is out of scope
     const model = buildModel(new FakeStorage('fake://Acme'))
     const doc = new DiagramDocument()
     const factory = new ArchInstanceDropFactory(wire(doc, model, new Set(['ComponentView'])))
-    const result = factory.CreateDropped(ctx(doc, 'Stack.azure')) as Figure
-    expect(result).toBeInstanceOf(Figure)
+    const result = factory.CreateDropped(ctx(doc, 'Stack.azure')) as ArchNodeVM
+    expect(result).toBeInstanceOf(ArchNodeVM)
     expect(model.entities().map((e) => e.concept)).toEqual(['component'])
 })
 

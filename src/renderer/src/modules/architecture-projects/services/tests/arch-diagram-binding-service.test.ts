@@ -1,6 +1,7 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider, ObservableCollection } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DiagramDocument, Figure, type IDocument, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+import { ContentHostService, DiagramDocument, type IDocument, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+import { ArchNodeVM } from '../arch-node-vm.js'
 import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { FileDiagramStorage } from '../../../diagram/persistence/file-diagram-storage.js'
@@ -33,8 +34,9 @@ function buildModel(storage: FakeStorage): ArchModel {
 function diagramFor(projStorage: FakeStorage): DiagramDocument {
     const store = new FileDiagramStorage('view.diagram', projStorage, null)
     const doc = new DiagramDocument(store)
-    const f = doc.CreateNode('rectangle', 0, 0)!
+    const f = new ArchNodeVM()
     f.Id = 'web'
+    doc.AddNode(f)
     return doc
 }
 
@@ -67,10 +69,10 @@ test('opening an architecture diagram attaches a binding (figure label syncs)', 
     open.Add(doc)
     await tick()
 
-    const web = doc.Nodes.ToArray().find((n): n is Figure => n instanceof Figure && n.Id === 'web')!
-    expect(web.LabelText).toBe('web')                // proves attach() ran
+    const web = doc.Nodes.ToArray().find((n): n is ArchNodeVM => n instanceof ArchNodeVM && n.Id === 'web')!
+    expect(web.Label).toBe('web')                // proves attach() ran
     model.setField('web', 'label', 'Bound')
-    expect(web.LabelText).toBe('Bound')              // proves onChanged wired
+    expect(web.Label).toBe('Bound')              // proves onChanged wired
 })
 
 test('closing the document disposes its binding', async () => {
@@ -82,11 +84,11 @@ test('closing the document disposes its binding', async () => {
     const doc = diagramFor(projStorage)
     open.Add(doc)
     await tick()
-    const web = doc.Nodes.ToArray().find((n): n is Figure => n instanceof Figure && n.Id === 'web')!
+    const web = doc.Nodes.ToArray().find((n): n is ArchNodeVM => n instanceof ArchNodeVM && n.Id === 'web')!
 
     open.Remove(doc)                                 // close → dispose
     model.setField('web', 'label', 'AfterClose')
-    expect(web.LabelText).toBe('web')                // detached: no update
+    expect(web.Label).toBe('web')                // detached: no update
 })
 
 test('a non-architecture project diagram is not attached', async () => {
@@ -98,9 +100,9 @@ test('a non-architecture project diagram is not attached', async () => {
     const doc = diagramFor(projStorage)
     open.Add(doc)
     await tick()
-    const web = doc.Nodes.ToArray().find((n): n is Figure => n instanceof Figure && n.Id === 'web')!
+    const web = doc.Nodes.ToArray().find((n): n is ArchNodeVM => n instanceof ArchNodeVM && n.Id === 'web')!
     model.setField('web', 'label', 'X')
     // Never bound: the figure keeps its created default label, and the model
     // change does not propagate (an attached binding would have made it 'web').
-    expect(web.LabelText).toBe('')
+    expect(web.Label).toBe('')
 })
