@@ -1,11 +1,13 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider, ObservableCollection } from '@pragmatic-lab/mural/runtime'
 import {
+    ConnectorEndpoint,
     ContentHostService,
     DiagramDocument,
     type DocumentsContentHostService,
     type IDocument,
 } from '@pragmatic-lab/mural/framework'
+import { Point } from '@pragmatic-lab/mural/runtime'
 import { ArchNodeVM } from '../../../architecture-projects/services/arch-node-vm.js'
 import { LayoutPipelineService } from '../layout-pipeline-service.js'
 
@@ -34,6 +36,21 @@ test('Run lays out the ACTIVE diagram document, not a workspace singleton', () =
     // empty workspace singleton → 'no nodes').
     expect(svc.Status).toContain('Laid out')
     expect(svc.Status).not.toContain('no nodes')
+})
+
+test('running the layout clears connector waypoints (reset to auto)', () => {
+    const doc = new DiagramDocument()
+    const a = new ArchNodeVM(); a.Id = 'a'; a.Left = 0;   a.Top = 0
+    const b = new ArchNodeVM(); b.Id = 'b'; b.Left = 300; b.Top = 0
+    doc.AddNode(a); doc.AddNode(b)
+    const c = doc.CreateConnector(new ConnectorEndpoint({ Node: a }), new ConnectorEndpoint({ Node: b }))!
+    c.Waypoints = [{ point: new Point(150, 60), userAltered: true }]   // a user pin
+    expect(c.Waypoints!.length).toBe(1)
+
+    new LayoutPipelineService(providerWithActive(doc)).Run()
+
+    // Layout is the reset — the pin is gone and the route rebuilds automatically.
+    expect(c.Waypoints).toBeUndefined()
 })
 
 test('Run reports when the active document is not a diagram', () => {

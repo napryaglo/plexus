@@ -8,7 +8,7 @@ import {
     type ICommand,
     type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DiagramDocument, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+import { Connector, ContentHostService, DiagramDocument, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
 import {
     GetPipelineCatalog,
     BuildPipeline,
@@ -228,6 +228,7 @@ export class LayoutPipelineService extends ServiceBase
         }
 
         this.applyPositions(index, plan.mutation.setPositions)
+        this.clearConnectorWaypoints(doc)   // layout is the reset: drop user pins, rebuild routing
         this.PreviewPositions = undefined
 
         let status = `Laid out ${plan.mutation.setPositions.length} nodes.`
@@ -269,8 +270,20 @@ export class LayoutPipelineService extends ServiceBase
             if (f.Id !== undefined) index.set(f.Id, f)
         }
         this.applyPositions(index, this.PreviewPositions)
+        this.clearConnectorWaypoints(doc)   // committing a layout resets manual routing
         this.Status = `Applied ${this.PreviewPositions.length} nodes.`
         this.PreviewPositions = undefined
+    }
+
+    // Layout is the single "reset to auto" operation: drop every connector's
+    // waypoints (user pins included) so the route rebuilds from scratch. Without
+    // this, moving nodes preserves pins (mural's per-move behaviour), leaving a
+    // stale hand-route distorting the freshly laid-out diagram.
+    private clearConnectorWaypoints(doc: DiagramDocument): void
+    {
+        for (const c of doc.Connectors.ToArray()) {
+            if (c instanceof Connector) c.Waypoints = undefined
+        }
     }
 
     public cancelPreview(): void
