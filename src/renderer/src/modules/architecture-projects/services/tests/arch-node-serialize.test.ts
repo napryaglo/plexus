@@ -10,7 +10,9 @@ import { registerArchNodeSerializer } from '../arch-node-serializer.js'
 beforeAll(() => {
     Application.current = null
     new Application()
-    registerArchNodeSerializer()
+    // NOTE: intentionally NOT calling registerArchNodeSerializer() here — the
+    // round-trip tests below rely purely on the module-import side-effect that
+    // registers it. If someone removes that side-effect, those tests fail.
 })
 
 // Helper: build a FileDiagramStorage backed by an in-memory FakeStorage.
@@ -20,8 +22,18 @@ function makeStorage(): { diagStore: FileDiagramStorage; raw: FakeStorage } {
     return { diagStore, raw }
 }
 
+test('the arch serializer is registered at module-import time (no explicit call)', () => {
+    // Guards the load-ordering fix: importing arch-node-serializer.js (done at
+    // the top of this file, as the bootstrap does) is enough to register "arch"
+    // — no ArchDiagramBindingService construction, no explicit call here. So a
+    // diagram can Load() before the binding service exists and keep its arch
+    // nodes (and their connectors) intact.
+    expect(serializerByType('arch')).toBeDefined()
+})
+
 test('registerArchNodeSerializer registers type "arch" idempotently', () => {
-    // Calling it again (already called in beforeAll) must not throw or double-register.
+    // Calling it explicitly (on top of the import-time registration) must not
+    // throw or double-register.
     registerArchNodeSerializer()
     const s = serializerByType('arch')
     expect(s).toBeDefined()

@@ -20,3 +20,12 @@ export function registerArchNodeSerializer(): void {
         },
     })
 }
+
+// Register at module-import time, NOT only when ArchDiagramBindingService is
+// constructed. The renderer bootstrap statically imports the binding service
+// (hence this module), so this runs at bundle evaluation — before session
+// restore or any DiagramDocument.Load(). Without it, a diagram that loads
+// before the service is constructed drops every `arch` node, and each of their
+// connectors permanently collapses to the diagram origin (its nodeId can no
+// longer resolve). Idempotent, so the service ctor's call is a harmless no-op.
+registerArchNodeSerializer()
