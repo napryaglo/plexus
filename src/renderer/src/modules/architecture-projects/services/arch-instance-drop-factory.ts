@@ -2,6 +2,7 @@ import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
 
 import { resolveDropActions, DropActionKind, type DropAction } from './arch-drop-resolver.js'
+import { defaultLabel } from './arch-default-label.js'
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
 import type { ArchModel } from './arch-model.js'
@@ -49,6 +50,9 @@ export class ArchInstanceDropFactory implements IToolboxDropFactory
         if (vp === undefined) return null
 
         const entity = model.createInViewpoint(action.concept, vp)
+        const schema = model.repository().effectiveSchema(action.concept)
+        if (schema.fields.some((f) => f.name === 'label'))
+            model.setField(entity.id, 'label', defaultLabel(model.repository(), action))
         if (action.kind === DropActionKind.Reference && action.member !== undefined && action.term !== undefined)
             model.addRef(entity.id, action.member, action.term)
 
