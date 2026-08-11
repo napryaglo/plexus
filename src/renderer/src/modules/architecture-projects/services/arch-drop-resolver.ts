@@ -36,7 +36,7 @@ export function resolveDropActions(repo: Repository, descriptorKey: string, scop
         const x = n.id
         if (!framed(x)) continue
         for (const rel of repo.effectiveSchema(x).relationships) {
-            if (accept.has(rel.target))
+            if (rel.targets.some((t) => accept.has(t)))
                 actions.push({ kind: DropActionKind.Reference, concept: x, member: rel.name, term: termId, label: `${x}  (${rel.name})` })
         }
     }

@@ -7,8 +7,11 @@ const MM = `namespace archmm {
   concept component { relationship realisedBy -> technology; }
   concept node { relationship hosts -> component; }
   concept lonely {}
+  concept actor {}
+  concept edge { relationship end -> actor | component; }
   viewpoint ComponentView : frames component
   viewpoint DeploymentView : frames node, component
+  viewpoint EdgeView : frames edge
   taxonomy Stack : represents technology { term azure {} }
   taxonomy Kinds : represents component { term webKind {} }
   taxonomy Solo : represents lonely { term hermit {} }
@@ -31,6 +34,14 @@ test('a term whose type is a framed concept yields an Instance action plus refer
     expect(kinds).toContain('instance:component')     // C_t = component, framed → direct instance
     expect(kinds).toContain('reference:node.hosts')   // node.hosts targets component
     expect(actions.length).toBe(2)
+})
+
+test('a union relationship matches a term whose type is a non-first union member', () => {
+    // `end -> actor | component`; webKind is a `component` (the 2nd union member).
+    // Single-target routing would only check the first target (actor) and miss it.
+    const actions = resolveDropActions(repo(), 'Kinds.webKind', new Set(['EdgeView']))
+    const kinds = actions.map((a) => `${a.kind}:${a.concept}${a.member ? '.' + a.member : ''}`)
+    expect(kinds).toContain('reference:edge.end')
 })
 
 test('a term framed by nothing and unreferenced yields no candidates (reject)', () => {
