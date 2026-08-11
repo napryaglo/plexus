@@ -1,6 +1,6 @@
 import { Application, Element, ServiceKey, type Visual } from '@pragmatic-lab/mural/runtime'
 import { ApplicationSettings, VisualContext, type IToolboxVisualResolver, type ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
-import { buildCtx, buildDefaultTemplate } from '../../library/services/visual-library.js'
+import { buildCtx, buildDefaultTemplate, buildFigureTemplate } from '../../library/services/visual-library.js'
 import type { TodlPresentationRegistry } from './todl-presentation-registry.js'
 
 export const TodlVisualResolverKey = new ServiceKey<IToolboxVisualResolver>('TodlVisualResolver')
@@ -19,15 +19,28 @@ const FIGURE_ICON_SIZE = 32
 export class TodlVisualResolver implements IToolboxVisualResolver
 {
     private readonly unsubs = new Map<(key: string) => void, () => void>()
-    private readonly defaultTemplate = buildDefaultTemplate(buildCtx())
+    private readonly ctx = buildCtx()
+    // Tile context draws a @SurfaceContainerHigh chip behind the icon; Figure (canvas
+    // node) draws the icon on a transparent background.
+    private readonly tileTemplate = buildDefaultTemplate(this.ctx)
+    private readonly figureTemplate = buildFigureTemplate(this.ctx)
 
     constructor(private readonly registry: TodlPresentationRegistry) {}
 
     public Resolve(descriptor: ToolboxVisualDescriptor, context: VisualContext): Visual
     {
-        const iconKey = this.registry.iconKeyFor(descriptor.Key) ?? ''
+        // descriptor.Key is an entity key: a library term id (bare, e.g.
+        // `microsoft_tech.azure_front_door`) or a meta-model entity id. Map it to a
+        // baked resource key through the presentation index — the same lookup the
+        // toolbox tiles use. The `mm:` fallback covers a bare meta-model term id an
+        // arch canvas node carries (the meta-model keyspace is `mm:`-prefixed).
+        // Unknown key → '' → default glyph.
+        const iconKey = this.registry.iconKeyFor(descriptor.Key)
+            ?? this.registry.iconKeyFor(`mm:${descriptor.Key}`)
+            ?? ''
         const { width, height } = this.iconSize(context)
-        const visual = this.defaultTemplate.Apply({ IconKey: iconKey, IconWidth: width, IconHeight: height })
+        const template = context === VisualContext.Tile ? this.tileTemplate : this.figureTemplate
+        const visual = template.Apply({ IconKey: iconKey, IconWidth: width, IconHeight: height })
         // Tiles are drag chrome: the enclosing Border owns the gesture, so the
         // rendered visual must not swallow hit-testing.
         if (context === VisualContext.Tile && visual instanceof Element) visual.IsHitTestVisible = false

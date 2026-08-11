@@ -28,8 +28,15 @@ export function resolveDropActions(repo: Repository, descriptorKey: string, scop
     const accept = new Set<string>([ct, ...repo.supertypesOf(ct)])
     const framed = (concept: string): boolean => repo.viewpointsFraming(concept).some((v) => scope.has(v))
 
+    // A dropped class-term (a taxonomy term / class, `class = true`) would lose its
+    // identity as a bare `ct` instance — the node could not recover which term it is
+    // (its icon, its class). Suppress the Instance action for class-terms; only the
+    // Reference actions, which wire the term onto a member, survive. A bare concept
+    // drop (not a class) still instantiates directly.
+    const isClassTerm = node.attrs.get('class') === true
+
     const actions: DropAction[] = []
-    if (framed(ct)) actions.push({ kind: DropActionKind.Instance, concept: ct, label: ct })
+    if (!isClassTerm && framed(ct)) actions.push({ kind: DropActionKind.Instance, concept: ct, label: ct })
 
     for (const n of repo.allNodes()) {
         if (n.typeOf !== MetaKind.Concept) continue

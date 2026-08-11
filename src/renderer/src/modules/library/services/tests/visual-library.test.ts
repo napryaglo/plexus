@@ -2,7 +2,7 @@ import { test, expect, afterEach } from 'vitest'
 import { Icon } from '@pragmatic-lab/mural/basic'
 import type { Visual } from '@pragmatic-lab/mural/runtime'
 
-import { buildCtx, compileTemplate, buildDefaultTemplate } from '../visual-library.js'
+import { buildCtx, compileTemplate, buildDefaultTemplate, buildFigureTemplate } from '../visual-library.js'
 import { setIconResourceResolver } from '../../../diagram/services/icon-key-converter.js'
 
 afterEach(() => setIconResourceResolver(undefined))
@@ -39,6 +39,13 @@ test('buildDefaultTemplate returns a usable DataTemplate', () => {
 test('buildDefaultTemplate carries an Icon and no label', () => {
     setIconResourceResolver(() => ({ ViewBoxWidth: 24, ViewBoxHeight: 24, Shapes: [] }))
     const v = buildDefaultTemplate(buildCtx()).Apply({ IconKey: 'mm_icon_svc' }) as Visual
+    expect(hasType(v, Icon)).toBe(true)
+    expect(hasText(v)).toBe(false)
+})
+
+test('buildFigureTemplate (canvas, transparent background) carries an Icon and no label', () => {
+    setIconResourceResolver(() => ({ ViewBoxWidth: 24, ViewBoxHeight: 24, Shapes: [] }))
+    const v = buildFigureTemplate(buildCtx()).Apply({ IconKey: 'mm_icon_svc' }) as Visual
     expect(hasType(v, Icon)).toBe(true)
     expect(hasText(v)).toBe(false)
 })

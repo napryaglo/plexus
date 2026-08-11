@@ -28,12 +28,14 @@ test('a library term (type technology) yields the single reference candidate tha
     expect(actions[0]).toMatchObject({ kind: DropActionKind.Reference, concept: 'component', member: 'realisedBy', term: 'Stack.azure' })
 })
 
-test('a term whose type is a framed concept yields an Instance action plus reference candidates (chooser)', () => {
+test('a class-term whose type is a framed concept yields ONLY reference candidates (no bare Instance)', () => {
+    // webKind is a class (`class = true`); a bare `component` instance would lose which
+    // kind it is, so the Instance action is suppressed — only the reference survives.
     const actions = resolveDropActions(repo(), 'mm:Kinds.webKind', scope)   // 'mm:' prefix stripped
     const kinds = actions.map((a) => `${a.kind}:${a.concept}${a.member ? '.' + a.member : ''}`)
-    expect(kinds).toContain('instance:component')     // C_t = component, framed → direct instance
+    expect(kinds).not.toContain('instance:component')
     expect(kinds).toContain('reference:node.hosts')   // node.hosts targets component
-    expect(actions.length).toBe(2)
+    expect(actions.length).toBe(1)
 })
 
 test('a union relationship matches a term whose type is a non-first union member', () => {

@@ -45,25 +45,37 @@ export function compileTemplate(source: string, ctx: Record<string, unknown>): D
     return new DataTemplate(wrapped)
 }
 
-// The always-installed default visual — the ONE template every published-package
-// entity renders through. A neutral figure-only box that draws the entity's icon from
-// the bound $IconKey two ways, overlaid in a Grid: an Image for a RASTER icon
-// (ImageKeyConverter → BitmapImage) and an Icon for a VECTOR icon (IconKeyConverter →
-// colored IconDefinition, empty/unknown key → the default glyph). Exactly one is
-// non-empty per entity — each converter yields undefined for the other's asset kind —
-// so they never collide. Recolor=false keeps each icon's own fills; Foreground themes
-// any currentColor shapes; Stretch=Uniform preserves a bitmap's aspect. It carries NO
-// label: the host (tile / canvas node / preview) draws the caption.
-const DEFAULT_SOURCE =
-      'Border [ Background = @SurfaceContainerHigh, CornerRadius = 6 ] {'
-    + ' Grid {'
+// The default visual body every published-package entity renders through: draws the
+// entity's icon from the bound $IconKey two ways, overlaid in a Grid — an Image for a
+// RASTER icon (ImageKeyConverter → BitmapImage) and an Icon for a VECTOR icon
+// (IconKeyConverter → colored IconDefinition, empty/unknown key → the default glyph).
+// Exactly one is non-empty per entity — each converter yields undefined for the other's
+// asset kind — so they never collide. Recolor=false keeps each icon's own fills;
+// Foreground themes any currentColor shapes; Stretch=Uniform preserves a bitmap's
+// aspect. It carries NO label: the host (tile / canvas node / preview) draws the caption.
+const ICON_BODY =
+      ' Grid {'
     + ' Image [ Source = $IconKey << ImageKeyConverter, Stretch = Uniform,'
     + ' Width = $IconWidth, Height = $IconHeight, HorizontalAlignment = Center, VerticalAlignment = Center ]'
     + ' Icon [ Source = $IconKey << IconKeyConverter, Recolor = false, Foreground = @OnSurface,'
     + ' Width = $IconWidth, Height = $IconHeight, HorizontalAlignment = Center, VerticalAlignment = Center ]'
-    + ' } }'
+    + ' }'
+
+// Tile context (toolbox tiles + library preview): a raised @SurfaceContainerHigh chip
+// behind the icon. The enclosing tile/preview draws its own outer chrome around this.
+const TILE_SOURCE = 'Border [ Background = @SurfaceContainerHigh, CornerRadius = 6 ] {' + ICON_BODY + ' }'
+
+// Figure context (canvas nodes): NO background — the icon floats transparently on the
+// diagram; the canvas node draws no chip behind it.
+const FIGURE_SOURCE = 'Border [ CornerRadius = 6 ] {' + ICON_BODY + ' }'
 
 export function buildDefaultTemplate(ctx: Record<string, unknown>): DataTemplate
 {
-    return compileTemplate(DEFAULT_SOURCE, ctx)
+    return compileTemplate(TILE_SOURCE, ctx)
+}
+
+// The transparent-background variant for canvas figures.
+export function buildFigureTemplate(ctx: Record<string, unknown>): DataTemplate
+{
+    return compileTemplate(FIGURE_SOURCE, ctx)
 }

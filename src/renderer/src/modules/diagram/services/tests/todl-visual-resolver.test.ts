@@ -23,9 +23,11 @@ function desc(key: string): ToolboxVisualDescriptor {
 function fakeRegistry() {
     const listeners = new Set<(key: string) => void>()
     const index = new Map<string, string>([['mm:service', 'mm_icon_svc']])
+    const asset = (k: string) => (k === 'mm_icon_svc' ? { ViewBoxWidth: 24, ViewBoxHeight: 24, Shapes: [] } : undefined)
     return {
         index,
-        resolve: (k: string) => (k === 'mm_icon_svc' ? { ViewBoxWidth: 24, ViewBoxHeight: 24, Shapes: [] } : undefined),
+        resolve: asset,
+        resolveAsset: asset,
         iconKeyFor: (k: string) => index.get(k),
         onChanged: (cb: (key: string) => void) => { listeners.add(cb); return () => listeners.delete(cb) },
         fire(key: string) { for (const l of listeners) l(key) },
@@ -54,6 +56,17 @@ describe('TodlVisualResolver', () => {
         const r = new TodlVisualResolver(reg as unknown as TodlPresentationRegistry)
         const fig = r.Resolve(desc('mm:service'), VisualContext.Figure) as Border
         expect(fig.IsHitTestVisible).not.toBe(false)
+    })
+
+    it('falls back to the mm: keyspace for a bare meta-model term id (arch canvas nodes)', () => {
+        const reg = fakeRegistry()
+        setIconResourceResolver(reg.resolve)
+        const r = new TodlVisualResolver(reg as unknown as TodlPresentationRegistry)
+        // A canvas node carries the bare term id 'service'; the index keys the
+        // meta-model term as 'mm:service' — the resolver's mm: fallback finds it.
+        const tile = r.Resolve(desc('service'), VisualContext.Tile) as Border
+        expect(tile).toBeInstanceOf(Border)
+        expect(hasType(tile, Icon)).toBe(true)
     })
 
     it('an entity with no indexed icon still renders the default template (default glyph, no label)', () => {

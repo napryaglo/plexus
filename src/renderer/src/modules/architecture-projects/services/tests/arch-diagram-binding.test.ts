@@ -54,6 +54,30 @@ test('attach binds ArchNodeVMs whose Id is an entity: derives Label + Descriptor
     expect(ghost.Label).toBe('freeform')
 })
 
+test('a node whose entity references an icon-bearing term is keyed by that term id (resolver maps it via the index)', () => {
+    // Base meta-model with a component->realisedBy->technology relationship and a
+    // `<term>@icon` annotation node (the SOURCE shape: path only, no stamped key —
+    // the arch project loads bases from source).
+    const REF_MM = `namespace refmm {
+      concept technology {}
+      concept component { relationship realisedBy -> technology; }
+      taxonomy Stack : represents technology { term azure {} }
+      viewpoint CV : frames component
+    }`
+    const mmDoc = toJSON(load([{ uri: 'refmm.todl', text: REF_MM }]).model)
+    mmDoc.nodes.push({ id: 'Stack.azure@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'resources/azure.svg' } })
+    const baseRepo = new Repository(graphFromJSON(mmDoc))
+    const file = { uri: 'refmodel.todl', text: 'namespace refmm { model Arch : refmm conforms CV { component c1 { realisedBy = Stack.azure; } } }' }
+    const draft = ModelDraft.fromSources([baseRepo], [file], { namespace: 'refmm' })
+    const model = new ArchModel(draft, new FakeStorage('fake://Arch'), 'refmm')
+
+    const doc = new DiagramDocument()
+    const c1 = addVM(doc, 'c1')
+    new ArchDiagramBinding(doc, model).attach()
+
+    expect(c1.Descriptor).toEqual(new ToolboxVisualDescriptor(TodlVisualResolverKey, 'Stack.azure'))
+})
+
 test('model label change re-syncs the bound VM; delete removes its VM', () => {
     const model = buildModel()
     const doc = new DiagramDocument()
