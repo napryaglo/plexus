@@ -18,6 +18,11 @@ export class ArchNodeVM extends SideConnectableNodeVM {
         super()
         this.Width = 72
         this.Height = 56
+        // An arch node is an icon+label tile, not a geometric shape — its box
+        // should follow its content so the selection/resize adorner wraps the
+        // whole tile (icon AND label), not just the icon. The container measures
+        // the tile and writes Width/Height back through the two-way bind.
+        this.SizeToContent = true
     }
 
     get Label(): string {

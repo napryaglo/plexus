@@ -7,15 +7,19 @@ export function registerArchNodeSerializer(): void {
     registerNodeSerializer({
         type: 'arch',
         matches: (n: unknown) => n instanceof ArchNodeVM,
-        // id + position ride the base record; icon/label re-derive on open from the entity
-        serialize: (_node: unknown): Record<string, unknown> => ({}),
-        deserialize: (_data: Record<string, unknown>, base: NodeBaseRecord): ArchNodeVM => {
+        // id + position ride the base record; icon/label re-derive on open from the
+        // entity. Persist userSized so a hand-resized tile keeps its size instead of
+        // snapping back to the content fit on reload (default: auto-fit to content).
+        serialize: (node: unknown): Record<string, unknown> =>
+            (node as ArchNodeVM).UserSized ? { userSized: true } : {},
+        deserialize: (data: Record<string, unknown>, base: NodeBaseRecord): ArchNodeVM => {
             const vm = new ArchNodeVM()
             vm.Left = base.left
             vm.Top = base.top
             vm.Width = base.w
             vm.Height = base.h
             vm.Id = base.id
+            if (data.userSized === true) vm.UserSized = true
             return vm
         },
     })

@@ -301,6 +301,9 @@ resources DiagramResources {
                   Style               = @BodySmall,
                   Foreground          = @OnSurfaceVariant,
                   TextWrapping        = Wrap,
+                  // Caps the tile width so a long name wraps instead of stretching
+                  // the node; the container sizes the box to this wrapped tile.
+                  MaxWidth            = 120,
                   TextAlignment       = Center,
                   HorizontalAlignment = Center,
                   Margin              = (0,4,0,0) ]
