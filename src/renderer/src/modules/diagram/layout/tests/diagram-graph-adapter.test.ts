@@ -24,12 +24,12 @@ test('nodeSize returns the fallback when nothing is measurable', () => {
     expect(nodeSize({ Width: 0, Height: 0 }, FALLBACK)).toEqual(FALLBACK)
 })
 
-test('extract assigns stable ids to figures missing one and indexes them', () => {
+test('extract synthesises a graph-local id for figures missing one WITHOUT mutating the node', () => {
     const a = { Id: undefined as string | undefined, Left: 0, Top: 0 }
     const b = { Id: 'kept', Left: 0, Top: 0 }
     const { graph, index } = extract([a, b], [])
-    expect(a.Id).toBe('n0')            // assigned + persisted onto the figure
-    expect(index.get('n0')).toBe(a)
+    expect(a.Id).toBe(undefined)       // identity is NOT mutated — the id stays graph-local
+    expect(index.get('n0')).toBe(a)    // …but the run still addresses it as 'n0'
     expect(index.get('kept')).toBe(b)
     expect(graph.nodes.map((n) => n.Id).sort()).toEqual(['kept', 'n0'])
 })

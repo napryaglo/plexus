@@ -293,13 +293,17 @@ resources DiagramResources {
             ToolboxVisualPresenter
                 [ Descriptor          = $Descriptor,
                   Context             = VisualContext.Figure,
-                  Width               = 40,
-                  Height              = 40,
+                  // Sized from the shared shape-default-size setting so an arch
+                  // node's icon renders at the same size as a geometric shape.
+                  Width               = $IconSize,
+                  Height              = $IconSize,
                   HorizontalAlignment = Center ]
             TextBlock
                 [ Text                = $Label,
                   Style               = @BodySmall,
-                  Foreground          = @OnSurfaceVariant,
+                  // Black caption on the diagram canvas — independent of the
+                  // surface-variant theme colour used by toolbox tiles.
+                  Foreground          = #000000,
                   TextWrapping        = Wrap,
                   // Caps the tile width so a long name wraps instead of stretching
                   // the node; the container sizes the box to this wrapped tile.

@@ -1,5 +1,5 @@
 import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
-import { SideConnectableNodeVM, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { DiagramSettings, SideConnectableNodeVM, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 
 // Extends SideConnectableNodeVM (not NodeViewModel) so connector endpoints
 // anchored to an arch item distribute across its sides, rebalance, and show
@@ -13,11 +13,17 @@ export class ArchNodeVM extends SideConnectableNodeVM {
         undefined,
         MetaData.None,
     )
+    // Edge length of the icon glyph. Seeded from the shared shape-default-size
+    // setting (read once at construction, exactly as ShapeNodeVM.fromKind reads
+    // it) so an arch node's icon renders at the same size as a geometric shape.
+    // A real DP so the tile template can bind `$IconSize`.
+    static readonly IconSizeKey = Model.RegisterProperty<number>(ArchNodeVM, 'IconSize', 80, MetaData.None)
 
     constructor() {
         super()
         this.Width = 72
         this.Height = 56
+        this.IconSize = DiagramSettings.ShapeDefaultSize()
         // An arch node is an icon+label tile, not a geometric shape — its box
         // should follow its content so the selection/resize adorner wraps the
         // whole tile (icon AND label), not just the icon. The container measures
@@ -39,6 +45,14 @@ export class ArchNodeVM extends SideConnectableNodeVM {
 
     set Descriptor(v: ToolboxVisualDescriptor | undefined) {
         this.set_property_value(ArchNodeVM.DescriptorKey, v)
+    }
+
+    get IconSize(): number {
+        return this.get_property_value(ArchNodeVM.IconSizeKey)
+    }
+
+    set IconSize(v: number) {
+        this.set_property_value(ArchNodeVM.IconSizeKey, v)
     }
 
     get EntityId(): string | undefined {

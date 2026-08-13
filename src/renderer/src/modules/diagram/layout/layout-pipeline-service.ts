@@ -68,7 +68,12 @@ const CARDINAL_SIDE_ROUTER = 'CardinalSideRouter'
 // Fallback node size when a figure has not been measured yet (RenderSize 0).
 const FALLBACK_SIZE: NodeSize = { width: 80, height: 40 }
 
-const DEFAULT_CONFIG: PipelineConfiguration = { name: 'default', transforms: [], layout: {} }
+// MakeAcyclic runs first so a cyclic diagram (feedback / bidirectional
+// architecture relationships) is broken into a DAG before the longest-path
+// layer assigner — which refuses cyclic input ('longest-path depths require a
+// DAG') — ever sees it. It reverses the minimal feedback-arc set; on an
+// already-acyclic graph it is a no-op.
+const DEFAULT_CONFIG: PipelineConfiguration = { name: 'default', transforms: ['MakeAcyclicTransform'], layout: {} }
 
 // LayoutPipelineService — composes a Fresco layout pipeline and runs it on
 // the active diagram. Holds the current PipelineConfiguration and run mode,

@@ -53,6 +53,25 @@ test('running the layout clears connector waypoints (reset to auto)', () => {
     expect(c.Waypoints).toBeUndefined()
 })
 
+test('Run lays out a CYCLIC diagram without a DAG pipeline error', () => {
+    // Reproduces the reported failure: an architecture diagram with a cycle
+    // (a → b → a) drove the longest-path layer assigner to throw
+    // 'longest-path depths require a DAG'. The default config now runs
+    // MakeAcyclicTransform first, so the cycle is broken and layout succeeds.
+    const doc = new DiagramDocument()
+    const a = new ArchNodeVM(); a.Id = 'a'; a.Left = 0;   a.Top = 0
+    const b = new ArchNodeVM(); b.Id = 'b'; b.Left = 300; b.Top = 0
+    doc.AddNode(a); doc.AddNode(b)
+    doc.CreateConnector(new ConnectorEndpoint({ Node: a }), new ConnectorEndpoint({ Node: b }))
+    doc.CreateConnector(new ConnectorEndpoint({ Node: b }), new ConnectorEndpoint({ Node: a }))   // closes the cycle
+
+    const svc = new LayoutPipelineService(providerWithActive(doc))
+    svc.Run()
+
+    expect(svc.Status).toContain('Laid out')
+    expect(svc.Status).not.toContain('Pipeline error')
+})
+
 test('Run reports when the active document is not a diagram', () => {
     const svc = new LayoutPipelineService(providerWithActive(undefined))
     svc.Run()

@@ -75,10 +75,16 @@ export function extract(
     const connectorEdges: ConnectorEdge[] = []
 
     nodes.forEach((fig, i) => {
-        if (fig.Id === undefined || fig.Id === '') fig.Id = idGen(i)
-        index.set(fig.Id, fig)
-        idOf.set(fig as object, fig.Id)
-        graph.AddNode(fig.Id)
+        // Use the node's own Id when it has one; otherwise synthesise a
+        // GRAPH-LOCAL id for this run only. Never write it back onto the node —
+        // mutating fig.Id corrupts the node's identity for everything else
+        // (arch-model binding keys off it, serialization persists it), which is
+        // how empty-Id arch nodes ended up saved as "n8".."n13". The id lives
+        // only in `index` / `idOf` for this extract's lifetime.
+        const gid = fig.Id === undefined || fig.Id === '' ? idGen(i) : fig.Id
+        index.set(gid, fig)
+        idOf.set(fig as object, gid)
+        graph.AddNode(gid)
     })
 
     for (const conn of connectors) {

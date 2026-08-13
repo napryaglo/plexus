@@ -1,16 +1,16 @@
 import { Application, Element, ServiceKey, type Visual } from '@pragmatic-lab/mural/runtime'
-import { ApplicationSettings, VisualContext, type IToolboxVisualResolver, type ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { ApplicationSettings, DiagramSettings, VisualContext, type IToolboxVisualResolver, type ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 import { buildCtx, buildDefaultTemplate, buildFigureTemplate } from '../../library/services/visual-library.js'
 import type { TodlPresentationRegistry } from './todl-presentation-registry.js'
 
 export const TodlVisualResolverKey = new ServiceKey<IToolboxVisualResolver>('TodlVisualResolver')
 
 // Setting keys (match diagram.module.mu) that size the Tile-context icon; the
-// Figure context (canvas nodes) keeps its own fixed size.
+// Figure context (canvas nodes) reads the shared shape-default-size setting so a
+// canvas icon renders at the same size as a geometric shape.
 const ITEM_WIDTH_SETTING = 'toolbox.item.width'
 const ITEM_HEIGHT_SETTING = 'toolbox.item.height'
 const TILE_ICON_FALLBACK = 48
-const FIGURE_ICON_SIZE = 32
 
 // Resolves every published-package visual through the ONE default template, drawing
 // the entity's icon named by the registry's entityKey → resource-key index (unknown
@@ -48,12 +48,17 @@ export class TodlVisualResolver implements IToolboxVisualResolver
     }
 
     // The icon size for a context: Tile (toolbox tiles + library preview) reads the
-    // toolbox item size settings so entity icons match the 48px shapes; Figure
-    // (canvas nodes) keeps a fixed size. Read at resolve time so a settings change
-    // takes effect on the next reload.
+    // toolbox item size settings so entity icons match the 48px tiles; Figure
+    // (canvas nodes) reads the shape-default-size setting so a canvas icon renders
+    // at the same size as a geometric shape. Read at resolve time so a settings
+    // change takes effect on the next reload.
     private iconSize(context: VisualContext): { width: number; height: number }
     {
-        if (context !== VisualContext.Tile) return { width: FIGURE_ICON_SIZE, height: FIGURE_ICON_SIZE }
+        if (context !== VisualContext.Tile)
+        {
+            const size = DiagramSettings.ShapeDefaultSize()
+            return { width: size, height: size }
+        }
         const settings = Application.current?.Services.get(ApplicationSettings.Key)
         const w = settings?.Get(ITEM_WIDTH_SETTING)
         const h = settings?.Get(ITEM_HEIGHT_SETTING)

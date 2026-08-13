@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { Border, Icon, TextBlock } from '@pragmatic-lab/mural/basic'
-import { VisualContext, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { DiagramSettings, VisualContext, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 import type { Visual } from '@pragmatic-lab/mural/runtime'
 
 import type { TodlPresentationRegistry } from '../todl-presentation-registry.js'
@@ -13,6 +13,15 @@ function hasType(v: Visual, ctor: Function): boolean {
     if (v instanceof ctor) return true
     for (const c of [...v.logicalChildren, ...v.visualChildren]) if (hasType(c, ctor)) return true
     return false
+}
+
+function findFirst<T extends Visual>(v: Visual, ctor: Function): T | undefined {
+    if (v instanceof ctor) return v as T
+    for (const c of [...v.logicalChildren, ...v.visualChildren]) {
+        const hit = findFirst<T>(c, ctor)
+        if (hit !== undefined) return hit
+    }
+    return undefined
 }
 
 function desc(key: string): ToolboxVisualDescriptor {
@@ -49,6 +58,19 @@ describe('TodlVisualResolver', () => {
         expect(hasType(tile, Icon)).toBe(true)
         expect(hasType(tile, TextBlock)).toBe(false)   // figure only; host draws caption
         expect(tile.IsHitTestVisible).toBe(false)
+    })
+
+    it('sizes the Figure-context icon to the shared shape-default-size setting', () => {
+        const reg = fakeRegistry()
+        setIconResourceResolver(reg.resolve)
+        const r = new TodlVisualResolver(reg as unknown as TodlPresentationRegistry)
+        const fig = r.Resolve(desc('mm:service'), VisualContext.Figure) as Border
+        const icon = findFirst<Icon>(fig, Icon)
+        expect(icon).toBeDefined()
+        // Same setting a geometric shape reads — with no settings host the helper
+        // returns its compiled-in default (80), not the old fixed 32.
+        expect(icon!.Width).toBe(DiagramSettings.ShapeDefaultSize())
+        expect(icon!.Height).toBe(DiagramSettings.ShapeDefaultSize())
     })
 
     it('does NOT force IsHitTestVisible=false in Figure context', () => {
