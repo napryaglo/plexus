@@ -1,0 +1,33 @@
+import { test, expect } from 'vitest'
+import { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import { readCamera, writeCamera } from '../diagram-camera-store.js'
+
+test('writeCamera then readCamera round-trips a camera through document metadata', () => {
+    const doc = new DiagramDocument()
+    expect(readCamera(doc)).toBeUndefined()
+    writeCamera(doc, { zoom: 2, panX: 30, panY: -40 })
+    expect(readCamera(doc)).toEqual({ zoom: 2, panX: 30, panY: -40 })
+})
+
+test('writeCamera preserves other metadata keys', () => {
+    const doc = new DiagramDocument()
+    doc.Metadata = { 'arch.viewpoints': ['logical'] }
+    writeCamera(doc, { zoom: 1, panX: 0, panY: 0 })
+    expect(doc.Metadata['arch.viewpoints']).toEqual(['logical'])
+    expect(readCamera(doc)).toEqual({ zoom: 1, panX: 0, panY: 0 })
+})
+
+test('readCamera rejects a malformed stored value', () => {
+    const doc = new DiagramDocument()
+    doc.Metadata = { camera: { zoom: 'big', panX: 0, panY: 0 } }
+    expect(readCamera(doc)).toBeUndefined()
+})
+
+test('camera survives a real serialize -> deserialize cycle', () => {
+    const seed = new DiagramDocument()
+    writeCamera(seed, { zoom: 1.5, panX: 12, panY: 34 })
+    const payload = (seed as unknown as { _serialize(): unknown })._serialize()
+    const opened = new DiagramDocument()
+    ;(opened as unknown as { _deserialize(p: unknown): void })._deserialize(payload)
+    expect(readCamera(opened)).toEqual({ zoom: 1.5, panX: 12, panY: 34 })
+})
