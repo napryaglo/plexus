@@ -19,6 +19,7 @@ import { AgentService } from './modules/agent-chat/services/agent-service.js'
 import { TemplateGalleryService } from './modules/agent-chat/services/template-gallery-service.js'
 import { attachAutoOpenInspector } from './modules/diagram/behaviors/auto-open-inspector-behavior.js'
 import { attachSaveShortcuts } from './services/documents/save-shortcuts.js'
+import { attachZoomShortcuts } from './modules/diagram/behaviors/zoom-shortcuts.js'
 import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'
 import { CodeEditorService } from './modules/code-editor/code-editor-service.js'
 import { EnvironmentService } from './services/environment/environment-service.js'
@@ -136,6 +137,9 @@ try {
 
     // Ctrl+S / Ctrl+Shift+S → Save / Save All on the document host.
     if (host !== undefined) attachSaveShortcuts(host)
+
+    // Ctrl +/−/0 → zoom in / out / reset on the active diagram's camera.
+    if (host !== undefined) attachZoomShortcuts(host)
 
     // Open a scratch file in the app's storage folder as a Monaco-backed code
     // document (DomHost + Monaco through a document tab). Opened after the
