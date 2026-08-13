@@ -13,6 +13,7 @@ import ToolboxService from "./services/diagram-panel-services.js"
 import LayoutPipelineService from "./layout/layout-pipeline-service.js"
 import DropCandidateChooserService from "../architecture-projects/services/drop-candidate-chooser-service.js"
 import ArchNodeVM from "../architecture-projects/services/arch-node-vm.js"
+import ZoomPercent from "./services/diagram-zoom-percent.js"
 
 resources DiagramResources {
     // ── Icon geometries ─────────────────────────────────────────────────
@@ -55,6 +56,10 @@ resources DiagramResources {
         // Grow / shrink font.
         text_increase
         text_decrease
+        // Zoom toolbar (host-built camera UI).
+        zoom_in
+        zoom_out
+        fit_screen
     }
 
     // ── Canvas ItemsPanel — a paginated canvas whose measured extent grows
@@ -133,6 +138,41 @@ resources DiagramResources {
                 }
             }
             ColorPicker [ ColorHex = $FontColorHex, Margin = (8,0,0,0), VerticalAlignment = Center ]
+        }
+    }
+
+    // ── Zoom control — a Commands-region toolbar CONTROL (host-built camera UI) ──
+    // Hosted in the shell command bar by the module's .ShellControls: entry. The
+    // shell applies this with the active DiagramDocument as DataContext; the inner
+    // StackPanel retargets to $ActiveView (the live Diagram) so the command DPs and
+    // the Zoom readout bind as single reactive segments (mirrors the inspector's
+    // $View retarget — a two-segment ActiveView.Zoom would go stale). Buttons drive
+    // the mural camera commands; the label shows the current zoom via ZoomPercent.
+    // When no view is mounted yet the commands resolve to nothing (inert buttons)
+    // and the readout is blank — a transient the shell tolerates. Reached ONLY by
+    // key, never implicit type resolution, so it can't shadow the keyless canvas
+    // template above (both are [DataType = DiagramDocument]).
+    DataTemplate x:key="ZoomControlEditor" [DataType = DiagramDocument] {
+        StackPanel [ Orientation = Horizontal, VerticalAlignment = Center, DataContext = $ActiveView ] {
+            ToolBar {
+                ToolBarButton [ Command = $ZoomOutCommand ] {
+                    Shape [ Geometry = @zoom_out, Fill = @OnSurfaceVariant, Width = 16, Height = 16, Margin = (2) ]
+                }
+            }
+            TextBlock
+                [ Text              = $Zoom << ZoomPercent,
+                  Width             = 44,
+                  TextAlignment     = Center,
+                  VerticalAlignment = Center,
+                  Foreground        = @OnSurfaceVariant ]
+            ToolBar {
+                ToolBarButton [ Command = $ZoomInCommand ] {
+                    Shape [ Geometry = @zoom_in, Fill = @OnSurfaceVariant, Width = 16, Height = 16, Margin = (2) ]
+                }
+                ToolBarButton [ Command = $FitCommand ] {
+                    Shape [ Geometry = @fit_screen, Fill = @OnSurfaceVariant, Width = 16, Height = 16, Margin = (2) ]
+                }
+            }
         }
     }
 

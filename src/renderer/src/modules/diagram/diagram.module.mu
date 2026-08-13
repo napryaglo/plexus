@@ -339,6 +339,13 @@ module DiagramModule [ Name = "Diagram" ] {
     // step commands); Order = 330 places it after the text-style toggles. The
     // connectors indicator rides the status bar (StatusBar region).
     .ShellControls: {
+        // Zoom control — host-built camera UI (Commands region). Binds the live
+        // canvas's zoom command DPs + Zoom readout through the published ActiveView.
+        // Order 320 places it just ahead of the text controls.
+        ShellControlDefinition
+            [ Template = @ZoomControlEditor,
+              Context  = DiagramEditingContext,
+              Order    = 320 ]
         ShellControlDefinition
             [ Template = @FontFormatEditor,
               Context  = DiagramEditingContext,
