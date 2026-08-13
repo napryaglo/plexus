@@ -11,9 +11,10 @@ const SVG = '<svg viewBox="0 0 16 16"><path d="M2 2 L14 2 L14 14 Z"/></svg>'
 
 const DOC: TodlDocument = {
     nodes: [
-        { id: 'application', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'Application', icon: 'resources/app.svg' } },
+        { id: 'application', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'Application' } },
+        { id: 'application@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'resources/app.svg' } },
     ],
-    edges: [],
+    edges: [{ kind: 'Annotated', via: null, from: 'application', to: 'application@icon' }],
 } as unknown as TodlDocument
 
 // Wire a provider whose meta-models backend is the given FakeStorage.

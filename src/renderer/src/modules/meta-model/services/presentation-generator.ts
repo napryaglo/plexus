@@ -31,15 +31,15 @@ export function classEntities(model: TodlDocument): JsonNode[]
     return model.nodes.filter((n) => n.tier === 'Instance' && n.attrs['class'] === true)
 }
 
-// Distinct `attrs.icon` values across every node (Ontology + Instance), sorted —
-// the SVGs the generated dictionary `include`s so they are available as geometry
-// resources to generated templates and author templates alike.
+// Distinct icon paths across every node, sorted — the SVGs the generated
+// dictionary `include`s so they are available as geometry resources to generated
+// templates and author templates alike. Icons are sourced solely from `<x>@icon`
+// annotation application nodes (`annotate icon { path }`); the legacy `attrs.icon`
+// field form was removed.
 export function distinctIcons(model: TodlDocument): string[]
 {
     const set = new Set<string>()
     for (const n of model.nodes) {
-        const icon = n.attrs['icon']
-        if (typeof icon === 'string' && icon.length > 0) set.add(icon)
         // Annotation-sourced icon: a `<x>@icon` application node (typeOf 'icon')
         // carries the path on its `path` attr.
         if (n.typeOf === 'icon') {
@@ -180,17 +180,15 @@ export function buildIconIndex(doc: TodlDocument, prefix: string): Map<string, s
 
 export interface PresentationFacets { icon?: string; label: string }
 
-// Attr-primary, annotation-fallback resolution of the well-known presentation
-// facets for a node. `annotations` is the SP2 projected bag for that node
-// (projectAnnotations output). Only a non-empty string counts as an icon; the
-// label falls back through the annotation to humanize(id).
+// Resolves the well-known presentation facets for a node. `annotations` is the
+// SP2 projected bag for that node (projectAnnotations output). The icon comes
+// solely from the `icon` annotation (`annotate icon { path }`); the legacy
+// attr-primary field form was removed. The label stays attr-primary, falling back
+// through the annotation to humanize(id).
 export function resolveFacets(node: JsonNode, annotations: Record<string, Record<string, unknown>>): PresentationFacets
 {
-    const attrIcon = node.attrs['icon']
     const annIcon = annotations['icon']?.['path']
-    const icon = (typeof attrIcon === 'string' && attrIcon.length > 0) ? attrIcon
-        : (typeof annIcon === 'string' && annIcon.length > 0) ? annIcon
-            : undefined
+    const icon = (typeof annIcon === 'string' && annIcon.length > 0) ? annIcon : undefined
 
     const attrLabel = node.attrs['label']
     const annLabel = annotations['label']?.['text']

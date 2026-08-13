@@ -7,9 +7,10 @@ import { loadCompiledPresentation } from '../compiled-presentation.js'
 
 const DOC: TodlDocument = {
     nodes: [
-        { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'Actor', icon: 'resources/actor.svg' } },
+        { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'Actor' } },
+        { id: 'actor@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'resources/actor.svg' } },
     ],
-    edges: [],
+    edges: [{ kind: 'Annotated', via: null, from: 'actor', to: 'actor@icon' }],
 } as unknown as TodlDocument
 
 // The colored icon is embedded into the assets artifact at compile (parseSvgIcon over

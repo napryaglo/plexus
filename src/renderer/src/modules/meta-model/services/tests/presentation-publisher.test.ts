@@ -6,11 +6,12 @@ import { publishPresentation } from '../presentation-publisher.js'
 
 const DOC: TodlDocument = {
     nodes: [
-        { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'Actor', icon: 'resources/actor.svg' } },
+        { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { label: 'Actor' } },
+        { id: 'actor@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'resources/actor.svg' } },
         { id: 'component', tier: 'Ontology', typeOf: 'concept', attrs: {} },
         { id: 'depends-on', tier: 'Ontology', typeOf: 'relationship', attrs: {} },
     ],
-    edges: [],
+    edges: [{ kind: 'Annotated', via: null, from: 'actor', to: 'actor@icon' }],
 } as unknown as TodlDocument
 
 const SVG = '<svg viewBox="0 0 16 16"><path d="M2 2 L14 2 L14 14 Z"/></svg>'

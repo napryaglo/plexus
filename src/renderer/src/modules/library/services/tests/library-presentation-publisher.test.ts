@@ -6,10 +6,11 @@ import { publishLibraryPresentation } from '../library-presentation-publisher.js
 const DOC: TodlDocument = {
     nodes: [
         { id: 'microsoft.azure', tier: 'Instance', typeOf: 'location',
-          attrs: { class: true, id: 'azure', label: 'Azure', icon: 'resources/azure.svg' } },
+          attrs: { class: true, id: 'azure', label: 'Azure' } },
+        { id: 'microsoft.azure@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'resources/azure.svg' } },
         { id: 'microsoft.aws', tier: 'Instance', typeOf: 'location', attrs: { class: true, id: 'aws', label: 'AWS' } },
     ],
-    edges: [],
+    edges: [{ kind: 'Annotated', via: null, from: 'microsoft.azure', to: 'microsoft.azure@icon' }],
 } as unknown as TodlDocument
 
 const SVG = '<svg viewBox="0 0 16 16"><path d="M2 2 L14 2 L14 14 Z"/></svg>'
@@ -48,9 +49,10 @@ test('a referenced icon with no project file blocks publish (names the path, wri
 const RASTER_DOC: TodlDocument = {
     nodes: [
         { id: 'microsoft.aml', tier: 'Instance', typeOf: 'technology',
-          attrs: { class: true, id: 'aml', label: 'Azure ML', icon: 'resources/azure-machine-learning.png' } },
+          attrs: { class: true, id: 'aml', label: 'Azure ML' } },
+        { id: 'microsoft.aml@icon', tier: 'Ontology', typeOf: 'icon', attrs: { path: 'resources/azure-machine-learning.png' } },
     ],
-    edges: [],
+    edges: [{ kind: 'Annotated', via: null, from: 'microsoft.aml', to: 'microsoft.aml@icon' }],
 } as unknown as TodlDocument
 
 // 1x1 transparent PNG bytes.
