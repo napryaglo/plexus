@@ -72,3 +72,37 @@ test('a non-architecture document falls back to a plain CreateNode', () => {
     expect(result).toBeInstanceOf(ShapeNodeVM)
     expect(result.Kind).toBe('rectangle')
 })
+
+const PROP_MM = `namespace archmm {
+  annotation materialize { concept : identifier?; via : identifier?; propagate : boolean?; }
+  concept category {}
+  concept technology { relationship applicableTo -> category; }
+  concept component {
+    annotate materialize {}
+    relationship implementedBy -> technology;
+    relationship categorisedAs -> category;
+  }
+  viewpoint ComponentView : frames component
+  taxonomy Cats : represents category { term ai {} }
+  taxonomy Stack : represents technology { term azure { applicableTo = Cats.ai; } }
+}`
+
+function buildPropModel(storage: FakeStorage): ArchModel {
+    const draft = ModelDraft.fromSources([new Repository(graphFromJSON(toJSON(load([{ uri: 'mm.todl', text: PROP_MM }]).model)))], [], { namespace: 'archmm' })
+    return new ArchModel(draft, storage, 'archmm')
+}
+
+test('dropping a technology wires the primary member AND back-fills the category by propagation', () => {
+    const storage = new FakeStorage('fake://Acme')
+    const model = buildPropModel(storage)
+    const doc = new DiagramDocument()
+    const factory = new ArchInstanceDropFactory(wire(doc, model))
+
+    const result = factory.CreateDropped(ctx(doc, 'Stack.azure')) as ArchNodeVM
+    expect(result).toBeInstanceOf(ArchNodeVM)
+    const comp = model.entities().find((e) => e.concept === 'component')!
+    // Primary member wired to the dropped technology term.
+    expect(model.repository().refs(comp.id, 'implementedBy')).toContain('Stack.azure')
+    // Category back-filled from the technology term's own applicableTo ref.
+    expect(model.repository().refs(comp.id, 'categorisedAs')).toContain('Cats.ai')
+})

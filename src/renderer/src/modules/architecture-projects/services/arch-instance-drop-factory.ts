@@ -2,6 +2,9 @@ import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
 
 import { resolveDropActions, DropActionKind, type DropAction } from './arch-drop-resolver.js'
+import { propagationFills } from './arch-propagate.js'
+import { materializeOf } from './arch-materialize.js'
+import { conceptTypeOf } from './arch-concept-type.js'
 import { defaultLabel } from './arch-default-label.js'
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
@@ -53,8 +56,20 @@ export class ArchInstanceDropFactory implements IToolboxDropFactory
         const schema = model.repository().effectiveSchema(action.concept)
         if (schema.fields.some((f) => f.name === 'label'))
             model.setField(entity.id, 'label', defaultLabel(model.repository(), action))
-        if (action.kind === DropActionKind.Reference && action.member !== undefined && action.term !== undefined)
+        if (action.kind === DropActionKind.Reference && action.member !== undefined && action.term !== undefined) {
             model.addRef(entity.id, action.member, action.term)
+            // Propagate the dropped term's own references onto the instance's other
+            // empty members (technology → its category, etc.). Gated by the effective
+            // materialize.propagate flag (term → facet concept → root), default true.
+            const ct = conceptTypeOf(model.repository(), action.term)
+            const propagate = materializeOf(model.repository(), action.term)?.propagate
+                ?? materializeOf(model.repository(), ct)?.propagate
+                ?? materializeOf(model.repository(), action.concept)?.propagate
+                ?? true
+            if (propagate)
+                for (const fill of propagationFills(model.repository(), action.concept, action.term, action.member))
+                    model.addRef(entity.id, fill.member, fill.term)
+        }
 
         const { X, Y } = context.Position
         const vm = new ArchNodeVM()
