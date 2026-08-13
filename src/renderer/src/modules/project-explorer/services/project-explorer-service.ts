@@ -48,6 +48,7 @@ import {
 } from '../../../services/projects/project-factory.js'
 import { isRelocatable, isRelocatableAcrossStorage, type IDocumentFactory } from '../../../services/documents/document-factory.js'
 import { NewFileParticipantKey } from '../../../services/documents/new-file-participant.js'
+import { NodeCommandContributorKey } from '../../../services/documents/node-command-contributor.js'
 import { copyTree } from '../../../services/storage/copy-tree.js'
 import type { FileFilter } from '../../../../../shared/file-system-api.js'
 import { ProjectNode } from '../../../services/projects/project.js'
@@ -463,8 +464,17 @@ export class ProjectExplorerService extends ServiceBase
             // Refresh the project's tree so the new file appears, then open it.
             op.Adopt(await op.Factory.openProject(op.Storage))
             this.wireNodes(op.Root, op)
-            // Optional per-project-type hook (e.g. the arch viewpoint picker).
-            await this.Provider.get(NewFileParticipantKey)?.OnCreated(op, path)
+            // Optional per-project-type hook (e.g. the arch viewpoint picker). It
+            // may abort creation (e.g. the user cancelled the picker); if so,
+            // delete the file, re-scan, and skip opening it.
+            const keep = await this.Provider.get(NewFileParticipantKey)?.OnCreated(op, path)
+            if (keep === false) {
+                await op.Storage.Delete(path)
+                op.Adopt(await op.Factory.openProject(op.Storage))
+                this.wireNodes(op.Root, op)
+                this.Status = `New ${format.displayName} cancelled.`
+                return
+            }
             await this.openDocument(op, path, factory)
             this.Status = `New ${format.displayName} at ${basename(path)}.`
         } catch (e) {
@@ -1044,9 +1054,13 @@ export class ProjectExplorerService extends ServiceBase
     }
 
     // Open a project file as a document tab (through the resolved editor) and
-    // record its owning project. Returns the opened document.
+    // record its owning project. Returns the opened document. If the file is
+    // already open for this project, re-activates that tab instead of opening a
+    // duplicate — the single dedupe point every open path funnels through.
     private async openDocument(op: OpenProject, path: string, factory: IDocumentFactory): Promise<IDocument>
     {
+        const existing = this.findOpenDoc(op, path)
+        if (existing !== undefined) { this.host.Open(existing); return existing }
         const doc = await factory.openFile(op.Storage, path)
         this.docOwners.set(doc, op)
         this.docPaths.set(doc, path)
@@ -1061,15 +1075,23 @@ export class ProjectExplorerService extends ServiceBase
     {
         const op = this.findByFolder(projectId)
         if (op === undefined) return
-        let doc = this.findOpenDoc(op, uri)
-        if (doc === undefined) {
-            const factory = this.resolveDocumentFactory(extname(uri))
-            if (factory === undefined) return
-            doc = await this.openDocument(op, uri, factory)
-        } else {
-            this.host.Open(doc)   // re-activate the existing tab
-        }
+        const factory = this.resolveDocumentFactory(extname(uri))
+        if (factory === undefined) return
+        // openDocument re-activates an already-open tab (no duplicate).
+        const doc = await this.openDocument(op, uri, factory)
         if (isRevealable(doc)) doc.RequestReveal(line, column)
+    }
+
+    // Open (or re-activate) a project file and return its document — the generic
+    // "get me the live document for this path" entry point a node-command
+    // contributor uses before acting on it. Undefined when no editor claims the
+    // extension.
+    public async OpenPath(op: OpenProject, path: string): Promise<IDocument | undefined>
+    {
+        const factory = this.resolveDocumentFactory(extname(path))
+        if (factory === undefined) return undefined
+        // openDocument re-activates an already-open tab (no duplicate).
+        return this.openDocument(op, path, factory)
     }
 
     // The already-open document for (project, project-relative path), if any.
@@ -1181,6 +1203,14 @@ export class ProjectExplorerService extends ServiceBase
         // node's context-menu "Rename" opens its in-place editor.
         node.BeginRenameCommand = new RelayCommand(() => this.beginRename(op, node), () => node.Path !== '')
         node.DeleteCommand = new RelayCommand(() => void this.deleteFromNode(op, node), () => node.Path !== '')
+        // Optional module-contributed action (e.g. the arch "Edit Viewpoints…" on a
+        // .diagram node), surfaced on the node's context menu when present.
+        const action = this.Provider.get(NodeCommandContributorKey)?.contribute(op, node)
+        if (action !== undefined) {
+            node.NodeActionLabel = action.label
+            node.NodeActionCommand = action.command
+            node.HasNodeAction = true
+        }
         for (const child of node.Children.ToArray()) this.wireNodes(child, op)
     }
 }

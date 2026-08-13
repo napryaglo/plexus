@@ -24,4 +24,19 @@ module ArchitectureProjectsModule [ Name = "Architecture Projects" ] {
               Title   = "Architecture Project",
               Factory = ArchitectureProjectFactory ]
     }
+
+    // Diagram-toolbar command: edit the diagram's governing viewpoints. Rides the
+    // DiagramEditingContext (shown while any diagram is active); its handler
+    // (ArchEditViewpointsCommand, via the diagram command-extension seam) enables
+    // it only for an arch-bound diagram and greys it out otherwise. Order 400
+    // places it after the framework diagram commands.
+    .commands: {
+        CommandDefinition
+            [ Id      = "arch.editViewpoints",
+              Title   = "Edit Viewpoints",
+              Icon    = @MetaModels,
+              Context = DiagramEditingContext,
+              Group   = "arch",
+              Order   = 400 ]
+    }
 }

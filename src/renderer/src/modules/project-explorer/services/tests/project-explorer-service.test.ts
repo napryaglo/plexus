@@ -194,6 +194,18 @@ test('opening two projects adds two roots; reopening one dedupes', async () => {
     expect((await store.List()).slice().sort()).toEqual(['C:/a', 'C:/b'])
 })
 
+test('clicking a file already open in the editor re-activates its tab instead of opening a duplicate', async () => {
+    const { priv, host, rec } = makeExplorer()
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeProjectFactory(), new FakeStorage('C:/a'))
+    const node = childNode(op)
+
+    await priv.openNode(node, op)
+    await priv.openNode(node, op)   // second click on the same node
+
+    expect(rec.opened).toEqual(['core.todl'])            // openFile called once — no duplicate document
+    expect(host.OpenDocuments.ToArray().length).toBe(1)  // a single tab
+})
+
 test('RefreshProjects rescans each named project and refreshes its bases; unknown folders are skipped', async () => {
     const { service, priv, provider } = makeExplorer()
     const factory = fakeProjectFactory()

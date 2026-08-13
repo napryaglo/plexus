@@ -90,6 +90,9 @@ resources ProjectExplorerResources {
               Command = $ImportFolderCommand,
               Icon = Shape [ Geometry = @Folder, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
         MenuSeparator
+        // Optional module-contributed action (e.g. arch "Edit Viewpoints…"),
+        // shown only for nodes a contributor acted on (HasNodeAction).
+        MenuItem [ Header = $NodeActionLabel, Command = $NodeActionCommand, Visibility = $HasNodeAction << ToVisibility ]
         MenuItem [ Header = "Rename", Command = $BeginRenameCommand ]
         MenuItem [ Header = "Delete", Command = $DeleteCommand ]
     }

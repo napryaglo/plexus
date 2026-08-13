@@ -134,8 +134,8 @@ import ArchitectureModelService from "./modules/architecture-projects/services/a
 import ArchDiagramBindingService from "./modules/architecture-projects/services/arch-diagram-binding-service.js"
 import DropCandidateChooserService from "./modules/architecture-projects/services/drop-candidate-chooser-service.js"
 import ChooserResources from "./modules/architecture-projects/services/chooser.resources.mu.js"
-import DiagramViewpointScopeService from "./modules/architecture-projects/services/diagram-viewpoint-scope-service.js"
-import ViewpointScopeResources from "./modules/architecture-projects/services/viewpoint-scope.resources.mu.js"
+import ViewpointPickerResources from "./modules/architecture-projects/services/viewpoint-picker.resources.mu.js"
+import DiagramViewpointsEditor from "./modules/architecture-projects/services/diagram-viewpoints-editor.js"
 import DiagnosticsService from "./services/diagnostics/diagnostics-service.js"
 import WorkspaceRefreshService from "./services/workspace/workspace-refresh-service.js"
 import FileWatchService from "./services/file-watch/file-watch-service.js"
@@ -254,11 +254,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // completes the drop with the chosen one. Mounted as a diagram-canvas
         // overlay (see DiagramResources); resolved on demand by the drop factory.
         DropCandidateChooserService
-        // Inspector viewpoint-toggle panel for the active architecture diagram:
-        // re-scopes which viewpoints the diagram reads/writes (persists to the
-        // manifest). Panel mount into the Inspector region is a live-smoke
-        // follow-up (framework InspectorService-driven).
-        DiagramViewpointScopeService
+        // Shared "edit governing viewpoints" flow (pick → confirm removals →
+        // re-scope) for the diagram toolbar command + explorer context menu.
+        DiagramViewpointsEditor
         // Agent workspace tools: subscribes to the agent event stream and services
         // refresh_project (re-scan + re-validate + reply). Eagerly resolved in
         // main.js so it's listening before the first turn.
@@ -327,9 +325,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // ChooserRow rows), overlaid on the diagram canvas.
         merge ChooserResources
 
-        // Viewpoint-toggle panel templates (DataTemplate[DiagramViewpointScopeService]
-        // + ViewpointToggleRow rows).
-        merge ViewpointScopeResources
+        // Diagram-viewpoints picker dialog (DataTemplate[ViewpointPickerModel] +
+        // PickerRow checkbox rows), shown modally via DialogService at diagram
+        // creation and when editing the diagram's governing viewpoints.
+        merge ViewpointPickerResources
 
         // Code editor (DataTemplate[CodeDocument] declares a CodeEditor — a
         // DomHost subclass hosting Monaco, self-bound to the document's Content).

@@ -52,6 +52,16 @@ export class ProjectNode extends Model
     // it removes the whole selected set.
     static readonly DeleteCommandKey = Model.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'DeleteCommand', undefined, MetaData.None)
+    // An optional project-type-specific context-menu action for this node,
+    // contributed by a module through the INodeCommandContributor seam (e.g. the
+    // architecture "Edit Viewpoints…" on a .diagram node). HasNodeAction gates the
+    // menu item's visibility so nothing shows for nodes with no contribution.
+    static readonly NodeActionLabelKey = Model.RegisterProperty<string>(
+        ProjectNode, 'NodeActionLabel', '', MetaData.None)
+    static readonly NodeActionCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        ProjectNode, 'NodeActionCommand', undefined, MetaData.None)
+    static readonly HasNodeActionKey = Model.RegisterProperty<boolean>(
+        ProjectNode, 'HasNodeAction', false, MetaData.None)
     // Self-reference so a row can hand the whole node to a ContentControl's
     // Content (`Content = $Data`). The rename editor is stamped lazily through
     // that ContentControl — see the ProjectNodeTemplate — so the heavy TextBox
@@ -106,6 +116,13 @@ export class ProjectNode extends Model
 
     public get DeleteCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.DeleteCommandKey) }
     public set DeleteCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.DeleteCommandKey, v) }
+
+    public get NodeActionLabel(): string { return this.get_property_value(ProjectNode.NodeActionLabelKey) }
+    public set NodeActionLabel(v: string) { this.set_property_value(ProjectNode.NodeActionLabelKey, v) }
+    public get NodeActionCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.NodeActionCommandKey) }
+    public set NodeActionCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.NodeActionCommandKey, v) }
+    public get HasNodeAction(): boolean { return this.get_property_value(ProjectNode.HasNodeActionKey) }
+    public set HasNodeAction(v: boolean) { this.set_property_value(ProjectNode.HasNodeActionKey, v) }
 }
 
 export class Project extends Model

@@ -4,6 +4,7 @@ import { DiagramDocument, type IDocument } from '@pragmatic-lab/mural/framework'
 import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../services/documents/document-factory.js'
 import type { IStorage } from '../../../services/storage/storage.js'
 import { FileDiagramStorage } from '../persistence/file-diagram-storage.js'
+import { PlexusDiagramDocument } from './plexus-diagram-document.js'
 
 // The `.diagram` editor: a diagram file is a DiagramDocument persisted through
 // mural's native Save()/Load() over a FileDiagramStorage (the full scene
@@ -21,7 +22,7 @@ export class DiagramDocumentFactory extends ServiceBase implements IDocumentFact
     {
         const text = await storage.ReadText(path)
         const store = new FileDiagramStorage(path, storage, text)
-        const doc = new DiagramDocument(store)
+        const doc = new PlexusDiagramDocument(store, this.Provider)
         doc.Load()
         doc.Title = basename(path)
         return doc
@@ -50,7 +51,7 @@ export class DiagramDocumentFactory extends ServiceBase implements IDocumentFact
     {
         const path = ensureExtension(name, '.diagram')   // project-relative, at the root
         const store = new FileDiagramStorage(path, storage, null)
-        const doc = new DiagramDocument(store)
+        const doc = new PlexusDiagramDocument(store, this.Provider)
         doc.Save()   // writes an empty scene
         await store.WhenWritten()
         return path

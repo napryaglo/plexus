@@ -7,7 +7,8 @@ import type { OpenProject } from '../../../services/projects/open-project.js'
 import { ArchitectureModelService } from './architecture-model-service.js'
 import { ArchDiagramBinding } from './arch-diagram-binding.js'
 import type { ArchModel } from './arch-model.js'
-import { readDiagramViewpoints, writeDiagramViewpoints } from './diagram-viewpoints.js'
+import { loadViewpoints, writeViewpoints } from './arch-diagram-viewpoints-store.js'
+import { nodesLeavingScope, type LeavingNode } from './viewpoint-scope-reconcile.js'
 import { registerArchNodeSerializer } from './arch-node-serializer.js'
 
 // App-scoped observer: watches the open-documents set and, for each opened
@@ -42,28 +43,45 @@ export class ArchDiagramBindingService extends ServiceBase
         }
 
         // Newly opened architecture diagrams: attach.
-        for (const doc of current) {
-            if (this.bindings.has(doc) || this.attaching.has(doc)) continue
-            if (!(doc instanceof DiagramDocument)) continue
-            const op = this.projectFor(doc)
-            if (op === undefined) continue
-            this.attaching.add(doc)
-            try {
-                const model = await this.Provider.getRequired(ArchitectureModelService.Key).modelFor(op)
-                if (host.OpenDocuments.ToArray().includes(doc)) {
-                    const binding = new ArchDiagramBinding(doc, model)
-                    binding.attach()
-                    const store = doc.Storage
-                    if (store instanceof FileDiagramStorage) {
-                        const vps = await readDiagramViewpoints(store.ProjectStorage, store.Path)
-                        if (vps !== undefined) binding.setScope(vps)
-                    }
-                    this.bindings.set(doc, binding)
+        for (const doc of current) await this.attachDoc(host, doc)
+    }
+
+    // Attach a binding to one document if it is an open architecture diagram that
+    // isn't already bound (or mid-attach). Idempotent; safe to call repeatedly.
+    private async attachDoc(host: DocumentsContentHostService, doc: IDocument): Promise<void>
+    {
+        if (this.bindings.has(doc) || this.attaching.has(doc)) return
+        if (!(doc instanceof DiagramDocument)) return
+        const op = this.projectFor(doc)
+        if (op === undefined) return
+        this.attaching.add(doc)
+        try {
+            const model = await this.Provider.getRequired(ArchitectureModelService.Key).modelFor(op)
+            if (host.OpenDocuments.ToArray().includes(doc)) {
+                const binding = new ArchDiagramBinding(doc, model)
+                binding.attach()
+                const store = doc.Storage
+                if (store instanceof FileDiagramStorage) {
+                    // Governing viewpoints travel with the diagram (its metadata),
+                    // falling back to the legacy manifest for older diagrams.
+                    const vps = await loadViewpoints(doc, store.ProjectStorage, store.Path)
+                    if (vps !== undefined) binding.setScope(vps)
                 }
-            } finally {
-                this.attaching.delete(doc)
+                this.bindings.set(doc, binding)
             }
+        } finally {
+            this.attaching.delete(doc)
         }
+    }
+
+    // Ensure a document is bound before a caller acts on its binding — closes the
+    // gap between opening a diagram and the OpenDocuments subscription attaching
+    // it. A no-op for a non-architecture or already-bound document.
+    public async ensureBound(doc: IDocument): Promise<void>
+    {
+        if (this.bindings.has(doc)) return
+        const host = this.Provider.get(ContentHostService.Key) as DocumentsContentHostService | undefined
+        if (host !== undefined) await this.attachDoc(host, doc)
     }
 
     // The ArchModel bound to an open document, if it is an attached architecture
@@ -79,15 +97,32 @@ export class ArchDiagramBindingService extends ServiceBase
         return this.bindings.get(doc)?.scopeSet()
     }
 
-    // Narrow (or widen) a diagram's scope: update the binding, persist to the
-    // manifest, and re-notify so any live view refreshes.
+    // The nodes that would leave scope if this diagram were re-scoped to
+    // `viewpoints` — for the caller to list in a confirmation before committing.
+    // Empty when the document isn't a bound architecture diagram.
+    public nodesLeavingScope(doc: IDocument, viewpoints: string[]): LeavingNode[]
+    {
+        const binding = this.bindings.get(doc)
+        if (binding === undefined) return []
+        return nodesLeavingScope(doc as DiagramDocument, binding.model, viewpoints)
+    }
+
+    // Narrow (or widen) a diagram's scope: drop the nodes that fall out of the
+    // new scope, update the binding, persist the selection into the diagram's
+    // metadata (so it travels with the file and restores on open), and re-notify
+    // so any live view refreshes. The caller confirms node removal beforehand.
     public async setDocumentScope(doc: IDocument, viewpoints: string[]): Promise<void>
     {
         const binding = this.bindings.get(doc)
         if (binding === undefined) return
+        const diagram = doc as DiagramDocument
+        const leaving = nodesLeavingScope(diagram, binding.model, viewpoints)
+        if (leaving.length > 0) diagram.DeleteNodes(leaving.map((l) => l.node))
         binding.setScope(viewpoints)
-        const store = (doc as DiagramDocument).Storage
-        if (store instanceof FileDiagramStorage) await writeDiagramViewpoints(store.ProjectStorage, store.Path, viewpoints)
+        writeViewpoints(diagram, viewpoints)
+        diagram.Save()
+        const store = diagram.Storage
+        if (store instanceof FileDiagramStorage) await store.WhenWritten()
         binding.model.notifyChanged()
     }
 

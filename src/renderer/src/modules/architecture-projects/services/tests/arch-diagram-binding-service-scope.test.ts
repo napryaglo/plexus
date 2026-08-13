@@ -12,6 +12,7 @@ import { PROJECT_MANIFEST_FILENAME } from '../../../../services/projects/project
 import type { OpenProject } from '../../../../services/projects/open-project.js'
 import { ArchModel } from '../arch-model.js'
 import { ArchDiagramBindingService } from '../arch-diagram-binding-service.js'
+import { readViewpoints } from '../arch-diagram-viewpoints-store.js'
 
 const MM = `namespace archmm {
   concept component {}
@@ -60,10 +61,10 @@ test('no manifest entry defaults to all viewpoints', async () => {
     expect([...svc.scopeForDocument(doc)!].sort()).toEqual(['ComponentView', 'DeploymentView'])
 })
 
-test('setDocumentScope updates the binding and persists to the manifest', async () => {
-    const { svc, doc, storage } = await scenario()
+test('setDocumentScope updates the binding and persists into the diagram metadata', async () => {
+    const { svc, doc } = await scenario()
     await svc.setDocumentScope(doc, ['DeploymentView'])
     expect([...svc.scopeForDocument(doc)!]).toEqual(['DeploymentView'])
-    const m = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME))
-    expect(m.diagrams['v.diagram'].viewpoints).toEqual(['DeploymentView'])
+    // The selection now travels with the diagram (its metadata), not the manifest.
+    expect(readViewpoints(doc)).toEqual(['DeploymentView'])
 })
