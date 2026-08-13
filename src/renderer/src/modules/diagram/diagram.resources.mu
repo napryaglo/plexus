@@ -94,6 +94,7 @@ resources DiagramResources {
                       SelectionResizeEnabled       = true,
                       ConnectorInteractionsEnabled = true,
                       ReflectSelectionToItems      = true,
+                      CameraEnabled                = true,
                       DropReceiver                 = $Self,
                       Focusable                    = true,
                       ContextMenuService.ContextMenu = @DiagramContextMenu ]
