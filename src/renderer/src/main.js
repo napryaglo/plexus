@@ -29,6 +29,13 @@ import { EditorReloadService } from './services/file-watch/editor-reload-service
 import { ProjectRescanService } from './services/file-watch/project-rescan-service.js'
 import { WorkspaceBaseResolver } from './services/projects/workspace-base-resolver.js'
 import { ArchDiagramBindingService } from './modules/architecture-projects/services/arch-diagram-binding-service.js'
+import { DiagramCameraService } from './modules/diagram/services/diagram-camera-service.js'
+import { ArchNewDiagramParticipant } from './modules/architecture-projects/services/arch-new-diagram-participant.js'
+import { NewFileParticipantKey } from './services/documents/new-file-participant.js'
+import { ArchEditViewpointsCommand } from './modules/architecture-projects/services/arch-edit-viewpoints-command.js'
+import { DiagramCommandExtensionKey } from './modules/diagram/services/diagram-command-extension.js'
+import { ArchNodeCommandContributor } from './modules/architecture-projects/services/arch-node-command-contributor.js'
+import { NodeCommandContributorKey } from './services/documents/node-command-contributor.js'
 import { registerTodlLanguage } from './modules/meta-model/todl-language.js'
 import { registerMuralLanguage } from './modules/code-editor/mural-language.js'
 import { TodlLanguageClient } from './services/todl/todl-language-client.js'
@@ -80,6 +87,23 @@ try {
     // Arch diagram binding: construct now so it observes opened documents and
     // binds architecture diagrams to their ArchModel from boot.
     app.Services.get(ArchDiagramBindingService.Key)
+    // Diagram camera persistence: restore each diagram's saved zoom/pan on open and
+    // write it back (debounced) on change, via the document's metadata slot. Generic
+    // to every .diagram, so it lives in the diagram module (not architecture-projects).
+    app.Services.register(DiagramCameraService.Key, (p) => new DiagramCameraService(p))
+    app.Services.get(DiagramCameraService.Key)
+    // Arch new-diagram participant: aliased under the generic NewFileParticipant
+    // key so the ProjectExplorer prompts for governing viewpoints when a new
+    // .diagram is created in an architecture project.
+    app.Services.register(NewFileParticipantKey, (p) => new ArchNewDiagramParticipant(p))
+    // Arch edit-viewpoints toolbar command: aliased under the generic diagram
+    // command-extension key so PlexusDiagramDocument routes "arch.editViewpoints"
+    // to the shared viewpoints editor (enabled only for arch-bound diagrams).
+    app.Services.register(DiagramCommandExtensionKey, (p) => new ArchEditViewpointsCommand(p))
+    // Arch node context-menu action: aliased under the generic node-command
+    // contributor key so the ProjectExplorer surfaces "Edit Viewpoints…" on a
+    // .diagram node in an architecture project.
+    app.Services.register(NodeCommandContributorKey, (p) => new ArchNodeCommandContributor(p))
     // Wire the out-of-process TODL language client: build the JSON-RPC connection
     // over the preload pipe, handshake with the forked server, register the Monaco
     // provider adapters, and resync every project after a server restart.
@@ -138,11 +162,14 @@ try {
     if (dock !== undefined && agent !== undefined) dock.Add(agent)
     // Dev-only: a Card Gallery tab to preview the agent card templates without
     // driving the agent. Never seeded in packaged builds.
-    if (dock !== undefined && env !== undefined && env.IsDevelopment)
-    {
-        const gallery = app.Services.get(TemplateGalleryService.Key)
-        if (gallery !== undefined) dock.Add(gallery)
-    }
+    // DISABLED — registration turned off by request; re-enable by uncommenting.
+    // The TemplateGalleryService + its templates are kept intact (import above,
+    // agent-chat.module.mu registration, DataTemplate in agent-chat.resources.mu).
+    // if (dock !== undefined && env !== undefined && env.IsDevelopment)
+    // {
+    //     const gallery = app.Services.get(TemplateGalleryService.Key)
+    //     if (gallery !== undefined) dock.Add(gallery)
+    // }
     if (workspace !== undefined && dock !== undefined)
     {
         attachAutoOpenInspector(workspace.Document, dock)
