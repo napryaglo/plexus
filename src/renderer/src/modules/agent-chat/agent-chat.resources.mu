@@ -121,7 +121,7 @@ resources AgentChatResources {
         Border [ BorderBrush = @OutlineVariant, BorderThickness = (1), CornerRadius = 8,
                  Background = @SurfaceContainerLow, Padding = (4), Margin = (0,3,20,3) ] {
             StackPanel [ Orientation = Vertical ] {
-                Button [ Command = $ToggleCommand, Template = @ToolHeaderButton, HorizontalAlignment = Stretch ] {
+                PanelButton [ Command = $ToggleCommand, Template = @ToolHeaderButton, HorizontalAlignment = Stretch ] {
                     DockPanel [ LastChildFill = true ] {
                         TextBlock [ DockPanel.Dock = Right, Style = @BodySmall, Text = $Status,
                                     Foreground = @OnSurfaceVariant, VerticalAlignment = Center, Margin = (8,0,0,0) ]
@@ -197,7 +197,7 @@ resources AgentChatResources {
             StackPanel [ Orientation = Vertical ] {
                 StackPanel [ Orientation = Vertical, Visibility = $IsPending << ToVisibility ] {
                     ItemsControl [ ItemsSource = $Questions, ItemsPanel = @VerticalStackPanel ]
-                    Button [ Command = $SubmitCommand, IsEnabled = $IsSubmittable,
+                    PanelButton [ Command = $SubmitCommand, IsEnabled = $IsSubmittable,
                              HorizontalAlignment = Right, Margin = (0,10,0,0), Template = @CompactButton ] {
                         TextBlock [ Text = "Submit" ]
                     }
@@ -226,13 +226,13 @@ resources AgentChatResources {
                     // ring sits just right of Deny and stays inside the card border
                     // (a Right-docked ring overflowed the card's visible edge).
                     StackPanel [ Orientation = Horizontal, Margin = (0,10,0,0) ] {
-                        Button [ Command = $ApproveOnceCommand, Template = @CompactButton, Margin = (0,0,6,0) ] {
+                        PanelButton [ Command = $ApproveOnceCommand, Template = @CompactButton, Margin = (0,0,6,0) ] {
                             TextBlock [ Text = "Approve once" ]
                         }
-                        Button [ Command = $AllowAlwaysCommand, Template = @CompactButton, Margin = (0,0,6,0) ] {
+                        PanelButton [ Command = $AllowAlwaysCommand, Template = @CompactButton, Margin = (0,0,6,0) ] {
                             TextBlock [ Text = $AllowAlwaysLabel ]
                         }
-                        Button [ Command = $DenyCommand, Template = @CompactButton, Margin = (0,0,8,0) ] {
+                        PanelButton [ Command = $DenyCommand, Template = @CompactButton, Margin = (0,0,8,0) ] {
                             TextBlock [ Text = "Deny" ]
                         }
                         ProgressIndicator [ Variant = Circular, Value = $Countdown,
@@ -248,7 +248,7 @@ resources AgentChatResources {
     // One approved-tool row: the rule label ("Bash: python" / "WebFetch") + Revoke.
     DataTemplate [ DataType = ApprovalRuleRow ] {
         DockPanel [ LastChildFill = true, Margin = (0,2,0,2) ] {
-            Button [ DockPanel.Dock = Right, Command = $RevokeCommand, Template = @CompactButton, Margin = (8,0,0,0) ] {
+            PanelButton [ DockPanel.Dock = Right, Command = $RevokeCommand, Template = @CompactButton, Margin = (8,0,0,0) ] {
                 TextBlock [ Text = "Revoke" ]
             }
             TextBlock [ FontFamily = "Consolas", Text = $Label, Foreground = @OnSurface, VerticalAlignment = Center ]
