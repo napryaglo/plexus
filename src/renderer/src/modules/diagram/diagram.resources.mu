@@ -317,10 +317,10 @@ resources DiagramResources {
     // ── ToolBox capability panel — the shapes palette in the left pane.
     // Overrides the generic `DataTemplate [DataType = PlexusPanelService]` for the
     // ToolboxService subtype (exact-type match wins). The unified toolbox presents
-    // $Pages as a single-expand ACCORDION (a built-in Shapes page plus one section
-    // per visible taxonomy): each section's header two-ways the page's IsExpanded
-    // and its body collapses when closed; opening one collapses the others
-    // (coordinated in ToolboxService). The whole stack scrolls as one region. ──
+    // $Pages as an ACCORDION (a built-in Shapes page plus one section per visible
+    // taxonomy): each section's header two-ways the page's IsExpanded and its body
+    // collapses when closed. Sections toggle independently; the whole stack scrolls
+    // as one region. ──
     // The 8dp inset lives on an OUTER Border (padding), NOT as a Margin on the
     // scrolled ItemsControl. A margin on the scroll viewport's content shifts
     // that content's origin (translate(8,8)), but the ScrollContentPresenter
@@ -337,15 +337,38 @@ resources DiagramResources {
         }
     }
 
-    // One toolbox section: a title over the page's tiles in the uniform wrap grid.
-    // v1 drops the single-expand accordion (mural's ToolboxPage carries no expand
-    // state); every section is shown, and the outer ScrollViewer scrolls the whole
-    // stack. Tiles dispatch by DataType through the single [DataType = ToolboxItem]
-    // template above.
+    // Chromeless accordion header chrome: a full-width, hit-testable row (no
+    // default ToggleButton pill) whose leading chevron flips ▸→▾ when expanded
+    // (IsChecked). The ContentPresenter shows the ToggleButton's content (title).
+    Template x:key="ToolboxAccordionHeaderChrome" [TargetType = ToggleButton] {
+        Border x:name="Root" [ Background = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (4,6,4,6) ] {
+            DockPanel [ LastChildFill = true ] {
+                TextBlock x:name="Chevron"
+                    [ DockPanel.Dock = Left, Text = "▸", Foreground = @OnSurfaceVariant,
+                      Margin = (0,0,8,0), VerticalAlignment = Center ]
+                ContentPresenter [ VerticalAlignment = Center ]
+            }
+        }
+        when ( IsMouseOver ) { Root.Background = @StateHoverOverlay; }
+        when ( IsChecked )   { Chevron.Text = "▾"; }
+    }
+
+    // One accordion section: a header ToggleButton (two-ways the page's IsExpanded)
+    // over the page's tiles in the uniform wrap grid, collapsed when the section is
+    // closed. Sections toggle independently. Tiles dispatch by DataType through the
+    // single [DataType = ToolboxItem] template above; the outer ScrollViewer scrolls
+    // the whole stack.
     DataTemplate x:key="ToolboxAccordionItem" [DataType = ToolboxPage] {
-        StackPanel [ Orientation = Vertical, Margin = (0,0,0,6) ] {
-            TextBlock [ Text = $Title, Style = @LabelMedium, Foreground = @OnSurfaceVariant, Margin = (0,0,0,4) ]
-            ItemsControl [ ItemsSource = $Items, ItemsPanel = @DiagramToolboxPanel ]
+        StackPanel [ Orientation = Vertical, Margin = (0,0,0,2) ] {
+            ToggleButton
+                [ Template            = @ToolboxAccordionHeaderChrome,
+                  IsChecked           = $IsExpanded,
+                  HorizontalAlignment = Stretch ] {
+                TextBlock [ Text = $Title, Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
+            }
+            Border [ Visibility = $IsExpanded << ToVisibility, Padding = (0,4,0,6) ] {
+                ItemsControl [ ItemsSource = $Items, ItemsPanel = @DiagramToolboxPanel ]
+            }
         }
     }
 }
