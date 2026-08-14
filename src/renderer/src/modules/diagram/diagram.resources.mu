@@ -143,33 +143,36 @@ resources DiagramResources {
 
     // ── Zoom control — a Commands-region toolbar CONTROL (host-built camera UI) ──
     // Hosted in the shell command bar by the module's .ShellControls: entry. The
-    // shell applies this with the active DiagramDocument as DataContext; the inner
-    // StackPanel retargets to $ActiveView (the live Diagram) so the command DPs and
-    // the Zoom readout bind as single reactive segments (mirrors the inspector's
-    // $View retarget — a two-segment ActiveView.Zoom would go stale). Buttons drive
-    // the mural camera commands; the label shows the current zoom via ZoomPercent.
-    // When no view is mounted yet the commands resolve to nothing (inert buttons)
-    // and the readout is blank — a transient the shell tolerates. Reached ONLY by
-    // key, never implicit type resolution, so it can't shadow the keyless canvas
-    // template above (both are [DataType = DiagramDocument]).
+    // shell applies this with the active DiagramDocument as DataContext. Buttons
+    // bind the live canvas's camera commands DIRECTLY as `$ActiveView.<X>Command` —
+    // the exact idiom the canvas context menu uses for the align commands (a
+    // two-segment path that re-resolves when ActiveView publishes; commands are
+    // stable objects so it never goes stale). The readout retargets ONLY its own
+    // TextBlock to $ActiveView so `$Zoom` binds as a single reactive segment
+    // (mirrors the inspector's $View retarget) — isolated from the buttons so it
+    // can never leave them unbound. Before the canvas mounts the commands resolve
+    // to nothing (inert buttons) and the readout is blank — a transient the shell
+    // tolerates. Reached ONLY by key, never implicit type resolution, so it can't
+    // shadow the keyless canvas template above (both are [DataType = DiagramDocument]).
     DataTemplate x:key="ZoomControlEditor" [DataType = DiagramDocument] {
-        StackPanel [ Orientation = Horizontal, VerticalAlignment = Center, DataContext = $ActiveView ] {
+        StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
             ToolBar {
-                ToolBarButton [ Command = $ZoomOutCommand ] {
+                ToolBarButton [ Command = $ActiveView.ZoomOutCommand ] {
                     Shape [ Geometry = @zoom_out, Fill = @OnSurfaceVariant, Width = 16, Height = 16, Margin = (2) ]
                 }
             }
             TextBlock
-                [ Text              = $Zoom << ZoomPercent,
+                [ DataContext       = $ActiveView,
+                  Text              = $Zoom << ZoomPercent,
                   Width             = 44,
                   TextAlignment     = Center,
                   VerticalAlignment = Center,
                   Foreground        = @OnSurfaceVariant ]
             ToolBar {
-                ToolBarButton [ Command = $ZoomInCommand ] {
+                ToolBarButton [ Command = $ActiveView.ZoomInCommand ] {
                     Shape [ Geometry = @zoom_in, Fill = @OnSurfaceVariant, Width = 16, Height = 16, Margin = (2) ]
                 }
-                ToolBarButton [ Command = $FitCommand ] {
+                ToolBarButton [ Command = $ActiveView.FitCommand ] {
                     Shape [ Geometry = @fit_screen, Fill = @OnSurfaceVariant, Width = 16, Height = 16, Margin = (2) ]
                 }
             }
