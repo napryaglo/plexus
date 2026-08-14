@@ -1,29 +1,44 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { DiagramDocument, ContentHostService, Diagram } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument, ContentHostService, Diagram, ScrollViewer } from '@pragmatic-lab/mural/framework'
 import { ObservableCollection } from '@pragmatic-lab/mural/runtime'
 import { DiagramCameraService } from '../diagram-camera-service.js'
 import { writeCamera, readCamera, type DiagramCameraState } from '../../persistence/diagram-camera-store.js'
 
-// A lightweight stand-in for the live Diagram control: it exposes only the
-// camera surface the service touches (Camera getter, SetCamera, and per-key
-// property-change listeners over the three camera DPs). Using a fake avoids
-// having to mount the mural theme to construct a real Diagram under jsdom.
-class FakeView {
-    private state: DiagramCameraState = { zoom: 1, panX: 0, panY: 0 }
+// Minimal per-key property-change listener host, shared by the fake view (for
+// Diagram.ZoomKey) and its fake ScrollHost (for the offset keys).
+class Listenable {
     private readonly listeners = new Map<unknown, Set<() => void>>()
-    public get Camera(): DiagramCameraState { return this.state }
-    public SetCamera(c: DiagramCameraState): void {
-        this.state = { zoom: c.zoom, panX: c.panX, panY: c.panY }
-        for (const key of [Diagram.ZoomKey, Diagram.PanXKey, Diagram.PanYKey]) {
-            for (const fn of this.listeners.get(key) ?? []) fn()
-        }
-    }
     public AddPropertyChangedListener(key: unknown, fn: () => void): void {
         if (!this.listeners.has(key)) this.listeners.set(key, new Set())
         this.listeners.get(key)!.add(fn)
     }
     public RemovePropertyChangedListener(key: unknown, fn: () => void): void {
         this.listeners.get(key)?.delete(fn)
+    }
+    public fire(key: unknown): void { for (const fn of this.listeners.get(key) ?? []) fn() }
+}
+
+// A lightweight stand-in for the live Diagram control: it exposes only the
+// camera surface the service touches — Camera getter, SetCamera, per-key
+// property-change listeners over Diagram.ZoomKey (on the view) and the
+// ScrollViewer offset keys (on ScrollHost). Using a fake avoids mounting the
+// mural theme to construct a real Diagram under jsdom.
+class FakeView extends Listenable {
+    private state: DiagramCameraState = { zoom: 1, offsetX: 0, offsetY: 0 }
+    public readonly ScrollHost = new Listenable()
+    public get Camera(): DiagramCameraState { return this.state }
+    public SetCamera(c: DiagramCameraState): void {
+        this.state = { zoom: c.zoom, offsetX: c.offsetX, offsetY: c.offsetY }
+        this.fire(Diagram.ZoomKey)
+        this.ScrollHost.fire(ScrollViewer.HorizontalOffsetKey)
+        this.ScrollHost.fire(ScrollViewer.VerticalOffsetKey)
+    }
+    // Simulate a scrollbar/wheel scroll: the offset changes but the zoom does
+    // NOT, so only the ScrollViewer offset keys fire (never Diagram.ZoomKey).
+    public Scroll(offsetX: number, offsetY: number): void {
+        this.state = { ...this.state, offsetX, offsetY }
+        this.ScrollHost.fire(ScrollViewer.HorizontalOffsetKey)
+        this.ScrollHost.fire(ScrollViewer.VerticalOffsetKey)
     }
 }
 
@@ -51,13 +66,13 @@ test('hydrates the published view from stored metadata without re-persisting', (
     new DiagramCameraService(providerWith(host) as never, 500)
 
     const doc = new DiagramDocument()
-    writeCamera(doc, { zoom: 2, panX: 10, panY: 20 })
+    writeCamera(doc, { zoom: 2, offsetX: 10, offsetY: 20 })
     host.OpenDocuments.Add(doc)              // triggers the open-docs subscription
 
     const view = new FakeView()
     publish(doc, view)                        // publishes the view → hydrate
 
-    expect(view.Camera).toEqual({ zoom: 2, panX: 10, panY: 20 })
+    expect(view.Camera).toEqual({ zoom: 2, offsetX: 10, offsetY: 20 })
     // Hydration must NOT schedule a persist (guarded): advancing time does not save.
     const save = vi.spyOn(doc, 'Save')
     vi.advanceTimersByTime(1000)
@@ -73,12 +88,27 @@ test('persists (debounced) when the view camera changes', () => {
     publish(doc, view)
 
     const save = vi.spyOn(doc, 'Save')
-    view.SetCamera({ zoom: 3, panX: 5, panY: 6 })   // user zoom
-    view.SetCamera({ zoom: 3, panX: 7, panY: 8 })   // and pan — coalesced
-    expect(save).not.toHaveBeenCalled()             // still within the debounce window
+    view.SetCamera({ zoom: 3, offsetX: 5, offsetY: 6 })   // user zoom
+    view.SetCamera({ zoom: 3, offsetX: 7, offsetY: 8 })   // and scroll — coalesced
+    expect(save).not.toHaveBeenCalled()                   // still within the debounce window
     vi.advanceTimersByTime(500)
     expect(save).toHaveBeenCalledTimes(1)
-    expect(readCamera(doc)).toEqual({ zoom: 3, panX: 7, panY: 8 })
+    expect(readCamera(doc)).toEqual({ zoom: 3, offsetX: 7, offsetY: 8 })
+})
+
+test('persists when only the scroll offset changes (zoom unchanged)', () => {
+    const host = fakeHost()
+    new DiagramCameraService(providerWith(host) as never, 500)
+    const doc = new DiagramDocument()
+    host.OpenDocuments.Add(doc)
+    const view = new FakeView()
+    publish(doc, view)
+
+    const save = vi.spyOn(doc, 'Save')
+    view.Scroll(50, 60)                       // scrollbar drag — no zoom change
+    vi.advanceTimersByTime(500)
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(readCamera(doc)).toEqual({ zoom: 1, offsetX: 50, offsetY: 60 })
 })
 
 test('stops persisting after the document closes', () => {
@@ -91,7 +121,7 @@ test('stops persisting after the document closes', () => {
 
     const save = vi.spyOn(doc, 'Save')
     host.OpenDocuments.Remove(doc)                   // close → detach
-    view.SetCamera({ zoom: 2, panX: 0, panY: 0 })
+    view.SetCamera({ zoom: 2, offsetX: 0, offsetY: 0 })
     vi.advanceTimersByTime(500)
     expect(save).not.toHaveBeenCalled()
 })

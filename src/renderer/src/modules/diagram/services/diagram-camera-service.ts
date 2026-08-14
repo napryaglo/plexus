@@ -1,14 +1,15 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import {
-    ContentHostService, Diagram, DiagramDocument,
+    ContentHostService, Diagram, DiagramDocument, ScrollViewer,
     type DocumentsContentHostService, type IDocument,
 } from '@pragmatic-lab/mural/framework'
 import { FileDiagramStorage } from '../persistence/file-diagram-storage.js'
 import { readCamera, writeCamera } from '../persistence/diagram-camera-store.js'
 
 // App-scoped observer: for every open DiagramDocument, restore the persisted
-// camera onto the document's published ActiveView when it mounts, and write the
-// camera back (debounced) into the document metadata whenever it changes. The
+// camera (zoom + scroll offset) onto the document's published ActiveView when it
+// mounts, and write it back (debounced) into the document metadata whenever the
+// zoom or scroll offset changes. The
 // metadata round-trips through the .diagram file, so a diagram reopens where the
 // user left it. Applies to EVERY diagram — the generic module owns it.
 //
@@ -73,10 +74,17 @@ export class DiagramCameraService extends ServiceBase
                 hydrating = true
                 try { view.SetCamera(saved) } finally { hydrating = false }
             }
-            const keys = [Diagram.ZoomKey, Diagram.PanXKey, Diagram.PanYKey]
-            for (const key of keys) view.AddPropertyChangedListener(key, onCameraChanged)
+            // Zoom lives on the Diagram (LayoutTransform scale); pan is the
+            // ScrollViewer's scroll offset. Watch both so a scroll-only change
+            // (no zoom) still persists.
+            const scroll = view.ScrollHost
+            view.AddPropertyChangedListener(Diagram.ZoomKey, onCameraChanged)
+            scroll?.AddPropertyChangedListener(ScrollViewer.HorizontalOffsetKey, onCameraChanged)
+            scroll?.AddPropertyChangedListener(ScrollViewer.VerticalOffsetKey, onCameraChanged)
             detachView = (): void => {
-                for (const key of keys) view.RemovePropertyChangedListener(key, onCameraChanged)
+                view.RemovePropertyChangedListener(Diagram.ZoomKey, onCameraChanged)
+                scroll?.RemovePropertyChangedListener(ScrollViewer.HorizontalOffsetKey, onCameraChanged)
+                scroll?.RemovePropertyChangedListener(ScrollViewer.VerticalOffsetKey, onCameraChanged)
             }
         }
 
