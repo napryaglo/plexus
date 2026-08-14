@@ -28,9 +28,28 @@ export function iconKeyForKind(kind: ProjectNodeKind): string
 // stable across scheme switches — the Shape's Fill carries the reactive theme
 // brush. Returns undefined only if the resource dictionary isn't mounted yet,
 // in which case the Shape paints nothing (same as an unresolved glyph).
+//
+// Memoised by glyph key: this converter runs once per tree ROW, and the project
+// tree can be thousands of rows, so resolving the same handful of kind glyphs
+// out of the resource dictionary on every row was a top CPU cost
+// (ResourceDictionary.Resolve in the navigation profile). The resolved geometry
+// is stable, so the dictionary walk happens at most once per kind. A
+// not-yet-mounted resolve (undefined) is NOT cached, so it retries once the
+// dictionary is up.
+const geometryByKey = new Map<string, unknown>()
+
+/** @internal test-only — clears the memo so a test can assert resolve counts. */
+export function __resetKindGeometryCache(): void { geometryByKey.clear() }
+
 export const KindToGeometry: ValueConverter = {
-    convert: (kind: unknown) =>
-        Application.current?.Resources.Resolve(iconKeyForKind(kind as ProjectNodeKind)),
+    convert: (kind: unknown) => {
+        const key = iconKeyForKind(kind as ProjectNodeKind)
+        const cached = geometryByKey.get(key)
+        if (cached !== undefined) return cached
+        const geom = Application.current?.Resources.Resolve(key)
+        if (geom !== undefined) geometryByKey.set(key, geom)
+        return geom
+    },
 }
 
 // Maps a project header's IsExpanded flag to its twisty glyph — down when

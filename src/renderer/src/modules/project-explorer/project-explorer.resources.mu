@@ -203,7 +203,13 @@ resources ProjectExplorerResources {
             // (F2 / Delete / Enter / Escape), routed to whichever project holds
             // the current selection.
             Border [ Style = @TreeKeyStyle ] {
-                TreeView [ Indent = 14, ItemsSource = $OpenProjects, ItemTemplate = @OpenProjectTemplate,
+                // IsVirtualizing: only realize the rows in the viewport, not the
+                // whole open-projects file tree. Navigating here built every node
+                // eagerly (a synchronous ~O(all nodes) tree materialisation in the
+                // nav-click handler — resource Resolve + style subscribe + SVG
+                // create + GC per row), freezing the UI on first open. The
+                // meta-model tree already virtualizes the same way.
+                TreeView [ Indent = 14, IsVirtualizing = true, ItemsSource = $OpenProjects, ItemTemplate = @OpenProjectTemplate,
                            SelectionMode = Extended, AllowMarqueeSelection = true ] {
                     .Behaviors: { ProjectTreeTemplateBehavior TreeSelectionBehavior }
                 }
