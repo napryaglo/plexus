@@ -60,4 +60,27 @@ describe('ToolboxService.reload', () => {
     expect(repo.Pages.ToArray().some((p) => p.Id === 'actors')).toBe(false)
     expect(repo.Pages.ToArray().filter((p) => p.Id !== 'Stack').length).toBe(shapesBefore)
   })
+
+  it('preserves a page collapse state across a reload (re-activation)', async () => {
+    // The Toolbox re-runs reload() every time its rail destination re-activates
+    // (OnActivated), which removes + recreates the contributed taxonomy pages.
+    // Without preservation those fresh ToolboxPage models reset IsExpanded to its
+    // `true` default, re-expanding sections the user had collapsed.
+    const svc = new TestToolboxService(new ServiceProvider())
+    svc.data = [{ tax: libTax, isLibrary: true }, { tax: conceptTax, isLibrary: false }]
+    await svc.reload()
+
+    const stack = svc.Pages.ToArray().find((p) => p.Id === 'Stack')!
+    expect(stack.IsExpanded).toBe(true)   // default expanded
+    stack.IsExpanded = false              // user collapses it
+
+    // Re-activation: reload with the SAME content (nothing newly published).
+    await svc.reload()
+
+    const stackAfter = svc.Pages.ToArray().find((p) => p.Id === 'Stack')!
+    expect(stackAfter.IsExpanded).toBe(false)   // collapse survives the rebuild
+    // A page the user never touched stays at its default.
+    const actorsAfter = svc.Pages.ToArray().find((p) => p.Id === 'actors')!
+    expect(actorsAfter.IsExpanded).toBe(true)
+  })
 })

@@ -160,6 +160,14 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
         }
         this.set_property_value(ToolboxService.PagesKey, repo.Pages)
 
+        // Preserve the user's per-section collapse state across the rebuild: the
+        // contributed pages are removed and recreated as fresh ToolboxPage models
+        // (IsExpanded back at its `true` default), so without this a reload — which
+        // runs on every rail re-activation (OnActivated) — re-expands sections the
+        // user collapsed. Snapshot by page id, restore after re-contributing.
+        const expandedById = new Map<string, boolean>()
+        for (const p of repo.Pages.ToArray()) expandedById.set(p.Id, p.IsExpanded)
+
         for (const pid of this.contributedPageIds) repo.RemovePage(pid)
         this.contributedPageIds = []
 
@@ -170,6 +178,11 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
             pageIds.add(tax.id)
         }
         this.contributedPageIds = [...pageIds]
+
+        for (const p of repo.Pages.ToArray()) {
+            const was = expandedById.get(p.Id)
+            if (was !== undefined && p.IsExpanded !== was) p.IsExpanded = was
+        }
     }
 
     // Scan the published-content backends into (taxonomy, source) pairs. Overridable
