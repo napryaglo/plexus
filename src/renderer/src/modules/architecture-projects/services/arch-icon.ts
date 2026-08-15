@@ -1,38 +1,66 @@
 import type { Entity, Repository } from '@pragmatic-lab/todl'
 
+// "Has an icon": the `<id>@icon` annotation node the meta-model/library SOURCE
+// declares (`annotate icon { path = … }`) — keyed on the annotation's presence, not
+// its publish-time `key` attr, because arch projects load their bases from source.
+function hasIcon(repo: Repository, id: string): boolean {
+    const path = repo.resolve(`${id}@icon`)?.attrs.get('path')
+    return typeof path === 'string' && path.length > 0
+}
+
 // The entity key whose icon a bound canvas node should draw — an id the presentation
 // registry's index (registry.iconKeyFor) maps to a baked resource key, the SAME index
 // the toolbox tiles resolve through. Returns undefined when nothing carries an icon
 // (→ the node falls back to its concept, i.e. the default glyph).
 //
-// "Has an icon" is detected by the `<id>@icon` annotation node the meta-model/library
-// source declares (`annotate icon { path = … }`). We key on the annotation's presence,
-// not its publish-time `key` attr: the project loads its bases from SOURCE, where the
-// annotation carries only `path` (the `key` is stamped at publish, into the published
-// model.json only). The resolver maps the returned id → resource key via the index.
+// DECLARATIVE path — when the concept's relationship members carry `iconSource`
+// annotations (`relationship implementedBy -> technology { annotate iconSource { order = 1; } }`):
+// the entity's OWN icon wins first; otherwise the icon-bearing target of the
+// lowest-`order` iconSource member wins (ties by schema order); otherwise undefined.
+// A concept with NO iconSource member falls back to the LEGACY heuristic below, so
+// existing meta-models resolve exactly as before (zero migration).
 //
-// Precedence: a referenced term wins over the entity's own type. When SEVERAL
-// referenced terms carry icons, the winner is decided by PROPAGATION DIRECTION —
-// a term that references another candidate term (its propagation source) outranks
-// it — reproducibly from the saved refs, so a dropped technology (which back-fills
-// its category) shows the technology icon regardless of schema order. Ties (no
-// propagation link) fall back to schema order.
+// Note: `order` is read as a string — TODL has no Number value kind, so a numeric
+// annotation literal stores verbatim — and coerced with Number().
 export function iconEntityKey(repo: Repository, entity: Entity): string | undefined
 {
-    const hasIcon = (id: string): boolean => {
-        const path = repo.resolve(`${id}@icon`)?.attrs.get('path')
-        return typeof path === 'string' && path.length > 0
+    const sources: { member: string; order: number; index: number }[] = []
+    let index = 0
+    for (const rel of entity.schema().relationships) {
+        const raw = repo.resolve(`${entity.concept}.${rel.name}@iconSource`)?.attrs.get('order')
+        const order = raw === undefined || raw === null ? NaN : Number(raw)
+        if (Number.isFinite(order)) sources.push({ member: rel.name, order, index })
+        index++
     }
 
-    // Filled, icon-bearing referenced terms, in schema relationship order.
+    if (sources.length > 0) {
+        const own = entity.type()?.id ?? entity.concept
+        if (hasIcon(repo, own)) return own
+        sources.sort((a, b) => a.order - b.order || a.index - b.index)
+        for (const s of sources)
+            for (const target of entity.refs(s.member))
+                if (hasIcon(repo, target.id)) return target.id
+        return undefined
+    }
+
+    return legacyIconEntityKey(repo, entity)
+}
+
+// LEGACY heuristic (unchanged behavior): a referenced icon-bearing term wins over the
+// entity's own type; among SEVERAL, the winner is decided by PROPAGATION DIRECTION —
+// a term that references another candidate (its propagation source) outranks it,
+// reproducibly from the saved refs; ties (no propagation link) fall back to schema
+// order. No icon-bearing reference → the own concept → undefined.
+function legacyIconEntityKey(repo: Repository, entity: Entity): string | undefined
+{
     const candidates: string[] = []
     for (const rel of entity.schema().relationships)
         for (const target of entity.refs(rel.name))
-            if (hasIcon(target.id)) candidates.push(target.id)
+            if (hasIcon(repo, target.id)) candidates.push(target.id)
 
     if (candidates.length === 0) {
         const own = entity.type()?.id ?? entity.concept
-        return hasIcon(own) ? own : undefined
+        return hasIcon(repo, own) ? own : undefined
     }
     if (candidates.length === 1) return candidates[0]
 
