@@ -30,6 +30,7 @@ import { EditorReloadService } from './services/file-watch/editor-reload-service
 import { ProjectRescanService } from './services/file-watch/project-rescan-service.js'
 import { WorkspaceBaseResolver } from './services/projects/workspace-base-resolver.js'
 import { ArchDiagramBindingService } from './modules/architecture-projects/services/arch-diagram-binding-service.js'
+import { ArchModelToolboxContributor } from './modules/architecture-projects/services/arch-model-toolbox-contributor.js'
 import { DiagramCameraService } from './modules/diagram/services/diagram-camera-service.js'
 import { ArchNewDiagramParticipant } from './modules/architecture-projects/services/arch-new-diagram-participant.js'
 import { NewFileParticipantKey } from './services/documents/new-file-participant.js'
@@ -88,6 +89,9 @@ try {
     // Arch diagram binding: construct now so it observes opened documents and
     // binds architecture diagrams to their ArchModel from boot.
     app.Services.get(ArchDiagramBindingService.Key)
+    // Arch model toolbox page: construct now so it observes the active document
+    // from boot and contributes the "Model:" page for architecture diagrams.
+    app.Services.get(ArchModelToolboxContributor.Key)
     // Diagram camera persistence: restore each diagram's saved zoom/pan on open and
     // write it back (debounced) on change, via the document's metadata slot. Generic
     // to every .diagram, so it lives in the diagram module (not architecture-projects).

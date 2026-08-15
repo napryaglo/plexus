@@ -6,6 +6,7 @@ import { ProjectExplorerService } from '../../project-explorer/services/project-
 import type { OpenProject } from '../../../services/projects/open-project.js'
 import { ArchitectureModelService } from './architecture-model-service.js'
 import { ArchDiagramBinding } from './arch-diagram-binding.js'
+import { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
 import type { ArchModel } from './arch-model.js'
 import { loadViewpoints, writeViewpoints } from './arch-diagram-viewpoints-store.js'
 import { nodesLeavingScope, type LeavingNode } from './viewpoint-scope-reconcile.js'
@@ -20,7 +21,11 @@ export class ArchDiagramBindingService extends ServiceBase
     public static readonly Key = new ServiceKey<ArchDiagramBindingService>('ArchDiagramBindingService')
 
     private readonly bindings = new Map<IDocument, ArchDiagramBinding>()
-    private readonly attaching = new Set<IDocument>()
+    // In-flight attach promise per document. Concurrent callers (the OpenDocuments
+    // sync and ensureBound) share the SAME promise, so whoever awaits it observes
+    // the binding once it is set — a plain "already attaching?" guard would let the
+    // second caller resolve before the first finished creating the binding.
+    private readonly attaching = new Map<IDocument, Promise<void>>()
 
     public constructor(provider: IServiceProvider)
     {
@@ -47,30 +52,37 @@ export class ArchDiagramBindingService extends ServiceBase
     }
 
     // Attach a binding to one document if it is an open architecture diagram that
-    // isn't already bound (or mid-attach). Idempotent; safe to call repeatedly.
-    private async attachDoc(host: DocumentsContentHostService, doc: IDocument): Promise<void>
+    // isn't already bound. Idempotent, and concurrency-safe: a call made while an
+    // attach for the same document is already in flight returns that same promise,
+    // so it resolves only once the binding exists (see `attaching`).
+    private attachDoc(host: DocumentsContentHostService, doc: IDocument): Promise<void>
     {
-        if (this.bindings.has(doc) || this.attaching.has(doc)) return
+        if (this.bindings.has(doc)) return Promise.resolve()
+        const inflight = this.attaching.get(doc)
+        if (inflight !== undefined) return inflight
+        const p = this.attachDocInner(host, doc).finally(() => { this.attaching.delete(doc) })
+        this.attaching.set(doc, p)
+        return p
+    }
+
+    private async attachDocInner(host: DocumentsContentHostService, doc: IDocument): Promise<void>
+    {
         if (!(doc instanceof DiagramDocument)) return
         const op = this.projectFor(doc)
         if (op === undefined) return
-        this.attaching.add(doc)
-        try {
-            const model = await this.Provider.getRequired(ArchitectureModelService.Key).modelFor(op)
-            if (host.OpenDocuments.ToArray().includes(doc)) {
-                const binding = new ArchDiagramBinding(doc, model)
-                binding.attach()
-                const store = doc.Storage
-                if (store instanceof FileDiagramStorage) {
-                    // Governing viewpoints travel with the diagram (its metadata),
-                    // falling back to the legacy manifest for older diagrams.
-                    const vps = await loadViewpoints(doc, store.ProjectStorage, store.Path)
-                    if (vps !== undefined) binding.setScope(vps)
-                }
-                this.bindings.set(doc, binding)
+        const model = await this.Provider.getRequired(ArchitectureModelService.Key).modelFor(op)
+        if (host.OpenDocuments.ToArray().includes(doc)) {
+            const chooser = this.Provider.get(DropCandidateChooserService.Key)
+            const binding = new ArchDiagramBinding(doc, model, chooser)
+            binding.attach()
+            const store = doc.Storage
+            if (store instanceof FileDiagramStorage) {
+                // Governing viewpoints travel with the diagram (its metadata),
+                // falling back to the legacy manifest for older diagrams.
+                const vps = await loadViewpoints(doc, store.ProjectStorage, store.Path)
+                if (vps !== undefined) binding.setScope(vps)
             }
-        } finally {
-            this.attaching.delete(doc)
+            this.bindings.set(doc, binding)
         }
     }
 
@@ -95,6 +107,18 @@ export class ArchDiagramBindingService extends ServiceBase
     public scopeForDocument(doc: IDocument): Set<string> | undefined
     {
         return this.bindings.get(doc)?.scopeSet()
+    }
+
+    // Whether an entity is placed as a node on an attached architecture diagram.
+    public isPlaced(doc: IDocument, entityId: string): boolean
+    {
+        return this.bindings.get(doc)?.isPlaced(entityId) ?? false
+    }
+
+    // The entity ids currently placed on an attached architecture diagram.
+    public placedIds(doc: IDocument): ReadonlySet<string>
+    {
+        return this.bindings.get(doc)?.placedIds() ?? new Set<string>()
     }
 
     // The nodes that would leave scope if this diagram were re-scoped to

@@ -1,0 +1,114 @@
+import { Application, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import {
+    ContentHostService,
+    DiagramDocument,
+    DocumentsContentHostService,
+    ToolboxRepository,
+    ToolboxVisualDescriptor,
+    type IDocument,
+} from '@pragmatic-lab/mural/framework'
+import type { Entity } from '@pragmatic-lab/todl'
+
+import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolver.js'
+import { ArchToolboxItem } from '../../diagram/services/arch-toolbox-item.js'
+import { iconEntityKey } from './arch-icon.js'
+import { ArchModelInstanceDropFactoryKey } from './arch-model-instance-drop-factory.js'
+import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
+import type { ArchModel } from './arch-model.js'
+
+const PAGE_ID = 'arch:model'
+
+// An entity's display label: its `label`, else `name`, else its id.
+function entityLabel(e: Entity): string
+{
+    const v = e.field('label') ?? e.field('name')
+    return v !== undefined ? String(v) : e.id
+}
+
+// The toolbox items for a diagram's "Model:" page: one per in-scope entity that
+// is NOT already placed on the diagram. Each drops through the place-existing
+// factory (keyed by the entity id, `instance:<id>`).
+export function modelPageItems(model: ArchModel, scope: ReadonlySet<string>, placed: ReadonlySet<string>): ArchToolboxItem[]
+{
+    const repo = model.repository()
+    const inScope = (concept: string): boolean => repo.viewpointsFraming(concept).some((v) => scope.has(v))
+    const items: ArchToolboxItem[] = []
+    for (const e of model.entities()) {
+        if (placed.has(e.id) || !inScope(e.concept)) continue
+        const key = iconEntityKey(repo, e) ?? e.concept
+        const descriptor = new ToolboxVisualDescriptor(TodlVisualResolverKey, key)
+        items.push(new ArchToolboxItem('instance:' + e.id, entityLabel(e), descriptor, ArchModelInstanceDropFactoryKey))
+    }
+    return items
+}
+
+// App-scoped: watches the ACTIVE document and, when it is an architecture
+// diagram, contributes a dynamic "Model: <namespace>" toolbox page listing the
+// in-scope entities not yet on the canvas. Refreshes on model change, scope
+// change (both fire the model's onChanged), and node add/remove (view-only
+// deletes make an entity re-appear). Removes the page when the active document
+// is not an architecture diagram.
+export class ArchModelToolboxContributor extends ServiceBase
+{
+    public static readonly Key = new ServiceKey<ArchModelToolboxContributor>('ArchModelToolboxContributor')
+
+    private modelOff: (() => void) | undefined
+    private nodesOff: (() => void) | undefined
+    private activeDoc: IDocument | undefined
+
+    public constructor(provider: IServiceProvider)
+    {
+        super(provider)
+        const host = this.Provider.get(ContentHostService.Key) as DocumentsContentHostService | undefined
+        if (host === undefined) return
+        host.AddPropertyChangedListener(DocumentsContentHostService.ActiveDocumentKey, () => { void this.onActiveChanged(host) })
+        void this.onActiveChanged(host)
+    }
+
+    private async onActiveChanged(host: DocumentsContentHostService): Promise<void>
+    {
+        this.modelOff?.(); this.modelOff = undefined
+        this.nodesOff?.(); this.nodesOff = undefined
+        this.activeDoc = host.ActiveDocument
+
+        const doc = this.activeDoc
+        const bindingSvc = this.Provider.get(ArchDiagramBindingService.Key)
+        if (doc === undefined || bindingSvc === undefined) { this.removePage(); return }
+        await bindingSvc.ensureBound(doc)
+        const model = bindingSvc.modelForDocument(doc)
+        if (model === undefined) { this.removePage(); return }
+
+        this.modelOff = model.onChanged(() => this.refresh())
+        if (doc instanceof DiagramDocument) this.nodesOff = doc.Nodes.Subscribe(() => this.refresh())
+        this.refresh()
+    }
+
+    private refresh(): void
+    {
+        const doc = this.activeDoc
+        const bindingSvc = this.Provider.get(ArchDiagramBindingService.Key)
+        const model = doc !== undefined ? bindingSvc?.modelForDocument(doc) : undefined
+        if (doc === undefined || bindingSvc === undefined || model === undefined) { this.removePage(); return }
+
+        const repo = this.repository()
+        if (repo === undefined) return
+        const scope = bindingSvc.scopeForDocument(doc) ?? new Set(model.viewpoints().map((v) => v.id))
+        const placed = bindingSvc.placedIds(doc)
+        const page = repo.EnsurePage(PAGE_ID, 'Model: ' + model.namespace)
+        page.Items.Clear()
+        for (const item of modelPageItems(model, scope, placed)) page.Items.Add(item)
+    }
+
+    private removePage(): void
+    {
+        this.repository()?.RemovePage(PAGE_ID)
+    }
+
+    // The app-level ToolboxRepository the ToolboxService populates (drop router +
+    // presenter key off Application.current.Services), falling back to the injected
+    // provider in headless tests.
+    private repository(): ToolboxRepository | undefined
+    {
+        return (Application.current?.Services ?? this.Provider).get(ToolboxRepository.Key)
+    }
+}

@@ -2,7 +2,6 @@ import {
     MetaData, Model, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
-import type { DropAction } from './arch-drop-resolver.js'
 
 // One selectable candidate row. A Model so the .mu template binds $Label / $Command.
 export class ChooserRow extends Model
@@ -41,7 +40,9 @@ export class DropCandidateChooserService extends ServiceBase
     public get IsOpen(): boolean { return this.get_property_value(DropCandidateChooserService.IsOpenKey) }
     public get Rows(): ObservableCollection<ChooserRow> { return this.get_property_value(DropCandidateChooserService.RowsKey) }
 
-    public Show(candidates: DropAction[], onPick: (a: DropAction) => void): void
+    // Generic over any candidate carrying a `label` — term-drop actions AND
+    // connector-authoring actions both flow through the same popup.
+    public Show<T extends { label: string }>(candidates: readonly T[], onPick: (a: T) => void): void
     {
         const rows = this.Rows
         rows.Clear()

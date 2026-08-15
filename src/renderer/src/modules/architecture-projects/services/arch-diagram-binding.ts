@@ -1,9 +1,12 @@
-import { DiagramDocument, Figure, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { Connector, ConnectorEndpoint, DiagramDocument, Figure, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 import type { Entity } from '@pragmatic-lab/todl'
 import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolver.js'
 import type { ArchModel } from './arch-model.js'
 import { ArchNodeVM } from './arch-node-vm.js'
 import { iconEntityKey } from './arch-icon.js'
+import { desiredEdges } from './edge-projection.js'
+import { resolveConnectorActions, type ConnectorAction } from './arch-connector-resolver.js'
+import type { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
 
 // Binds an opened diagram to a project's ArchModel. On every model change it
 // rescans doc.Nodes: ArchNodeVMs (and legacy Figures) whose Id is a live entity
@@ -13,18 +16,89 @@ import { iconEntityKey } from './arch-icon.js'
 export class ArchDiagramBinding
 {
     private off: (() => void) | undefined
+    private detachView: (() => void) | undefined
     private readonly bound = new Map<string, Figure | ArchNodeVM>()   // entityId -> node
+    private readonly boundEdges = new Map<string, Connector>()         // edgeKey -> projected connector
     private scope: string[] = []                                       // selected viewpoints ([] = all)
+    private readonly onActiveViewChanged = (): void => this.attachView()
 
     public constructor(
         private readonly doc: DiagramDocument,
         public readonly model: ArchModel,
+        private readonly chooser?: DropCandidateChooserService,
     ) {}
 
     public attach(): void
     {
         this.rescan()
         this.off = this.model.onChanged(() => this.rescan())
+        // The canvas view publishes itself on mount (ActiveView); (re)wire the
+        // connector-authoring listener whenever it changes.
+        this.attachView()
+        this.doc.AddPropertyChangedListener(DiagramDocument.ActiveViewKey, this.onActiveViewChanged)
+    }
+
+    // Attach the ConnectorCreated listener to the current canvas view. A user-drawn
+    // connector routes to handleConnectorCreated (turns the draw into a model ref).
+    private attachView(): void
+    {
+        this.detachView?.()
+        this.detachView = undefined
+        const view = this.doc.ActiveView
+        if (view === undefined) return
+        const onConnector = (args: { Source?: ConnectorEndpoint; Target?: ConnectorEndpoint }): void =>
+            this.handleConnectorCreated(args.Source?.Node, args.Target?.Node)
+        const onDelete = (args: { Items: readonly unknown[]; Shift: boolean }): void =>
+            this.handleDeleteRequested(args.Items, args.Shift)
+        view.AddConnectorCreatedListener(onConnector)
+        view.AddDeleteRequestedListener(onDelete)
+        this.detachView = () => {
+            view.RemoveConnectorCreatedListener(onConnector)
+            view.RemoveDeleteRequestedListener(onDelete)
+        }
+    }
+
+    // Delete routing: plain Delete is view-only (the standard mutator removes the
+    // figures; the entity stays and re-appears in the Model page). Shift+Delete
+    // ALSO removes the underlying entity from the model (→ rescan drops the node +
+    // its edges everywhere).
+    public handleDeleteRequested(items: readonly unknown[], shift: boolean): void
+    {
+        if (!shift) return
+        let removed = false
+        for (const it of items) {
+            const id = (it as { Id?: string } | undefined)?.Id
+            if (id !== undefined && this.bound.has(id)) { this.model.remove(id); removed = true }
+        }
+        if (removed) void this.model.save()
+    }
+
+    // A user drew a connector between two nodes. Reconcile away the raw connector
+    // the standard mutator just created (arch diagrams are connector-authoritative),
+    // then, when both endpoints are bound arch nodes, resolve the meta-model
+    // relationship member(s) and write the ref (0 reject / 1 auto / many chooser).
+    // The projection redraws it as a model-backed edge on the ensuing rescan.
+    public handleConnectorCreated(source: unknown, target: unknown): void
+    {
+        const fromId = (source as { Id?: string } | undefined)?.Id
+        const toId = (target as { Id?: string } | undefined)?.Id
+        this.model.notifyChanged()   // drops the raw connector via reconcile
+        if (fromId === undefined || toId === undefined) return
+        if (!this.bound.has(fromId) || !this.bound.has(toId)) return
+        const srcConcept = this.conceptOf(fromId)
+        const tgtConcept = this.conceptOf(toId)
+        if (srcConcept === undefined || tgtConcept === undefined) return
+        const actions = resolveConnectorActions(this.model.repository(), srcConcept, tgtConcept, this.scopeSet())
+        if (actions.length === 0) return
+        const apply = (a: ConnectorAction): void => { this.model.addRef(fromId, a.member, toId); void this.model.save() }
+        if (actions.length === 1) { apply(actions[0]); return }
+        this.chooser?.Show(actions, apply)
+    }
+
+    // The concept an already-placed entity instantiates (from the live model).
+    private conceptOf(id: string): string | undefined
+    {
+        return this.model.entities().find((e) => e.id === id)?.concept
     }
 
     private rescan(): void
@@ -61,6 +135,63 @@ export class ArchDiagramBinding
                 this.bound.delete(id)
             }
         }
+
+        this.projectEdges(byId)
+    }
+
+    // Project the model's relationships between placed nodes as connectors, and
+    // keep the diagram connector-authoritative: the ONLY connectors between two
+    // bound arch nodes are the ones we derive from the model. A raw user-drawn
+    // connector (added by the standard mutator) is removed here — SP3 turns the
+    // draw gesture into a model ref, which then projects back as a real edge.
+    private projectEdges(byId: ReadonlyMap<string, Entity>): void
+    {
+        const placed = new Map<string, Entity>()
+        for (const id of this.bound.keys()) {
+            const e = byId.get(id)
+            if (e !== undefined) placed.set(id, e)
+        }
+        const desired = desiredEdges(this.model.repository(), placed, this.scopeSet())
+
+        // Add missing projected connectors.
+        for (const key of desired) {
+            if (this.boundEdges.has(key)) continue
+            const [fromId, , toId] = key.split('|')
+            const src = this.bound.get(fromId)
+            const tgt = this.bound.get(toId)
+            if (src === undefined || tgt === undefined) continue
+            const c = this.doc.CreateConnector(
+                new ConnectorEndpoint({ Node: src }),
+                new ConnectorEndpoint({ Node: tgt }),
+            )
+            if (c !== null) this.boundEdges.set(key, c)
+        }
+        // Remove projected connectors no longer desired.
+        for (const [key, c] of [...this.boundEdges]) {
+            if (!desired.has(key)) {
+                this.doc.DeleteConnectors([c])
+                this.boundEdges.delete(key)
+            }
+        }
+        // Drop any connector between two bound arch nodes that isn't one of ours.
+        const ours = new Set<Connector>(this.boundEdges.values())
+        const boundNodes = new Set<unknown>(this.bound.values())
+        for (const c of this.doc.Connectors.ToArray()) {
+            if (ours.has(c)) continue
+            if (boundNodes.has(c.Source?.Node) && boundNodes.has(c.Target?.Node)) this.doc.DeleteConnectors([c])
+        }
+    }
+
+    // Whether an entity is currently placed as a node on this diagram.
+    public isPlaced(entityId: string): boolean
+    {
+        return this.bound.has(entityId)
+    }
+
+    // The set of entity ids currently placed on this diagram.
+    public placedIds(): ReadonlySet<string>
+    {
+        return new Set(this.bound.keys())
     }
 
     // Replace the diagram's selected-viewpoint scope (empty = all).
@@ -81,6 +212,9 @@ export class ArchDiagramBinding
     {
         this.off?.()
         this.off = undefined
+        this.doc.RemovePropertyChangedListener(DiagramDocument.ActiveViewKey, this.onActiveViewChanged)
+        this.detachView?.()
+        this.detachView = undefined
     }
 }
 
