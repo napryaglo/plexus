@@ -86,6 +86,9 @@ resources LayoutInspectorResources {
                     }
                 }
 
+                // Hairline separating the preset toolbar from the pipeline config.
+                Border [ Height = 1, Background = @OutlineVariant, Margin = (0,0,0,10) ]
+
                 TextBlock [ Style = @BodySmall, Text = $service(LayoutPipelineService).Status,
                             Foreground = @OnSurfaceVariant, TextWrapping = Wrap, Margin = (0,0,0,12) ]
 

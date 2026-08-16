@@ -118,6 +118,8 @@ resources ProblemsResources {
                             TextBox [ Text = $FilterText, Variant = Plain, MinWidth = 120, VerticalAlignment = Center ]
                         }
                     }
+                    // Hairline separating the header/toolbar from the list.
+                    Border [ DockPanel.Dock = Top, Height = 1, Background = @OutlineVariant ]
                     // Capped, virtualized list (fills the remainder).
                     ScrollViewer [ MaxHeight = $ListMaxHeight, HorizontalScrollEnabled = false ] {
                         ItemsControl [ ItemsSource = $Rows, ItemsPanel = @ProblemsListPanel ]
