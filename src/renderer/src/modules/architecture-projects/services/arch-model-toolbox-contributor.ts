@@ -7,7 +7,7 @@ import {
     ToolboxVisualDescriptor,
     type IDocument,
 } from '@pragmatic-lab/mural/framework'
-import type { Entity } from '@pragmatic-lab/todl'
+import type { Entity, Repository } from '@pragmatic-lab/todl'
 
 import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolver.js'
 import { ArchToolboxItem } from '../../diagram/services/arch-toolbox-item.js'
@@ -28,6 +28,17 @@ function entityLabel(e: Entity): string
     return v !== undefined ? String(v) : e.id
 }
 
+// A concept is toolbox-visible unless it explicitly opts out with
+// `annotate toolbox { visible = false }` (the same author-declared `toolbox`
+// annotation the meta-model module's toolbox-projection uses). Absent
+// annotation → visible. Read from the loaded Repository, keyed on the
+// `<concept>@toolbox` annotation node — the same path iconEntityKey reads
+// `<id>@icon`. Booleans resolve to real booleans here, so opt-out is `!== false`.
+export function conceptToolboxVisible(repo: Repository, concept: string): boolean
+{
+    return repo.resolve(`${concept}@toolbox`)?.attrs.get('visible') !== false
+}
+
 // The toolbox items for a diagram's "Model:" page: one per in-scope entity that
 // is NOT already placed on the diagram. Each drops through the place-existing
 // factory (keyed by the entity id, `instance:<id>`).
@@ -37,7 +48,7 @@ export function modelPageItems(model: ArchModel, scope: ReadonlySet<string>, pla
     const inScope = (concept: string): boolean => repo.viewpointsFraming(concept).some((v) => scope.has(v))
     const items: ArchToolboxItem[] = []
     for (const e of model.entities()) {
-        if (placed.has(e.id) || !inScope(e.concept)) continue
+        if (placed.has(e.id) || !inScope(e.concept) || !conceptToolboxVisible(repo, e.concept)) continue
         const key = iconEntityKey(repo, e) ?? e.concept
         const descriptor = new ToolboxVisualDescriptor(TodlVisualResolverKey, key)
         items.push(new ArchToolboxItem('instance:' + e.id, entityLabel(e), descriptor, ArchModelInstanceDropFactoryKey))
@@ -54,7 +65,7 @@ export function scenarioPageItems(model: ArchModel, scope: ReadonlySet<string>):
     const inScope = (concept: string): boolean => repo.viewpointsFraming(concept).some((v) => scope.has(v))
     const items: ArchToolboxItem[] = []
     for (const e of model.entities()) {
-        if (e.concept !== SCENARIO_CONCEPT || !inScope(e.concept)) continue
+        if (e.concept !== SCENARIO_CONCEPT || !inScope(e.concept) || !conceptToolboxVisible(repo, e.concept)) continue
         const key = iconEntityKey(repo, e) ?? e.concept
         const descriptor = new ToolboxVisualDescriptor(TodlVisualResolverKey, key)
         items.push(new ArchToolboxItem('scenario:' + e.id, entityLabel(e), descriptor, ArchScenarioDropFactoryKey))
