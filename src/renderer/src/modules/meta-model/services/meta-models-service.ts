@@ -26,7 +26,8 @@ import { discoverLibraries, type LoadedLibrary } from '../../library/services/li
 import { TodlPresentationRegistry } from '../../diagram/services/todl-presentation-registry.js'
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
 import { buildCatalog, type DeleteTarget } from './meta-model-tree-builder.js'
-import type { MetaModelTreeNode } from './meta-model-tree-node.js'
+import { MetaModelNodeKind, type MetaModelTreeNode } from './meta-model-tree-node.js'
+import { WikiService } from '../../../services/wiki/wiki-service.js'
 
 export class MetaModelsService extends ServiceBase implements IActivatable
 {
@@ -72,6 +73,7 @@ export class MetaModelsService extends ServiceBase implements IActivatable
             backend,
             () => {},
             (t) => { void this.deleteTarget(t) },
+            (nodes) => this.markWiki(nodes),
         )
         if (seq !== this.reloadSeq) return   // a newer reload superseded this one
 
@@ -80,6 +82,22 @@ export class MetaModelsService extends ServiceBase implements IActivatable
         for (const n of built) nodes.Add(n)
         this.set_property_value(MetaModelsService.IsEmptyKey, built.length === 0)
         await this.Provider.get(TodlPresentationRegistry.Key)?.discover()
+    }
+
+    // Asynchronously flag which entity rows have an openable wiki page (→ their
+    // "Open Wiki" menu shows). Runs per version subtree as it loads lazily; a
+    // stale-item guard keeps a late resolve from writing onto a reused node.
+    private markWiki(nodes: readonly MetaModelTreeNode[]): void
+    {
+        const wiki = this.Provider.get(WikiService.Key)
+        if (wiki === undefined) return
+        for (const n of nodes)
+        {
+            if (n.Kind !== MetaModelNodeKind.Entity) continue
+            const concept = n.Concept
+            if (concept.length === 0) continue
+            void wiki.hasWiki(concept).then((h) => { if (n.Concept === concept) n.HasWiki = h })
+        }
     }
 
     // Delete a published meta-model — one version (`<id>/<version>`) or a whole id

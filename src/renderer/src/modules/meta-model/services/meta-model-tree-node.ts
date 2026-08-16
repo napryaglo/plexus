@@ -51,6 +51,14 @@ export class MetaModelTreeNode extends Model
     public static readonly IsDeletableKey = Model.RegisterProperty<boolean>(
         MetaModelTreeNode, 'IsDeletable', false, MetaData.None)
 
+    // Wiki wiring — Entity rows only. Concept is the ontology entity's local id
+    // (the concept the `@wiki` annotation is keyed on); HasWiki (filled async by
+    // MetaModelsService) drives the shared "Open Wiki" menu-item visibility.
+    public static readonly ConceptKey = Model.RegisterProperty<string>(
+        MetaModelTreeNode, 'Concept', '', MetaData.None)
+    public static readonly HasWikiKey = Model.RegisterProperty<boolean>(
+        MetaModelTreeNode, 'HasWiki', false, MetaData.None)
+
     // Lazy machinery (view-invisible → plain fields). Only lazy() sets a loader.
     private loader?: () => Promise<MetaModelTreeNode[]>
     private loaded = false
@@ -87,6 +95,10 @@ export class MetaModelTreeNode extends Model
     // Entity rows get no context menu. Reads the property set at construction.
     public get IsDeletable(): boolean { return this.get_property_value(MetaModelTreeNode.IsDeletableKey) }
 
+    public get Concept(): string { return this.get_property_value(MetaModelTreeNode.ConceptKey) }
+    public get HasWiki(): boolean { return this.get_property_value(MetaModelTreeNode.HasWikiKey) }
+    public set HasWiki(v: boolean) { this.set_property_value(MetaModelTreeNode.HasWikiKey, v) }
+
     // A non-lazy node: children (if any) are added by the caller.
     public static leaf(kind: MetaModelNodeKind, label: string): MetaModelTreeNode
     {
@@ -95,12 +107,13 @@ export class MetaModelTreeNode extends Model
 
     // An entity leaf that opens its drawer on double-click activation.
     public static entity(
-        label: string, ref: EntityRef, activate: (ref: EntityRef) => void,
+        label: string, ref: EntityRef, activate: (ref: EntityRef) => void, concept = '',
     ): MetaModelTreeNode
     {
         const node = new MetaModelTreeNode(MetaModelNodeKind.Entity, label)
         node.ref = ref
         node.activate = activate
+        node.set_property_value(MetaModelTreeNode.ConceptKey, concept)
         return node
     }
 
