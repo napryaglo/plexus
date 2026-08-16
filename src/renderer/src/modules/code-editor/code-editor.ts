@@ -5,6 +5,7 @@ import { Color, DataContextBinding, Model, MetaData, ObservableCollection, Size,
 import { SolidColorBrush } from '@pragmatic-lab/mural/visual-engine'
 import { toMarkers, markerSignature, type EditorDiagnostic } from './editor-diagnostic.js'
 import { handleCrossFileOpen, type CrossFileSelection } from './cross-file-open.js'
+import { todlSemanticThemeRules } from '../../services/todl/semantic-scopes.js'
 
 // The Monaco theme name this control defines from mural's resolved tokens.
 const MURAL_THEME = 'mural'
@@ -169,9 +170,14 @@ export class CodeEditor extends DomHost
                 ?? monaco.editor.createModel(this.Text, this.Language, monaco.Uri.parse(modelUri)))
             : undefined
         this.ownsModel = model !== undefined
+        // `semanticHighlighting.enabled: true` turns on the LSP semantic-token
+        // overlay (todl concept names → blue). The theme-level flag is ignored by
+        // this Monaco version, so it must be forced here; it only affects
+        // languages that register a semantic-tokens provider (todl), not .mu.
+        const common = { theme, automaticLayout: true, minimap: { enabled: false }, 'semanticHighlighting.enabled': true } as const
         this.editor = monaco.editor.create(el, model
-            ? { model, theme, automaticLayout: true, minimap: { enabled: false } }
-            : { value: this.Text, language: this.Language, theme, automaticLayout: true, minimap: { enabled: false } })
+            ? { model, ...common }
+            : { value: this.Text, language: this.Language, ...common })
         // Route Monaco's cross-file go-to-definition (into a document not open in
         // a tab) to the host app — bare Monaco can't navigate to an unloaded model.
         this.installCrossFileNavigation()
@@ -385,12 +391,19 @@ export class CodeEditor extends DomHost
         // Relative luminance (Rec. 601) of Surface decides light vs dark base.
         const dark = surface === undefined
             || (0.299 * surface.R + 0.587 * surface.G + 0.114 * surface.B) < 128
+        // Semantic highlighting only affects files with a semantic-tokens
+        // provider (todl); the rules name TODL-only scopes (todlType/todlClass),
+        // so .mu files are untouched. Concept names thus render the keyword blue.
+        // `semanticHighlighting` is honored by Monaco's runtime theme service but
+        // is missing from the bundled IStandaloneThemeData typings — cast rather
+        // than drop it.
         monaco.editor.defineTheme(MURAL_THEME, {
             base:    dark ? 'vs-dark' : 'vs',
             inherit: true,
-            rules:   [],
+            rules:   todlSemanticThemeRules(dark),
             colors,
-        })
+            semanticHighlighting: true,
+        } as monaco.editor.IStandaloneThemeData)
         return MURAL_THEME
     }
 }

@@ -87,7 +87,13 @@ export function registerTodlProviders(client: TodlLanguageClient): void {
     }),
   })
 
+  // Fired when semantic tokens go stale for a reason other than a document edit
+  // (bases refreshed / server reinitialized). Monaco re-fetches on this signal,
+  // so a newly added meta-model concept recolors in already-open documents.
+  const semanticTokensChanged = new monaco.Emitter<void>()
+  client.onSemanticTokensStale(() => semanticTokensChanged.fire())
   monaco.languages.registerDocumentSemanticTokensProvider(lang, {
+    onDidChange: semanticTokensChanged.event,
     getLegend: () => client.SemanticLegend(),
     provideDocumentSemanticTokens: async (model) => ({ data: new Uint32Array((await provideDocumentSemanticTokens(client, model)).data) }),
     releaseDocumentSemanticTokens: () => {},
