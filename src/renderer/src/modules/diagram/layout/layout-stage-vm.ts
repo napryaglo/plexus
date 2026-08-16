@@ -30,6 +30,9 @@ export class LayoutStageVM extends Model
         LayoutStageVM, 'Enabled', true, MetaData.None)
 
     private readonly byName = new Map<string, CatalogStrategy>()
+    // className -> display name, the reverse of byName's key, so LoadSpec can
+    // resolve a saved spec's className back to the ComboBox option.
+    private readonly byClassName = new Map<string, string>()
     private selectedClassName: string | undefined
     private paramValues: Record<string, number | boolean> = {}
 
@@ -46,6 +49,7 @@ export class LayoutStageVM extends Model
         {
             opts.Add(s.name)
             this.byName.set(s.name, s)
+            this.byClassName.set(s.className, s.name)
         }
         this.set_property_value(LayoutStageVM.OptionsKey, opts)
         this.set_property_value(LayoutStageVM.ParamsKey, new ObservableCollection<Model>())
@@ -67,6 +71,30 @@ export class LayoutStageVM extends Model
     public Reapply(): void
     {
         this.onSelected()
+    }
+
+    // Drive this stage from a saved spec: undefined (or an unknown className)
+    // selects "(default)"; otherwise select the matching strategy — which
+    // rebuilds its params at defaults — then overwrite each param row's Value
+    // from the spec (each write re-emits the full { className, params }).
+    public LoadSpec(spec: LayoutStageSpec | undefined): void
+    {
+        const name = spec === undefined ? undefined : this.byClassName.get(spec.className)
+        if (name === undefined)
+        {
+            this.Selected = DEFAULT_OPTION
+            return
+        }
+        this.Selected = name   // rebuilds param rows at defaults + emits
+        const params = spec!.params ?? {}
+        for (const row of this.Params.ToArray())
+        {
+            const key = (row as NumberParamVM | BoolParamVM).Key
+            if (!(key in params)) continue
+            const v = params[key]
+            if (row instanceof NumberParamVM && typeof v === 'number') row.Value = v
+            else if (row instanceof BoolParamVM && typeof v === 'boolean') row.Value = v
+        }
     }
 
     private onSelected(): void

@@ -8,7 +8,7 @@ import {
     type ICommand,
     type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
-import { Connector, ContentHostService, DiagramDocument, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+import { Connector, ContentHostService, DialogService, DiagramDocument, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
 import {
     GetPipelineCatalog,
     BuildPipeline,
@@ -17,6 +17,7 @@ import {
     type CatalogSlot,
     type EdgeRouting,
     type Edge,
+    type LayoutStageSpec,
 } from '@pragmatic-lab/fresco'
 
 import {
@@ -32,8 +33,9 @@ import {
     type PositionSet,
     type SizedLike,
 } from './diagram-graph-adapter.js'
-import { planForMode, type RunMode } from './run-modes.js'
+import { planForMode } from './run-modes.js'
 import { LayoutPresetsStore } from './layout-presets-store.js'
+import { promptPresetName } from './save-preset-prompt.js'
 import { LayoutInspector } from './layout-inspector.js'
 import { LayoutStageVM } from './layout-stage-vm.js'
 
@@ -76,9 +78,9 @@ const FALLBACK_SIZE: NodeSize = { width: 80, height: 40 }
 const DEFAULT_CONFIG: PipelineConfiguration = { name: 'default', transforms: ['MakeAcyclicTransform'], layout: {} }
 
 // LayoutPipelineService — composes a Fresco layout pipeline and runs it on
-// the active diagram. Holds the current PipelineConfiguration and run mode,
-// exposes the catalog for the builder UI, manages named presets, and applies
-// results (or stages a preview) via the pure adapter + run-mode logic.
+// the active diagram. Holds the current PipelineConfiguration, exposes the
+// catalog-derived stage rows for the builder UI, manages named presets, and
+// applies the computed positions via the pure adapter.
 //
 // The pure work (extract / computeOutcome / planForMode) lives in unit-tested
 // modules; this service is the mural-framework seam that reaches the active
@@ -90,32 +92,31 @@ export class LayoutPipelineService extends ServiceBase
     // Every member bound from the .mu template MUST be a registered property:
     // mural's binding engine reads a path on a Model only via a registered
     // PropertyKey (get_property_value) — it does NOT fall back to plain fields.
-    // Plain fields below (Catalog/Config/etc.) are used only from TS.
-    public static readonly ModeKey = Model.RegisterProperty<RunMode>(
-        LayoutPipelineService, 'Mode', 'positions', MetaData.None)
     public static readonly StatusKey = Model.RegisterProperty<string>(
         LayoutPipelineService, 'Status', '', MetaData.None)
     public static readonly StagesKey = Model.RegisterProperty<ObservableCollection<LayoutStageVM>>(
         LayoutPipelineService, 'Stages', undefined as unknown as ObservableCollection<LayoutStageVM>, MetaData.None)
     public static readonly InspectorKey = Model.RegisterProperty<LayoutInspector>(
         LayoutPipelineService, 'Inspector', undefined as unknown as LayoutInspector, MetaData.None)
+    public static readonly PresetNamesKey = Model.RegisterProperty<ObservableCollection<string>>(
+        LayoutPipelineService, 'PresetNames', undefined as unknown as ObservableCollection<string>, MetaData.None)
+    public static readonly SelectedPresetKey = Model.RegisterProperty<string | undefined>(
+        LayoutPipelineService, 'SelectedPreset', undefined, MetaData.None)
+    public static readonly CanDeleteKey = Model.RegisterProperty<boolean>(
+        LayoutPipelineService, 'CanDelete', false, MetaData.None)
     public static readonly RunCommandKey = Model.RegisterProperty<ICommand>(
         LayoutPipelineService, 'RunCommand', undefined as unknown as ICommand, MetaData.None)
-    public static readonly ApplyPreviewCommandKey = Model.RegisterProperty<ICommand>(
-        LayoutPipelineService, 'ApplyPreviewCommand', undefined as unknown as ICommand, MetaData.None)
-    public static readonly CancelPreviewCommandKey = Model.RegisterProperty<ICommand>(
-        LayoutPipelineService, 'CancelPreviewCommand', undefined as unknown as ICommand, MetaData.None)
-    public static readonly UsePositionsModeCommandKey = Model.RegisterProperty<ICommand>(
-        LayoutPipelineService, 'UsePositionsModeCommand', undefined as unknown as ICommand, MetaData.None)
-    public static readonly UsePreviewModeCommandKey = Model.RegisterProperty<ICommand>(
-        LayoutPipelineService, 'UsePreviewModeCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly SaveCommandKey = Model.RegisterProperty<ICommand>(
+        LayoutPipelineService, 'SaveCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly DeleteCommandKey = Model.RegisterProperty<ICommand>(
+        LayoutPipelineService, 'DeleteCommand', undefined as unknown as ICommand, MetaData.None)
 
     // Plain fields — used only from TS (not bound in markup).
     public readonly Catalog: CatalogSlot[] = GetPipelineCatalog()
-    public readonly ModeOptions: RunMode[] = ['positions', 'preview']
     public Config: PipelineConfiguration = structuredClone(DEFAULT_CONFIG)
-    public PreviewPositions: PositionSet[] | undefined
 
+    // stage -> its PipelineConfiguration.layout key, for LoadPreset.
+    private readonly stageKeys = new Map<LayoutStageVM, string>()
     private _presets: LayoutPresetsStore | undefined
 
     constructor(provider: IServiceProvider)
@@ -161,42 +162,100 @@ export class LayoutPipelineService extends ServiceBase
                 }
             })
             stages.Add(stage)
+            this.stageKeys.set(stage, key)
             if (slot.slotId === 'port-assigner') portAssignerStage = stage
         }
         this.set_property_value(LayoutPipelineService.StagesKey, stages)
+        this.set_property_value(LayoutPipelineService.PresetNamesKey, new ObservableCollection<string>())
 
         this.set_property_value(LayoutPipelineService.RunCommandKey, new RelayCommand(() => this.Run()))
-        this.set_property_value(LayoutPipelineService.ApplyPreviewCommandKey, new RelayCommand(() => this.applyPreview()))
-        this.set_property_value(LayoutPipelineService.CancelPreviewCommandKey, new RelayCommand(() => this.cancelPreview()))
-        this.set_property_value(LayoutPipelineService.UsePositionsModeCommandKey, new RelayCommand(() => { this.Mode = 'positions' }))
-        this.set_property_value(LayoutPipelineService.UsePreviewModeCommandKey, new RelayCommand(() => { this.Mode = 'preview' }))
-    }
+        this.set_property_value(LayoutPipelineService.SaveCommandKey, new RelayCommand(() => { void this.save() }))
+        this.set_property_value(LayoutPipelineService.DeleteCommandKey, new RelayCommand(() => { void this.deleteSelected() }))
 
-    public get Mode(): RunMode { return this.get_property_value(LayoutPipelineService.ModeKey) }
-    public set Mode(v: RunMode) { this.set_property_value(LayoutPipelineService.ModeKey, v) }
+        // Selecting a preset loads it; whatever is selected also drives whether
+        // Delete is enabled.
+        this.AddPropertyChangedListener(LayoutPipelineService.SelectedPresetKey, () => {
+            const name = this.SelectedPreset
+            const has = name !== undefined && name.length > 0
+            this.set_property_value(LayoutPipelineService.CanDeleteKey, has)
+            if (has) void this.LoadPreset(name!)
+        })
+
+        void this.refreshPresetNames()
+    }
 
     public get Status(): string { return this.get_property_value(LayoutPipelineService.StatusKey) }
     private set Status(v: string) { this.set_property_value(LayoutPipelineService.StatusKey, v) }
 
     public get Stages(): ObservableCollection<LayoutStageVM> { return this.get_property_value(LayoutPipelineService.StagesKey) }
     public get Inspector(): LayoutInspector { return this.get_property_value(LayoutPipelineService.InspectorKey) }
+    public get PresetNames(): ObservableCollection<string> { return this.get_property_value(LayoutPipelineService.PresetNamesKey) }
+    public get SelectedPreset(): string | undefined { return this.get_property_value(LayoutPipelineService.SelectedPresetKey) }
+    public set SelectedPreset(v: string | undefined) { this.set_property_value(LayoutPipelineService.SelectedPresetKey, v) }
+    public get CanDelete(): boolean { return this.get_property_value(LayoutPipelineService.CanDeleteKey) }
     public get RunCommand(): ICommand { return this.get_property_value(LayoutPipelineService.RunCommandKey) }
-    public get ApplyPreviewCommand(): ICommand { return this.get_property_value(LayoutPipelineService.ApplyPreviewCommandKey) }
-    public get CancelPreviewCommand(): ICommand { return this.get_property_value(LayoutPipelineService.CancelPreviewCommandKey) }
-    public get UsePositionsModeCommand(): ICommand { return this.get_property_value(LayoutPipelineService.UsePositionsModeCommandKey) }
-    public get UsePreviewModeCommand(): ICommand { return this.get_property_value(LayoutPipelineService.UsePreviewModeCommandKey) }
+    public get SaveCommand(): ICommand { return this.get_property_value(LayoutPipelineService.SaveCommandKey) }
+    public get DeleteCommand(): ICommand { return this.get_property_value(LayoutPipelineService.DeleteCommandKey) }
 
     // Lazily created so a non-desktop context (should not happen in the
     // renderer) doesn't fail at construction just because presets are unused.
     public get Presets(): LayoutPresetsStore
     {
-        return (this._presets ??= new LayoutPresetsStore())
+        return (this._presets ??= new LayoutPresetsStore(this.Provider))
     }
 
-    // Compose the pipeline from Config and run it on the active diagram.
-    // In 'positions' mode the new positions are written to the figures; in
-    // 'preview' mode they are staged in PreviewPositions for a ghost overlay
-    // and an explicit Apply (see applyPreview).
+    // Reload PresetNames from the store (ctor + after save/delete).
+    private async refreshPresetNames(): Promise<void>
+    {
+        const names = await this.Presets.names()
+        const coll = this.PresetNames
+        coll.Clear()
+        for (const n of names) coll.Add(n)
+    }
+
+    // Load a preset into the current settings: clone it into Config, then drive
+    // each stage from its layout entry. Stages load in insertion order (= Stages
+    // order), so the Edge Router's native-routing choice disables the Port
+    // Assigner before we reach it; a disabled Port Assigner is skipped so its
+    // { off: true } directive (set by the Edge Router) survives.
+    public async LoadPreset(name: string): Promise<void>
+    {
+        const cfg = await this.Presets.get(name)
+        if (cfg === undefined) return
+        this.Config = structuredClone(cfg)
+        const layout = this.Config.layout as Record<string, LayoutStageSpec | undefined>
+        for (const [stage, key] of this.stageKeys) {
+            if (!stage.Enabled) continue
+            stage.LoadSpec(layout[key])
+        }
+    }
+
+    // Prompt for a name and save the current Config as that preset, then select
+    // it. A no-op when there is no DialogService (headless) or the user cancels.
+    private async save(): Promise<void>
+    {
+        const dialogs = this.Provider.get(DialogService.Key)
+        if (dialogs === undefined) return
+        const name = await promptPresetName(dialogs, this.SelectedPreset ?? '')
+        if (name === undefined) return
+        const stem = await this.Presets.save(name, this.Config)
+        await this.refreshPresetNames()
+        this.SelectedPreset = stem
+    }
+
+    // Delete the selected preset and clear the selection; the working Config /
+    // Stages are left as-is (deleting the saved copy does not reset the editor).
+    private async deleteSelected(): Promise<void>
+    {
+        const name = this.SelectedPreset
+        if (name === undefined || name.length === 0) return
+        await this.Presets.delete(name)
+        await this.refreshPresetNames()
+        this.SelectedPreset = undefined
+    }
+
+    // Compose the pipeline from Config and run it on the active diagram,
+    // writing the new positions to the figures.
     public Run(): void
     {
         const doc = this.activeDiagram()
@@ -224,17 +283,9 @@ export class LayoutPipelineService extends ServiceBase
             return
         }
 
-        const plan = planForMode(this.Mode, outcome)
-
-        if (plan.previewOnly) {
-            this.PreviewPositions = outcome.setPositions
-            this.Status = `Preview: ${outcome.setPositions.length} nodes. Apply to commit.`
-            return
-        }
-
+        const plan = planForMode('positions', outcome)
         this.applyPositions(index, plan.mutation.setPositions)
         this.clearConnectorWaypoints(doc)   // layout is the reset: drop user pins, rebuild routing
-        this.PreviewPositions = undefined
 
         let status = `Laid out ${plan.mutation.setPositions.length} nodes.`
         const n = this.applyDiagramSides(connectorEdges, lastRoutes)
@@ -263,23 +314,6 @@ export class LayoutPipelineService extends ServiceBase
         return applySides(connectorEdges, byPair)
     }
 
-    // Commit a staged preview (positions mode) and clear it.
-    public applyPreview(): void
-    {
-        if (this.PreviewPositions === undefined) return
-        const doc = this.activeDiagram()
-        if (doc === undefined) { this.Status = 'Active document is not a diagram.'; return }
-        const index = new Map<string, FigureLike>()
-        for (const n of doc.Nodes.ToArray()) {
-            const f = n as FigureLike
-            if (f.Id !== undefined) index.set(f.Id, f)
-        }
-        this.applyPositions(index, this.PreviewPositions)
-        this.clearConnectorWaypoints(doc)   // committing a layout resets manual routing
-        this.Status = `Applied ${this.PreviewPositions.length} nodes.`
-        this.PreviewPositions = undefined
-    }
-
     // Layout is the single "reset to auto" operation: drop every connector's
     // waypoints (user pins included) so the route rebuilds from scratch. Without
     // this, moving nodes preserves pins (mural's per-move behaviour), leaving a
@@ -289,12 +323,6 @@ export class LayoutPipelineService extends ServiceBase
         for (const c of doc.Connectors.ToArray()) {
             if (c instanceof Connector) c.Waypoints = undefined
         }
-    }
-
-    public cancelPreview(): void
-    {
-        this.PreviewPositions = undefined
-        this.Status = 'Preview cancelled.'
     }
 
     private applyPositions(index: Map<string, FigureLike>, sets: PositionSet[]): void
