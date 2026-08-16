@@ -10,6 +10,9 @@ import {
 import { Point } from '@pragmatic-lab/mural/runtime'
 import { ArchNodeVM } from '../../../architecture-projects/services/arch-node-vm.js'
 import { LayoutPipelineService } from '../layout-pipeline-service.js'
+import { GetPipelineCatalog, type PipelineConfiguration } from '@pragmatic-lab/fresco'
+import { EnvironmentService } from '../../../../services/environment/environment-service.js'
+import { FileSystemService } from '../../../../services/file-system/file-system-service.js'
 
 // A provider whose content host reports `doc` as the active document — the
 // same ActiveDocument source the arch binding / viewpoint-scope services read.
@@ -21,6 +24,38 @@ function providerWithActive(doc: IDocument | undefined): ServiceProvider {
     const provider = new ServiceProvider()
     provider.registerInstance(ContentHostService.Key, host as unknown as ContentHostService)
     return provider
+}
+
+// A provider with an in-memory filesystem host seeded with `presets`
+// (name -> config), plus the active-document host, so LoadPreset / SelectedPreset
+// can read real preset files.
+function providerWithPresets(doc: IDocument | undefined, presets: Record<string, PipelineConfiguration>): ServiceProvider {
+    const provider = providerWithActive(doc)
+    const files = new Map<string, string>()
+    for (const [name, cfg] of Object.entries(presets)) files.set(`/data/layout-presets/${name}.json`, JSON.stringify(cfg))
+    const fs = {
+        CreateDirectory: () => Promise.resolve(),
+        WriteText: (p: string, c: string) => { files.set(p, c); return Promise.resolve() },
+        ReadText: (p: string) => files.has(p) ? Promise.resolve(files.get(p)!) : Promise.reject(new Error('ENOENT')),
+        Delete: (p: string) => { files.delete(p); return Promise.resolve() },
+        ListDirectory: (dir: string) => {
+            const prefix = dir.endsWith('/') ? dir : dir + '/'
+            return Promise.resolve([...files.keys()]
+                .filter((k) => k.startsWith(prefix) && !k.slice(prefix.length).includes('/'))
+                .map((k) => ({ Name: k.slice(prefix.length), IsDirectory: false })))
+        },
+    } as unknown as FileSystemService
+    provider.registerInstance(FileSystemService.Key, fs)
+    provider.registerInstance(EnvironmentService.Key, { UserDataDirectory: '/data' } as unknown as EnvironmentService)
+    return provider
+}
+
+// The catalog's first real strategy for a given slot — used to build a preset
+// whose className the stage VM can resolve.
+function firstStrategy(slotId: string): { name: string; className: string } {
+    const slot = GetPipelineCatalog().find((s) => s.slotId === slotId && s.kind === 'strategy-slot')!
+    const strat = (slot as unknown as { strategies: { name: string; className: string }[] }).strategies[0]
+    return { name: strat.name, className: strat.className }
 }
 
 test('Run lays out the ACTIVE diagram document, not a workspace singleton', () => {
@@ -76,4 +111,27 @@ test('Run reports when the active document is not a diagram', () => {
     const svc = new LayoutPipelineService(providerWithActive(undefined))
     svc.Run()
     expect(svc.Status).toBe('Active document is not a diagram.')
+})
+
+test('LoadPreset clones the preset into Config and restores the matching stage', async () => {
+    const strat = firstStrategy('layer-assigner')
+    const preset: PipelineConfiguration = {
+        name: 'p1', transforms: ['MakeAcyclicTransform'],
+        layout: { layerAssigner: { className: strat.className, params: {} } },
+    }
+    const svc = new LayoutPipelineService(providerWithPresets(undefined, { p1: preset }))
+
+    await svc.LoadPreset('p1')
+
+    expect(svc.Config.name).toBe('p1')
+    expect(svc.Config).not.toBe(preset)   // a clone, not the same reference
+    const stage = svc.Stages.ToArray().find((s) => s.Label === 'Layer Assigner')!
+    expect(stage.Selected).toBe(strat.name)
+})
+
+test('LoadPreset of an unknown name leaves Config unchanged', async () => {
+    const svc = new LayoutPipelineService(providerWithPresets(undefined, {}))
+    const before = svc.Config
+    await svc.LoadPreset('missing')
+    expect(svc.Config).toBe(before)
 })
