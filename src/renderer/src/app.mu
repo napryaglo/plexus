@@ -144,6 +144,12 @@ import EditorReloadService from "./services/file-watch/editor-reload-service.js"
 import ProjectRescanService from "./services/file-watch/project-rescan-service.js"
 import CodeEditorResources from "./modules/code-editor/code-editor.resources.mu.js"
 
+// Wiki: an "Open Wiki" action on concept surfaces that opens the concept's
+// declared markdown page (resolved from its open project) in a Monaco tab.
+import WikiLocator from "./services/wiki/wiki-locator.js"
+import WikiService from "./services/wiki/wiki-service.js"
+import WikiResources from "./services/wiki/wiki.resources.mu.js"
+
 
 // Settings: persistence store, the footer-gear launcher, and the settings-page
 // view resources. ApplicationSettings (framework, auto-provided by EditorShell)
@@ -273,6 +279,11 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         EditorReloadService
         // Re-scans + re-validates the owning project on external change (debounced).
         ProjectRescanService
+        // Wiki: resolve a concept → its declaring open project's markdown page
+        // (WikiLocator) and open it (WikiService.OpenWikiCommand, shared by the
+        // four concept surfaces via the @OpenWikiMenu context menu).
+        WikiLocator
+        WikiService
     }
 
     .modules: {
@@ -338,6 +349,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // Code editor (DataTemplate[CodeDocument] declares a CodeEditor — a
         // DomHost subclass hosting Monaco, self-bound to the document's Content).
         merge CodeEditorResources
+
+        // Shared "Open Wiki" context menu (@OpenWikiMenu), attached by the four
+        // concept surfaces when their row's $HasWiki is true.
+        merge WikiResources
 
         // Document tab strip override: ExtendedTabControl with a top-right
         // overflow dropdown (Close All + open-tabs list). Shadows the framework's
