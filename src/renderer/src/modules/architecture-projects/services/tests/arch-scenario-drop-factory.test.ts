@@ -23,10 +23,10 @@ function makeContext(doc: DiagramDocument, scenarioId: string): ToolboxDropConte
 }
 
 function stubProvider() {
-  const model = { notifyChanged: vi.fn(), entities: () => [scenario], create: vi.fn(), addRef: vi.fn(), save: vi.fn() }
-  const bindingSvc = { modelForDocument: () => model }
+  const model = { entities: () => [scenario], create: vi.fn(), addRef: vi.fn(), save: vi.fn() }
+  const bindingSvc = { modelForDocument: () => model, addScenario: vi.fn(() => Promise.resolve()) }
   const provider = { get: (k: unknown) => (k === ArchDiagramBindingService.Key ? bindingSvc : undefined) } as unknown as IServiceProvider
-  return { provider, model }
+  return { provider, model, bindingSvc }
 }
 
 test('scenarioIdOf strips the scenario: prefix', () => {
@@ -34,19 +34,19 @@ test('scenarioIdOf strips the scenario: prefix', () => {
   expect(scenarioIdOf('instance:x')).toBeUndefined()
 })
 
-test('dropping a scenario adds a node per participant and a connector per step, no model writes', () => {
+test('dropping a scenario adds a node per participant and registers the scenario, no model writes', () => {
   const doc = new DiagramDocument()
-  const { provider, model } = stubProvider()
+  const { provider, model, bindingSvc } = stubProvider()
   const factory = new ArchScenarioDropFactory(provider)
 
   factory.CreateDropped(makeContext(doc, 'sc'))
 
   const nodes = doc.Nodes.ToArray().filter((n): n is ArchNodeVM => n instanceof ArchNodeVM)
   expect(nodes.map((n) => n.Id).sort()).toEqual(['a', 'b', 'c'])
-  expect(doc.Connectors.ToArray().length).toBe(2)   // a->b, b->c
   expect(nodes.find((n) => n.Id === 'a')!.Left).toBe(100)   // origin col 0
   expect(nodes.find((n) => n.Id === 'b')!.Left).toBe(300)   // col 1
-  expect(model.notifyChanged).toHaveBeenCalledOnce()
+  // The binding projects the step connectors; the factory just registers the scenario.
+  expect(bindingSvc.addScenario).toHaveBeenCalledWith(doc, 'sc')
   expect(model.addRef).not.toHaveBeenCalled()
   expect(model.create).not.toHaveBeenCalled()
   expect(model.save).not.toHaveBeenCalled()
@@ -56,11 +56,11 @@ test('re-uses an already-present node instead of duplicating it', () => {
   const doc = new DiagramDocument()
   const pre = new ArchNodeVM(); pre.Id = 'b'; pre.Left = 999; pre.Top = 999
   doc.AddNode(pre)
-  const { provider } = stubProvider()
+  const { provider, bindingSvc } = stubProvider()
   new ArchScenarioDropFactory(provider).CreateDropped(makeContext(doc, 'sc'))
 
   const bNodes = doc.Nodes.ToArray().filter((n): n is ArchNodeVM => n instanceof ArchNodeVM && n.Id === 'b')
   expect(bNodes.length).toBe(1)          // not duplicated
   expect(bNodes[0].Left).toBe(999)       // existing position preserved
-  expect(doc.Connectors.ToArray().length).toBe(2)
+  expect(bindingSvc.addScenario).toHaveBeenCalledWith(doc, 'sc')
 })

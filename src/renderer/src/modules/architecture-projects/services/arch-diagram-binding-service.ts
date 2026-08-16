@@ -9,6 +9,7 @@ import { ArchDiagramBinding } from './arch-diagram-binding.js'
 import { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
 import type { ArchModel } from './arch-model.js'
 import { loadViewpoints, writeViewpoints } from './arch-diagram-viewpoints-store.js'
+import { readScenarios, writeScenarios } from './arch-diagram-scenarios-store.js'
 import { nodesLeavingScope, type LeavingNode } from './viewpoint-scope-reconcile.js'
 import { registerArchNodeSerializer } from './arch-node-serializer.js'
 
@@ -82,6 +83,10 @@ export class ArchDiagramBindingService extends ServiceBase
                 const vps = await loadViewpoints(doc, store.ProjectStorage, store.Path)
                 if (vps !== undefined) binding.setScope(vps)
             }
+            // Restore the diagram's shown scenarios so their step connectors
+            // re-project on open (the metadata is already deserialized).
+            binding.setScenarios(readScenarios(doc))
+            binding.model.notifyChanged()
             this.bindings.set(doc, binding)
         }
     }
@@ -144,6 +149,23 @@ export class ArchDiagramBindingService extends ServiceBase
         if (leaving.length > 0) diagram.DeleteNodes(leaving.map((l) => l.node))
         binding.setScope(viewpoints)
         writeViewpoints(diagram, viewpoints)
+        diagram.Save()
+        const store = diagram.Storage
+        if (store instanceof FileDiagramStorage) await store.WhenWritten()
+        binding.model.notifyChanged()
+    }
+
+    // Show a scenario's flow on a diagram: record it in the binding + the
+    // diagram metadata (so it travels with the file and re-projects on open),
+    // persist, and re-notify so the binding projects its step connectors between
+    // the placed participants. The caller places the participant nodes first.
+    public async addScenario(doc: IDocument, scenarioId: string): Promise<void>
+    {
+        const binding = this.bindings.get(doc)
+        if (binding === undefined) return
+        const diagram = doc as DiagramDocument
+        binding.addScenario(scenarioId)
+        writeScenarios(diagram, binding.scenarioIds())
         diagram.Save()
         const store = diagram.Storage
         if (store instanceof FileDiagramStorage) await store.WhenWritten()

@@ -4,9 +4,14 @@ import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolv
 import type { ArchModel } from './arch-model.js'
 import { ArchNodeVM } from './arch-node-vm.js'
 import { iconEntityKey } from './arch-icon.js'
-import { desiredEdges } from './edge-projection.js'
+import { desiredEdges, edgeKey } from './edge-projection.js'
 import { resolveConnectorActions, type ConnectorAction } from './arch-connector-resolver.js'
+import { scenarioStepPairs, type FlowEntity } from './scenario-flow.js'
 import type { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
+
+// Synthetic relationship member for a projected scenario step edge, so its
+// edgeKey never collides with a real model relationship member.
+const SCENARIO_STEP_MEMBER = '__scenario_step__'
 
 // Binds an opened diagram to a project's ArchModel. On every model change it
 // rescans doc.Nodes: ArchNodeVMs (and legacy Figures) whose Id is a live entity
@@ -20,6 +25,7 @@ export class ArchDiagramBinding
     private readonly bound = new Map<string, Figure | ArchNodeVM>()   // entityId -> node
     private readonly boundEdges = new Map<string, Connector>()         // edgeKey -> projected connector
     private scope: string[] = []                                       // selected viewpoints ([] = all)
+    private scenarios: string[] = []                                   // scenarios whose steps are shown
     private readonly onActiveViewChanged = (): void => this.attachView()
 
     public constructor(
@@ -153,6 +159,18 @@ export class ArchDiagramBinding
         }
         const desired = desiredEdges(this.model.repository(), placed, this.scopeSet())
 
+        // Scenario overlay: each active scenario projects its steps as connectors
+        // between placed participants. These are model-derived (the steps live in
+        // the model), so they are "ours" — the sweep below keeps them and a reload
+        // re-projects them from the persisted scenario ids.
+        if (this.scenarios.length > 0) {
+            const scEnts = this.scenarios
+                .map((id) => byId.get(id))
+                .filter((e): e is Entity => e !== undefined) as unknown as FlowEntity[]
+            for (const [s, d] of scenarioStepPairs(scEnts, new Set(this.bound.keys())))
+                desired.add(edgeKey(s, SCENARIO_STEP_MEMBER, d))
+        }
+
         // Add missing projected connectors.
         for (const key of desired) {
             if (this.boundEdges.has(key)) continue
@@ -198,6 +216,25 @@ export class ArchDiagramBinding
     public setScope(viewpoints: string[]): void
     {
         this.scope = [...viewpoints]
+    }
+
+    // Replace the set of scenarios whose steps are projected as connectors.
+    public setScenarios(ids: readonly string[]): void
+    {
+        this.scenarios = [...new Set(ids)]
+    }
+
+    // Add one scenario to the projected set (deduped). Caller triggers a rescan
+    // (via the model's notifyChanged) to draw its step connectors.
+    public addScenario(id: string): void
+    {
+        if (!this.scenarios.includes(id)) this.scenarios.push(id)
+    }
+
+    // The scenarios currently projected on this diagram.
+    public scenarioIds(): string[]
+    {
+        return [...this.scenarios]
     }
 
     // The scope as a set; empty falls back to every viewpoint the model declares.
