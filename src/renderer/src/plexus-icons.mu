@@ -43,6 +43,7 @@ resources PlexusIcons {
     // Filter-off glyph — the Problems popup's Clear (reset filters) button.
     include "icons/filter-off.svg"               as FilterOff
 
-    // Layout inspector Run action.
+    // Layout inspector Run + Delete actions.
     include "icons/play.svg"                     as Play
+    include "icons/delete.svg"                   as Delete
 }

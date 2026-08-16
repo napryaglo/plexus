@@ -79,8 +79,7 @@ resources LayoutInspectorResources {
                     }
                     PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).DeleteCommand,
                                   IsEnabled = $service(LayoutPipelineService).CanDelete ] {
-                        TextBlock [ Text = "Delete", Style = @BodyMedium, Foreground = @OnSurfaceVariant,
-                                    VerticalAlignment = Center, Margin = (4,0,4,0) ]
+                        Shape [ Geometry = @Delete, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
                     }
                     PanelButton [ Command = $service(LayoutPipelineService).RunCommand ] {
                         Shape [ Geometry = @Play, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
