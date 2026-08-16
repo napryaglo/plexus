@@ -28,6 +28,25 @@ export function collectScenarioFlow(scenario: FlowEntity): { participants: strin
   return { participants, edges }
 }
 
+// The directed step pairs to draw for a set of active scenarios, restricted to
+// pairs whose BOTH endpoints are currently placed, deduped across scenarios.
+// Used by the diagram binding to project a scenario's steps as connectors (so
+// they are model-derived and survive the connector-authoritative rescan).
+export function scenarioStepPairs(scenarios: FlowEntity[], placed: ReadonlySet<string>): Array<[string, string]> {
+  const seen = new Set<string>()
+  const out: Array<[string, string]> = []
+  for (const sc of scenarios) {
+    for (const [s, d] of collectScenarioFlow(sc).edges) {
+      if (!placed.has(s) || !placed.has(d)) continue
+      const key = `${s}|${d}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push([s, d])
+    }
+  }
+  return out
+}
+
 export interface DropDims { colDx: number; rowDy: number }
 export interface PlannedNode { id: string; left: number; top: number; isNew: boolean }
 
