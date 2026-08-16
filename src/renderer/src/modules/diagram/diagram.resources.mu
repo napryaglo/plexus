@@ -326,6 +326,9 @@ resources DiagramResources {
                       Margin              = (0,4,0,0) ]
             }
         }
+        // "Open Wiki" for arch tiles whose concept has an openable wiki page.
+        // Shape tiles have no HasWiki property → the trigger never fires for them.
+        when ( $HasWiki = true ) { ContextMenuService.ContextMenu = @OpenWikiMenu; }
     }
 
     // ── Architecture node tile — icon + label for an ArchNodeVM dropped on an

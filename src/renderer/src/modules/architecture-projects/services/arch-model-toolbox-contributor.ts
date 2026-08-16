@@ -15,6 +15,7 @@ import { iconEntityKey } from './arch-icon.js'
 import { ArchModelInstanceDropFactoryKey } from './arch-model-instance-drop-factory.js'
 import { ArchScenarioDropFactoryKey } from './arch-scenario-drop-factory.js'
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
+import { WikiService } from '../../../services/wiki/wiki-service.js'
 import type { ArchModel } from './arch-model.js'
 
 const PAGE_ID = 'arch:model'
@@ -51,7 +52,7 @@ export function modelPageItems(model: ArchModel, scope: ReadonlySet<string>, pla
         if (placed.has(e.id) || !inScope(e.concept) || !conceptToolboxVisible(repo, e.concept)) continue
         const key = iconEntityKey(repo, e) ?? e.concept
         const descriptor = new ToolboxVisualDescriptor(TodlVisualResolverKey, key)
-        items.push(new ArchToolboxItem('instance:' + e.id, entityLabel(e), descriptor, ArchModelInstanceDropFactoryKey))
+        items.push(new ArchToolboxItem('instance:' + e.id, entityLabel(e), descriptor, ArchModelInstanceDropFactoryKey, e.concept))
     }
     return items
 }
@@ -68,7 +69,7 @@ export function scenarioPageItems(model: ArchModel, scope: ReadonlySet<string>):
         if (e.concept !== SCENARIO_CONCEPT || !inScope(e.concept) || !conceptToolboxVisible(repo, e.concept)) continue
         const key = iconEntityKey(repo, e) ?? e.concept
         const descriptor = new ToolboxVisualDescriptor(TodlVisualResolverKey, key)
-        items.push(new ArchToolboxItem('scenario:' + e.id, entityLabel(e), descriptor, ArchScenarioDropFactoryKey))
+        items.push(new ArchToolboxItem('scenario:' + e.id, entityLabel(e), descriptor, ArchScenarioDropFactoryKey, e.concept))
     }
     return items
 }
@@ -127,7 +128,9 @@ export class ArchModelToolboxContributor extends ServiceBase
         const placed = bindingSvc.placedIds(doc)
         const page = repo.EnsurePage(PAGE_ID, 'Model: ' + model.namespace)
         page.Items.Clear()
-        for (const item of modelPageItems(model, scope, placed)) page.Items.Add(item)
+        const modelItems = modelPageItems(model, scope, placed)
+        for (const item of modelItems) page.Items.Add(item)
+        this.markWiki(modelItems)
 
         // A "Scenarios" page lists the in-scope scenarios; dropping one
         // materializes its whole flow. Removed when there are none in scope.
@@ -136,8 +139,23 @@ export class ArchModelToolboxContributor extends ServiceBase
             const spage = repo.EnsurePage(SCENARIO_PAGE_ID, 'Scenarios')
             spage.Items.Clear()
             for (const item of scenarioItems) spage.Items.Add(item)
+            this.markWiki(scenarioItems)
         } else {
             repo.RemovePage(SCENARIO_PAGE_ID)
+        }
+    }
+
+    // Asynchronously flag which tiles have an openable wiki page (→ their
+    // "Open Wiki" menu item shows). A stale-item guard keeps a late resolve from
+    // writing onto a tile whose concept changed under a concurrent refresh.
+    private markWiki(items: readonly ArchToolboxItem[]): void
+    {
+        const wiki = this.Provider.get(WikiService.Key)
+        if (wiki === undefined) return
+        for (const it of items) {
+            const concept = it.Concept
+            if (concept.length === 0) continue
+            void wiki.hasWiki(concept).then((h) => { if (it.Concept === concept) it.HasWiki = h })
         }
     }
 
