@@ -32,7 +32,7 @@ test('advertises the TODL-renamed semantic legend to the editor', async () => {
   const client = new TodlLanguageClient(providerWithBase())
   await client.Initialize(fakeConn() as never)
   expect(client.SemanticLegend().tokenTypes).toEqual([
-    TodlSemanticScope.Type, TodlSemanticScope.Class, 'property',
+    TodlSemanticScope.Type, TodlSemanticScope.Class, 'todlProperty',
   ])
 })
 

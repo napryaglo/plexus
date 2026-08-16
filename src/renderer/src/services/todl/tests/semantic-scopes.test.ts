@@ -7,29 +7,37 @@ import {
 const SERVER = { tokenTypes: ['type', 'class', 'enumMember', 'property', 'method', 'variable'], tokenModifiers: [] }
 
 describe('editorSemanticLegend', () => {
-  it('renames the concept-bearing types to TODL scopes, order preserved', () => {
+  it('renames EVERY token type to a todl* scope, order preserved', () => {
     const legend = editorSemanticLegend(SERVER)
     expect(legend.tokenTypes).toEqual([
-      TodlSemanticScope.Type, TodlSemanticScope.Class, 'enumMember', 'property', 'method', 'variable',
+      TodlSemanticScope.Type, TodlSemanticScope.Class,
+      'todlEnumMember', 'todlProperty', 'todlMethod', 'todlVariable',
     ])
   })
-  it('leaves modifiers and non-concept types untouched', () => {
-    const legend = editorSemanticLegend({ tokenTypes: ['property', 'variable'], tokenModifiers: ['declaration'] })
-    expect(legend.tokenTypes).toEqual(['property', 'variable'])
-    expect(legend.tokenModifiers).toEqual(['declaration'])
+  it('leaves no generic scope leaking through to the base theme', () => {
+    const legend = editorSemanticLegend(SERVER)
+    for (const generic of ['type', 'class', 'variable', 'property', 'method', 'enumMember'])
+      expect(legend.tokenTypes).not.toContain(generic)
   })
-  it('is a pure copy (does not mutate the server legend)', () => {
-    const server = { tokenTypes: ['type'], tokenModifiers: [] }
-    editorSemanticLegend(server)
+  it('prefixes an unknown token type too', () => {
+    expect(editorSemanticLegend({ tokenTypes: ['namespace'], tokenModifiers: [] }).tokenTypes)
+      .toEqual(['todlNamespace'])
+  })
+  it('carries modifiers through and does not mutate the server legend', () => {
+    const server = { tokenTypes: ['type'], tokenModifiers: ['declaration'] }
+    const legend = editorSemanticLegend(server)
+    expect(legend.tokenModifiers).toEqual(['declaration'])
     expect(server.tokenTypes).toEqual(['type'])
   })
 })
 
 describe('todlSemanticThemeRules', () => {
-  it('colors both TODL scopes the dark keyword blue', () => {
+  it('colors ONLY the two concept scopes the dark keyword blue', () => {
     const rules = todlSemanticThemeRules(true)
-    expect(rules).toContainEqual({ token: TodlSemanticScope.Type, foreground: TODL_KEYWORD_BLUE_DARK })
-    expect(rules).toContainEqual({ token: TodlSemanticScope.Class, foreground: TODL_KEYWORD_BLUE_DARK })
+    expect(rules).toEqual([
+      { token: TodlSemanticScope.Type, foreground: TODL_KEYWORD_BLUE_DARK },
+      { token: TodlSemanticScope.Class, foreground: TODL_KEYWORD_BLUE_DARK },
+    ])
   })
   it('uses the light keyword blue on a light base', () => {
     const rules = todlSemanticThemeRules(false)
