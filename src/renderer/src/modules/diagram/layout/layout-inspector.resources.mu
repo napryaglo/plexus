@@ -13,6 +13,7 @@ import LayoutPipelineService from "./layout-pipeline-service.js"
 import LayoutStageVM from "./layout-stage-vm.js"
 import NumberParamVM from "./layout-param-vm.js"
 import BoolParamVM from "./layout-param-vm.js"
+import SavePresetPromptModel from "./save-preset-prompt.js"
 
 resources LayoutInspectorResources {
 
@@ -68,23 +69,22 @@ resources LayoutInspectorResources {
                 TextBlock [ Style = @TitleMedium, Text = "Layout Pipeline",
                             Foreground = @OnSurface, Margin = (0,0,0,10) ]
 
-                // Run mode — two buttons; the active one is described in the status line.
-                TextBlock [ Style = @BodySmall, Text = "Run mode", Foreground = @OnSurfaceVariant ]
-                StackPanel [ Orientation = Horizontal, Margin = (0,2,0,10) ] {
-                    Button [ Content = "Positions", Margin = (0,0,6,0),
-                             Command = $service(LayoutPipelineService).UsePositionsModeCommand ]
-                    Button [ Content = "Preview",
-                             Command = $service(LayoutPipelineService).UsePreviewModeCommand ]
-                }
-
-                // Primary actions.
+                // Preset strip: [ presets ▾ ]  [Save]  [Delete]  [Run].
                 StackPanel [ Orientation = Horizontal, Margin = (0,0,0,10) ] {
-                    Button [ Content = "Run", Margin = (0,0,6,0),
-                             Command = $service(LayoutPipelineService).RunCommand ]
-                    Button [ Content = "Apply", Margin = (0,0,6,0),
-                             Command = $service(LayoutPipelineService).ApplyPreviewCommand ]
-                    Button [ Content = "Cancel",
-                             Command = $service(LayoutPipelineService).CancelPreviewCommand ]
+                    ComboBox [ ItemsSource = $service(LayoutPipelineService).PresetNames,
+                               SelectedItem = $service(LayoutPipelineService).SelectedPreset,
+                               Width = 150, VerticalAlignment = Center, Margin = (0,0,8,0) ]
+                    PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).SaveCommand ] {
+                        Shape [ Geometry = @Save, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                    }
+                    PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).DeleteCommand,
+                                  IsEnabled = $service(LayoutPipelineService).CanDelete ] {
+                        TextBlock [ Text = "Delete", Style = @BodyMedium, Foreground = @OnSurfaceVariant,
+                                    VerticalAlignment = Center, Margin = (4,0,4,0) ]
+                    }
+                    PanelButton [ Command = $service(LayoutPipelineService).RunCommand ] {
+                        Shape [ Geometry = @Play, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                    }
                 }
 
                 TextBlock [ Style = @BodySmall, Text = $service(LayoutPipelineService).Status,
@@ -96,6 +96,20 @@ resources LayoutInspectorResources {
                             Foreground = @OnSurfaceVariant, Margin = (0,0,0,4) ]
                 ItemsControl [ ItemsSource = $service(LayoutPipelineService).Stages,
                                ItemsPanel = @VerticalStackPanel ]
+            }
+        }
+    }
+
+    // The save-preset prompt dialog body (DialogService supplies surface/title/
+    // padding). A single name field + Cancel / Save; Save stays disabled until
+    // the name is non-blank (CanConfirm).
+    DataTemplate [ DataType = SavePresetPromptModel ] {
+        StackPanel [ Orientation = Vertical, HorizontalAlignment = Stretch ] {
+            TextBlock [ Style = @BodyLarge, Text = "Preset name", Foreground = @OnSurface, Margin = (0,0,0,4) ]
+            TextBox [ Text = $Name, Margin = (0,0,0,14) ]
+            StackPanel [ Orientation = Horizontal, HorizontalAlignment = Right ] {
+                Button [ Variant = Text, Command = $CancelCommand, Margin = (0,0,8,0) ] { TextBlock [ Text = "Cancel" ] }
+                Button [ Variant = Filled, Command = $ConfirmCommand, IsEnabled = $CanConfirm ] { TextBlock [ Text = "Save" ] }
             }
         }
     }

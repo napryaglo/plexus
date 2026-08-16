@@ -42,4 +42,7 @@ resources PlexusIcons {
     include "icons/copy.svg"                     as Copy
     // Filter-off glyph — the Problems popup's Clear (reset filters) button.
     include "icons/filter-off.svg"               as FilterOff
+
+    // Layout inspector Run action.
+    include "icons/play.svg"                     as Play
 }
