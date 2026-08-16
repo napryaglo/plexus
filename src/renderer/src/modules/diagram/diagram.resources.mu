@@ -356,6 +356,8 @@ resources DiagramResources {
                   HorizontalAlignment = Center,
                   Margin              = (0,4,0,0) ]
         }
+        // "Open Wiki" when this node's concept has an openable wiki page.
+        when ( $HasWiki = true ) { ContextMenuService.ContextMenu = @OpenWikiMenu; }
     }
 
     // ── ToolBox capability panel — the shapes palette in the left pane.

@@ -8,6 +8,7 @@ import { desiredEdges, edgeKey } from './edge-projection.js'
 import { resolveConnectorActions, type ConnectorAction } from './arch-connector-resolver.js'
 import { scenarioStepPairs, type FlowEntity } from './scenario-flow.js'
 import type { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
+import type { WikiService } from '../../../services/wiki/wiki-service.js'
 
 // Synthetic relationship member for a projected scenario step edge, so its
 // edgeKey never collides with a real model relationship member.
@@ -32,6 +33,7 @@ export class ArchDiagramBinding
         private readonly doc: DiagramDocument,
         public readonly model: ArchModel,
         private readonly chooser?: DropCandidateChooserService,
+        private readonly wiki?: WikiService,
     ) {}
 
     public attach(): void
@@ -124,6 +126,14 @@ export class ArchDiagramBinding
                 // concept when nothing carries an icon (→ default glyph).
                 const key = iconEntityKey(this.model.repository(), entity) ?? entity.concept
                 node.Descriptor = new ToolboxVisualDescriptor(TodlVisualResolverKey, key)
+                node.Concept = entity.concept
+                if (this.wiki !== undefined) {
+                    const concept = entity.concept
+                    void this.wiki.hasWiki(concept).then((h) => {
+                        // Guard against a stale rebind: only apply if the node still shows this concept.
+                        if (node.Concept === concept) node.HasWiki = h
+                    })
+                }
             } else if (node instanceof Figure) {
                 // Back-compat for any freeform Figure with a matching entity id.
                 const id = node.Id

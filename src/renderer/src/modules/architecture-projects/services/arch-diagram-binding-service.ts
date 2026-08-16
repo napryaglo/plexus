@@ -7,6 +7,7 @@ import type { OpenProject } from '../../../services/projects/open-project.js'
 import { ArchitectureModelService } from './architecture-model-service.js'
 import { ArchDiagramBinding } from './arch-diagram-binding.js'
 import { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
+import { WikiService } from '../../../services/wiki/wiki-service.js'
 import type { ArchModel } from './arch-model.js'
 import { loadViewpoints, writeViewpoints } from './arch-diagram-viewpoints-store.js'
 import { readScenarios, writeScenarios } from './arch-diagram-scenarios-store.js'
@@ -74,7 +75,8 @@ export class ArchDiagramBindingService extends ServiceBase
         const model = await this.Provider.getRequired(ArchitectureModelService.Key).modelFor(op)
         if (host.OpenDocuments.ToArray().includes(doc)) {
             const chooser = this.Provider.get(DropCandidateChooserService.Key)
-            const binding = new ArchDiagramBinding(doc, model, chooser)
+            const wiki = this.Provider.get(WikiService.Key)
+            const binding = new ArchDiagramBinding(doc, model, chooser, wiki)
             binding.attach()
             const store = doc.Storage
             if (store instanceof FileDiagramStorage) {
