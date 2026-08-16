@@ -193,6 +193,9 @@ resources ProjectExplorerResources {
                 }
             }
 
+            // Hairline separating the command bar from the project tree.
+            Border [ DockPanel.Dock = Top, Height = 1, Background = @OutlineVariant, Margin = (0,0,0,8) ]
+
             TextBlock [ DockPanel.Dock = Bottom, Style = @BodySmall, Text = $Status, Foreground = @OnSurfaceVariant,
                         TextWrapping = Wrap, Margin = (0,8,0,0) ]
 
