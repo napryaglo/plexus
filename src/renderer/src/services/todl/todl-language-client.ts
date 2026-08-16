@@ -1,4 +1,5 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { editorSemanticLegend } from './semantic-scopes.js'
 import type { MessageConnection } from 'vscode-jsonrpc'
 import type { TodlDocument } from '@pragmatic-lab/todl'
 import type { IStorage } from '../storage/storage.js'
@@ -74,6 +75,9 @@ export class TodlLanguageClient extends ServiceBase {
 
   private connection: MessageConnection | undefined
   private semanticLegend: SemanticLegend | undefined
+  // Subscribers to "semantic tokens may have changed for a reason other than a
+  // document edit" (bases refreshed / server reinitialized).
+  private readonly semanticStaleSubs = new Set<() => void>()
   private readonly projects = new Map<string, RegisteredProject>() // projectKey → project
   // Per-project resolved bases (+ unresolved-base problems), cached so a base
   // set isn't re-read from the backends on every keystroke. Keyed by storage.
@@ -157,6 +161,7 @@ export class TodlLanguageClient extends ServiceBase {
   public async Reinitialize(): Promise<void> {
     await this.handshake()
     await this.ResyncAll()
+    this.fireSemanticStale()
   }
 
   // Re-push bases + all sources for every registered project (server restart).
@@ -176,9 +181,23 @@ export class TodlLanguageClient extends ServiceBase {
     }
   }
 
-  // The semantic-tokens legend advertised by the server, for the Monaco provider.
+  // The semantic-tokens legend advertised to the Monaco provider. The server's
+  // concept-bearing types (`type`/`class`) are renamed to TODL-only scopes so a
+  // blue theme rule targets .todl without colliding with the mural grammar.
   public SemanticLegend(): SemanticLegend {
-    return this.semanticLegend ?? { tokenTypes: [], tokenModifiers: [] }
+    return editorSemanticLegend(this.semanticLegend ?? { tokenTypes: [], tokenModifiers: [] })
+  }
+
+  // Subscribe to semantic-token staleness. The Monaco semantic-tokens provider
+  // forwards this to its onDidChange so open documents re-fetch — this is how a
+  // newly added meta-model concept recolors live, without a document edit.
+  public onSemanticTokensStale(cb: () => void): () => void {
+    this.semanticStaleSubs.add(cb)
+    return () => { this.semanticStaleSubs.delete(cb) }
+  }
+
+  private fireSemanticStale(): void {
+    for (const cb of [...this.semanticStaleSubs]) cb()
   }
 
   // The opaque authority segment for a project's URIs. MUST be lowercase-hex
@@ -273,6 +292,7 @@ export class TodlLanguageClient extends ServiceBase {
     this.baseCache.delete(storage)
     const { bases } = await this.basesFor(storage)
     await this.notify('todl/refreshBases', { rootUri: this.uriFor(found.project.projectId, ''), bases })
+    this.fireSemanticStale()
   }
 
   // Record a document's URI and publish it on the document so the editor keys its
