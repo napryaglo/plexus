@@ -13,10 +13,13 @@ import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolv
 import { ArchToolboxItem } from '../../diagram/services/arch-toolbox-item.js'
 import { iconEntityKey } from './arch-icon.js'
 import { ArchModelInstanceDropFactoryKey } from './arch-model-instance-drop-factory.js'
+import { ArchScenarioDropFactoryKey } from './arch-scenario-drop-factory.js'
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import type { ArchModel } from './arch-model.js'
 
 const PAGE_ID = 'arch:model'
+const SCENARIO_PAGE_ID = 'arch:scenarios'
+const SCENARIO_CONCEPT = 'scenario'
 
 // An entity's display label: its `label`, else `name`, else its id.
 function entityLabel(e: Entity): string
@@ -38,6 +41,23 @@ export function modelPageItems(model: ArchModel, scope: ReadonlySet<string>, pla
         const key = iconEntityKey(repo, e) ?? e.concept
         const descriptor = new ToolboxVisualDescriptor(TodlVisualResolverKey, key)
         items.push(new ArchToolboxItem('instance:' + e.id, entityLabel(e), descriptor, ArchModelInstanceDropFactoryKey))
+    }
+    return items
+}
+
+// The toolbox items for a diagram's "Scenarios" page: one per in-scope scenario
+// entity. Each drops through the scenario factory (`scenario:<id>`), which
+// materializes the whole flow (participants + step connectors).
+export function scenarioPageItems(model: ArchModel, scope: ReadonlySet<string>): ArchToolboxItem[]
+{
+    const repo = model.repository()
+    const inScope = (concept: string): boolean => repo.viewpointsFraming(concept).some((v) => scope.has(v))
+    const items: ArchToolboxItem[] = []
+    for (const e of model.entities()) {
+        if (e.concept !== SCENARIO_CONCEPT || !inScope(e.concept)) continue
+        const key = iconEntityKey(repo, e) ?? e.concept
+        const descriptor = new ToolboxVisualDescriptor(TodlVisualResolverKey, key)
+        items.push(new ArchToolboxItem('scenario:' + e.id, entityLabel(e), descriptor, ArchScenarioDropFactoryKey))
     }
     return items
 }
@@ -97,11 +117,23 @@ export class ArchModelToolboxContributor extends ServiceBase
         const page = repo.EnsurePage(PAGE_ID, 'Model: ' + model.namespace)
         page.Items.Clear()
         for (const item of modelPageItems(model, scope, placed)) page.Items.Add(item)
+
+        // A "Scenarios" page lists the in-scope scenarios; dropping one
+        // materializes its whole flow. Removed when there are none in scope.
+        const scenarioItems = scenarioPageItems(model, scope)
+        if (scenarioItems.length > 0) {
+            const spage = repo.EnsurePage(SCENARIO_PAGE_ID, 'Scenarios')
+            spage.Items.Clear()
+            for (const item of scenarioItems) spage.Items.Add(item)
+        } else {
+            repo.RemovePage(SCENARIO_PAGE_ID)
+        }
     }
 
     private removePage(): void
     {
         this.repository()?.RemovePage(PAGE_ID)
+        this.repository()?.RemovePage(SCENARIO_PAGE_ID)
     }
 
     // The app-level ToolboxRepository the ToolboxService populates (drop router +
