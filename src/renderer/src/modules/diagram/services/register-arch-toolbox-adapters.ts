@@ -2,6 +2,7 @@ import type { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { LibraryRegistry } from '../../library/services/library-registry.js'
 import { ArchInstanceDropFactory, ArchInstanceDropFactoryKey } from '../../architecture-projects/services/arch-instance-drop-factory.js'
 import { ArchModelInstanceDropFactory, ArchModelInstanceDropFactoryKey } from '../../architecture-projects/services/arch-model-instance-drop-factory.js'
+import { ArchScenarioDropFactory, ArchScenarioDropFactoryKey } from '../../architecture-projects/services/arch-scenario-drop-factory.js'
 import { TodlPresentationRegistry } from './todl-presentation-registry.js'
 import { TodlVisualResolver, TodlVisualResolverKey } from './todl-visual-resolver.js'
 import { LibraryPresentationSource } from '../../library/services/library-presentation-source.js'
@@ -29,6 +30,10 @@ export function registerArchToolboxAdapters(services: ServiceProvider): void
     if (!services.has(ArchModelInstanceDropFactoryKey))
     {
         services.registerInstance(ArchModelInstanceDropFactoryKey, new ArchModelInstanceDropFactory(services))
+    }
+    if (!services.has(ArchScenarioDropFactoryKey))
+    {
+        services.registerInstance(ArchScenarioDropFactoryKey, new ArchScenarioDropFactory(services))
     }
     if (!services.has(TodlVisualResolverKey))
     {
