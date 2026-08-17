@@ -85,6 +85,23 @@ export abstract class TodlProjectFactory extends ServiceBase implements IProject
         }
     }
 
+    // Refresh the scaffold to the current bundled content: overwrite every entry
+    // except the author-owned root CLAUDE.md (which is only written when missing).
+    // Mirrors ensureScaffold's file set; returns the project-relative paths written
+    // (refreshed or self-healed) for a status report. ensureScaffold stays
+    // write-once and unchanged — this is the deliberate-refresh counterpart.
+    public async updateScaffold(storage: IStorage): Promise<readonly string[]>
+    {
+        await storage.CreateDirectory(`${CLAUDE_DIR}/commands`)
+        const written: string[] = []
+        for (const file of [...TODL_BASE_SCAFFOLD, ...this.scaffoldContributions()]) {
+            if (file.path === CLAUDE_MD_FILENAME && await storage.Exists(file.path)) continue
+            await storage.WriteText(file.path, file.content)
+            written.push(file.path)
+        }
+        return written
+    }
+
     protected async buildProject(storage: IStorage, manifest: ProjectManifestEnvelope): Promise<Project>
     {
         const rootName = basename(storage.Root)
@@ -117,6 +134,14 @@ export abstract class TodlProjectFactory extends ServiceBase implements IProject
         const fmt = this.formats.find((f) => f.extension === ext)
         return fmt !== undefined ? (fmt.kind as ProjectNodeKind) : 'file'
     }
+}
+
+// Type guard: is this factory a TODL-authoring project (and thus carries the
+// agent scaffold updateScaffold refreshes)? All three concrete factories extend
+// TodlProjectFactory, so instanceof is exact.
+export function isTodlProject(factory: IProjectFactory): factory is TodlProjectFactory
+{
+    return factory instanceof TodlProjectFactory
 }
 
 function basename(p: string): string
