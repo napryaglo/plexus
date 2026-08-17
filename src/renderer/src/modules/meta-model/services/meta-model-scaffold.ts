@@ -1,6 +1,6 @@
 import type { IStorage } from '../../../services/storage/storage.js'
 import claudeRoot from './scaffold/claude-root.md?raw'
-import todlManual from './scaffold/todl-manual.md?raw'
+import todlManual from '../../../services/projects/scaffold/todl-manual.md?raw'
 import metaModelGuide from './scaffold/meta-model-guide.md?raw'
 import newConceptCommand from './scaffold/new-concept.md?raw'
 
