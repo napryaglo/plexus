@@ -42,15 +42,22 @@ Full reference: `.claude/todl-manual.md`. The rules that trip up authors most:
   `?` = optional (0..1), `[]` = many (0..N), `[+]` = one-or-more (1..N). There is
   **no** `[0..1]`, `[*]`, or `list<T>` in the current surface; for a list of
   `bar` write `foo : bar [];`.
-- **No inline object types.** A field's type is a single name — a primitive, a
-  taxonomy, or another concept. Model structured / nested data as a **nested
-  concept**, not `object { … }`.
+- **A field's TYPE is a single name** — a primitive, a taxonomy, or another
+  concept; never an anonymous `object { … }`. Model structured data as a **nested
+  concept**. (On the *instance* side you may author that concept inline as a typed
+  object literal — `field = SomeConcept { … }`; still typed, never bare `{ … }`.)
 - **Strings** are `"…"`; multi-line / raw strings are `"""…"""`.
-- **Annotations carry typed metadata.** Declare an `annotation name { param :
-  type; }`, then `annotate name { param = value; }` inside a concept body (or a
-  `package { … }` block) to attach it. Well-known `annotate icon { path = "…"; }`
-  and `annotate label { text = "…"; }` drive the concept's generated presentation.
-  See the manual §6.
+- **Edge glyphs are author-declared, not built in.** `-->`, `==>`, `~>` are
+  defined with `operator <glyph> : <Concept>(<from>, <to>);` (reified) or
+  `operator <glyph> : <Concept>.<member>;` (relationship), then used between two
+  bare endpoints (`a --> b;`) — as a statement or a value. See the manual §7.
+- **Annotations carry typed metadata.** Declare an `annotation Name { param :
+  type; }` (it may inherit: `annotation Sub : Base { … }`), then `annotate Name {
+  param = value; }` inside a concept body, a **relationship member** body, a
+  taxonomy `term`, or a `package { … }` block. The prelude ships standard ones you
+  use without declaring: `icon`/`label` (presentation), `wiki` (a Markdown page:
+  `annotate wiki { path = "wiki/x.md"; }`), and `iconSource` (icon fallback order,
+  on a relationship member). See the manual §6.
 
 ## Workflow
 

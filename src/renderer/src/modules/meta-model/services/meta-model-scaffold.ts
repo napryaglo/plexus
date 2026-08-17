@@ -9,9 +9,11 @@ import newConceptCommand from './scaffold/new-concept.md?raw'
 // TODL language manual, a meta-model authoring guide, and a `/new-concept`
 // command. Its purpose is to make an agent working in the project effective:
 // the content is grounded in the CURRENT @pragmatic-lab/todl parser surface
-// (namespace/`;`, `&` references, `?`/`[]`/`[+]` cardinality — NOT the archived
-// YAML / `list<T>` forms), so it stays truthful to what the live validator
-// enforces.
+// (namespace/`;`, bare type-directed references — no sigil, `?`/`[]`/`[+]`
+// cardinality, author-declared `operator` edge glyphs, typed inline object
+// literals, the prelude's standard annotations incl. icon/iconSource/wiki, and
+// the `Element` root — NOT the archived YAML / `list<T>` / `&`-reference forms),
+// so it stays truthful to what the live validator enforces.
 //
 // The markdown lives as `?raw` asset files under ./scaffold so it can be authored
 // and reviewed as real documents rather than escaped string literals.
