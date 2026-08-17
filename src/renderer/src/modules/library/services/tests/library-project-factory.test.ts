@@ -42,6 +42,18 @@ test('createProject writes the shared TODL scaffold + a library CLAUDE.md', asyn
   expect(await storage.ReadText('CLAUDE.md')).toMatch(/library/i)
 })
 
+test('getVersion/setVersion round-trips libVersion, preserving id + metaModel', async () => {
+  const storage = new FakeStorage('fake://Acme')
+  const f = factory()
+  await f.createProject(storage, 'Acme Lib', { metaModel: { id: 'ea', version: '5' } })
+  expect(await f.getVersion(storage)).toBe('0.1.0')
+  await f.setVersion(storage, '1.0.0')
+  expect(await f.getVersion(storage)).toBe('1.0.0')
+  const m = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME))
+  expect(m.id).toBe('acme-lib')                        // untouched
+  expect(m.metaModel).toEqual({ id: 'ea', version: '5' })   // untouched
+})
+
 test('createProject writes a library manifest with a publish identity + binding', async () => {
   const storage = new FakeStorage('fake://Acme')
   const project = await factory().createProject(storage, 'Acme Lib', { metaModel: { id: 'ea', version: '5' } })

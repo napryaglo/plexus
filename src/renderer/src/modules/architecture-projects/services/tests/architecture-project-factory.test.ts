@@ -1,11 +1,15 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 
-import { PROJECT_MANIFEST_FILENAME, isPublishable } from '../../../../services/projects/project-factory.js'
+import { PROJECT_MANIFEST_FILENAME, isPublishable, isVersioned } from '../../../../services/projects/project-factory.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchitectureProjectFactory } from '../architecture-project-factory.js'
 
 function factory(): ArchitectureProjectFactory { return new ArchitectureProjectFactory(new ServiceProvider()) }
+
+test('architecture is not versioned', () => {
+    expect(isVersioned(factory())).toBe(false)
+})
 
 test('createProject writes an architecture manifest with meta-model + libraries bindings', async () => {
     const storage = new FakeStorage('fake://Acme')

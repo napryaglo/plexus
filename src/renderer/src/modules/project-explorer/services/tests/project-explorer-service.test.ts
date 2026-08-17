@@ -9,7 +9,9 @@ import { StorageProviderRegistry } from '../../../../services/storage/storage-pr
 import { Project, ProjectNode } from '../../../../services/projects/project.js'
 import { OpenProject } from '../../../../services/projects/open-project.js'
 import { OpenProjectsStore } from '../../../../services/projects/open-projects-store.js'
-import { PROJECT_MANIFEST_FILENAME, type IProjectFactory, type IPublishableProjectFactory, type IPresentationProjectFactory, type ProjectFileFormat } from '../../../../services/projects/project-factory.js'
+import { PROJECT_MANIFEST_FILENAME, type IProjectFactory, type IPublishableProjectFactory, type IPresentationProjectFactory, type IVersionedProjectFactory, type ProjectFileFormat } from '../../../../services/projects/project-factory.js'
+import { VersionPart } from '../../../../services/projects/semver-bump.js'
+import type { SetVersionResult } from '../../../../services/projects/set-version-dialog-model.js'
 import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../../services/documents/document-factory.js'
 import { ConfirmDialogModel } from '../../../../services/dialogs/confirm-dialog-model.js'
 import { ProjectExplorerService, applyPrefill, importFilters, uniqueStorageName } from '../project-explorer-service.js'
@@ -63,6 +65,30 @@ function projectWith(name: string, folder: string): Project
     return new Project('meta-model', name, folder, root)
 }
 
+// A publishable + versioned fake factory whose version lives in the manifest of
+// the storage it's given; publish() records that it ran.
+function fakeVersionedFactory(published: string[]): IProjectFactory & IVersionedProjectFactory & IPublishableProjectFactory
+{
+    const base = fakeProjectFactory(true) as IProjectFactory & IPublishableProjectFactory
+    return {
+        ...base,
+        publish: async () => { published.push('published'); return { ok: true, message: 'Published.' } },
+        getVersion: async (s) => (JSON.parse(await s.ReadText(PROJECT_MANIFEST_FILENAME)) as { modelVersion: string }).modelVersion,
+        setVersion: async (s, v) => {
+            const m = JSON.parse(await s.ReadText(PROJECT_MANIFEST_FILENAME))
+            m.modelVersion = v
+            await s.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(m))
+        },
+    }
+}
+
+async function seededStorage(folder: string, version = '0.1.0'): Promise<FakeStorage>
+{
+    const s = new FakeStorage(folder)
+    await s.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify({ type: 'meta-model', name: 'A', modelVersion: version }))
+    return s
+}
+
 // An in-memory OS source tree for folder-import tests: absolute file path →
 // text content. OpenFolder returns `pickedFolder`; ListDirectory/ReadBytes read
 // this map (directory entries derived from path prefixes).
@@ -109,11 +135,13 @@ interface ExplorerPrivates
     moveNodes(op: OpenProject, nodes: readonly ProjectNode[], destParentPath: string): Promise<void>
     moveNodesAcross(source: OpenProject, nodes: readonly ProjectNode[], target: OpenProject, destParentPath: string): Promise<void>
     closeProject(op: OpenProject): Promise<void>
+    bumpVersion(op: OpenProject, part: VersionPart): Promise<void>
+    setVersionDialog(op: OpenProject): Promise<void>
 }
 
 // A fake DialogService: Show records the shown content and resolves the preset
 // confirm answer (so the confirm-then-delete flow runs without a real dialog).
-function fakeDialogs(confirm: boolean, shown: unknown[]): DialogService
+function fakeDialogs(confirm: boolean | object, shown: unknown[]): DialogService
 {
     return {
         Show: (opts: { Content: unknown }) => { shown.push(opts.Content); return Promise.resolve(confirm) },
@@ -121,7 +149,7 @@ function fakeDialogs(confirm: boolean, shown: unknown[]): DialogService
     } as unknown as DialogService
 }
 
-function makeExplorer(openFiles: Picked[] | null = null, confirm = true, os: FakeOsTree = { pickedFolder: null, files: {} }): {
+function makeExplorer(openFiles: Picked[] | null = null, confirm: boolean | object = true, os: FakeOsTree = { pickedFolder: null, files: {} }): {
     service: ProjectExplorerService
     host: DocumentsContentHostService
     store: OpenProjectsStore
@@ -1081,4 +1109,42 @@ test('Import commands are wired on the project and on each node', async () => {
     const child = op.Root.Children.ToArray()[0]!   // the 'core.todl' node
     expect(child.ImportFileCommand).toBeDefined()
     expect(child.ImportFolderCommand).toBeDefined()
+})
+
+test('bumpVersion writes the incremented version to the manifest', async () => {
+    const { priv } = makeExplorer()
+    const storage = await seededStorage('C:/a', '0.1.0')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeVersionedFactory([]), storage)
+    await priv.bumpVersion(op, VersionPart.Minor)
+    const m = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME))
+    expect(m.modelVersion).toBe('0.2.0')
+})
+
+test('bump commands are enabled only for versioned factories', async () => {
+    const { priv } = makeExplorer()
+    const vOp = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeVersionedFactory([]), await seededStorage('C:/a'))
+    const plainOp = await priv.addOpenProject(projectWith('B', 'C:/b'), fakeProjectFactory(), new FakeStorage('C:/b'))
+    expect(vOp.BumpVersionMajorCommand!.CanExecute(undefined)).toBe(true)
+    expect(vOp.SetVersionCommand!.CanExecute(undefined)).toBe(true)
+    expect(plainOp.BumpVersionMajorCommand!.CanExecute(undefined)).toBe(false)
+    expect(plainOp.SetVersionCommand!.CanExecute(undefined)).toBe(false)
+})
+
+test('setVersionDialog sets the version and publishes only when the flag is set', async () => {
+    const published: string[] = []
+    const result: SetVersionResult = { version: '3.0.0', publish: true }
+    const { priv } = makeExplorer(null, result)                 // dialog resolves this result
+    const storage = await seededStorage('C:/a', '0.1.0')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), fakeVersionedFactory(published), storage)
+    await priv.setVersionDialog(op)
+    expect(JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)).modelVersion).toBe('3.0.0')
+    expect(published).toEqual(['published'])                    // publish ran
+
+    const published2: string[] = []
+    const { priv: priv2 } = makeExplorer(null, { version: '4.0.0', publish: false })
+    const storage2 = await seededStorage('C:/b', '0.1.0')
+    const op2 = await priv2.addOpenProject(projectWith('B', 'C:/b'), fakeVersionedFactory(published2), storage2)
+    await priv2.setVersionDialog(op2)
+    expect(JSON.parse(await storage2.ReadText(PROJECT_MANIFEST_FILENAME)).modelVersion).toBe('4.0.0')
+    expect(published2).toEqual([])                              // publish did NOT run
 })

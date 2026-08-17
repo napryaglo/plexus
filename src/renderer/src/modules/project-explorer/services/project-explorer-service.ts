@@ -42,6 +42,7 @@ import {
     PROJECT_MANIFEST_FILENAME,
     isPublishable,
     canGeneratePresentation,
+    isVersioned,
     type IProjectFactory,
     type ProjectFileFormat,
     type ProjectManifestEnvelope,
@@ -54,6 +55,8 @@ import type { FileFilter } from '../../../../../shared/file-system-api.js'
 import { ProjectNode } from '../../../services/projects/project.js'
 import type { Project } from '../../../services/projects/project.js'
 import { OpenProject } from '../../../services/projects/open-project.js'
+import { VersionPart, bumpVersion } from '../../../services/projects/semver-bump.js'
+import { SetVersionDialogModel, type SetVersionResult } from '../../../services/projects/set-version-dialog-model.js'
 import { NewItemChoice } from '../../../services/projects/new-item-choice.js'
 import { OpenProjectsStore } from '../../../services/projects/open-projects-store.js'
 import {
@@ -428,6 +431,14 @@ export class ProjectExplorerService extends ServiceBase
         op.ImportFolderCommand = new RelayCommand(() => void this.importFolderInto(op, ''))
         op.TreeKeyCommand = new RelayCommand((arg) => this.handleTreeKey(op, arg as KeyEventArgs))
         op.PublishCommand = new RelayCommand(() => void this.publishProject(op), () => isPublishable(op.Factory))
+        op.BumpVersionMajorCommand = new RelayCommand(
+            () => void this.bumpVersion(op, VersionPart.Major), () => isVersioned(op.Factory))
+        op.BumpVersionMinorCommand = new RelayCommand(
+            () => void this.bumpVersion(op, VersionPart.Minor), () => isVersioned(op.Factory))
+        op.BumpVersionPatchCommand = new RelayCommand(
+            () => void this.bumpVersion(op, VersionPart.Patch), () => isVersioned(op.Factory))
+        op.SetVersionCommand = new RelayCommand(
+            () => void this.setVersionDialog(op), () => isVersioned(op.Factory))
         op.GeneratePresentationColorfulCommand = new RelayCommand(
             () => void this.generatePresentation(op, true), () => canGeneratePresentation(op.Factory))
         op.GeneratePresentationMonochromeCommand = new RelayCommand(
@@ -898,6 +909,32 @@ export class ProjectExplorerService extends ServiceBase
                 this.host.Close(doc); this.docOwners.delete(doc); this.docPaths.delete(doc)
             }
         }
+    }
+
+    // Bump the producer project's published version by one semver part and write
+    // it back to the manifest. Menu items are disabled for non-versioned types,
+    // but guard anyway.
+    private async bumpVersion(op: OpenProject, part: VersionPart): Promise<void>
+    {
+        if (!isVersioned(op.Factory)) { this.Status = 'This project type has no version.'; return }
+        const next = bumpVersion(await op.Factory.getVersion(op.Storage), part)
+        await op.Factory.setVersion(op.Storage, next)
+        this.Status = `Version bumped to ${next}.`
+    }
+
+    // The Custom… flow: show the set-version dialog pre-filled with the current
+    // version; on OK write the chosen version and — if the dialog's Publish box was
+    // checked — publish immediately (reusing publishProject's error handling).
+    private async setVersionDialog(op: OpenProject): Promise<void>
+    {
+        if (!isVersioned(op.Factory)) { this.Status = 'This project type has no version.'; return }
+        const current = await op.Factory.getVersion(op.Storage)
+        const vm = new SetVersionDialogModel(current, (r) => this.dialogs.Close(r))
+        const result = (await this.dialogs.Show({ Title: 'Set Version', Content: vm, Width: 380 })) as SetVersionResult | undefined
+        if (result === undefined) return
+        await op.Factory.setVersion(op.Storage, result.version)
+        if (result.publish) { await this.publishProject(op); return }
+        this.Status = `Version set to ${result.version}.`
     }
 
     // Publish the project through its factory (the menu item is disabled for
