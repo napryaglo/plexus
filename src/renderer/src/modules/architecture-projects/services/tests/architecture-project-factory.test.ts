@@ -21,6 +21,15 @@ test('createProject writes an architecture manifest with meta-model + libraries 
     expect(manifest.libraries).toEqual([{ id: 'microsoft', version: '0.1.0' }, { id: 'aws', version: '2' }])
 })
 
+test('createProject now writes the shared TODL scaffold + an architecture CLAUDE.md', async () => {
+    const storage = new FakeStorage('fake://Acme')
+    await factory().createProject(storage, 'Acme Arch')
+    expect(await storage.Exists('.claude/todl-manual.md')).toBe(true)
+    expect(await storage.Exists('.claude/todl-rules.md')).toBe(true)
+    expect(await storage.Exists('CLAUDE.md')).toBe(true)
+    expect(await storage.ReadText('CLAUDE.md')).toMatch(/architecture/i)
+})
+
 test('createProject with no bindings omits both binding fields', async () => {
     const storage = new FakeStorage('fake://Bare')
     await factory().createProject(storage, 'Bare')
