@@ -33,6 +33,16 @@ export class OpenProject extends Model
         OpenProject, 'TreeKeyCommand', undefined, MetaData.None)
     static readonly PublishCommandKey = Model.RegisterProperty<ICommand | undefined>(
         OpenProject, 'PublishCommand', undefined, MetaData.None)
+    // Bump the producer project's published version by one semver part, or set it
+    // via a dialog — all enabled only for factories that expose a version.
+    static readonly BumpVersionMajorCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        OpenProject, 'BumpVersionMajorCommand', undefined, MetaData.None)
+    static readonly BumpVersionMinorCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        OpenProject, 'BumpVersionMinorCommand', undefined, MetaData.None)
+    static readonly BumpVersionPatchCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        OpenProject, 'BumpVersionPatchCommand', undefined, MetaData.None)
+    static readonly SetVersionCommandKey = Model.RegisterProperty<ICommand | undefined>(
+        OpenProject, 'SetVersionCommand', undefined, MetaData.None)
     // (Re)generate the project's presentation dictionary — one command per icon mode
     // (colorful / monochrome), both enabled only for factories that support it.
     static readonly GeneratePresentationColorfulCommandKey = Model.RegisterProperty<ICommand | undefined>(
@@ -136,6 +146,14 @@ export class OpenProject extends Model
 
     public get PublishCommand(): ICommand | undefined { return this.get_property_value(OpenProject.PublishCommandKey) }
     public set PublishCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.PublishCommandKey, v) }
+    public get BumpVersionMajorCommand(): ICommand | undefined { return this.get_property_value(OpenProject.BumpVersionMajorCommandKey) }
+    public set BumpVersionMajorCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.BumpVersionMajorCommandKey, v) }
+    public get BumpVersionMinorCommand(): ICommand | undefined { return this.get_property_value(OpenProject.BumpVersionMinorCommandKey) }
+    public set BumpVersionMinorCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.BumpVersionMinorCommandKey, v) }
+    public get BumpVersionPatchCommand(): ICommand | undefined { return this.get_property_value(OpenProject.BumpVersionPatchCommandKey) }
+    public set BumpVersionPatchCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.BumpVersionPatchCommandKey, v) }
+    public get SetVersionCommand(): ICommand | undefined { return this.get_property_value(OpenProject.SetVersionCommandKey) }
+    public set SetVersionCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.SetVersionCommandKey, v) }
     public get GeneratePresentationColorfulCommand(): ICommand | undefined { return this.get_property_value(OpenProject.GeneratePresentationColorfulCommandKey) }
     public set GeneratePresentationColorfulCommand(v: ICommand | undefined) { this.set_property_value(OpenProject.GeneratePresentationColorfulCommandKey, v) }
     public get GeneratePresentationMonochromeCommand(): ICommand | undefined { return this.get_property_value(OpenProject.GeneratePresentationMonochromeCommandKey) }
