@@ -19,6 +19,7 @@ import AddLibraryReferenceDialogModel from "../../services/projects/add-library-
 import OpenProjectDialogModel from "../../services/projects/open-project-dialog-model.js"
 import RecentProjectItem from "../../services/projects/open-project-dialog-model.js"
 import ConfirmDialogModel from "../../services/dialogs/confirm-dialog-model.js"
+import SetVersionDialogModel from "../../services/projects/set-version-dialog-model.js"
 import TreeSelectionBehavior from "../../services/projects/tree-selection-behavior.js"
 import TreeDragDropBehavior from "../../services/projects/tree-drag-drop-behavior.js"
 import ProjectTreeTemplateBehavior from "../../services/projects/project-tree-template-behavior.js"
@@ -60,6 +61,13 @@ resources ProjectExplorerResources {
         MenuItem [ Header = "Generate Presentation" ] {
             MenuItem [ Header = "Colorful",   Command = $GeneratePresentationColorfulCommand ]
             MenuItem [ Header = "Monochrome", Command = $GeneratePresentationMonochromeCommand ]
+        }
+        MenuItem [ Header = "Bump Version" ] {
+            MenuItem [ Header = "Major",   Command = $BumpVersionMajorCommand ]
+            MenuItem [ Header = "Minor",   Command = $BumpVersionMinorCommand ]
+            MenuItem [ Header = "Patch",   Command = $BumpVersionPatchCommand ]
+            MenuSeparator
+            MenuItem [ Header = "Custom…", Command = $SetVersionCommand ]
         }
         MenuItem [ Header = "Add Library Reference…", Command = $AddLibraryReferenceCommand ]
         MenuItem [ Header = "Refresh Bases", Command = $RefreshBasesCommand ]
@@ -326,6 +334,22 @@ resources ProjectExplorerResources {
             StackPanel [ Orientation = Horizontal, HorizontalAlignment = Right ] {
                 Button [ Variant = Text, Command = $CancelCommand, Margin = (0,0,8,0) ] { TextBlock [ Text = "Cancel" ] }
                 Button [ Variant = Filled, Command = $ConfirmCommand ] { TextBlock [ Text = $ConfirmLabel ] }
+            }
+        }
+    }
+
+    DataTemplate [ DataType = SetVersionDialogModel ] {
+        StackPanel [ Orientation = Vertical, HorizontalAlignment = Stretch ] {
+            TextBlock [ Style = @BodySmall, Text = $Current, Foreground = @OnSurfaceVariant, Margin = (0,0,0,2) ]
+            TextBox [ Text = $NewVersion, Margin = (0,0,0,6) ]
+            StackPanel [ Orientation = Horizontal, Margin = (0,0,0,4) ] {
+                Checkbox [ IsChecked = $Publish ]
+                TextBlock [ Text = "Publish after setting", Foreground = @OnSurface, VerticalAlignment = Center, Margin = (6,0,0,0) ]
+            }
+            TextBlock [ Style = @BodySmall, Text = $Error, Foreground = @Error, Margin = (0,0,0,10) ]
+            StackPanel [ Orientation = Horizontal, HorizontalAlignment = Right ] {
+                Button [ Variant = Text, Command = $CancelCommand, Margin = (0,0,8,0) ] { TextBlock [ Text = "Cancel" ] }
+                Button [ Variant = Filled, Command = $ConfirmCommand, IsEnabled = $CanConfirm ] { TextBlock [ Text = "Set Version" ] }
             }
         }
     }
