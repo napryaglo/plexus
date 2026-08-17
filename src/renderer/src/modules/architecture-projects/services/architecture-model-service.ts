@@ -2,7 +2,7 @@ import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/m
 import { ModelDraft, Repository, graphFromJSON, parse, type SourceFile } from '@pragmatic-lab/todl'
 
 import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base-resolver.js'
-import { collectTodlSources } from '../../meta-model/services/todl-sources.js'
+import { collectTodlSources } from '../../../services/todl/todl-sources.js'
 import { ProjectExplorerService } from '../../project-explorer/services/project-explorer-service.js'
 import type { OpenProject } from '../../../services/projects/open-project.js'
 import { ArchModel } from './arch-model.js'

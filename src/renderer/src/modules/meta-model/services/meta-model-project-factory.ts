@@ -17,7 +17,7 @@ import { compareStorageEntries, type IStorage } from '../../../services/storage/
 import { StoragePackageSink } from '../../../services/storage/storage-package-sink.js'
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
 import { ensureScaffold } from './meta-model-scaffold.js'
-import { collectTodlSources, extname, joinRel } from './todl-sources.js'
+import { collectTodlSources, extname, joinRel } from '../../../services/todl/todl-sources.js'
 import { generatePresentationAssets, stampResourceKeys } from './presentation-generator.js'
 import { publishPresentation } from './presentation-publisher.js'
 import type { MetaModelManifestFile } from './meta-model-manifest-loader.js'

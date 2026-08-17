@@ -18,7 +18,7 @@ import { Project, ProjectNode, type ProjectNodeKind } from '../../../services/pr
 import { compareStorageEntries, type IStorage } from '../../../services/storage/storage.js'
 import { StoragePackageSink } from '../../../services/storage/storage-package-sink.js'
 import { ensureLibrariesBackend } from './libraries-backend.js'
-import { collectTaxonomySources, extname, joinRel } from '../../meta-model/services/todl-sources.js'
+import { collectTaxonomySources, extname, joinRel } from '../../../services/todl/todl-sources.js'
 import { scanResources, type LibraryBundleManifest, type PublishedClass } from './library-bundle.js'
 import { generatePresentationAssets, stampResourceKeys } from '../../meta-model/services/presentation-generator.js'
 import { publishLibraryPresentation } from './library-presentation-publisher.js'
