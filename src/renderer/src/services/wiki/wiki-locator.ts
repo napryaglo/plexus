@@ -2,7 +2,7 @@ import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { ModelDraft, parse, type SourceFile } from '@pragmatic-lab/todl'
 
 import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'
-import { collectTodlSources } from '../../modules/meta-model/services/todl-sources.js'
+import { collectTodlSources } from '../todl/todl-sources.js'
 
 // Resolves a concept to the wiki page declared with it, by probing OPEN
 // projects' own source. Only the project that DECLARES the concept

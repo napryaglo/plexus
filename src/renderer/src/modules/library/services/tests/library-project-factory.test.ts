@@ -33,6 +33,15 @@ const LIB = `namespace lib { import ea; taxonomy Microsoft : represents Location
   Technology AzureOpenai { label = "Azure OpenAI"; }
 } }`
 
+test('createProject writes the shared TODL scaffold + a library CLAUDE.md', async () => {
+  const storage = new FakeStorage('fake://Acme')
+  await factory().createProject(storage, 'Acme Lib', { metaModel: { id: 'ea', version: '5' } })
+  expect(await storage.Exists('.claude/todl-manual.md')).toBe(true)
+  expect(await storage.Exists('.claude/todl-rules.md')).toBe(true)
+  expect(await storage.Exists('CLAUDE.md')).toBe(true)
+  expect(await storage.ReadText('CLAUDE.md')).toMatch(/library/i)
+})
+
 test('createProject writes a library manifest with a publish identity + binding', async () => {
   const storage = new FakeStorage('fake://Acme')
   const project = await factory().createProject(storage, 'Acme Lib', { metaModel: { id: 'ea', version: '5' } })

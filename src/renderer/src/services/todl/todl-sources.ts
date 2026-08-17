@@ -1,5 +1,5 @@
 import type { SourceFile } from '@pragmatic-lab/todl'
-import type { IStorage } from '../../../services/storage/storage.js'
+import type { IStorage } from '../storage/storage.js'
 
 // Shared TODL source-collection + project-relative path helpers, used by both
 // the project factory (publish) and the validation service. Kept separate so

@@ -1,0 +1,132 @@
+import { ServiceBase, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+
+import todlManual from './scaffold/todl-manual.md?raw'
+import todlRules from './scaffold/todl-rules.md?raw'
+import {
+    PROJECT_MANIFEST_FILENAME,
+    type IProjectFactory,
+    type ProjectFileFormat,
+    type ProjectManifestEnvelope,
+} from './project-factory.js'
+import type { BaseBindings } from './base-binding.js'
+import { Project, ProjectNode, type ProjectNodeKind } from './project.js'
+import { compareStorageEntries, type IStorage } from '../storage/storage.js'
+
+// The base for every TODL-authoring project type. It owns the whole project
+// lifecycle common to architecture / meta-model / library — manifest write+read,
+// the storage-tree walk, and the agent-support scaffold — leaving each subclass
+// to declare only its manifest shape, its file formats, and its own scaffold
+// files. Persistence flows through the rooted IStorage (project-relative paths).
+
+export const CLAUDE_MD_FILENAME = 'CLAUDE.md'
+export const CLAUDE_DIR = '.claude'
+
+export interface ScaffoldFile
+{
+    readonly path: string       // project-relative destination (POSIX)
+    readonly content: string
+}
+
+// The shared scaffold every TODL project receives: the language manual and the
+// golden-rules digest, both under .claude/. Subclasses add their own CLAUDE.md
+// and type-specific guides via scaffoldContributions().
+export const TODL_BASE_SCAFFOLD: readonly ScaffoldFile[] = [
+    { path: `${CLAUDE_DIR}/todl-manual.md`, content: todlManual },
+    { path: `${CLAUDE_DIR}/todl-rules.md`,  content: todlRules },
+]
+
+export abstract class TodlProjectFactory extends ServiceBase implements IProjectFactory
+{
+    constructor(provider: IServiceProvider) { super(provider) }
+
+    // Each subclass declares its openable formats; populate derives node kinds
+    // from them.
+    public abstract readonly formats: readonly ProjectFileFormat[]
+
+    // Build the initial manifest object to serialize on create — the subclass's
+    // extended shape (id/modelVersion, id/libVersion/metaModel, metaModel/libraries).
+    protected abstract buildManifest(name: string, bindings?: BaseBindings): ProjectManifestEnvelope
+
+    // The subclass's own scaffold files (its CLAUDE.md + any type-specific guides),
+    // unioned with TODL_BASE_SCAFFOLD by ensureScaffold.
+    protected abstract scaffoldContributions(): readonly ScaffoldFile[]
+
+    public async createProject(storage: IStorage, name: string, bindings?: BaseBindings): Promise<Project>
+    {
+        const manifest = this.buildManifest(name, bindings)
+        await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
+        await this.ensureScaffold(storage)
+        return this.buildProject(storage, manifest)
+    }
+
+    public async openProject(storage: IStorage): Promise<Project>
+    {
+        const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as ProjectManifestEnvelope
+        await this.ensureScaffold(storage)          // self-heal any missing scaffold file
+        return this.buildProject(storage, manifest)
+    }
+
+    public async saveProject(project: Project, storage: IStorage): Promise<void>
+    {
+        // Only the name tracks the project; every other manifest field is preserved.
+        const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as ProjectManifestEnvelope
+        manifest.name = project.Name
+        await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
+    }
+
+    // Write base ∪ subclass scaffold, each only when absent — never overwrites an
+    // author's edits.
+    protected async ensureScaffold(storage: IStorage): Promise<void>
+    {
+        await storage.CreateDirectory(`${CLAUDE_DIR}/commands`)
+        for (const file of [...TODL_BASE_SCAFFOLD, ...this.scaffoldContributions()]) {
+            if (await storage.Exists(file.path)) continue
+            await storage.WriteText(file.path, file.content)
+        }
+    }
+
+    protected async buildProject(storage: IStorage, manifest: ProjectManifestEnvelope): Promise<Project>
+    {
+        const rootName = basename(storage.Root)
+        const root = new ProjectNode(rootName, '', 'folder')     // the root node's path is ''
+        await this.populate(storage, root)
+        return new Project(manifest.type, manifest.name ?? rootName, storage.Root, root)
+    }
+
+    // Recursively fill a folder node from storage. The manifest file is hidden at
+    // the root; node kinds come from the subclass's formats. Paths are
+    // project-relative (POSIX `/`); the root node's path is ''.
+    private async populate(storage: IStorage, node: ProjectNode): Promise<void>
+    {
+        const entries = [...await storage.List(node.Path)].sort(compareStorageEntries)
+        for (const e of entries) {
+            if (node.Path === '' && e.Name === PROJECT_MANIFEST_FILENAME) continue
+            const childPath = node.Path === '' ? e.Name : `${node.Path}/${e.Name}`
+            const kind: ProjectNodeKind = e.IsDirectory ? 'folder' : this.kindForFile(e.Name)
+            const child = new ProjectNode(e.Name, childPath, kind)
+            node.Children.Add(child)
+            if (e.IsDirectory) await this.populate(storage, child)
+        }
+    }
+
+    // Map a file name to a ProjectNodeKind by matching its extension against the
+    // subclass's declared formats; unmatched files are plain 'file' attachments.
+    private kindForFile(name: string): ProjectNodeKind
+    {
+        const ext = extname(name)
+        const fmt = this.formats.find((f) => f.extension === ext)
+        return fmt !== undefined ? (fmt.kind as ProjectNodeKind) : 'file'
+    }
+}
+
+function basename(p: string): string
+{
+    const parts = p.split(/[\\/]/)
+    return parts[parts.length - 1] || p
+}
+
+function extname(name: string): string
+{
+    const i = name.lastIndexOf('.')
+    return i > 0 ? name.slice(i).toLowerCase() : ''
+}
