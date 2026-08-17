@@ -104,6 +104,26 @@ export function canGeneratePresentation(
     return typeof (factory as Partial<IPresentationProjectFactory>).regeneratePresentation === 'function'
 }
 
+// Optional capability a producer factory (meta-model, library) implements: read
+// and update the manifest's published version. The explorer's Bump Version
+// command feature-tests with isVersioned before offering it — same pattern as
+// isPublishable. Each producer knows its own manifest field (modelVersion /
+// libVersion); this seam hides that from the caller.
+export interface IVersionedProjectFactory
+{
+    getVersion(storage: IStorage): Promise<string>
+    setVersion(storage: IStorage, version: string): Promise<void>
+}
+
+// Type guard: does this factory expose a bumpable version?
+export function isVersioned(
+    factory: IProjectFactory,
+): factory is IProjectFactory & IVersionedProjectFactory
+{
+    const f = factory as Partial<IVersionedProjectFactory>
+    return typeof f.getVersion === 'function' && typeof f.setVersion === 'function'
+}
+
 // The producer kinds — a project type that publishes a base other projects
 // consume. Values match the corresponding factory `ProjectType` strings.
 export enum ProducerKind

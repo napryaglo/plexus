@@ -7,6 +7,7 @@ import {
     type IProducerProjectFactory,
     type IPresentationProjectFactory,
     type IPublishableProjectFactory,
+    type IVersionedProjectFactory,
     type ProjectFileFormat,
     type ProjectManifestEnvelope,
     type PublishResult,
@@ -42,7 +43,7 @@ interface MetaModelManifest extends ProjectManifestEnvelope
 }
 
 export class MetaModelProjectFactory extends TodlProjectFactory
-    implements IPublishableProjectFactory, IPresentationProjectFactory, IProducerProjectFactory
+    implements IPublishableProjectFactory, IPresentationProjectFactory, IProducerProjectFactory, IVersionedProjectFactory
 {
     public static readonly Key = new ServiceKey<MetaModelProjectFactory>('MetaModelProjectFactory')
     public static readonly ProjectType = 'meta-model'
@@ -71,6 +72,19 @@ export class MetaModelProjectFactory extends TodlProjectFactory
     protected scaffoldContributions(): readonly ScaffoldFile[]
     {
         return META_MODEL_SCAFFOLD
+    }
+
+    public async getVersion(storage: IStorage): Promise<string>
+    {
+        const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as MetaModelManifest
+        return manifest.modelVersion
+    }
+
+    public async setVersion(storage: IStorage, version: string): Promise<void>
+    {
+        const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as MetaModelManifest
+        manifest.modelVersion = version
+        await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
     }
 
     public readonly producerKind = ProducerKind.MetaModel

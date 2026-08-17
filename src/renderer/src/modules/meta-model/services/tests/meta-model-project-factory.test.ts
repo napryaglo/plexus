@@ -34,6 +34,17 @@ const BAD = 'namespace d { concept { label : string; } }'
 // A clean package with a declared annotation applied at package level (0.5.0).
 const PKG_ANN = 'namespace d { annotation author { name : string; } package { annotate author { name = "Acme Corp"; } } concept widget { label : string; } }'
 
+test('getVersion/setVersion round-trips modelVersion, preserving other fields', async () => {
+    const storage = new FakeStorage('fake://Acme')
+    const f = factory()
+    await f.createProject(storage, 'Acme EA')          // seeds modelVersion '0.1.0', id 'acme-ea'
+    expect(await f.getVersion(storage)).toBe('0.1.0')
+    await f.setVersion(storage, '0.2.0')
+    expect(await f.getVersion(storage)).toBe('0.2.0')
+    const m = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME))
+    expect(m.id).toBe('acme-ea')                        // untouched
+})
+
 test('createProject writes a meta-model manifest with a publish identity', async () => {
     const storage = new FakeStorage('fake://Acme')
     const project = await factory().createProject(storage, 'Acme EA')

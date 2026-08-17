@@ -7,6 +7,7 @@ import {
     type IPresentationProjectFactory,
     type IProducerProjectFactory,
     type IPublishableProjectFactory,
+    type IVersionedProjectFactory,
     type ProjectFileFormat,
     type ProjectManifestEnvelope,
     type PublishResult,
@@ -44,7 +45,7 @@ interface LibraryManifest extends ProjectManifestEnvelope
 }
 
 export class LibraryProjectFactory extends TodlProjectFactory
-    implements IPublishableProjectFactory, IProducerProjectFactory, IPresentationProjectFactory
+    implements IPublishableProjectFactory, IProducerProjectFactory, IPresentationProjectFactory, IVersionedProjectFactory
 {
     public static readonly Key = new ServiceKey<LibraryProjectFactory>('LibraryProjectFactory')
     public static readonly ProjectType = 'library'
@@ -76,6 +77,19 @@ export class LibraryProjectFactory extends TodlProjectFactory
     protected scaffoldContributions(): readonly ScaffoldFile[]
     {
         return LIBRARY_SCAFFOLD
+    }
+
+    public async getVersion(storage: IStorage): Promise<string>
+    {
+        const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as LibraryManifest
+        return manifest.libVersion
+    }
+
+    public async setVersion(storage: IStorage, version: string): Promise<void>
+    {
+        const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as LibraryManifest
+        manifest.libVersion = version
+        await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
     }
 
     public readonly producerKind = ProducerKind.Library
