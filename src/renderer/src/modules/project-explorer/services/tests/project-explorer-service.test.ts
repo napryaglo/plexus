@@ -16,6 +16,7 @@ import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../../
 import { ConfirmDialogModel } from '../../../../services/dialogs/confirm-dialog-model.js'
 import { ProjectExplorerService, applyPrefill, importFilters, uniqueStorageName } from '../project-explorer-service.js'
 import { NewProjectDialogModel, ProjectTypeChoice } from '../../../../services/projects/new-project-dialog-model.js'
+import { MetaModelProjectFactory } from '../../../meta-model/services/meta-model-project-factory.js'
 import { TodlLanguageClient } from '../../../../services/todl/todl-language-client.js'
 import { DiagnosticsService } from '../../../../services/diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity } from '../../../../services/diagnostics/diagnostic.js'
@@ -137,6 +138,7 @@ interface ExplorerPrivates
     closeProject(op: OpenProject): Promise<void>
     bumpVersion(op: OpenProject, part: VersionPart): Promise<void>
     setVersionDialog(op: OpenProject): Promise<void>
+    updateAgentMetadata(op: OpenProject): Promise<void>
 }
 
 // A fake DialogService: Show records the shown content and resolves the preset
@@ -1147,4 +1149,23 @@ test('setVersionDialog sets the version and publishes only when the flag is set'
     await priv2.setVersionDialog(op2)
     expect(JSON.parse(await storage2.ReadText(PROJECT_MANIFEST_FILENAME)).modelVersion).toBe('4.0.0')
     expect(published2).toEqual([])                              // publish did NOT run
+})
+
+test('Update Agent Meta-data is enabled for a TODL project, disabled for a plain factory', async () => {
+    const { priv } = makeExplorer()
+    const tOp = await priv.addOpenProject(projectWith('A', 'C:/a'), new MetaModelProjectFactory(new ServiceProvider()), new FakeStorage('C:/a'))
+    const plainOp = await priv.addOpenProject(projectWith('B', 'C:/b'), fakeProjectFactory(), new FakeStorage('C:/b'))
+    expect(tOp.UpdateAgentMetadataCommand!.CanExecute(undefined)).toBe(true)
+    expect(plainOp.UpdateAgentMetadataCommand!.CanExecute(undefined)).toBe(false)
+})
+
+test('updateAgentMetadata refreshes a stale scaffold doc', async () => {
+    const { priv } = makeExplorer()
+    const factory = new MetaModelProjectFactory(new ServiceProvider())
+    const storage = new FakeStorage('C:/a')
+    await factory.createProject(storage, 'A')                 // full scaffold
+    await storage.WriteText('.claude/todl-manual.md', 'HACKED')
+    const op = await priv.addOpenProject(projectWith('A', 'C:/a'), factory, storage)
+    await priv.updateAgentMetadata(op)
+    expect(await storage.ReadText('.claude/todl-manual.md')).toMatch(/namespace/)   // refreshed
 })

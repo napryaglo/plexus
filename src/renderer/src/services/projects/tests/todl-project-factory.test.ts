@@ -4,7 +4,7 @@ import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { PROJECT_MANIFEST_FILENAME, type ProjectFileFormat, type ProjectManifestEnvelope } from '../project-factory.js'
 import type { BaseBindings } from '../base-binding.js'
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
-import { TodlProjectFactory, type ScaffoldFile } from '../todl-project-factory.js'
+import { TodlProjectFactory, isTodlProject, type ScaffoldFile } from '../todl-project-factory.js'
 
 // A minimal concrete factory: one extra scaffold file, a manifest that carries
 // an unrelated field to prove saveProject preserves it, and two formats so the
@@ -74,4 +74,27 @@ test('saveProject renames and preserves unrelated manifest fields', async () => 
     const m = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME))
     expect(m.name).toBe('Renamed')
     expect(m.keep).toBe('me')       // untouched
+})
+
+test('updateScaffold refreshes .claude docs, preserves CLAUDE.md, self-heals missing', async () => {
+    const storage = new FakeStorage('fake://P')
+    const f = factory()
+    await f.createProject(storage, 'P')                       // full scaffold + CLAUDE.md = 'FAKE ROOT'
+    await storage.WriteText('.claude/todl-manual.md', 'HACKED')   // stale edit to a managed doc
+    await storage.WriteText('CLAUDE.md', 'MY NOTES')              // author edit to the root
+    await storage.Delete('.claude/todl-rules.md')                // a missing managed doc
+
+    const written = await f.updateScaffold(storage)
+
+    expect(await storage.ReadText('.claude/todl-manual.md')).toMatch(/namespace/)   // refreshed, not 'HACKED'
+    expect(await storage.ReadText('CLAUDE.md')).toBe('MY NOTES')                    // preserved
+    expect(await storage.Exists('.claude/todl-rules.md')).toBe(true)               // self-healed
+    expect(written).toContain('.claude/todl-manual.md')
+    expect(written).toContain('.claude/todl-rules.md')
+    expect(written).not.toContain('CLAUDE.md')
+})
+
+test('isTodlProject is true for a TodlProjectFactory subclass, false for a plain factory', () => {
+    expect(isTodlProject(factory())).toBe(true)
+    expect(isTodlProject({ formats: [] } as unknown as import('../project-factory.js').IProjectFactory)).toBe(false)
 })
