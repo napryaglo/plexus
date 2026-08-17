@@ -20,6 +20,9 @@ export class LibraryTreeNode extends Model
         LibraryTreeNode, 'Children', undefined as unknown as ObservableCollection<LibraryTreeNode>, MetaData.None)
     public static readonly IsLibraryKey = Model.RegisterProperty<boolean>(LibraryTreeNode, 'IsLibrary', false, MetaData.None)
     public static readonly IsDraggableKey = Model.RegisterProperty<boolean>(LibraryTreeNode, 'IsDraggable', false, MetaData.None)
+    // Whether this class's concept has an openable wiki page (filled async by the
+    // libraries panel service). Drives the shared "Open Wiki" menu-item visibility.
+    public static readonly HasWikiKey = Model.RegisterProperty<boolean>(LibraryTreeNode, 'HasWiki', false, MetaData.None)
 
     // Library-node identity (id/version of the installed library) + the uninstall
     // command the row's context menu invokes. Set only on Library nodes.
@@ -52,6 +55,8 @@ export class LibraryTreeNode extends Model
     public get Children(): ObservableCollection<LibraryTreeNode> { return this.get_property_value(LibraryTreeNode.ChildrenKey) }
     public get IsLibrary(): boolean { return this.get_property_value(LibraryTreeNode.IsLibraryKey) }
     public get IsDraggable(): boolean { return this.get_property_value(LibraryTreeNode.IsDraggableKey) }
+    public get HasWiki(): boolean { return this.get_property_value(LibraryTreeNode.HasWikiKey) }
+    public set HasWiki(v: boolean) { this.set_property_value(LibraryTreeNode.HasWikiKey, v) }
     public get LibId(): string { return this.get_property_value(LibraryTreeNode.LibIdKey) }
     public get LibVersion(): string { return this.get_property_value(LibraryTreeNode.LibVersionKey) }
     public get DeleteCommand(): ICommand | undefined { return this.get_property_value(LibraryTreeNode.DeleteCommandKey) }

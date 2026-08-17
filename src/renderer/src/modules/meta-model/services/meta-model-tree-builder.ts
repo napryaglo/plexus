@@ -45,6 +45,7 @@ export async function buildCatalog(
     storage: IStorage,
     activate: (ref: EntityRef) => void,
     onDelete: (target: DeleteTarget) => void,
+    markWiki?: (nodes: readonly MetaModelTreeNode[]) => void,
 ): Promise<MetaModelTreeNode[]>
 {
     const published = await scanPublishedModels(storage)
@@ -57,7 +58,7 @@ export async function buildCatalog(
         {
             const vnode = MetaModelTreeNode.lazy(
                 MetaModelNodeKind.Version, version,
-                () => loadVersionEntities(storage, p.id, version, activate),
+                () => loadVersionEntities(storage, p.id, version, activate, markWiki),
             )
             vnode.ModelId = p.id
             vnode.ModelVersion = version
@@ -82,6 +83,7 @@ const GROUPS: ReadonlyArray<{ kind: OntologyKind; label: string }> = [
 // model.json".
 export async function loadVersionEntities(
     storage: IStorage, id: string, version: string, activate: (ref: EntityRef) => void,
+    markWiki?: (nodes: readonly MetaModelTreeNode[]) => void,
 ): Promise<MetaModelTreeNode[]>
 {
     let doc: TodlDocument
@@ -91,6 +93,9 @@ export async function loadVersionEntities(
     const entities = ontologyEntities(doc)
     if (entities.length === 0) return [MetaModelTreeNode.leaf(MetaModelNodeKind.Entity, 'No entities')]
 
+    // Every entity/term row built for this version, flagged for wiki after the
+    // subtree is assembled (Concept = the ontology entity's local id).
+    const entityNodes: MetaModelTreeNode[] = []
     const out: MetaModelTreeNode[] = []
     for (const g of GROUPS)
     {
@@ -100,19 +105,23 @@ export async function loadVersionEntities(
         for (const n of inGroup)
         {
             const ref: EntityRef = { modelId: id, version, id: n.id }
-            const entityNode = MetaModelTreeNode.entity(entityLabel(n), ref, activate)
+            const entityNode = MetaModelTreeNode.entity(entityLabel(n), ref, activate, n.id)
+            entityNodes.push(entityNode)
             if (g.kind === OntologyKind.Taxonomy)
             {
                 for (const term of termsOf(doc, n.id))
                 {
                     const termRef: EntityRef = { modelId: id, version, id: term.id }
-                    entityNode.Children.Add(MetaModelTreeNode.entity(entityLabel(term), termRef, activate))
+                    const termNode = MetaModelTreeNode.entity(entityLabel(term), termRef, activate, term.id)
+                    entityNodes.push(termNode)
+                    entityNode.Children.Add(termNode)
                 }
             }
             group.Children.Add(entityNode)
         }
         out.push(group)
     }
+    markWiki?.(entityNodes)
     return out
 }
 

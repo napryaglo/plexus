@@ -7,6 +7,7 @@ import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-mod
 import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'
 import { registerArchToolboxAdapters } from '../../diagram/services/register-arch-toolbox-adapters.js'
 import { TodlPresentationRegistry } from '../../diagram/services/todl-presentation-registry.js'
+import { WikiService } from '../../../services/wiki/wiki-service.js'
 
 // The Libraries capability's panel content: a TreeView of published libraries
 // grouped Library -> Concept -> Class. Class leaves are draggable onto the
@@ -98,6 +99,7 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
 
         roots.Clear()
         this.clearPreview()
+        const leaves: LibraryTreeNode[] = []
         for (const lib of libs) {
             const libNode = LibraryTreeNode.library(`${lib.name}  ·  ${lib.version}`, lib.id, lib.version)
             libNode.DeleteCommand = new RelayCommand(() => void this.deleteLibrary(libNode))
@@ -107,15 +109,18 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
                 let conceptNode = byConcept.get(cls.concept)
                 if (conceptNode === undefined) { conceptNode = LibraryTreeNode.group(cls.concept, LibraryNodeKind.Concept); byConcept.set(cls.concept, conceptNode) }
                 const display = cls.label ?? cls.localId ?? cls.id
-                conceptNode.Children.Add(LibraryTreeNode.leaf(
+                const leaf = LibraryTreeNode.leaf(
                     { display, label: cls.label ?? '', localId: cls.localId ?? '', termId: cls.id, concept: cls.concept },
-                ))
+                )
+                conceptNode.Children.Add(leaf)
+                leaves.push(leaf)
             }
             for (const conceptName of [...byConcept.keys()].sort()) libNode.Children.Add(byConcept.get(conceptName)!)
             roots.Add(libNode)
         }
         this.set_property_value(LibrariesPanelService.IsEmptyKey, roots.Count === 0)
         this.set_property_value(LibrariesPanelService.IsLoadingKey, false)
+        this.markWiki(leaves)
 
         // Refresh the shared visual aggregate so the panel's preview (and any open
         // canvas) reflects installs/uninstalls even when the toolbox/canvas hasn't
@@ -124,6 +129,21 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
         if (services.get(StorageProviderRegistry.Key) !== undefined) {
             registerArchToolboxAdapters(services)
             await services.get(TodlPresentationRegistry.Key)?.discover()
+        }
+    }
+
+    // Asynchronously flag which class leaves have an openable wiki page (→ their
+    // "Open Wiki" menu shows). Concept resolution routes through the declaring
+    // open meta-model; a stale-item guard drops a resolve onto a rebuilt node.
+    private markWiki(nodes: readonly LibraryTreeNode[]): void
+    {
+        const wiki = this.Provider.get(WikiService.Key)
+        if (wiki === undefined) return
+        for (const n of nodes) {
+            if (n.Kind !== LibraryNodeKind.Class) continue
+            const concept = n.Concept
+            if (concept.length === 0) continue
+            void wiki.hasWiki(concept).then((h) => { if (n.Concept === concept) n.HasWiki = h })
         }
     }
 

@@ -19,6 +19,12 @@ export class ArchNodeVM extends SideConnectableNodeVM {
     // A real DP so the tile template can bind `$IconSize`.
     static readonly IconSizeKey = Model.RegisterProperty<number>(ArchNodeVM, 'IconSize', 80, MetaData.None)
 
+    // The concept this node instantiates + whether it has an openable wiki page.
+    // Drive the "Open Wiki" context menu (Visibility via HasWiki, CommandParameter
+    // via Concept). Populated by ArchDiagramBinding.rescan.
+    static readonly ConceptKey = Model.RegisterProperty<string>(ArchNodeVM, 'Concept', '', MetaData.None)
+    static readonly HasWikiKey = Model.RegisterProperty<boolean>(ArchNodeVM, 'HasWiki', false, MetaData.None)
+
     constructor() {
         super()
         this.Width = 72
@@ -53,6 +59,22 @@ export class ArchNodeVM extends SideConnectableNodeVM {
 
     set IconSize(v: number) {
         this.set_property_value(ArchNodeVM.IconSizeKey, v)
+    }
+
+    get Concept(): string {
+        return this.get_property_value(ArchNodeVM.ConceptKey)
+    }
+
+    set Concept(v: string) {
+        this.set_property_value(ArchNodeVM.ConceptKey, v)
+    }
+
+    get HasWiki(): boolean {
+        return this.get_property_value(ArchNodeVM.HasWikiKey)
+    }
+
+    set HasWiki(v: boolean) {
+        this.set_property_value(ArchNodeVM.HasWikiKey, v)
     }
 
     get EntityId(): string | undefined {

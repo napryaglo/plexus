@@ -60,5 +60,7 @@ resources MetaModelResources {
         }
         // Only Model (id) and Version rows carry a delete command / context menu.
         when ( $IsDeletable = true ) { ContextMenuService.ContextMenu = @MetaModelContextMenu; }
+        // Entity rows with an openable wiki page get the "Open Wiki" menu.
+        when ( $HasWiki = true ) { ContextMenuService.ContextMenu = @OpenWikiMenu; }
     }
 }

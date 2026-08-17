@@ -33,6 +33,8 @@ resources LibraryResources {
             }
         }
         when ( $IsLibrary = true ) { ContextMenuService.ContextMenu = @LibraryContextMenu; }
+        // Class leaves with an openable wiki page get the "Open Wiki" menu.
+        when ( $HasWiki = true ) { ContextMenuService.ContextMenu = @OpenWikiMenu; }
     }
 
     // Bottom-pane preview for a selected class LEAF. Implicit-by-type (DataType =
