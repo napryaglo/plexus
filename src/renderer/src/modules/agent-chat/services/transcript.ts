@@ -5,7 +5,7 @@
 import { MetaData, Model, ObservableCollection, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
 import { type FlowDocument } from '@pragmatic-lab/mural/basic'
 import { AgentEventKind, type AgentEvent, type QuestionAnswer, type ToolApprovalAnswer } from '../../../../../shared/agent-api.js'
-import { buildFlowDocument } from './markdown-document.js'
+import { buildFlowDocument } from '../../../services/markdown/markdown-document.js'
 import { QuestionCard } from './question-card.js'
 import { ToolApprovalCard } from './approval-card.js'
 
