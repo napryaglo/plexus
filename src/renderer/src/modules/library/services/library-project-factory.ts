@@ -1,4 +1,4 @@
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { checkAgainst, toJSON, Severity, compilePackage, BlobPackageStore, type TodlDocument } from '@pragmatic-lab/todl'
 
 import {
@@ -6,19 +6,20 @@ import {
     ProducerKind,
     type IPresentationProjectFactory,
     type IProducerProjectFactory,
-    type IProjectFactory,
     type IPublishableProjectFactory,
     type ProjectFileFormat,
     type ProjectManifestEnvelope,
     type PublishResult,
 } from '../../../services/projects/project-factory.js'
+import { TodlProjectFactory, type ScaffoldFile } from '../../../services/projects/todl-project-factory.js'
 import type { BaseBindings, BaseRef } from '../../../services/projects/base-binding.js'
+import type { Project } from '../../../services/projects/project.js'
 import { resolveBases } from '../../../services/projects/base-resolver.js'
-import { Project, ProjectNode, type ProjectNodeKind } from '../../../services/projects/project.js'
-import { compareStorageEntries, type IStorage } from '../../../services/storage/storage.js'
+import { type IStorage } from '../../../services/storage/storage.js'
 import { StoragePackageSink } from '../../../services/storage/storage-package-sink.js'
 import { ensureLibrariesBackend } from './libraries-backend.js'
-import { collectTaxonomySources, extname, joinRel } from '../../../services/todl/todl-sources.js'
+import { LIBRARY_SCAFFOLD } from './library-scaffold.js'
+import { collectTaxonomySources, extname } from '../../../services/todl/todl-sources.js'
 import { scanResources, type LibraryBundleManifest, type PublishedClass } from './library-bundle.js'
 import { generatePresentationAssets, stampResourceKeys } from '../../meta-model/services/presentation-generator.js'
 import { publishLibraryPresentation } from './library-presentation-publisher.js'
@@ -42,8 +43,8 @@ interface LibraryManifest extends ProjectManifestEnvelope
     description?: string         // optional human description, carried into library.json
 }
 
-export class LibraryProjectFactory extends ServiceBase
-    implements IProjectFactory, IPublishableProjectFactory, IProducerProjectFactory, IPresentationProjectFactory
+export class LibraryProjectFactory extends TodlProjectFactory
+    implements IPublishableProjectFactory, IProducerProjectFactory, IPresentationProjectFactory
 {
     public static readonly Key = new ServiceKey<LibraryProjectFactory>('LibraryProjectFactory')
     public static readonly ProjectType = 'library'
@@ -60,30 +61,21 @@ export class LibraryProjectFactory extends ServiceBase
 
     constructor(provider: IServiceProvider) { super(provider) }
 
-    public async createProject(storage: IStorage, name: string, bindings?: BaseBindings): Promise<Project>
+    protected buildManifest(name: string, bindings?: BaseBindings): ProjectManifestEnvelope
     {
         const manifest: LibraryManifest = {
             type: LibraryProjectFactory.ProjectType, name, version: 1,
             id: slugify(name), libVersion: '0.1.0',
             ...(bindings?.metaModel !== undefined ? { metaModel: bindings.metaModel } : {}),
         }
-        await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
-        return this.buildProject(storage, manifest)
+        return manifest
     }
 
-    public async openProject(storage: IStorage): Promise<Project>
+    // The library's own scaffold (its CLAUDE.md); the shared TODL manual + rules
+    // are added by the base.
+    protected scaffoldContributions(): readonly ScaffoldFile[]
     {
-        const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as LibraryManifest
-        return this.buildProject(storage, manifest)
-    }
-
-    public async saveProject(project: Project, storage: IStorage): Promise<void>
-    {
-        // Preserve the publish identity (id / libVersion) + the meta-model binding;
-        // only the name tracks the project.
-        const manifest = JSON.parse(await storage.ReadText(PROJECT_MANIFEST_FILENAME)) as LibraryManifest
-        manifest.name = project.Name
-        await storage.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
+        return LIBRARY_SCAFFOLD
     }
 
     public readonly producerKind = ProducerKind.Library
@@ -237,32 +229,6 @@ export class LibraryProjectFactory extends ServiceBase
         await walk(folder)
         return count
     }
-
-    private async buildProject(storage: IStorage, manifest: LibraryManifest): Promise<Project>
-    {
-        const rootName = basename(storage.Root)
-        const root = new ProjectNode(rootName, '', 'folder')   // the root node's path is ''
-        await this.populate(storage, root)
-        return new Project(manifest.type, manifest.name ?? rootName, storage.Root, root)
-    }
-
-    // Recursively fill a folder node's children from storage. The manifest file
-    // is hidden; `.todl` files are marked openable (kind 'todl'). Node paths are
-    // project-relative (POSIX `/`); the root node's path is ''.
-    private async populate(storage: IStorage, node: ProjectNode): Promise<void>
-    {
-        const entries = [...await storage.List(node.Path)].sort(compareStorageEntries)
-        for (const e of entries) {
-            if (node.Path === '' && e.Name === PROJECT_MANIFEST_FILENAME) continue
-            const childPath = joinRel(node.Path, e.Name)
-            const kind: ProjectNodeKind = e.IsDirectory
-                ? 'folder'
-                : extname(e.Name) === '.todl' ? 'todl' : 'file'
-            const child = new ProjectNode(e.Name, childPath, kind)
-            node.Children.Add(child)
-            if (e.IsDirectory) await this.populate(storage, child)
-        }
-    }
 }
 
 // ── helpers ──
@@ -276,10 +242,4 @@ function isTextResource(name: string): boolean
 function slugify(name: string): string
 {
     return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'library'
-}
-
-function basename(p: string): string
-{
-    const parts = p.split(/[\\/]/)
-    return parts[parts.length - 1] || p
 }
