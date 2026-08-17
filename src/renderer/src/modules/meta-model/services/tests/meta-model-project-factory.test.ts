@@ -52,6 +52,7 @@ test('createProject writes the agent-support scaffold (CLAUDE.md + .claude/)', a
 
     expect(await storage.Exists('CLAUDE.md')).toBe(true)
     expect(await storage.Exists('.claude/todl-manual.md')).toBe(true)
+    expect(await storage.Exists('.claude/todl-rules.md')).toBe(true)
     expect(await storage.Exists('.claude/meta-model-guide.md')).toBe(true)
     expect(await storage.Exists('.claude/commands/new-concept.md')).toBe(true)
     // Content is the real asset, not a placeholder.
