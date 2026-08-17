@@ -55,6 +55,7 @@ import type { FileFilter } from '../../../../../shared/file-system-api.js'
 import { ProjectNode } from '../../../services/projects/project.js'
 import type { Project } from '../../../services/projects/project.js'
 import { OpenProject } from '../../../services/projects/open-project.js'
+import { isTodlProject } from '../../../services/projects/todl-project-factory.js'
 import { VersionPart, bumpVersion } from '../../../services/projects/semver-bump.js'
 import { SetVersionDialogModel, type SetVersionResult } from '../../../services/projects/set-version-dialog-model.js'
 import { NewItemChoice } from '../../../services/projects/new-item-choice.js'
@@ -448,6 +449,9 @@ export class ProjectExplorerService extends ServiceBase
         op.RefreshBasesCommand = new RelayCommand(
             () => this.refreshBases(op),
             () => op.Factory.requiresMetaModel === true)
+        // Refresh the agent scaffold docs to the current bundled version — any TODL project.
+        op.UpdateAgentMetadataCommand = new RelayCommand(
+            () => void this.updateAgentMetadata(op), () => isTodlProject(op.Factory))
         // Bind a published library after the fact — only for a type that offers
         // libraries (architecture).
         op.AddLibraryReferenceCommand = new RelayCommand(
@@ -935,6 +939,17 @@ export class ProjectExplorerService extends ServiceBase
         await op.Factory.setVersion(op.Storage, result.version)
         if (result.publish) { await this.publishProject(op); return }
         this.Status = `Version set to ${result.version}.`
+    }
+
+    // Refresh the project's agent scaffold docs (.claude/**) to the current bundled
+    // version (preserving the author-owned CLAUDE.md), then rescan so any self-healed
+    // file appears in the tree. Menu item is disabled for non-TODL types, but guard.
+    private async updateAgentMetadata(op: OpenProject): Promise<void>
+    {
+        if (!isTodlProject(op.Factory)) { this.Status = 'This project type has no agent docs.'; return }
+        const written = await op.Factory.updateScaffold(op.Storage)
+        await this.rescan(op)
+        this.Status = `Agent docs updated (${written.length} refreshed).`
     }
 
     // Publish the project through its factory (the menu item is disabled for
