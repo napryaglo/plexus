@@ -71,6 +71,7 @@ resources ProjectExplorerResources {
         }
         MenuItem [ Header = "Add Library Reference…", Command = $AddLibraryReferenceCommand ]
         MenuItem [ Header = "Refresh Bases", Command = $RefreshBasesCommand ]
+        MenuItem [ Header = "Update Agent Meta-data", Command = $UpdateAgentMetadataCommand ]
         MenuSeparator
         MenuItem [ Header = "Close Project", Command = $CloseCommand ]
     }
