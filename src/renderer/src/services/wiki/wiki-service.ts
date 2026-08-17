@@ -3,9 +3,11 @@ import {
     type ICommand, type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
 
+import { ContentHostService, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+
 import { FileSystemService } from '../file-system/file-system-service.js'
-import { CodeEditorService } from '../../modules/code-editor/code-editor-service.js'
 import { WikiLocator } from './wiki-locator.js'
+import { WikiDocument } from './wiki-document.js'
 
 // Opens a concept's wiki page. Visibility (hasWiki) and open both go through
 // WikiLocator, so "Open Wiki" shows exactly when the page is openable (its
@@ -19,6 +21,10 @@ export class WikiService extends ServiceBase
         WikiService, 'Status', '', MetaData.None)
     public static readonly OpenWikiCommandKey = Model.RegisterProperty<ICommand>(
         WikiService, 'OpenWikiCommand', undefined as unknown as ICommand, MetaData.None)
+
+    // Open wiki tabs keyed by absolute path, so re-opening a page re-activates
+    // its tab (and refreshes its content) instead of stacking duplicates.
+    private readonly open = new Map<string, WikiDocument>()
 
     public constructor(provider: IServiceProvider)
     {
@@ -55,8 +61,21 @@ export class WikiService extends ServiceBase
             this.Status = `Wiki file not found: ${hit.relPath}`
             return
         }
-        this.Provider.getRequired(CodeEditorService.Key).OpenFile(abs)
+        const text = await this.readText(abs)
+        let doc = this.open.get(abs)
+        if (doc === undefined) { doc = new WikiDocument(abs, text); this.open.set(abs, doc) }
+        else doc.Refresh(text)
+        const host = this.Provider.getRequired(ContentHostService.Key) as DocumentsContentHostService
+        host.Open(doc)
         this.Status = ''
+    }
+
+    // Read a file's text, degrading a read error to '' (buildFlowDocument renders
+    // it as an empty page rather than throwing). Existence is checked before this.
+    private async readText(path: string): Promise<string>
+    {
+        const fs = this.Provider.getRequired(FileSystemService.Key)
+        try { return await fs.ReadText(path) } catch { return '' }
     }
 }
 
