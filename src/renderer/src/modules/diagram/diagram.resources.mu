@@ -192,7 +192,7 @@ resources DiagramResources {
     // Chromeless ToggleButton chrome — strips the default pill so the cell reads as
     // plain status text; a transparent (#00000000) Border keeps it hit-testable.
     Template x:key="ConnectorModeToggleChrome" [TargetType = ToggleButton] {
-        Border [ Background = #00000000, Padding = (6,1,6,1), CornerRadius = (4) ] {
+        Border [ Fill = #00000000, Padding = (6,1,6,1), CornerRadius = (4) ] {
             ContentPresenter [ VerticalAlignment = Center ]
         }
     }
@@ -207,7 +207,7 @@ resources DiagramResources {
                     [ Width             = 8,
                       Height            = 8,
                       CornerRadius      = (4),
-                      Background        = @OnSurfaceVariant,
+                      Fill        = @OnSurfaceVariant,
                       VerticalAlignment = Center,
                       Margin            = (0,0,6,0) ]
                 TextBlock
@@ -220,7 +220,7 @@ resources DiagramResources {
         // Pinned → opaque cell + green dot; reverts to the base 0.55 / mono otherwise.
         when ( $ConnectorsModePinned ) {
             Root.Opacity   = 1;
-            Dot.Background = #4caf50;
+            Dot.Fill = #4caf50;
         }
     }
 
@@ -302,7 +302,7 @@ resources DiagramResources {
         Border x:root
             [ IsDraggable     = true,
               OnDragStart     = $BeginDragData,
-              Background      = @Surface,
+              Fill      = @Surface,
               BorderBrush     = @OutlineVariant,
               BorderThickness = (1),
               CornerRadius    = 4,
@@ -390,7 +390,7 @@ resources DiagramResources {
     // default ToggleButton pill) whose leading chevron flips ▸→▾ when expanded
     // (IsChecked). The ContentPresenter shows the ToggleButton's content (title).
     Template x:key="ToolboxAccordionHeaderChrome" [TargetType = ToggleButton] {
-        Border x:name="Root" [ Background = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (4,6,4,6) ] {
+        Border x:name="Root" [ Fill = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (4,6,4,6) ] {
             DockPanel [ LastChildFill = true ] {
                 TextBlock x:name="Chevron"
                     [ DockPanel.Dock = Left, Text = "▸", Foreground = @OnSurfaceVariant,
@@ -398,7 +398,7 @@ resources DiagramResources {
                 ContentPresenter [ VerticalAlignment = Center ]
             }
         }
-        when ( IsMouseOver ) { Root.Background = @StateHoverOverlay; }
+        when ( IsMouseOver ) { Root.Fill = @StateHoverOverlay; }
         when ( IsChecked )   { Chevron.Text = "▾"; }
     }
 

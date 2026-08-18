@@ -148,7 +148,7 @@ resources ProjectExplorerResources {
     // renamed, not once for every file/folder in the tree.
     HierarchicalDataTemplate x:key="ProjectNodeTemplate"
         [ DataType = ProjectNode, itemsselector = Children ] {
-        Border x:root [ Background = #00000000, ContextMenuService.ContextMenu = @NodeContextMenu ] {
+        Border x:root [ Fill = #00000000, ContextMenuService.ContextMenu = @NodeContextMenu ] {
             .Behaviors: { TreeDragDropBehavior }
             StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
                 Shape [ Geometry = $Kind << KindToGeometry, Fill = @OnSurfaceVariant,
@@ -181,7 +181,7 @@ resources ProjectExplorerResources {
     // it's a drop target for moving nodes into the project root.
     HierarchicalDataTemplate x:key="OpenProjectTemplate"
         [ DataType = OpenProject, itemsselector = Root.Children ] {
-        Border x:root [ Background = #00000000, HorizontalAlignment = Stretch,
+        Border x:root [ Fill = #00000000, HorizontalAlignment = Stretch,
                         ContextMenuService.ContextMenu = @ProjectContextMenu ] {
             .Behaviors: { TreeDragDropBehavior }
             TextBlock [ Style = @LabelLarge, Text = $Name, Foreground = @OnSurfaceVariant,
@@ -203,7 +203,7 @@ resources ProjectExplorerResources {
             }
 
             // Hairline separating the command bar from the project tree.
-            Border [ DockPanel.Dock = Top, Height = 1, Background = @OutlineVariant, Margin = (0,0,0,8) ]
+            Border [ DockPanel.Dock = Top, Height = 1, Fill = @OutlineVariant, Margin = (0,0,0,8) ]
 
             TextBlock [ DockPanel.Dock = Bottom, Style = @BodySmall, Text = $Status, Foreground = @OnSurfaceVariant,
                         TextWrapping = Wrap, Margin = (0,8,0,0) ]
@@ -361,11 +361,11 @@ resources ProjectExplorerResources {
     // is than the widest one. This template stretches the content full-width and
     // left-aligns it, keeping a subtle hover/press state layer for the click.
     Template x:key="ListRowButton" [ TargetType = Button ] {
-        Border x:name="PART_Row" [ Background = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (8,6,8,6) ] {
+        Border x:name="PART_Row" [ Fill = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (8,6,8,6) ] {
             ContentPresenter [ HorizontalAlignment = Stretch, VerticalAlignment = Center ]
         }
-        when ( IsMouseOver ) { PART_Row.Background = @StateHoverOverlay; }
-        when ( IsPressed ) { PART_Row.Background = @StatePressOverlay; }
+        when ( IsMouseOver ) { PART_Row.Fill = @StateHoverOverlay; }
+        when ( IsPressed ) { PART_Row.Fill = @StatePressOverlay; }
     }
 
     // One recent-projects row: click to open (OpenCommand closes with its path).

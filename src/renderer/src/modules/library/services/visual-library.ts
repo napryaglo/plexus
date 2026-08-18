@@ -63,7 +63,7 @@ const ICON_BODY =
 
 // Tile context (toolbox tiles + library preview): a raised @SurfaceContainerHigh chip
 // behind the icon. The enclosing tile/preview draws its own outer chrome around this.
-const TILE_SOURCE = 'Border [ Background = @SurfaceContainerHigh, CornerRadius = 6 ] {' + ICON_BODY + ' }'
+const TILE_SOURCE = 'Border [ Fill = @SurfaceContainerHigh, CornerRadius = 6 ] {' + ICON_BODY + ' }'
 
 // Figure context (canvas nodes): NO background — the icon floats transparently on the
 // diagram; the canvas node draws no chip behind it.

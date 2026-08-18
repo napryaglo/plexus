@@ -37,11 +37,11 @@ resources DocumentTabsResources {
     // hit surface with the standard hover/press state layers (the default Button
     // chrome centres + pads, which reads wrong for a menu row).
     Template x:key="TabMenuRowButton" [ TargetType = Button ] {
-        Border x:name="PART_Row" [ Background = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (8,6,8,6) ] {
+        Border x:name="PART_Row" [ Fill = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (8,6,8,6) ] {
             ContentPresenter [ HorizontalAlignment = Stretch, VerticalAlignment = Center ]
         }
-        when ( IsMouseOver ) { PART_Row.Background = @StateHoverOverlay; }
-        when ( IsPressed ) { PART_Row.Background = @StatePressOverlay; }
+        when ( IsMouseOver ) { PART_Row.Fill = @StateHoverOverlay; }
+        when ( IsPressed ) { PART_Row.Fill = @StatePressOverlay; }
     }
 
     // ── ⋯ dropdown flyout rows (host TabMenu, resolved by implicit type) ────────
@@ -54,7 +54,7 @@ resources DocumentTabsResources {
 
     // The rule between the action block and the document list.
     DataTemplate [ DataType = TabMenuSeparator ] {
-        Border [ Height = 1, Background = @OutlineVariant, Margin = (6,4,6,4) ]
+        Border [ Height = 1, Fill = @OutlineVariant, Margin = (6,4,6,4) ]
     }
 
     // One open-document row: click the title to activate that tab, ✕ to close it.
@@ -87,16 +87,16 @@ resources DocumentTabsResources {
     // (@MoreHoriz) glyph, self-centred (StackPanel HorizontalAlignment=Center,
     // no leading margin).
     Template x:key="TabOverflowTrigger" [ TargetType = ToolBarSplitButton ] {
-        Border x:name="PART_Primary" [ Background = @SurfaceContainerHigh, CornerRadius = @ShapeFull, BorderThickness = (0) ] {
-            Border x:name="PART_PrimaryState" [ Background = #00000000, CornerRadius = @ShapeFull, Padding = (4,4,4,4) ] {
+        Border x:name="PART_Primary" [ Fill = @SurfaceContainerHigh, CornerRadius = @ShapeFull, BorderThickness = (0) ] {
+            Border x:name="PART_PrimaryState" [ Fill = #00000000, CornerRadius = @ShapeFull, Padding = (4,4,4,4) ] {
                 StackPanel [ Orientation = Horizontal, HorizontalAlignment = Center, VerticalAlignment = Center ] {
                     Border x:name="PART_Content" [ HorizontalAlignment = Center, VerticalAlignment = Center ]
                     Shape [ Geometry = @MoreHoriz, Fill = @OnSurfaceVariant, Width = 10, Height = 10, VerticalAlignment = Center ]
                 }
             }
         }
-        when ( PART_Primary.IsMouseOver ) { PART_PrimaryState.Background = @OnSurfaceVariantHoverLayer; }
-        when ( PART_Primary.IsPressed ) { PART_PrimaryState.Background = @OnSurfaceVariantPressLayer; }
+        when ( PART_Primary.IsMouseOver ) { PART_PrimaryState.Fill = @OnSurfaceVariantHoverLayer; }
+        when ( PART_Primary.IsPressed ) { PART_PrimaryState.Fill = @OnSurfaceVariantPressLayer; }
         when ( IsEnabled = false ) { PART_Primary.Opacity = @DisabledContentOpacity; }
     }
 
@@ -123,7 +123,7 @@ resources DocumentTabsResources {
     // ⋯ overflow dropdown) pins to column 1. The content presenter is unchanged.
     Template x:key="ExtendedTabControlTemplate" [ TargetType = ExtendedTabControl ] {
         Border x:name="PART_Border"
-            [ Background      = @Surface,
+            [ Fill      = @Surface,
               BorderBrush     = @OutlineVariant,
               BorderThickness = (0,0,0,1) ] {
             DockPanel [ LastChildFill = true ] {

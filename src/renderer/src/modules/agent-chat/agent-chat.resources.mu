@@ -91,21 +91,21 @@ resources AgentChatResources {
     // status) that toggles the tool card open/closed. Transparent with a neutral
     // hover/press state layer; content is left-aligned (not centred like a Button).
     Template x:key="ToolHeaderButton" [ TargetType = Button ] {
-        Border x:name="PART_Border" [ Background = #00000000, CornerRadius = 6 ] {
+        Border x:name="PART_Border" [ Fill = #00000000, CornerRadius = 6 ] {
             Border x:name="PART_StateLayer"
-                [ Background = #00000000, CornerRadius = 6, Padding = (6,4,6,4) ] {
+                [ Fill = #00000000, CornerRadius = 6, Padding = (6,4,6,4) ] {
                 ContentPresenter [ HorizontalAlignment = Stretch, VerticalAlignment = Center ]
             }
         }
-        when ( IsMouseOver ) { PART_StateLayer.Background = @StateHoverOverlay; }
-        when ( IsPressed ) { PART_StateLayer.Background = @StatePressOverlay; }
+        when ( IsMouseOver ) { PART_StateLayer.Fill = @StateHoverOverlay; }
+        when ( IsPressed ) { PART_StateLayer.Fill = @StatePressOverlay; }
     }
 
     // Mono block used for both IN and OUT — a tinted, outlined box with the
     // command / output in a monospace face. ClipToBounds keeps a long
     // unbreakable token (a path, a hash) from spilling past the rounded corners.
     Style x:key="ToolMonoBox" [ TargetType = Border ] {
-        Background = @SurfaceContainerHigh;
+        Fill = @SurfaceContainerHigh;
         BorderBrush = @OutlineVariant;
         BorderThickness = (1);
         CornerRadius = 6;
@@ -119,7 +119,7 @@ resources AgentChatResources {
     // collapsed — $IsCollapsed shows the ▸ caret, $IsExpanded reveals the body.
     DataTemplate [ DataType = ToolActivity ] {
         Border [ BorderBrush = @OutlineVariant, BorderThickness = (1), CornerRadius = 8,
-                 Background = @SurfaceContainerLow, Padding = (4), Margin = (0,3,20,3), ClipToBounds = true ] {
+                 Fill = @SurfaceContainerLow, Padding = (4), Margin = (0,3,20,3), ClipToBounds = true ] {
             StackPanel [ Orientation = Vertical ] {
                 PanelButton [ Command = $ToggleCommand, Template = @ToolHeaderButton, HorizontalAlignment = Stretch ] {
                     DockPanel [ LastChildFill = true ] {
@@ -133,7 +133,7 @@ resources AgentChatResources {
                                     Foreground = @OnSurface, VerticalAlignment = Center ]
                         // Fill slot — clipped so a long description is cut at the
                         // status boundary instead of painting over "done".
-                        Border [ ClipToBounds = true, Background = #00000000,
+                        Border [ ClipToBounds = true, Fill = #00000000,
                                  Visibility = $HasDescription << ToVisibility, Margin = (8,0,8,0) ] {
                             TextBlock [ Style = @BodySmall, Text = $Description,
                                         Foreground = @OnSurfaceVariant, VerticalAlignment = Center ]
@@ -166,7 +166,7 @@ resources AgentChatResources {
     // Submit means its own template. Used by the card's Submit.
     Template x:key="CompactButton" [ TargetType = Button ] {
         Border x:name="PART_Border"
-            [ Background           = @Primary,
+            [ Fill           = @Primary,
               BorderThickness      = (0),
               CornerRadius         = $$CornerRadius,
               TextBlock.Foreground = @OnPrimary,
@@ -176,14 +176,14 @@ resources AgentChatResources {
               TextBlock.LineHeight = @LabelLargeLineHeight,
               TextBlock.LetterSpacing = @LabelLargeTracking ] {
             Border x:name="PART_StateLayer"
-                [ Background   = #00000000,
+                [ Fill   = #00000000,
                   CornerRadius = $$CornerRadius,
                   Padding      = (12,5,12,5) ] {
                 ContentPresenter [ HorizontalAlignment = Center, VerticalAlignment = Center ]
             }
         }
-        when ( IsMouseOver ) { PART_StateLayer.Background = @OnPrimaryHoverLayer; }
-        when ( IsPressed ) { PART_StateLayer.Background = @OnPrimaryPressLayer; }
+        when ( IsMouseOver ) { PART_StateLayer.Fill = @OnPrimaryHoverLayer; }
+        when ( IsPressed ) { PART_StateLayer.Fill = @OnPrimaryPressLayer; }
         when ( IsEnabled = false ) { PART_Border.Opacity = @DisabledContentOpacity; }
     }
 
@@ -193,7 +193,7 @@ resources AgentChatResources {
     // question has a selection); after answering it collapses to a compact recap.
     DataTemplate [ DataType = QuestionCard ] {
         Border [ BorderBrush = @OutlineVariant, BorderThickness = (1,1,1,1), CornerRadius = 10,
-                 Background = @SurfaceContainer, Padding = (12,10,12,12), Margin = (0,4,20,4), ClipToBounds = true ] {
+                 Fill = @SurfaceContainer, Padding = (12,10,12,12), Margin = (0,4,20,4), ClipToBounds = true ] {
             StackPanel [ Orientation = Vertical ] {
                 StackPanel [ Orientation = Vertical, Visibility = $IsPending << ToVisibility ] {
                     ItemsControl [ ItemsSource = $Questions, ItemsPanel = @VerticalStackPanel ]
@@ -215,7 +215,7 @@ resources AgentChatResources {
     // recap after answering.
     DataTemplate [ DataType = ToolApprovalCard ] {
         Border [ BorderBrush = @OutlineVariant, BorderThickness = (1,1,1,1), CornerRadius = 10,
-                 Background = @SurfaceContainer, Padding = (12,10,12,12), Margin = (0,4,20,4), ClipToBounds = true ] {
+                 Fill = @SurfaceContainer, Padding = (12,10,12,12), Margin = (0,4,20,4), ClipToBounds = true ] {
             StackPanel [ Orientation = Vertical ] {
                 StackPanel [ Orientation = Vertical, Visibility = $IsPending << ToVisibility ] {
                     TextBlock [ Text = $ToolName, Foreground = @OnSurface, Style = @BodyMedium, TextWrapping = Wrap ]
@@ -261,7 +261,7 @@ resources AgentChatResources {
     // after Create/Cancel it collapses to a one-line recap.
     DataTemplate [ DataType = NewProjectCard ] {
         Border [ BorderBrush = @OutlineVariant, BorderThickness = (1,1,1,1), CornerRadius = 10,
-                 Background = @SurfaceContainer, Padding = (12,10,12,12), Margin = (0,4,20,4), ClipToBounds = true ] {
+                 Fill = @SurfaceContainer, Padding = (12,10,12,12), Margin = (0,4,20,4), ClipToBounds = true ] {
             StackPanel [ Orientation = Vertical ] {
                 ContentControl [ Content = $Form, Visibility = $IsPending << ToVisibility ]
                 TextBlock [ Text = $ResultSummary, Visibility = $IsDone << ToVisibility,
@@ -276,7 +276,7 @@ resources AgentChatResources {
     // independent-toggle list. Exactly one is visible per question.
     DataTemplate [ DataType = QuestionVM ] {
         StackPanel [ Orientation = Vertical, Margin = (0,0,0,12) ] {
-            Border [ HorizontalAlignment = Left, Background = @SurfaceContainerHigh, CornerRadius = 4,
+            Border [ HorizontalAlignment = Left, Fill = @SurfaceContainerHigh, CornerRadius = 4,
                      Padding = (6,1,6,1), Margin = (0,0,0,4) ] {
                 TextBlock [ Style = @BodySmall, Text = $Header, Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
             }

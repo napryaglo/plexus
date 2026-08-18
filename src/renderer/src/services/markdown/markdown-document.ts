@@ -411,7 +411,7 @@ function codeChip(text: string): InlineUIContainer
     // surrounding text baseline regardless of this padding — the padding only
     // sets how far the box extends above/below the label (a touch more above).
     chip.Padding = new Thickness(5, 3, 5, 0)
-    bindTheme(chip, Border.BackgroundKey, 'SurfaceContainerHigh')
+    bindTheme(chip, Border.FillKey, 'SurfaceContainerHigh')
 
     return new InlineUIContainer(chip)
 }

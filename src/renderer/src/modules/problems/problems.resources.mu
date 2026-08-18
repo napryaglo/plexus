@@ -49,13 +49,13 @@ resources ProblemsResources {
     // text summary rather than a single glyph. ContentPresenter shows the
     // trigger's PART_TriggerStack.
     Template x:key="ProblemsTriggerChrome" [ TargetType = Button ] {
-        Border x:name="PART_Primary" [ Background = @SurfaceContainerHigh, CornerRadius = @ShapeFull, BorderThickness = (0) ] {
-            Border x:name="PART_PrimaryState" [ Background = #00000000, CornerRadius = @ShapeFull, Padding = (10,3,10,3) ] {
+        Border x:name="PART_Primary" [ Fill = @SurfaceContainerHigh, CornerRadius = @ShapeFull, BorderThickness = (0) ] {
+            Border x:name="PART_PrimaryState" [ Fill = #00000000, CornerRadius = @ShapeFull, Padding = (10,3,10,3) ] {
                 ContentPresenter [ HorizontalAlignment = Center, VerticalAlignment = Center ]
             }
         }
-        when ( IsMouseOver ) { PART_PrimaryState.Background = @OnSurfaceVariantHoverLayer; }
-        when ( IsPressed ) { PART_PrimaryState.Background = @OnSurfaceVariantPressLayer; }
+        when ( IsMouseOver ) { PART_PrimaryState.Fill = @OnSurfaceVariantHoverLayer; }
+        when ( IsPressed ) { PART_PrimaryState.Fill = @OnSurfaceVariantPressLayer; }
         when ( IsEnabled = false ) { PART_Primary.Opacity = @DisabledContentOpacity; }
     }
 
@@ -70,15 +70,15 @@ resources ProblemsResources {
     // hosting its count. A checked (filter-on) toggle fills with @SecondaryContainer;
     // unchecked (filter hidden) dims so the "off" state reads at a glance.
     Template x:key="PanelToggle" [ TargetType = ToggleButton ] {
-        Border x:name="PART_Border" [ Background = #00000000, CornerRadius = @ShapeSmall ] {
-            Border x:name="PART_StateLayer" [ Background = #00000000, CornerRadius = @ShapeSmall, Padding = (8,3,8,3) ] {
+        Border x:name="PART_Border" [ Fill = #00000000, CornerRadius = @ShapeSmall ] {
+            Border x:name="PART_StateLayer" [ Fill = #00000000, CornerRadius = @ShapeSmall, Padding = (8,3,8,3) ] {
                 ContentPresenter [ HorizontalAlignment = Center, VerticalAlignment = Center ]
             }
         }
-        when ( IsChecked = true ) { PART_StateLayer.Background = @SecondaryContainer; }
+        when ( IsChecked = true ) { PART_StateLayer.Fill = @SecondaryContainer; }
         when ( IsChecked = false ) { PART_Border.Opacity = @DisabledContentOpacity; }
-        when ( IsMouseOver ) { PART_StateLayer.Background = @OnSurfaceVariantHoverLayer; }
-        when ( IsPressed ) { PART_StateLayer.Background = @OnSurfaceVariantPressLayer; }
+        when ( IsMouseOver ) { PART_StateLayer.Fill = @OnSurfaceVariantHoverLayer; }
+        when ( IsPressed ) { PART_StateLayer.Fill = @OnSurfaceVariantPressLayer; }
     }
 
     // The popup control template. Preserves the MenuButton popup contract (root
@@ -92,7 +92,7 @@ resources ProblemsResources {
             ClickAwayScrim x:name="PART_Scrim" [ BorderThickness = (0) ]
             Border x:name="PART_PopupContainer"
                 [ Width = $PopupWidth,
-                  Background = @SurfaceContainerHigh, BorderBrush = @OutlineVariant, BorderThickness = (1),
+                  Fill = @SurfaceContainerHigh, BorderBrush = @OutlineVariant, BorderThickness = (1),
                   CornerRadius = @ShapeExtraSmall, Effect = @Elevation2, Padding = (0) ] {
                 DockPanel [ LastChildFill = true ] {
                     // Header + toolbar (docked Top).
@@ -119,7 +119,7 @@ resources ProblemsResources {
                         }
                     }
                     // Hairline separating the header/toolbar from the list.
-                    Border [ DockPanel.Dock = Top, Height = 1, Background = @OutlineVariant ]
+                    Border [ DockPanel.Dock = Top, Height = 1, Fill = @OutlineVariant ]
                     // Capped, virtualized list (fills the remainder).
                     ScrollViewer [ MaxHeight = $ListMaxHeight, HorizontalScrollEnabled = false ] {
                         ItemsControl [ ItemsSource = $Rows, ItemsPanel = @ProblemsListPanel ]

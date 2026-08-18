@@ -24,7 +24,7 @@ resources LibraryResources {
     // `when($IsLibrary)` trigger attaches the right-click uninstall menu to
     // Library rows only.
     HierarchicalDataTemplate x:key="LibraryNodeTemplate" [ DataType = LibraryTreeNode, itemsselector = Children ] {
-        Border [ Background = #00000000, IsDraggable = $IsDraggable, OnDragStart = $BeginDragData ] {
+        Border [ Fill = #00000000, IsDraggable = $IsDraggable, OnDragStart = $BeginDragData ] {
             StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
                 Shape [ Geometry = @Libraries, Fill = @OnSurfaceVariant, Width = 14, Height = 14,
                         Margin = (0,0,6,0), VerticalAlignment = Center,
@@ -57,7 +57,7 @@ resources LibraryResources {
         DockPanel [ LastChildFill = true, Margin = (12,12,12,12) ] {
             // Preview pane — docked at the bottom, shown when a class is selected.
             Border [ DockPanel.Dock = Bottom, Visibility = $HasPreview << ToVisibility,
-                     Background = @SurfaceContainerHigh, CornerRadius = 6, Padding = (8), Margin = (0,8,0,0) ] {
+                     Fill = @SurfaceContainerHigh, CornerRadius = 6, Padding = (8), Margin = (0,8,0,0) ] {
                 // Host the selected NODE via a ContentControl (not a bare
                 // ContentPresenter): the ContentControl keeps its own DataContext
                 // (this panel service), so Content = $PreviewData keeps tracking the

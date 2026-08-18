@@ -29,7 +29,7 @@ resources DockTabsResources {
     // full-body DataTemplate (rendered below, not here).
     Template x:key="DockRailItemTemplate" [ TargetType = NavigationItem ] {
         Border x:name="PART_Outer"
-            [ Background      = #00000000,
+            [ Fill      = #00000000,
               BorderBrush     = #00000000,
               BorderThickness = (0,0,0,2),
               Padding         = (12,8,12,8) ] {
@@ -57,7 +57,7 @@ resources DockTabsResources {
     // render left-aligned via the horizontal panel above.
     Template x:key="DockRailTemplate" [ TargetType = NavigationRail ] {
         Border x:name="PART_Border"
-            [ Background      = @Surface,
+            [ Fill      = @Surface,
               BorderBrush     = @OutlineVariant,
               BorderThickness = (0,0,0,1) ] {
             ItemsPresenter x:name="PART_ItemsPresenter"
