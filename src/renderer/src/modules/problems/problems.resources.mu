@@ -92,7 +92,7 @@ resources ProblemsResources {
             ClickAwayScrim x:name="PART_Scrim" [ BorderThickness = (0) ]
             Border x:name="PART_PopupContainer"
                 [ Width = $PopupWidth,
-                  Fill = @SurfaceContainerHigh, BorderBrush = @OutlineVariant, BorderThickness = (1),
+                  Fill = @SurfaceContainerHigh, Stroke = Pen [ Brush = @OutlineVariant ], BorderThickness = (1),
                   CornerRadius = @ShapeExtraSmall, Effect = @Elevation2, Padding = (0) ] {
                 DockPanel [ LastChildFill = true ] {
                     // Header + toolbar (docked Top).

@@ -30,7 +30,7 @@ resources DockTabsResources {
     Template x:key="DockRailItemTemplate" [ TargetType = NavigationItem ] {
         Border x:name="PART_Outer"
             [ Fill      = #00000000,
-              BorderBrush     = #00000000,
+              Stroke     = Pen [ Brush = #00000000 ],
               BorderThickness = (0,0,0,2),
               Padding         = (12,8,12,8) ] {
             TextBlock x:name="PART_Label"
@@ -40,7 +40,7 @@ resources DockTabsResources {
                   VerticalAlignment = Center ]
         }
         when ( IsSelected ) {
-            PART_Outer.BorderBrush = @Primary;
+            PART_Outer.Stroke = Pen [ Brush = @Primary ];
             PART_Label.Foreground  = @Primary;
         }
         when ( IsMouseOver ) { PART_Label.Foreground = @OnSurface; }
@@ -58,7 +58,7 @@ resources DockTabsResources {
     Template x:key="DockRailTemplate" [ TargetType = NavigationRail ] {
         Border x:name="PART_Border"
             [ Fill      = @Surface,
-              BorderBrush     = @OutlineVariant,
+              Stroke     = Pen [ Brush = @OutlineVariant ],
               BorderThickness = (0,0,0,1) ] {
             ItemsPresenter x:name="PART_ItemsPresenter"
         }

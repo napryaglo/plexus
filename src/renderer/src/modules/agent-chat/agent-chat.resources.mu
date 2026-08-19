@@ -72,7 +72,7 @@ resources AgentChatResources {
     }
 
     DataTemplate [ DataType = UserMessage ] {
-        Border [ BorderBrush = @OutlineVariant, BorderThickness = (1,1,1,1), CornerRadius = 8,
+        Border [ Stroke = Pen [ Brush = @OutlineVariant ], BorderThickness = (1,1,1,1), CornerRadius = 8,
                  Padding = (10,6,10,6), Margin = (40,3,0,3), ClipToBounds = true ] {
             TextBlock [ Style = @BodyMedium, Text = $Text, Foreground = @OnSurface, TextWrapping = Wrap ]
         }
@@ -106,7 +106,7 @@ resources AgentChatResources {
     // unbreakable token (a path, a hash) from spilling past the rounded corners.
     Style x:key="ToolMonoBox" [ TargetType = Border ] {
         Fill = @SurfaceContainerHigh;
-        BorderBrush = @OutlineVariant;
+        Stroke = Pen [ Brush = @OutlineVariant ];
         BorderThickness = (1);
         CornerRadius = 6;
         Padding = (8,6,8,6);
@@ -118,7 +118,7 @@ resources AgentChatResources {
     // the IN (command / input) and OUT (captured result) mono blocks. Starts
     // collapsed — $IsCollapsed shows the ▸ caret, $IsExpanded reveals the body.
     DataTemplate [ DataType = ToolActivity ] {
-        Border [ BorderBrush = @OutlineVariant, BorderThickness = (1), CornerRadius = 8,
+        Border [ Stroke = Pen [ Brush = @OutlineVariant ], BorderThickness = (1), CornerRadius = 8,
                  Fill = @SurfaceContainerLow, Padding = (4), Margin = (0,3,20,3), ClipToBounds = true ] {
             StackPanel [ Orientation = Vertical ] {
                 PanelButton [ Command = $ToggleCommand, Template = @ToolHeaderButton, HorizontalAlignment = Stretch ] {
@@ -192,7 +192,7 @@ resources AgentChatResources {
     // pending ($IsPending) it shows the questions + a Submit (enabled once every
     // question has a selection); after answering it collapses to a compact recap.
     DataTemplate [ DataType = QuestionCard ] {
-        Border [ BorderBrush = @OutlineVariant, BorderThickness = (1,1,1,1), CornerRadius = 10,
+        Border [ Stroke = Pen [ Brush = @OutlineVariant ], BorderThickness = (1,1,1,1), CornerRadius = 10,
                  Fill = @SurfaceContainer, Padding = (12,10,12,12), Margin = (0,4,20,4), ClipToBounds = true ] {
             StackPanel [ Orientation = Vertical ] {
                 StackPanel [ Orientation = Vertical, Visibility = $IsPending << ToVisibility ] {
@@ -214,7 +214,7 @@ resources AgentChatResources {
     // ring at the right; on 10s expiry the card auto-approves once. Collapses to a
     // recap after answering.
     DataTemplate [ DataType = ToolApprovalCard ] {
-        Border [ BorderBrush = @OutlineVariant, BorderThickness = (1,1,1,1), CornerRadius = 10,
+        Border [ Stroke = Pen [ Brush = @OutlineVariant ], BorderThickness = (1,1,1,1), CornerRadius = 10,
                  Fill = @SurfaceContainer, Padding = (12,10,12,12), Margin = (0,4,20,4), ClipToBounds = true ] {
             StackPanel [ Orientation = Vertical ] {
                 StackPanel [ Orientation = Vertical, Visibility = $IsPending << ToVisibility ] {
@@ -260,7 +260,7 @@ resources AgentChatResources {
     // Project form ($Form → DataTemplate[NewProjectDialogModel]) while pending;
     // after Create/Cancel it collapses to a one-line recap.
     DataTemplate [ DataType = NewProjectCard ] {
-        Border [ BorderBrush = @OutlineVariant, BorderThickness = (1,1,1,1), CornerRadius = 10,
+        Border [ Stroke = Pen [ Brush = @OutlineVariant ], BorderThickness = (1,1,1,1), CornerRadius = 10,
                  Fill = @SurfaceContainer, Padding = (12,10,12,12), Margin = (0,4,20,4), ClipToBounds = true ] {
             StackPanel [ Orientation = Vertical ] {
                 ContentControl [ Content = $Form, Visibility = $IsPending << ToVisibility ]

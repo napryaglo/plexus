@@ -25,7 +25,7 @@ resources ChooserResources {
         MenuPopupHost x:name="PART_PopupHost" {
             ClickAwayScrim x:name="PART_Scrim" [ BorderThickness = (0) ]
             Border x:name="PART_PopupContainer"
-                [ Fill = @SurfaceContainerHigh, BorderBrush = @OutlineVariant, BorderThickness = (1),
+                [ Fill = @SurfaceContainerHigh, Stroke = Pen [ Brush = @OutlineVariant ], BorderThickness = (1),
                   CornerRadius = @ShapeSmall, MinWidth = 240 ] {
                 ScrollViewer [ MaxHeight = 320, HorizontalScrollEnabled = false ] {
                     ItemsControl [ ItemsSource = $Rows, ItemsPanel = @ChooserListPanel ]

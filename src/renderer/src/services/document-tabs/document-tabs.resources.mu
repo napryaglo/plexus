@@ -124,7 +124,7 @@ resources DocumentTabsResources {
     Template x:key="ExtendedTabControlTemplate" [ TargetType = ExtendedTabControl ] {
         Border x:name="PART_Border"
             [ Fill      = @Surface,
-              BorderBrush     = @OutlineVariant,
+              Stroke     = Pen [ Brush = @OutlineVariant ],
               BorderThickness = (0,0,0,1) ] {
             DockPanel [ LastChildFill = true ] {
                 Grid [ DockPanel.Dock = Top ] {

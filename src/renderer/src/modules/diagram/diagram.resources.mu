@@ -303,7 +303,7 @@ resources DiagramResources {
             [ IsDraggable     = true,
               OnDragStart     = $BeginDragData,
               Fill      = @Surface,
-              BorderBrush     = @OutlineVariant,
+              Stroke     = Pen [ Brush = @OutlineVariant ],
               BorderThickness = (1),
               CornerRadius    = 4,
               Padding         = (4,8,4,8),
