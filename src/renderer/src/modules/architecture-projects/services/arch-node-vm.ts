@@ -3,7 +3,7 @@ import { DiagramSettings, SideConnectableNodeVM, ToolboxVisualDescriptor } from 
 
 // Extends SideConnectableNodeVM (not NodeViewModel) so connector endpoints
 // anchored to an arch item distribute across its sides, rebalance, and show
-// port markers — the same side-endpoint host surface ShapeNodeVM has. Without
+// port markers — the same side-endpoint host surface a shape Figure has. Without
 // it, side-slot registration silently no-ops for arch items.
 export class ArchNodeVM extends SideConnectableNodeVM {
     static readonly LabelKey = Model.RegisterProperty<string>(ArchNodeVM, 'Label', '', MetaData.None)
@@ -14,8 +14,8 @@ export class ArchNodeVM extends SideConnectableNodeVM {
         MetaData.None,
     )
     // Edge length of the icon glyph. Seeded from the shared shape-default-size
-    // setting (read once at construction, exactly as ShapeNodeVM.fromKind reads
-    // it) so an arch node's icon renders at the same size as a geometric shape.
+    // setting (read once at construction, exactly as Figure.fromKind reads it)
+    // so an arch node's icon renders at the same size as a geometric shape.
     // A real DP so the tile template can bind `$IconSize`.
     static readonly IconSizeKey = Model.RegisterProperty<number>(ArchNodeVM, 'IconSize', 80, MetaData.None)
 

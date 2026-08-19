@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
-import { DiagramDocument, ShapeNodeVM, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument, Figure, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 import { TodlVisualResolverKey } from '../../../diagram/services/todl-visual-resolver.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
@@ -111,15 +111,15 @@ test('dispose stops further syncing', () => {
     expect(web.Label).toBe('First')   // no longer updating
 })
 
-test('freeform ShapeNodeVM (no entity) is left untouched by attach', () => {
+test('freeform shape Figure (no entity) is left untouched by attach', () => {
     const model = buildModel()
     const doc = new DiagramDocument()
-    // A raw ShapeNodeVM whose Id doesn't match any entity — binding must leave it alone.
+    // A raw shape Figure whose Id doesn't match any entity — binding must leave it alone.
     const shape = doc.CreateNode('rectangle', 0, 0)!
     shape.Id = 'freeform-shape'
 
     new ArchDiagramBinding(doc, model).attach()
 
     // The shape is not an ArchNodeVM and has no matching entity — it stays in the doc.
-    expect(doc.Nodes.ToArray().some((n) => n instanceof ShapeNodeVM && n.Id === 'freeform-shape')).toBe(true)
+    expect(doc.Nodes.ToArray().some((n) => n instanceof Figure && n.Id === 'freeform-shape')).toBe(true)
 })

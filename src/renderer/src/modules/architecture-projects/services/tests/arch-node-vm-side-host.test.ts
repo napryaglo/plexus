@@ -4,7 +4,7 @@ import { ArchNodeVM } from '../arch-node-vm.js'
 
 // Regression: connector side-slot behavior differed between shapes and arch
 // items because ArchNodeVM did not implement the side-endpoint host surface
-// (ISideEndpointHost) that ShapeNodeVM has. The connector gates side-slot
+// (ISideEndpointHost) that a shape Figure has. The connector gates side-slot
 // registration on a duck-typed `GetSideSlot` method (asSideSlotHost); without
 // it, endpoints anchored to an arch item never join the side distribution.
 

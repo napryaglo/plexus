@@ -129,9 +129,10 @@ export function applySides(
 
 export interface NodeSize { width: number; height: number }
 
-// A node whose footprint layout needs. Both mural's Figure and its node VMs
-// (ShapeNodeVM / ArchNodeVM / …) expose Width/Height DPs — the authored box
-// size. A Figure is also a Visual and carries a measured RenderSize; a node VM
+// A node whose footprint layout needs. Both mural's Figure (shape nodes) and its
+// content node VMs (ArchNodeVM / TextNodeVM / …) expose Width/Height DPs — the
+// authored box size. A Figure is also a Visual and carries a measured
+// RenderSize; a node VM
 // (Model, not Visual) does NOT, so Width/Height must be tried first or every
 // VM lays out at the fallback size.
 export interface SizedLike

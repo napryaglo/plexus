@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, ShapeNodeVM, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument, Figure, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
 import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
@@ -68,8 +68,8 @@ test('a no-candidate drop returns null and mutates nothing', () => {
 test('a non-architecture document falls back to a plain CreateNode', () => {
     const doc = new DiagramDocument()
     const factory = new ArchInstanceDropFactory(wire(doc, undefined))   // no model
-    const result = factory.CreateDropped(ctx(doc, 'rectangle')) as ShapeNodeVM
-    expect(result).toBeInstanceOf(ShapeNodeVM)
+    const result = factory.CreateDropped(ctx(doc, 'rectangle')) as Figure
+    expect(result).toBeInstanceOf(Figure)
     expect(result.Kind).toBe('rectangle')
 })
 
