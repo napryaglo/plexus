@@ -32,6 +32,7 @@ import { WorkspaceBaseResolver } from './services/projects/workspace-base-resolv
 import { ArchDiagramBindingService } from './modules/architecture-projects/services/arch-diagram-binding-service.js'
 import { ArchModelToolboxContributor } from './modules/architecture-projects/services/arch-model-toolbox-contributor.js'
 import { DiagramCameraService } from './modules/diagram/services/diagram-camera-service.js'
+import { DiagramGuidesService } from './modules/diagram/services/diagram-guides-service.js'
 import { ArchNewDiagramParticipant } from './modules/architecture-projects/services/arch-new-diagram-participant.js'
 import { NewFileParticipantKey } from './services/documents/new-file-participant.js'
 import { ArchEditViewpointsCommand } from './modules/architecture-projects/services/arch-edit-viewpoints-command.js'
@@ -97,6 +98,11 @@ try {
     // to every .diagram, so it lives in the diagram module (not architecture-projects).
     app.Services.register(DiagramCameraService.Key, (p) => new DiagramCameraService(p))
     app.Services.get(DiagramCameraService.Key)
+    // Diagram guide persistence: restore each diagram's saved ruler guides on open
+    // and write them back (debounced) on change, via the document's metadata slot.
+    // Generic to every .diagram, like the camera service above.
+    app.Services.register(DiagramGuidesService.Key, (p) => new DiagramGuidesService(p))
+    app.Services.get(DiagramGuidesService.Key)
     // Arch new-diagram participant: aliased under the generic NewFileParticipant
     // key so the ProjectExplorer prompts for governing viewpoints when a new
     // .diagram is created in an architecture project.
