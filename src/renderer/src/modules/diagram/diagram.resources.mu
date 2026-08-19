@@ -96,6 +96,7 @@ resources DiagramResources {
                       SelectionMode                = Extended,
                       AllowMarqueeSelection        = true,
                       AlignmentGuidesEnabled       = true,
+                      RulersVisible                = true,
                       SelectionResizeEnabled       = true,
                       ConnectorInteractionsEnabled = true,
                       ReflectSelectionToItems      = true,

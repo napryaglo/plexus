@@ -1,0 +1,85 @@
+import { test, expect, vi, beforeEach, afterEach } from 'vitest'
+import { DiagramDocument, ContentHostService, Diagram } from '@pragmatic-lab/mural/framework'
+import { ObservableCollection, AlignmentAxis } from '@pragmatic-lab/mural/runtime'
+import { DiagramGuidesService } from '../diagram-guides-service.js'
+import { writeGuides, readGuides } from '../../persistence/diagram-guides-store.js'
+import type { PersistentGuide } from '@pragmatic-lab/mural/runtime'
+
+// Per-key property-change listener host, standing in for the live Diagram's
+// Guides DP notifications without mounting the mural theme under jsdom.
+class Listenable {
+    private readonly listeners = new Map<unknown, Set<() => void>>()
+    public AddPropertyChangedListener(key: unknown, fn: () => void): void {
+        if (!this.listeners.has(key)) this.listeners.set(key, new Set())
+        this.listeners.get(key)!.add(fn)
+    }
+    public RemovePropertyChangedListener(key: unknown, fn: () => void): void {
+        this.listeners.get(key)?.delete(fn)
+    }
+    public fire(key: unknown): void { for (const fn of this.listeners.get(key) ?? []) fn() }
+}
+
+class FakeView extends Listenable {
+    private guides: readonly PersistentGuide[] = []
+    public get Guides(): readonly PersistentGuide[] { return this.guides }
+    public set Guides(v: readonly PersistentGuide[]) { this.guides = v; this.fire(Diagram.GuidesKey) }
+}
+
+function providerWith(host: unknown): { get(k: unknown): unknown; getRequired(k: unknown): unknown } {
+    return {
+        get: (k: unknown) => (k === ContentHostService.Key ? host : undefined),
+        getRequired: (k: unknown) => (k === ContentHostService.Key ? host : undefined),
+    }
+}
+function fakeHost() {
+    const OpenDocuments = new ObservableCollection<unknown>()
+    return { OpenDocuments } as unknown as { OpenDocuments: ObservableCollection<unknown> }
+}
+function publish(doc: DiagramDocument, view: FakeView): void { doc.ActiveView = view as unknown as Diagram }
+
+beforeEach(() => { vi.useFakeTimers() })
+afterEach(() => { vi.useRealTimers() })
+
+test('hydrates the published view from stored guides without re-persisting', () => {
+    const host = fakeHost()
+    new DiagramGuidesService(providerWith(host) as never, 500)
+    const doc = new DiagramDocument()
+    writeGuides(doc, { guides: [{ axis: AlignmentAxis.X, position: 200, glued: [] }] })
+    host.OpenDocuments.Add(doc)
+    const view = new FakeView()
+    publish(doc, view)
+    expect(view.Guides.length).toBe(1)
+    expect(view.Guides[0]!.position).toBe(200)
+    const save = vi.spyOn(doc, 'Save')
+    vi.advanceTimersByTime(1000)
+    expect(save).not.toHaveBeenCalled()
+})
+
+test('persists (debounced) when the view guides change', () => {
+    const host = fakeHost()
+    new DiagramGuidesService(providerWith(host) as never, 500)
+    const doc = new DiagramDocument()
+    host.OpenDocuments.Add(doc)
+    const view = new FakeView()
+    publish(doc, view)
+    const save = vi.spyOn(doc, 'Save')
+    view.Guides = [{ axis: AlignmentAxis.Y, position: 90, glued: [] }]
+    expect(save).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(500)
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(readGuides(doc)?.guides[0]!.position).toBe(90)
+})
+
+test('stops persisting after the document closes', () => {
+    const host = fakeHost()
+    new DiagramGuidesService(providerWith(host) as never, 500)
+    const doc = new DiagramDocument()
+    host.OpenDocuments.Add(doc)
+    const view = new FakeView()
+    publish(doc, view)
+    const save = vi.spyOn(doc, 'Save')
+    host.OpenDocuments.Remove(doc)
+    view.Guides = [{ axis: AlignmentAxis.X, position: 10, glued: [] }]
+    vi.advanceTimersByTime(500)
+    expect(save).not.toHaveBeenCalled()
+})
