@@ -59,6 +59,31 @@ test('a raw user-drawn connector between two bound nodes is reconciled away on r
     expect(connectors[0].Target?.Node).toBe(b)
 })
 
+test('a persisted connector loaded with deferred (id-only) endpoints is reconciled away', () => {
+    // Under container-owned-geometry a connector rehydrated from the .diagram
+    // file defers its endpoints by id (UnresolvedNodeId) until the container
+    // binds — the VM object is not the node. Connector-authoritative reconcile
+    // must still recognise it as an edge between two bound nodes and drop it,
+    // else persisted connectors accumulate as invisible/duplicate edges on
+    // every open (the "connectors didn't show" doubling).
+    const { doc, model, a, b } = setup()
+    expect(doc.Connectors.ToArray().length).toBe(1)   // the projected edge
+
+    // Simulate a persisted connector between the same two nodes, still deferred.
+    doc.CreateConnector(
+        new ConnectorEndpoint({ UnresolvedNodeId: a.Id }),
+        new ConnectorEndpoint({ UnresolvedNodeId: b.Id }),
+    )
+    expect(doc.Connectors.ToArray().length).toBe(2)   // projected + persisted-deferred
+
+    model.notifyChanged()   // rescan → reconcile
+
+    const connectors = doc.Connectors.ToArray()
+    expect(connectors.length).toBe(1)                 // deferred duplicate removed, projected kept
+    expect(connectors[0].Source?.Node).toBe(a)
+    expect(connectors[0].Target?.Node).toBe(b)
+})
+
 test('removing a node reconciles its projected connector away', () => {
     const { doc, model, a } = setup()
     expect(doc.Connectors.ToArray().length).toBe(1)

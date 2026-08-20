@@ -201,12 +201,22 @@ export class ArchDiagramBinding
                 this.boundEdges.delete(key)
             }
         }
-        // Drop any connector between two bound arch nodes that isn't one of ours.
+        // Drop any connector between two bound arch nodes that isn't one of ours
+        // — including a persisted connector rehydrated from the .diagram file, so
+        // the diagram stays connector-authoritative and edges don't accumulate as
+        // duplicates across opens. Identify an endpoint's node by entity id: under
+        // container-owned-geometry a connector references the container Figure
+        // (whose Id mirrors the entity id), or is still deferred by UnresolvedNodeId
+        // before its container binds — the VM object itself is no longer the node.
         const ours = new Set<Connector>(this.boundEdges.values())
-        const boundNodes = new Set<unknown>(this.bound.values())
+        const boundIds = new Set<string>(this.bound.keys())
+        const endpointId = (ep: ConnectorEndpoint | undefined): string | undefined =>
+            (ep?.Node as { Id?: string } | undefined)?.Id ?? ep?.UnresolvedNodeId
         for (const c of this.doc.Connectors.ToArray()) {
             if (ours.has(c)) continue
-            if (boundNodes.has(c.Source?.Node) && boundNodes.has(c.Target?.Node)) this.doc.DeleteConnectors([c])
+            const s = endpointId(c.Source)
+            const t = endpointId(c.Target)
+            if (s !== undefined && t !== undefined && boundIds.has(s) && boundIds.has(t)) this.doc.DeleteConnectors([c])
         }
     }
 
