@@ -1,11 +1,14 @@
 import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
-import { DiagramSettings, SideConnectableNodeVM, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { DiagramSettings, NodeViewModel, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 
-// Extends SideConnectableNodeVM (not NodeViewModel) so connector endpoints
-// anchored to an arch item distribute across its sides, rebalance, and show
-// port markers — the same side-endpoint host surface a shape Figure has. Without
-// it, side-slot registration silently no-ops for arch items.
-export class ArchNodeVM extends SideConnectableNodeVM {
+// A content view-model: identity (Id) + content (Label / Descriptor / IconSize /
+// Concept / wiki). It carries NO geometry — its container Figure is the geometry
+// owner AND the side-endpoint host (connector endpoints resolve to the container,
+// which distributes them across its sides). The tile's default 72×56 box comes
+// from the drop factory's store record, and content-fit from the container's
+// SizeToContent (set when the container binds a VM). See the container-owned-
+// geometry redesign.
+export class ArchNodeVM extends NodeViewModel {
     static readonly LabelKey = Model.RegisterProperty<string>(ArchNodeVM, 'Label', '', MetaData.None)
     static readonly DescriptorKey = Model.RegisterProperty<ToolboxVisualDescriptor | undefined>(
         ArchNodeVM,
@@ -27,14 +30,11 @@ export class ArchNodeVM extends SideConnectableNodeVM {
 
     constructor() {
         super()
-        this.Width = 72
-        this.Height = 56
+        // Icon glyph edge length, seeded from the shared shape-default-size
+        // setting so an arch node's icon matches a geometric shape. A real DP so
+        // the tile template can bind `$IconSize`. Geometry (box size, content-fit)
+        // lives on the container Figure, not here.
         this.IconSize = DiagramSettings.ShapeDefaultSize()
-        // An arch node is an icon+label tile, not a geometric shape — its box
-        // should follow its content so the selection/resize adorner wraps the
-        // whole tile (icon AND label), not just the icon. The container measures
-        // the tile and writes Width/Height back through the two-way bind.
-        this.SizeToContent = true
     }
 
     get Label(): string {

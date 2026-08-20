@@ -18,10 +18,18 @@ test('default Descriptor is undefined', () => {
     expect(vm.Descriptor).toBeUndefined()
 })
 
-test('default Width and Height are 72 and 56', () => {
+test('carries no geometry — the container Figure owns it', () => {
+    const vm = new ArchNodeVM() as unknown as Record<string, unknown>
+    // Geometry (position/size + sizing mode) moved to the container Figure +
+    // the document's NodeVisualStore; the VM is content + Id only.
+    for (const prop of ['Left', 'Top', 'Width', 'Height', 'SizeToContent', 'UserSized']) {
+        expect(vm[prop], `${prop} must not exist on a content VM`).toBeUndefined()
+    }
+})
+
+test('IconSize is seeded from the shape-default-size setting', () => {
     const vm = new ArchNodeVM()
-    expect(vm.Width).toBe(72)
-    expect(vm.Height).toBe(56)
+    expect(vm.IconSize).toBeGreaterThan(0)
 })
 
 test('Label setter round-trips', () => {

@@ -1,27 +1,15 @@
 import { test, expect } from 'vitest'
-import { PortSide } from '@pragmatic-lab/mural/framework'
 import { ArchNodeVM } from '../arch-node-vm.js'
 
-// Regression: connector side-slot behavior differed between shapes and arch
-// items because ArchNodeVM did not implement the side-endpoint host surface
-// (ISideEndpointHost) that a shape Figure has. The connector gates side-slot
-// registration on a duck-typed `GetSideSlot` method (asSideSlotHost); without
-// it, endpoints anchored to an arch item never join the side distribution.
+// Post-container-owned-geometry: the side-endpoint host is the container Figure,
+// NOT the content VM. ArchNodeVM is content + Id only — connector endpoints
+// resolve to its container Figure (which carries GetSideSlot/Ports and the
+// side-slot distribution). This pins that the VM itself is no longer a host, so
+// nothing re-adds a duplicate registry to it. (Figure-host side-slot behavior is
+// covered by mural's m4-vm-ports / side-connectable-optimize tests.)
 
-test('ArchNodeVM is a side-endpoint host (has GetSideSlot)', () => {
-    const vm = new ArchNodeVM()
-    expect(typeof (vm as unknown as { GetSideSlot?: unknown }).GetSideSlot).toBe('function')
-})
-
-test('ArchNodeVM exposes bounding-box ports', () => {
-    const vm = new ArchNodeVM()
-    const ports = (vm as unknown as { Ports?: readonly unknown[] }).Ports
-    expect(Array.isArray(ports)).toBe(true)
-    expect(ports!.length).toBe(4) // one per cardinal side
-})
-
-test('ArchNodeVM reports a per-side endpoint count', () => {
-    const vm = new ArchNodeVM()
-    const host = vm as unknown as { GetSideEndpointCount(s: PortSide): number }
-    expect(host.GetSideEndpointCount(PortSide.E)).toBe(0)
+test('ArchNodeVM is NOT a side-endpoint host (no GetSideSlot)', () => {
+    const vm = new ArchNodeVM() as unknown as { GetSideSlot?: unknown; Ports?: unknown }
+    expect(typeof vm.GetSideSlot).toBe('undefined')
+    expect(vm.Ports).toBeUndefined()
 })
