@@ -15,6 +15,10 @@ class Listenable {
     public RemovePropertyChangedListener(key: unknown, fn: () => void): void {
         this.listeners.get(key)?.delete(fn)
     }
+    // The document subscribes to the view's ContainerBound signal on ActiveView
+    // (container-owned-geometry); no containers realize under this fake.
+    public AddContainerBoundListener(_fn: (c: unknown, i: unknown) => void): void {}
+    public RemoveContainerBoundListener(_fn: (c: unknown, i: unknown) => void): void {}
     public fire(key: unknown): void { for (const fn of this.listeners.get(key) ?? []) fn() }
 }
 
