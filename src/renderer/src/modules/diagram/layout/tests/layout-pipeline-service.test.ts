@@ -4,11 +4,11 @@ import {
     ConnectorEndpoint,
     ContentHostService,
     DiagramDocument,
+    Figure,
     type DocumentsContentHostService,
     type IDocument,
 } from '@pragmatic-lab/mural/framework'
 import { Point } from '@pragmatic-lab/mural/runtime'
-import { ArchNodeVM } from '../../../architecture-projects/services/arch-node-vm.js'
 import { LayoutPipelineService } from '../layout-pipeline-service.js'
 import { GetPipelineCatalog, type PipelineConfiguration } from '@pragmatic-lab/fresco'
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
@@ -60,8 +60,8 @@ function firstStrategy(slotId: string): { name: string; className: string } {
 
 test('Run lays out the ACTIVE diagram document, not a workspace singleton', () => {
     const doc = new DiagramDocument()
-    const a = new ArchNodeVM(); a.Id = 'a'; a.Left = 0;   a.Top = 0
-    const b = new ArchNodeVM(); b.Id = 'b'; b.Left = 300; b.Top = 0
+    const a = Figure.fromKind('rectangle', 0, 0);   a.Id = 'a'
+    const b = Figure.fromKind('rectangle', 300, 0); b.Id = 'b'
     doc.AddNode(a); doc.AddNode(b)
 
     const svc = new LayoutPipelineService(providerWithActive(doc))
@@ -75,8 +75,8 @@ test('Run lays out the ACTIVE diagram document, not a workspace singleton', () =
 
 test('running the layout clears connector waypoints (reset to auto)', () => {
     const doc = new DiagramDocument()
-    const a = new ArchNodeVM(); a.Id = 'a'; a.Left = 0;   a.Top = 0
-    const b = new ArchNodeVM(); b.Id = 'b'; b.Left = 300; b.Top = 0
+    const a = Figure.fromKind('rectangle', 0, 0);   a.Id = 'a'
+    const b = Figure.fromKind('rectangle', 300, 0); b.Id = 'b'
     doc.AddNode(a); doc.AddNode(b)
     const c = doc.CreateConnector(new ConnectorEndpoint({ Node: a }), new ConnectorEndpoint({ Node: b }))!
     c.Waypoints = [{ point: new Point(150, 60), userAltered: true }]   // a user pin
@@ -94,8 +94,8 @@ test('Run lays out a CYCLIC diagram without a DAG pipeline error', () => {
     // 'longest-path depths require a DAG'. The default config now runs
     // MakeAcyclicTransform first, so the cycle is broken and layout succeeds.
     const doc = new DiagramDocument()
-    const a = new ArchNodeVM(); a.Id = 'a'; a.Left = 0;   a.Top = 0
-    const b = new ArchNodeVM(); b.Id = 'b'; b.Left = 300; b.Top = 0
+    const a = Figure.fromKind('rectangle', 0, 0);   a.Id = 'a'
+    const b = Figure.fromKind('rectangle', 300, 0); b.Id = 'b'
     doc.AddNode(a); doc.AddNode(b)
     doc.CreateConnector(new ConnectorEndpoint({ Node: a }), new ConnectorEndpoint({ Node: b }))
     doc.CreateConnector(new ConnectorEndpoint({ Node: b }), new ConnectorEndpoint({ Node: a }))   // closes the cycle

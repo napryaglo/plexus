@@ -129,12 +129,9 @@ export function applySides(
 
 export interface NodeSize { width: number; height: number }
 
-// A node whose footprint layout needs. Both mural's Figure (shape nodes) and its
-// content node VMs (ArchNodeVM / TextNodeVM / …) expose Width/Height DPs — the
-// authored box size. A Figure is also a Visual and carries a measured
-// RenderSize; a node VM
-// (Model, not Visual) does NOT, so Width/Height must be tried first or every
-// VM lays out at the fallback size.
+// A node whose footprint layout needs. The layout pipeline resolves every node
+// to its container Figure (see LayoutPipelineService.geometryFigures), which
+// exposes the authored Width/Height DPs and, as a Visual, a measured RenderSize.
 export interface SizedLike
 {
     Width?:      number
@@ -142,9 +139,8 @@ export interface SizedLike
     RenderSize?: { Width: number; Height: number }
 }
 
-// Resolve a node's layout footprint: prefer the authored Width/Height DPs
-// (present on both Figure and node VMs), fall back to a measured RenderSize
-// (Figure only), then to `fallback`.
+// Resolve a node's layout footprint: prefer the authored Width/Height DPs, fall
+// back to a measured RenderSize, then to `fallback`.
 export function nodeSize(fig: SizedLike, fallback: NodeSize): NodeSize
 {
     if (typeof fig.Width === 'number' && typeof fig.Height === 'number' && fig.Width > 0 && fig.Height > 0) {

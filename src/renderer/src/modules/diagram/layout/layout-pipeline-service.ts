@@ -8,7 +8,7 @@ import {
     type ICommand,
     type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
-import { Connector, ContentHostService, DialogService, DiagramDocument, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+import { Connector, ContentHostService, DialogService, DiagramDocument, Figure, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
 import {
     GetPipelineCatalog,
     BuildPipeline,
@@ -261,10 +261,11 @@ export class LayoutPipelineService extends ServiceBase
         const doc = this.activeDiagram()
         if (doc === undefined) { this.Status = 'Active document is not a diagram.'; return }
 
-        // Figures (not Groups) carry Left/Top; treat those as the node set.
-        const figures = (doc.Nodes.ToArray() as unknown as FigureLike[]).filter(
-            (n) => typeof n.Left === 'number' && typeof n.Top === 'number',
-        )
+        // Geometry lives on the container Figure (a shape node IS its own
+        // container; a content VM's container wraps it and mirrors its Id). Lay
+        // out the CONTAINERS — resolve each node to its geometry-owning Figure via
+        // the live view; nodes without a realized container are skipped.
+        const figures = this.geometryFigures(doc)
         if (figures.length === 0) { this.Status = 'Diagram has no nodes to lay out.'; return }
         const connectors = doc.Connectors.ToArray() as unknown as ConnectorLike[]
 
@@ -323,6 +324,23 @@ export class LayoutPipelineService extends ServiceBase
         for (const c of doc.Connectors.ToArray()) {
             if (c instanceof Connector) c.Waypoints = undefined
         }
+    }
+
+    // Resolve every diagram node to its geometry-owning container Figure: a shape
+    // Figure is its own container; a content VM's container wraps it (and mirrors
+    // its Id, so identity survives). Nodes whose container isn't realized (or
+    // Groups) are skipped. Layout runs on the live, mounted diagram, so the
+    // containers exist. Positions written back here land on the container; save
+    // reads geometry off the container.
+    private geometryFigures(doc: DiagramDocument): FigureLike[]
+    {
+        const view = doc.ActiveView
+        const out: FigureLike[] = []
+        for (const node of doc.Nodes.ToArray()) {
+            const fig = node instanceof Figure ? node : view?.Generator.ContainerFromItem(node)
+            if (fig instanceof Figure) out.push(fig as unknown as FigureLike)
+        }
+        return out
     }
 
     private applyPositions(index: Map<string, FigureLike>, sets: PositionSet[]): void

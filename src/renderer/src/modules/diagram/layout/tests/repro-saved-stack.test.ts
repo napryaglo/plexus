@@ -11,6 +11,7 @@ import {
     Connector,
     ContentHostService,
     DiagramDocument,
+    Figure,
     PortSide,
     type ResolvedPortSide,
     type DocumentsContentHostService,
@@ -18,8 +19,12 @@ import {
 } from '@pragmatic-lab/mural/framework'
 import '@pragmatic-lab/mural/framework/diagram/routing/straight-router.js'
 import '@pragmatic-lab/mural/framework/diagram/routing/orthogonal-router.js'
-import { ArchNodeVM } from '../../../architecture-projects/services/arch-node-vm.js'
 import { LayoutPipelineService } from '../layout-pipeline-service.js'
+
+// Nodes are modelled as shape Figures — the geometry-owning, side-endpoint-host
+// form every diagram node resolves to (a content node's container IS a Figure).
+// This keeps the repro headless (no mounted view) while exercising the real
+// Plexus layout pipeline + mural side-slot distribution.
 
 const NODES: Record<string, { left: number; top: number }> = {
     component5:  { left: 413.6, top: 448.25 },
@@ -68,12 +73,12 @@ function providerWithActive(doc: IDocument): ServiceProvider {
     return provider
 }
 
-function buildDoc(): { doc: DiagramDocument; vms: Record<string, ArchNodeVM>; conns: Connector[] } {
+function buildDoc(): { doc: DiagramDocument; vms: Record<string, Figure>; conns: Connector[] } {
     const doc = new DiagramDocument()
-    const vms: Record<string, ArchNodeVM> = {}
+    const vms: Record<string, Figure> = {}
     for (const [id, p] of Object.entries(NODES)) {
-        const vm = new ArchNodeVM()
-        vm.Id = id; vm.Left = p.left; vm.Top = p.top; vm.Width = 80; vm.Height = 80
+        const vm = Figure.fromKind('rectangle', p.left, p.top, { width: 80, height: 80 })
+        vm.Id = id
         vms[id] = vm; doc.AddNode(vm)
     }
     const conns: Connector[] = []
@@ -116,7 +121,7 @@ test('shared sides survive a NATIVE-side-router layout run without stacking', ()
     for (const c of conns) {
         for (const e of [c.Source, c.Target]) {
             if (e === undefined || e.Node === undefined || e.PortSide === undefined) continue
-            const host = e.Node as unknown as ArchNodeVM
+            const host = e.Node as unknown as Figure
             const slot = host.GetSideSlot?.(e, e.PortSide as ResolvedPortSide)
             if (slot === undefined) continue
             const key = `${host.Id}|${e.PortSide}`
