@@ -1,6 +1,12 @@
 import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
 import { DiagramSettings, NodeViewModel, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 
+// Initial box for a freshly-dropped arch tile. The container fits its content
+// once measured (SizeToContent), but a drop needs a starting box before the
+// container realizes — the drop factories write this into the document store by
+// id (was the ArchNodeVM ctor's 72×56 before geometry moved off the VM).
+export const ARCH_TILE_DEFAULT = { w: 72, h: 56 } as const
+
 // A content view-model: identity (Id) + content (Label / Descriptor / IconSize /
 // Concept / wiki). It carries NO geometry — its container Figure is the geometry
 // owner AND the side-endpoint host (connector endpoints resolve to the container,

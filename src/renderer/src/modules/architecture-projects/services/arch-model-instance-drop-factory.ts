@@ -1,8 +1,8 @@
 import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
 
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
-import { ArchNodeVM } from './arch-node-vm.js'
+import { ArchNodeVM, ARCH_TILE_DEFAULT } from './arch-node-vm.js'
 
 export const ArchModelInstanceDropFactoryKey = new ServiceKey<IToolboxDropFactory>('ArchModelInstanceDropFactory')
 
@@ -32,8 +32,9 @@ export class ArchModelInstanceDropFactory implements IToolboxDropFactory
 
         const vm = new ArchNodeVM()
         vm.Id = entityId
-        vm.Left = context.Position.X
-        vm.Top = context.Position.Y
+        // Geometry lives on the container Figure + the document store, not the VM.
+        ;(context.Mutator as unknown as DiagramDocument).SetNodeVisual(
+            entityId, { left: context.Position.X, top: context.Position.Y, ...ARCH_TILE_DEFAULT })
         context.Mutator.AddNode(vm)
         model.notifyChanged()   // rescan binds label/icon + projects edges
         return vm

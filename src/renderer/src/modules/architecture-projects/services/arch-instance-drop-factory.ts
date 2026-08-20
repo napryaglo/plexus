@@ -1,5 +1,5 @@
 import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
 
 import { resolveDropActions, DropActionKind, type DropAction } from './arch-drop-resolver.js'
 import { propagationFills } from './arch-propagate.js'
@@ -9,7 +9,7 @@ import { defaultLabel } from './arch-default-label.js'
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
 import type { ArchModel } from './arch-model.js'
-import { ArchNodeVM } from './arch-node-vm.js'
+import { ArchNodeVM, ARCH_TILE_DEFAULT } from './arch-node-vm.js'
 
 export const ArchInstanceDropFactoryKey = new ServiceKey<IToolboxDropFactory>('ArchInstanceDropFactory')
 
@@ -74,8 +74,9 @@ export class ArchInstanceDropFactory implements IToolboxDropFactory
         const { X, Y } = context.Position
         const vm = new ArchNodeVM()
         vm.Id = entity.id
-        vm.Left = X
-        vm.Top = Y
+        // Geometry lives on the container Figure + the document store, not the VM.
+        // Write it by id; ContainerBound seeds the container when it realizes.
+        ;(context.Mutator as unknown as DiagramDocument).SetNodeVisual(entity.id, { left: X, top: Y, ...ARCH_TILE_DEFAULT })
         context.Mutator.AddNode(vm)
         model.notifyChanged()      // rescan binds + labels the new node (T6)
         void model.save()          // persist the .todl (fire-and-forget)

@@ -39,8 +39,11 @@ test('placing an existing entity adds an ArchNodeVM at the drop point and notifi
     const nodes = doc.Nodes.ToArray().filter((n): n is ArchNodeVM => n instanceof ArchNodeVM)
     expect(nodes.length).toBe(1)
     expect(nodes[0].Id).toBe('svc1')
-    expect(nodes[0].Left).toBe(10)
-    expect(nodes[0].Top).toBe(20)
+    // Geometry rides the document store by id (the container Figure owns it), not
+    // the VM. The container seeds from this record when it realizes.
+    const visual = doc.GetNodeVisual('svc1')
+    expect(visual?.left).toBe(10)
+    expect(visual?.top).toBe(20)
     expect(result).toBe(nodes[0])
     expect(model.notifyChanged).toHaveBeenCalledOnce()
     // Placement is diagram-only: no model mutation.

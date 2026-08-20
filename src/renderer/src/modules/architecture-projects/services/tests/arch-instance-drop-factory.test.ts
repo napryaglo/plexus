@@ -47,9 +47,11 @@ test('a single-candidate drop creates the routed entity + an ArchNodeVM at the d
     const comp = model.entities().find((e) => e.concept === 'component')!
     expect(comp).toBeDefined()
     expect(result.Id).toBe(comp.id)
-    // Position must match the drop context (X=5, Y=6).
-    expect(result.Left).toBe(5)
-    expect(result.Top).toBe(6)
+    // Position rides the document store by id (the container Figure owns geometry),
+    // not the VM. Must match the drop context (X=5, Y=6).
+    const visual = doc.GetNodeVisual(comp.id)
+    expect(visual?.left).toBe(5)
+    expect(visual?.top).toBe(6)
     // Label/Descriptor are NOT set by this task (T6 fills them via rescan).
     // The node must be present in the document's Nodes collection.
     expect([...doc.Nodes].includes(result)).toBe(true)

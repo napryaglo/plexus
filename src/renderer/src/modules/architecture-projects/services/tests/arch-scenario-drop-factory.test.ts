@@ -43,8 +43,9 @@ test('dropping a scenario adds a node per participant and registers the scenario
 
   const nodes = doc.Nodes.ToArray().filter((n): n is ArchNodeVM => n instanceof ArchNodeVM)
   expect(nodes.map((n) => n.Id).sort()).toEqual(['a', 'b', 'c'])
-  expect(nodes.find((n) => n.Id === 'a')!.Left).toBe(100)   // origin col 0
-  expect(nodes.find((n) => n.Id === 'b')!.Left).toBe(300)   // col 1
+  // Geometry rides the document store by id (the container Figure owns it).
+  expect(doc.GetNodeVisual('a')?.left).toBe(100)   // origin col 0
+  expect(doc.GetNodeVisual('b')?.left).toBe(300)   // col 1
   // The binding projects the step connectors; the factory just registers the scenario.
   expect(bindingSvc.addScenario).toHaveBeenCalledWith(doc, 'sc')
   expect(model.addRef).not.toHaveBeenCalled()
@@ -54,13 +55,14 @@ test('dropping a scenario adds a node per participant and registers the scenario
 
 test('re-uses an already-present node instead of duplicating it', () => {
   const doc = new DiagramDocument()
-  const pre = new ArchNodeVM(); pre.Id = 'b'; pre.Left = 999; pre.Top = 999
+  const pre = new ArchNodeVM(); pre.Id = 'b'
   doc.AddNode(pre)
+  doc.SetNodeVisual('b', { left: 999, top: 999, w: 72, h: 56 })   // pre-placed position
   const { provider, bindingSvc } = stubProvider()
   new ArchScenarioDropFactory(provider).CreateDropped(makeContext(doc, 'sc'))
 
   const bNodes = doc.Nodes.ToArray().filter((n): n is ArchNodeVM => n instanceof ArchNodeVM && n.Id === 'b')
-  expect(bNodes.length).toBe(1)          // not duplicated
-  expect(bNodes[0].Left).toBe(999)       // existing position preserved
+  expect(bNodes.length).toBe(1)                    // not duplicated
+  expect(doc.GetNodeVisual('b')?.left).toBe(999)   // reused node not moved
   expect(bindingSvc.addScenario).toHaveBeenCalledWith(doc, 'sc')
 })

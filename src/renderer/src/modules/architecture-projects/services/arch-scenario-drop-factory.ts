@@ -2,7 +2,7 @@ import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { DiagramDocument, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
 
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
-import { ArchNodeVM } from './arch-node-vm.js'
+import { ArchNodeVM, ARCH_TILE_DEFAULT } from './arch-node-vm.js'
 import { planScenarioDrop, type FlowEntity } from './scenario-flow.js'
 
 export const ArchScenarioDropFactoryKey = new ServiceKey<IToolboxDropFactory>('ArchScenarioDropFactory')
@@ -45,8 +45,8 @@ export class ArchScenarioDropFactory implements IToolboxDropFactory {
       if (!nd.isNew) continue
       const vm = new ArchNodeVM()
       vm.Id = nd.id
-      vm.Left = nd.left
-      vm.Top = nd.top
+      // Geometry lives on the container Figure + the document store, not the VM.
+      doc.SetNodeVisual(nd.id, { left: nd.left, top: nd.top, ...ARCH_TILE_DEFAULT })
       context.Mutator.AddNode(vm)
     }
     // Persist the scenario + re-notify; the binding projects its step connectors
