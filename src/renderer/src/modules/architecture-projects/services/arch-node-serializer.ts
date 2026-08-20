@@ -1,4 +1,4 @@
-import { registerNodeSerializer, serializerByType, type NodeBaseRecord } from '@pragmatic-lab/mural/framework'
+import { registerNodeSerializer, serializerByType } from '@pragmatic-lab/mural/framework'
 import { ArchNodeVM } from './arch-node-vm.js'
 
 // Idempotent — safe to call more than once (production wiring + tests).
@@ -7,21 +7,13 @@ export function registerArchNodeSerializer(): void {
     registerNodeSerializer({
         type: 'arch',
         matches: (n: unknown) => n instanceof ArchNodeVM,
-        // id + position ride the base record; icon/label re-derive on open from the
-        // entity. Persist userSized so a hand-resized tile keeps its size instead of
-        // snapping back to the content fit on reload (default: auto-fit to content).
-        serialize: (node: unknown): Record<string, unknown> =>
-            (node as ArchNodeVM).UserSized ? { userSized: true } : {},
-        deserialize: (data: Record<string, unknown>, base: NodeBaseRecord): ArchNodeVM => {
-            const vm = new ArchNodeVM()
-            vm.Left = base.left
-            vm.Top = base.top
-            vm.Width = base.w
-            vm.Height = base.h
-            vm.Id = base.id
-            if (data.userSized === true) vm.UserSized = true
-            return vm
-        },
+        // Content-only: an arch node has no persisted content of its own (icon /
+        // label re-derive on open from the entity via ArchDiagramBinding). Geometry
+        // — position, size, and the userSized latch — rides the document's `visuals`
+        // section (the container Figure owns it), not the node record. The document
+        // assigns .Id and applies geometry after construction.
+        serialize: (): Record<string, unknown> => ({}),
+        deserialize: (): ArchNodeVM => new ArchNodeVM(),
     })
 }
 

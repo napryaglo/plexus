@@ -54,8 +54,6 @@ test('ArchNodeVM serialized record carries type "arch" and empty data', () => {
 
     const vm = new ArchNodeVM()
     vm.Id = 'a1'
-    vm.Left = 30
-    vm.Top = 40
     doc.Nodes.Add(vm)
 
     doc.Save()
@@ -65,21 +63,19 @@ test('ArchNodeVM serialized record carries type "arch" and empty data', () => {
     expect(parsed.nodes).toHaveLength(1)
     const record = parsed.nodes[0]
     expect(record.type).toBe('arch')
-    expect(record.data).toEqual({})   // Label/Descriptor NOT persisted
+    expect(record.data).toEqual({})   // content-only; geometry rides the `visuals` section
     expect(record.id).toBe('a1')
 })
 
-test('ArchNodeVM round-trips id and position through Save/Load', () => {
+test('ArchNodeVM round-trips id + content (geometry is the container/store concern)', () => {
     const { diagStore } = makeStorage()
 
-    // Save a doc with one ArchNodeVM.
+    // Save a doc with one ArchNodeVM. Geometry is set on the container (or the
+    // store) in production; here we assert the serializer round-trips id + the
+    // geometry-free content — position round-trip is mural's store responsibility.
     const saveDoc = new DiagramDocument(diagStore)
     const vm = new ArchNodeVM()
     vm.Id = 'a1'
-    vm.Left = 30
-    vm.Top = 40
-    vm.Width = 72
-    vm.Height = 56
     saveDoc.Nodes.Add(vm)
     saveDoc.Save()
 
@@ -92,8 +88,6 @@ test('ArchNodeVM round-trips id and position through Save/Load', () => {
     expect(reloaded).toBeInstanceOf(ArchNodeVM)
     const archVM = reloaded as ArchNodeVM
     expect(archVM.Id).toBe('a1')
-    expect(archVM.Left).toBe(30)
-    expect(archVM.Top).toBe(40)
 
     // Icon / label must NOT be persisted — binding re-derives them on open.
     expect(archVM.Label).toBe('')
@@ -107,8 +101,6 @@ test('without serializer registration the node is dropped on reload', () => {
     const saveDoc = new DiagramDocument(diagStore)
     const vm = new ArchNodeVM()
     vm.Id = 'b1'
-    vm.Left = 10
-    vm.Top = 20
     saveDoc.Nodes.Add(vm)
     saveDoc.Save()
 
