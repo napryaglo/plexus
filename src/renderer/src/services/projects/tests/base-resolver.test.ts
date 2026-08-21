@@ -47,3 +47,55 @@ test('no bindings resolves to empty', async () => {
     expect(bases).toEqual([])
     expect(problems).toEqual([])
 })
+
+// A minimal own-only model.json: some node ids + an optional recorded deps list.
+const docJson = (nodes: string[], dependencies?: unknown[]) =>
+    JSON.stringify({
+        nodes: nodes.map((id) => ({ id, tier: 'Type', typeOf: 'element', attrs: {} })),
+        edges: [],
+        ...(dependencies ? { dependencies } : {}),
+    })
+
+test('walks a library dependency transitively to its meta-model', async () => {
+    const { provider, meta, libs } = env()
+    await meta.WriteText('meta/1.0.0/model.json', docJson(['widget']))
+    await libs.WriteText('lib/0.1.0/model.json',
+        docJson(['Button'], [{ kind: 'meta-model', id: 'meta', version: '1.0.0' }]))
+
+    const { bases, problems } = await resolveBases(provider, { libraries: [{ id: 'lib', version: '0.1.0' }] })
+    expect(problems).toEqual([])
+    const ids = bases.flatMap((b) => b.nodes.map((n) => n.id))
+    expect(ids).toContain('Button')
+    expect(ids).toContain('widget')
+})
+
+test('resolves a shared meta-model only once (diamond)', async () => {
+    const { provider, meta, libs } = env()
+    await meta.WriteText('meta/1.0.0/model.json', docJson(['widget']))
+    await libs.WriteText('a/0.1.0/model.json', docJson(['A'], [{ kind: 'meta-model', id: 'meta', version: '1.0.0' }]))
+    await libs.WriteText('b/0.1.0/model.json', docJson(['B'], [{ kind: 'meta-model', id: 'meta', version: '1.0.0' }]))
+
+    const { bases, problems } = await resolveBases(provider, {
+        metaModel: { id: 'meta', version: '1.0.0' },
+        libraries: [{ id: 'a', version: '0.1.0' }, { id: 'b', version: '0.1.0' }],
+    })
+    expect(problems).toEqual([])
+    expect(bases.filter((b) => b.nodes.some((n) => n.id === 'widget')).length).toBe(1)
+})
+
+test('a missing transitive dependency is reported in problems', async () => {
+    const { provider, libs } = env()
+    await libs.WriteText('lib/0.1.0/model.json',
+        docJson(['Button'], [{ kind: 'meta-model', id: 'meta', version: '9.9.9' }]))
+    const { problems } = await resolveBases(provider, { libraries: [{ id: 'lib', version: '0.1.0' }] })
+    expect(problems.some((p) => p.includes('meta') && p.includes('9.9.9'))).toBe(true)
+})
+
+test('is cycle-safe when packages reference each other', async () => {
+    const { provider, libs } = env()
+    await libs.WriteText('a/1.0.0/model.json', docJson(['A'], [{ kind: 'library', id: 'b', version: '1.0.0' }]))
+    await libs.WriteText('b/1.0.0/model.json', docJson(['B'], [{ kind: 'library', id: 'a', version: '1.0.0' }]))
+    const { bases, problems } = await resolveBases(provider, { libraries: [{ id: 'a', version: '1.0.0' }] })
+    expect(problems).toEqual([])
+    expect(bases.flatMap((b) => b.nodes.map((n) => n.id)).sort()).toEqual(['A', 'B'])
+})
