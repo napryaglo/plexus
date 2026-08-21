@@ -1,6 +1,5 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { fromJSON } from '@pragmatic-lab/todl'
 
 import { PROJECT_MANIFEST_FILENAME } from '../../../../services/projects/project-factory.js'
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
@@ -126,8 +125,12 @@ test('publish writes compiled model + sources for a clean project', async () => 
     expect(await dest.Exists('acme/0.1.0/model.json')).toBe(true)
     const doc = JSON.parse(await dest.ReadText('acme/0.1.0/model.json'))
     expect(Array.isArray(doc.nodes)).toBe(true)
-    expect(doc.nodes.length).toBeGreaterThan(0)
-    expect(() => fromJSON(doc)).not.toThrow()          // compiled artifact round-trips
+    const ids = new Set((doc.nodes as { id: string }[]).map((n) => n.id))
+    // Own-only: the meta-model's own concepts are present; the prelude is not
+    // copied in, and there are no dependencies (a meta-model binds nothing).
+    expect(ids.has('component')).toBe(true)
+    expect(ids.has('identifier')).toBe(false)
+    expect(doc.dependencies).toBeUndefined()
     expect(await dest.Exists('acme/0.1.0/src/concepts.todl')).toBe(true)
 })
 
