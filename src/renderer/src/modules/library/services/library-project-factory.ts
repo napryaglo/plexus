@@ -1,5 +1,5 @@
 import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { checkAgainst, toJSON, Severity, compilePackage, BlobPackageStore, type TodlDocument } from '@pragmatic-lab/todl'
+import { checkAgainst, toJSON, Severity, compilePackage, BlobPackageStore, PackageKind, type PackageRef, type TodlDocument } from '@pragmatic-lab/todl'
 
 import {
     PROJECT_MANIFEST_FILENAME,
@@ -126,11 +126,16 @@ export class LibraryProjectFactory extends TodlProjectFactory
         const sources = await collectTaxonomySources(storage)
         if (sources.length === 0) return { ok: false, message: 'Nothing to publish — the project has no .todl files.' }
 
+        // Record the bound meta-model as a pinned dependency so consumers resolve
+        // it transitively (the published model.json is own-only).
+        const dependencies: PackageRef[] = [
+            { kind: PackageKind.MetaModel, id: manifest.metaModel.id, version: manifest.metaModel.version },
+        ]
         const outcome = compilePackage(bases, sources, {
             id: manifest.id,
             version: manifest.libVersion,
             name: manifest.name ?? manifest.id,
-        })
+        }, dependencies)
         if (!outcome.ok || outcome.package === undefined)
             return { ok: false, message: `Publish blocked: ${outcome.errors.length} error(s). Fix them first.` }
         const pkg = outcome.package

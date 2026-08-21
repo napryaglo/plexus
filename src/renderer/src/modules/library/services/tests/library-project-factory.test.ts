@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { fromJSON, check, toJSON } from '@pragmatic-lab/todl'
+import { check, toJSON } from '@pragmatic-lab/todl'
 
 import { PROJECT_MANIFEST_FILENAME } from '../../../../services/projects/project-factory.js'
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
@@ -80,7 +80,14 @@ test('publish validates against the bound meta-model and writes the compiled lib
   expect(result.ok).toBe(true)
   expect(await libs.Exists('microsoft/0.1.0/model.json')).toBe(true)
   const doc = JSON.parse(await libs.ReadText('microsoft/0.1.0/model.json'))
-  expect(() => fromJSON(doc)).not.toThrow()
+  const ids = new Set((doc.nodes as { id: string }[]).map((n) => n.id))
+  // Own-only: the library's own taxonomy terms are present; the base meta-model's
+  // concepts and the prelude are NOT copied in.
+  expect(ids.has('Microsoft.Azure')).toBe(true)
+  expect(ids.has('Location')).toBe(false)
+  expect(ids.has('identifier')).toBe(false)
+  // The bound meta-model is recorded as a dependency (exact version).
+  expect(doc.dependencies).toContainEqual({ kind: 'meta-model', id: 'ea', version: '5' })
   expect(await libs.Exists('microsoft/0.1.0/src/microsoft.todl')).toBe(true)
 })
 
