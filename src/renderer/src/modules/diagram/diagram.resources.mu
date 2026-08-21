@@ -66,7 +66,13 @@ resources DiagramResources {
     // as nodes move/drop past the bounds (the enclosing ScrollViewer in the
     // Diagram's own template tracks it). ──
     ItemsPanelTemplate x:key="DiagramCanvasPanel" {
-        PaginatedCanvas [ PageWidth = 800, PageHeight = 600 ]
+        // Paper + page border track the theme so the drawing surface reads in
+        // both light and dark (PaperBrush/PageBorderBrush default to hard white /
+        // light-gray in the framework). @DiagramCanvas / @OutlineVariant are
+        // dynamic resources → they re-paint live on a scheme swap. The desk
+        // behind the pages is the diagram template's PART_CanvasBg (@DiagramCanvas).
+        PaginatedCanvas [ PageWidth = 800, PageHeight = 600,
+                          PaperBrush = @DiagramCanvas, PageBorderBrush = @OutlineVariant ]
     }
 
     // ── Canvas — the diagram surface, materialized in-tree ──────────────
@@ -349,9 +355,9 @@ resources DiagramResources {
             TextBlock
                 [ Text                = $Label,
                   Style               = @BodySmall,
-                  // Black caption on the diagram canvas — independent of the
-                  // surface-variant theme colour used by toolbox tiles.
-                  Foreground          = #000000,
+                  // Caption ink tracks the theme so it reads on the (now theme-
+                  // adaptive) @DiagramCanvas surface in both light and dark.
+                  Foreground          = @OnSurface,
                   TextWrapping        = Wrap,
                   // Caps the tile width so a long name wraps instead of stretching
                   // the node; the container sizes the box to this wrapped tile.
