@@ -1,5 +1,5 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import { PackageKind, type TodlDocument, type PackageRef } from '@pragmatic-lab/todl'
 
 import type { IStorage } from '../storage/storage.js'
 import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'
@@ -20,6 +20,9 @@ interface ProjManifest
     metaModel?: BaseRef
     libraries?: readonly BaseRef[]
 }
+
+// A published model.json read back: the graph plus any recorded base deps.
+interface PackageDocument extends TodlDocument { dependencies?: PackageRef[] }
 
 // A snapshot of the open set, rebuilt when OpenProjects changes: producers keyed
 // by `<kind>:<id>` (+ their version), and every project's outbound binding ids.
@@ -54,7 +57,7 @@ export class WorkspaceBaseResolver extends ServiceBase
     // Resolve a consumer's declared bases, preferring open producers.
     public async ResolveForStorage(consumerStorage: IStorage): Promise<{ bases: TodlDocument[]; problems: string[] }>
     {
-        return this.resolveBindingsOf(consumerStorage, new Set<IStorage>([consumerStorage]))
+        return this.resolveBindingsOf(consumerStorage, new Set<IStorage>([consumerStorage]), new Set<string>())
     }
 
     // The producer id this storage publishes, or undefined if it is not a producer.
@@ -101,22 +104,22 @@ export class WorkspaceBaseResolver extends ServiceBase
     // ── internals ──
 
     private async resolveBindingsOf(
-        storage: IStorage, visited: Set<IStorage>,
+        storage: IStorage, visited: Set<IStorage>, seenPub: Set<string>,
     ): Promise<{ bases: TodlDocument[]; problems: string[] }>
     {
         const manifest = await this.readManifest(storage)
         const bases: TodlDocument[] = []
         const problems: string[] = []
         if (manifest?.metaModel !== undefined)
-            await this.resolveOne(manifest.metaModel, ProducerKind.MetaModel, storage, visited, bases, problems)
+            await this.resolveOne(manifest.metaModel, ProducerKind.MetaModel, storage, visited, bases, problems, seenPub)
         for (const lib of manifest?.libraries ?? [])
-            await this.resolveOne(lib, ProducerKind.Library, storage, visited, bases, problems)
+            await this.resolveOne(lib, ProducerKind.Library, storage, visited, bases, problems, seenPub)
         return { bases, problems }
     }
 
     private async resolveOne(
         ref: BaseRef, kind: ProducerKind, consumerStorage: IStorage,
-        visited: Set<IStorage>, bases: TodlDocument[], problems: string[],
+        visited: Set<IStorage>, bases: TodlDocument[], problems: string[], seenPub: Set<string>,
     ): Promise<void>
     {
         const producer = await this.findOpenProducer(kind, ref.id)
@@ -129,7 +132,7 @@ export class WorkspaceBaseResolver extends ServiceBase
             // same producer (e.g. a meta-model bound by both the architecture and
             // one of its libraries) is reached by two independent branches.
             visited.add(producer.Storage)
-            const child = await this.resolveBindingsOf(producer.Storage, visited)
+            const child = await this.resolveBindingsOf(producer.Storage, visited, seenPub)
             visited.delete(producer.Storage)
             problems.push(...child.problems)
             const compiled = await producer.Factory.compileToDocument(producer.Storage, child.bases, this.Provider)
@@ -142,12 +145,34 @@ export class WorkspaceBaseResolver extends ServiceBase
         }
         if (producer !== undefined && visited.has(producer.Storage))
             problems.push(`cyclic local reference to "${ref.id}"; using published`)
-        // Published fallback — mirrors resolveBases' inner read().
+        // Published fallback — read the own-only doc and walk its recorded base
+        // dependencies transitively (own-only packages record the bases they were
+        // compiled against; the closure is reassembled by resolving those).
+        await this.resolvePublishedTransitive(ref, kind, bases, problems, seenPub)
+    }
+
+    // Read a published package's own-only model.json and recurse into its recorded
+    // dependencies, deduped by `kind:id@version` (cycle-safe). Deps always resolve
+    // from the published registry (pinned versions); mergeBases dedups any node
+    // overlap with a base already resolved local-first at the top level.
+    private async resolvePublishedTransitive(
+        ref: BaseRef, kind: ProducerKind, bases: TodlDocument[], problems: string[], seenPub: Set<string>,
+    ): Promise<void>
+    {
+        const key = `${kind}:${ref.id}@${ref.version}`
+        if (seenPub.has(key)) return
+        seenPub.add(key)
         const backend = kind === ProducerKind.MetaModel
             ? ensureMetaModelsBackend(this.Provider)
             : ensureLibrariesBackend(this.Provider)
         try {
-            bases.push(JSON.parse(await backend.ReadText(`${ref.id}/${ref.version}/model.json`)) as TodlDocument)
+            const doc = JSON.parse(await backend.ReadText(`${ref.id}/${ref.version}/model.json`)) as PackageDocument
+            bases.push({ nodes: doc.nodes, edges: doc.edges })
+            for (const dep of doc.dependencies ?? [])
+            {
+                const depKind = dep.kind === PackageKind.Library ? ProducerKind.Library : ProducerKind.MetaModel
+                await this.resolvePublishedTransitive({ id: dep.id, version: dep.version }, depKind, bases, problems, seenPub)
+            }
         } catch {
             problems.push(`${kind} "${ref.id}@${ref.version}" is not published`)
         }

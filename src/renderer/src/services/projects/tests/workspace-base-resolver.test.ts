@@ -218,3 +218,47 @@ test('producedIdOf reports a producer\'s id and undefined for a consumer', async
     expect(resolver.producedIdOf(mm.Storage)).toBe('ea')
     expect(resolver.producedIdOf(arch.Storage)).toBeUndefined()
 })
+
+// An own-only model.json with recorded base deps.
+const ownDoc = (nodes: string[], dependencies?: unknown[]) =>
+    JSON.stringify({
+        nodes: nodes.map((id) => ({ id, tier: 'Type', typeOf: 'element', attrs: {} })),
+        edges: [],
+        ...(dependencies ? { dependencies } : {}),
+    })
+
+test('published fallback walks a package\'s recorded dependencies transitively', async () => {
+    const { provider, meta, libs } = env([])
+    // A published library that records a dependency on a published meta-model.
+    await libs.WriteText('lib/0.1.0/model.json',
+        ownDoc(['Button'], [{ kind: 'meta-model', id: 'ea', version: '1.0.0' }]))
+    await meta.WriteText('ea/1.0.0/model.json', ownDoc(['widget']))
+
+    // The consumer binds ONLY the library — its meta-model must be pulled in via
+    // the library's recorded dependency.
+    const consumer = new FakeStorage('C:/arch')
+    await consumer.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(
+        { type: 'architecture', libraries: [{ id: 'lib', version: '0.1.0' }] }))
+
+    const resolver = new WorkspaceBaseResolver(provider)
+    const { bases, problems } = await resolver.ResolveForStorage(consumer)
+    expect(problems).toEqual([])
+    expect(hasNode(bases, 'Button')).toBe(true)
+    expect(hasNode(bases, 'widget')).toBe(true)
+})
+
+test('published transitive walk resolves a shared meta-model only once (diamond)', async () => {
+    const { provider, meta, libs } = env([])
+    await meta.WriteText('ea/1.0.0/model.json', ownDoc(['widget']))
+    await libs.WriteText('a/0.1.0/model.json', ownDoc(['A'], [{ kind: 'meta-model', id: 'ea', version: '1.0.0' }]))
+    await libs.WriteText('b/0.1.0/model.json', ownDoc(['B'], [{ kind: 'meta-model', id: 'ea', version: '1.0.0' }]))
+
+    const consumer = new FakeStorage('C:/arch')
+    await consumer.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(
+        { type: 'architecture', libraries: [{ id: 'a', version: '0.1.0' }, { id: 'b', version: '0.1.0' }] }))
+
+    const resolver = new WorkspaceBaseResolver(provider)
+    const { bases, problems } = await resolver.ResolveForStorage(consumer)
+    expect(problems).toEqual([])
+    expect(bases.filter((base) => base.nodes.some((n) => n.id === 'widget')).length).toBe(1)
+})
