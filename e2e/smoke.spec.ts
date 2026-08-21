@@ -92,11 +92,12 @@ test.describe.serial('Plexus live smoke (Observable/MuralBase split)', () => {
     })
 
     test('opens a document from the explorer without errors', async () => {
-        // Double-click a corpus .todl to open it in the code editor (exercises
-        // the renamed code-document / document-tab VMs).
+        // Double-click a known corpus .todl to open it in the code editor
+        // (exercises the renamed code-document / document-tab VMs). The
+        // microsoft library reliably ships microsoft.todl.
         const before = appErrors(l.errors).length
         const opened = await l.win
-            .getByText(/landscape\.todl|aws\.todl|microsoft\.todl|\.todl$/)
+            .getByText('microsoft.todl', { exact: true })
             .first()
             .dblclick({ timeout: 6000 })
             .then(() => true)
@@ -106,9 +107,10 @@ test.describe.serial('Plexus live smoke (Observable/MuralBase split)', () => {
         // Whether or not a tree row was clickable, no error may have surfaced.
         expect(appErrors(l.errors).length).toBe(before)
         if (opened) {
-            // A code-editor document renders RichTextBox line visuals.
-            const lines = await countByCtor(l.win, 'RichTextBox')
-            expect(lines).toBeGreaterThan(0)
+            // A code document mounts a CodeEditor host (DomHost + Monaco);
+            // Plexus renders source through Monaco, not mural text visuals.
+            const editors = await countByCtor(l.win, 'CodeEditor')
+            expect(editors).toBeGreaterThan(0)
         }
     })
 
