@@ -161,8 +161,13 @@ resources DocumentTabsResources {
                               VerticalAlignment = Center ]
                     }
                 }
-                ContentPresenter x:name="PART_ContentSlot"
-                    [ Content = $$SelectedContent, ReuseContentViews = true ]
+                // 3dp uniform inset so the active document's content doesn't butt
+                // against the tab strip / pane edges. The @Surface pane fill shows
+                // through the gap as a thin frame around the content.
+                Border [ Padding = (3) ] {
+                    ContentPresenter x:name="PART_ContentSlot"
+                        [ Content = $$SelectedContent, ReuseContentViews = true ]
+                }
             }
         }
     }
