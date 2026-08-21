@@ -1,6 +1,6 @@
 import {
     MetaData,
-    Model,
+    MuralBase,
     ServiceBase,
     ServiceKey,
     type IServiceProvider,
@@ -29,7 +29,7 @@ export class DiagramWorkspaceService extends ServiceBase
 {
     public static readonly Key = new ServiceKey<DiagramWorkspaceService>('DiagramWorkspaceService')
 
-    public static readonly DocumentKey = Model.RegisterProperty<DiagramDocument>(
+    public static readonly DocumentKey = MuralBase.RegisterProperty<DiagramDocument>(
         DiagramWorkspaceService, 'Document', undefined as unknown as DiagramDocument, MetaData.None)
 
     constructor(provider: IServiceProvider)

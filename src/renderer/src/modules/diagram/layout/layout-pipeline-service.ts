@@ -1,6 +1,6 @@
 import {
     MetaData,
-    Model,
+    MuralBase,
     ObservableCollection,
     RelayCommand,
     ServiceBase,
@@ -90,25 +90,25 @@ export class LayoutPipelineService extends ServiceBase
     public static readonly Key = new ServiceKey<LayoutPipelineService>('LayoutPipelineService')
 
     // Every member bound from the .mu template MUST be a registered property:
-    // mural's binding engine reads a path on a Model only via a registered
+    // mural's binding engine reads a path on a MuralBase only via a registered
     // PropertyKey (get_property_value) — it does NOT fall back to plain fields.
-    public static readonly StatusKey = Model.RegisterProperty<string>(
+    public static readonly StatusKey = MuralBase.RegisterProperty<string>(
         LayoutPipelineService, 'Status', '', MetaData.None)
-    public static readonly StagesKey = Model.RegisterProperty<ObservableCollection<LayoutStageVM>>(
+    public static readonly StagesKey = MuralBase.RegisterProperty<ObservableCollection<LayoutStageVM>>(
         LayoutPipelineService, 'Stages', undefined as unknown as ObservableCollection<LayoutStageVM>, MetaData.None)
-    public static readonly InspectorKey = Model.RegisterProperty<LayoutInspector>(
+    public static readonly InspectorKey = MuralBase.RegisterProperty<LayoutInspector>(
         LayoutPipelineService, 'Inspector', undefined as unknown as LayoutInspector, MetaData.None)
-    public static readonly PresetNamesKey = Model.RegisterProperty<ObservableCollection<string>>(
+    public static readonly PresetNamesKey = MuralBase.RegisterProperty<ObservableCollection<string>>(
         LayoutPipelineService, 'PresetNames', undefined as unknown as ObservableCollection<string>, MetaData.None)
-    public static readonly SelectedPresetKey = Model.RegisterProperty<string | undefined>(
+    public static readonly SelectedPresetKey = MuralBase.RegisterProperty<string | undefined>(
         LayoutPipelineService, 'SelectedPreset', undefined, MetaData.None)
-    public static readonly CanDeleteKey = Model.RegisterProperty<boolean>(
+    public static readonly CanDeleteKey = MuralBase.RegisterProperty<boolean>(
         LayoutPipelineService, 'CanDelete', false, MetaData.None)
-    public static readonly RunCommandKey = Model.RegisterProperty<ICommand>(
+    public static readonly RunCommandKey = MuralBase.RegisterProperty<ICommand>(
         LayoutPipelineService, 'RunCommand', undefined as unknown as ICommand, MetaData.None)
-    public static readonly SaveCommandKey = Model.RegisterProperty<ICommand>(
+    public static readonly SaveCommandKey = MuralBase.RegisterProperty<ICommand>(
         LayoutPipelineService, 'SaveCommand', undefined as unknown as ICommand, MetaData.None)
-    public static readonly DeleteCommandKey = Model.RegisterProperty<ICommand>(
+    public static readonly DeleteCommandKey = MuralBase.RegisterProperty<ICommand>(
         LayoutPipelineService, 'DeleteCommand', undefined as unknown as ICommand, MetaData.None)
 
     // Plain fields — used only from TS (not bound in markup).
@@ -365,7 +365,7 @@ export class LayoutPipelineService extends ServiceBase
         return doc instanceof DiagramDocument ? doc : undefined
     }
 
-    // Node footprint: VM nodes (Model) expose Width/Height but no RenderSize;
+    // Node footprint: VM nodes (MuralBase) expose Width/Height but no RenderSize;
     // Figures expose both. nodeSize prefers Width/Height so VMs don't collapse
     // to the fallback size. See diagram-graph-adapter.nodeSize.
     private sizeOf(fig: FigureLike): NodeSize

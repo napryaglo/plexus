@@ -18,7 +18,7 @@
 import {
     Key,
     MetaData,
-    Model,
+    MuralBase,
     ObservableCollection,
     RelayCommand,
     ServiceBase,
@@ -141,19 +141,19 @@ export class ProjectExplorerService extends ServiceBase
 
     // The open projects — the tree's roots (each a collapsible DataTemplate
     // [OpenProject]). Empty until a project is opened or the session restores.
-    public static readonly OpenProjectsKey = Model.RegisterProperty<ObservableCollection<OpenProject>>(
+    public static readonly OpenProjectsKey = MuralBase.RegisterProperty<ObservableCollection<OpenProject>>(
         ProjectExplorerService, 'OpenProjects', undefined as unknown as ObservableCollection<OpenProject>, MetaData.None)
-    public static readonly StatusKey = Model.RegisterProperty<string>(
+    public static readonly StatusKey = MuralBase.RegisterProperty<string>(
         ProjectExplorerService, 'Status', 'No project open.', MetaData.None)
-    public static readonly OpenProjectCommandKey = Model.RegisterProperty<ICommand>(
+    public static readonly OpenProjectCommandKey = MuralBase.RegisterProperty<ICommand>(
         ProjectExplorerService, 'OpenProjectCommand', undefined as unknown as ICommand, MetaData.None)
-    public static readonly NewProjectCommandKey = Model.RegisterProperty<ICommand>(
+    public static readonly NewProjectCommandKey = MuralBase.RegisterProperty<ICommand>(
         ProjectExplorerService, 'NewProjectCommand', undefined as unknown as ICommand, MetaData.None)
     // Keyboard handler for the single project TreeView (bound `on KeyDown` from
     // the tree's wrapper). The whole tree is now ONE TreeView with unified
     // selection, so the key routes to whichever project currently holds the
     // selection (F2 rename / Delete / Enter-commit / Escape-cancel).
-    public static readonly TreeKeyCommandKey = Model.RegisterProperty<ICommand>(
+    public static readonly TreeKeyCommandKey = MuralBase.RegisterProperty<ICommand>(
         ProjectExplorerService, 'TreeKeyCommand', undefined as unknown as ICommand, MetaData.None)
 
     // Which open project each open document belongs to — for save-routing (the

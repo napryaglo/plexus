@@ -1,4 +1,4 @@
-import { Model, MetaData, ObservableCollection, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { MuralBase, MetaData, ObservableCollection, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
 import type { IDocument } from '@pragmatic-lab/mural/framework'
 import type { ICodeFile } from './code-file.js'
 import type { EditorDiagnostic } from './editor-diagnostic.js'
@@ -38,30 +38,30 @@ function languageForPath(path: string): string
 // Language / Diagnostics are DP-backed: the tab strip binds Id / Title, the
 // editor binds Content / Language / Diagnostics. Id is the file's identity, so
 // re-opening dedupes to one tab.
-export class CodeDocument extends Model implements IDocument
+export class CodeDocument extends MuralBase implements IDocument
 {
-    public static readonly IdKey = Model.RegisterProperty<string>(
+    public static readonly IdKey = MuralBase.RegisterProperty<string>(
         CodeDocument, 'Id', '', MetaData.None)
 
     // A stable, project-scoped document URI (todl://<projectKey>/<relpath>) the
     // editor keys its Monaco model on, so language-server requests, diagnostics,
     // and edits all map back to this file. Empty ⇒ anonymous model (non-.todl).
-    public static readonly UriKey = Model.RegisterProperty<string>(
+    public static readonly UriKey = MuralBase.RegisterProperty<string>(
         CodeDocument, 'Uri', '', MetaData.None)
 
-    public static readonly TitleKey = Model.RegisterProperty<string>(
+    public static readonly TitleKey = MuralBase.RegisterProperty<string>(
         CodeDocument, 'Title', '', MetaData.None)
 
-    public static readonly IsDirtyKey = Model.RegisterProperty<boolean>(
+    public static readonly IsDirtyKey = MuralBase.RegisterProperty<boolean>(
         CodeDocument, 'IsDirty', false, MetaData.None)
 
     // The text — the source of truth. The editor two-way binds this, so its
     // edits land here; Save() persists it and load() seeds it from the file.
-    public static readonly ContentKey = Model.RegisterProperty<string>(
+    public static readonly ContentKey = MuralBase.RegisterProperty<string>(
         CodeDocument, 'Content', '', MetaData.None)
 
     // Monaco language id, derived from the extension; the editor binds it.
-    public static readonly LanguageKey = Model.RegisterProperty<string>(
+    public static readonly LanguageKey = MuralBase.RegisterProperty<string>(
         CodeDocument, 'Language', 'plaintext', MetaData.None)
 
     // Diagnostics against the current text — a generic channel a validation
@@ -69,14 +69,14 @@ export class CodeDocument extends Model implements IDocument
     // renders the entries as Monaco markers. Empty ⇒ no squiggles. Nothing in
     // the generic code path writes here; a producer replaces the collection's
     // contents on each pass.
-    public static readonly DiagnosticsKey = Model.RegisterProperty<ObservableCollection<EditorDiagnostic>>(
+    public static readonly DiagnosticsKey = MuralBase.RegisterProperty<ObservableCollection<EditorDiagnostic>>(
         CodeDocument, 'Diagnostics', undefined as unknown as ObservableCollection<EditorDiagnostic>, MetaData.None)
 
     // A one-shot reveal request (line/column, 1-based) the editor honors to scroll
     // to + select a span — used by the Problems dock to navigate to a diagnostic.
     // The editor listens for changes; the value carries a monotonic seq so repeated
     // reveals to the same position still fire a change.
-    public static readonly RevealRequestKey = Model.RegisterProperty<{ line: number; column: number; seq: number } | undefined>(
+    public static readonly RevealRequestKey = MuralBase.RegisterProperty<{ line: number; column: number; seq: number } | undefined>(
         CodeDocument, 'RevealRequest', undefined, MetaData.None)
 
     private readonly file: ICodeFile

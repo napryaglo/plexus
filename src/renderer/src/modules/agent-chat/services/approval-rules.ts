@@ -2,7 +2,7 @@
 // tool-approval rules, with a Revoke per row. Sourced from the agent bridge
 // (listApprovalRules / revokeApprovalRule) through a narrow injectable port so the
 // VM is unit-testable without window.api. Every view-bound property is a DP.
-import { MetaData, Model, ObservableCollection, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, ObservableCollection, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
 import type { ApprovalRule } from '../../../../../shared/agent-api.js'
 
 // The bridge subset this surface needs. `projectKey` is the agent's working
@@ -14,10 +14,10 @@ export interface ApprovalRulesPort
 }
 
 // One persistent rule row: a label ("Bash: python" or "WebFetch") + a Revoke.
-export class ApprovalRuleRow extends Model
+export class ApprovalRuleRow extends MuralBase
 {
-    public static readonly LabelKey         = Model.RegisterProperty<string>(ApprovalRuleRow, 'Label', '', MetaData.None)
-    public static readonly RevokeCommandKey = Model.RegisterProperty<ICommand>(
+    public static readonly LabelKey         = MuralBase.RegisterProperty<string>(ApprovalRuleRow, 'Label', '', MetaData.None)
+    public static readonly RevokeCommandKey = MuralBase.RegisterProperty<ICommand>(
         ApprovalRuleRow, 'RevokeCommand', undefined as unknown as ICommand, MetaData.None)
 
     public readonly Rule: ApprovalRule
@@ -37,11 +37,11 @@ export class ApprovalRuleRow extends Model
 // The list of the current project's rules. Refresh() reloads from the port;
 // Revoke() drops one then reloads. `projectKey` is read live each call so the VM
 // follows the agent's current working directory.
-export class ApprovalRulesVM extends Model
+export class ApprovalRulesVM extends MuralBase
 {
-    public static readonly RulesKey    = Model.RegisterProperty<ObservableCollection<ApprovalRuleRow>>(
+    public static readonly RulesKey    = MuralBase.RegisterProperty<ObservableCollection<ApprovalRuleRow>>(
         ApprovalRulesVM, 'Rules', undefined as unknown as ObservableCollection<ApprovalRuleRow>, MetaData.None)
-    public static readonly HasRulesKey = Model.RegisterProperty<boolean>(ApprovalRulesVM, 'HasRules', false, MetaData.None)
+    public static readonly HasRulesKey = MuralBase.RegisterProperty<boolean>(ApprovalRulesVM, 'HasRules', false, MetaData.None)
 
     constructor(private readonly port: ApprovalRulesPort, private readonly projectKey: () => string)
     {

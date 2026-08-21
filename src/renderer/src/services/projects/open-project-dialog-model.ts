@@ -1,6 +1,6 @@
 import {
     MetaData,
-    Model,
+    MuralBase,
     ObservableCollection,
     RelayCommand,
     type ICommand,
@@ -20,11 +20,11 @@ export interface OpenProjectResult
 
 // One row in the recents list. OpenCommand (wired by the VM) closes the dialog
 // with this project's path.
-export class RecentProjectItem extends Model
+export class RecentProjectItem extends MuralBase
 {
-    static readonly NameKey = Model.RegisterProperty<string>(RecentProjectItem, 'Name', '', MetaData.None)
-    static readonly PathKey = Model.RegisterProperty<string>(RecentProjectItem, 'Path', '', MetaData.None)
-    static readonly OpenCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly NameKey = MuralBase.RegisterProperty<string>(RecentProjectItem, 'Name', '', MetaData.None)
+    static readonly PathKey = MuralBase.RegisterProperty<string>(RecentProjectItem, 'Path', '', MetaData.None)
+    static readonly OpenCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         RecentProjectItem, 'OpenCommand', undefined, MetaData.None)
 
     constructor(name: string, path: string)
@@ -40,15 +40,15 @@ export class RecentProjectItem extends Model
     public set OpenCommand(v: ICommand | undefined) { this.set_property_value(RecentProjectItem.OpenCommandKey, v) }
 }
 
-export class OpenProjectDialogModel extends Model
+export class OpenProjectDialogModel extends MuralBase
 {
-    static readonly RecentsKey = Model.RegisterProperty<ObservableCollection<RecentProjectItem>>(
+    static readonly RecentsKey = MuralBase.RegisterProperty<ObservableCollection<RecentProjectItem>>(
         OpenProjectDialogModel, 'Recents', undefined as unknown as ObservableCollection<RecentProjectItem>, MetaData.None)
-    static readonly EmptyLabelKey = Model.RegisterProperty<string>(
+    static readonly EmptyLabelKey = MuralBase.RegisterProperty<string>(
         OpenProjectDialogModel, 'EmptyLabel', '', MetaData.None)
-    static readonly BrowseCommandKey = Model.RegisterProperty<ICommand>(
+    static readonly BrowseCommandKey = MuralBase.RegisterProperty<ICommand>(
         OpenProjectDialogModel, 'BrowseCommand', undefined as unknown as ICommand, MetaData.None)
-    static readonly CancelCommandKey = Model.RegisterProperty<ICommand>(
+    static readonly CancelCommandKey = MuralBase.RegisterProperty<ICommand>(
         OpenProjectDialogModel, 'CancelCommand', undefined as unknown as ICommand, MetaData.None)
 
     constructor(

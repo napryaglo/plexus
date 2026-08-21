@@ -1,4 +1,4 @@
-import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime'
 
 // One editable parameter of a selected layout strategy. Two concrete VMs —
 // number and boolean — each with its own DataType-matched template (SpinEdit /
@@ -8,10 +8,10 @@ import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
 // Separate classes (rather than one VM with a type flag) so the .mu can pick
 // the editor by DataType instead of a trigger.
 
-export class NumberParamVM extends Model
+export class NumberParamVM extends MuralBase
 {
-    static readonly LabelKey = Model.RegisterProperty<string>(NumberParamVM, 'Label', '', MetaData.None)
-    static readonly ValueKey = Model.RegisterProperty<number>(NumberParamVM, 'Value', 0, MetaData.None)
+    static readonly LabelKey = MuralBase.RegisterProperty<string>(NumberParamVM, 'Label', '', MetaData.None)
+    static readonly ValueKey = MuralBase.RegisterProperty<number>(NumberParamVM, 'Value', 0, MetaData.None)
 
     constructor(public readonly Key: string, label: string, def: number, private readonly onChange: (key: string, value: number) => void)
     {
@@ -26,10 +26,10 @@ export class NumberParamVM extends Model
     public set Value(v: number) { this.set_property_value(NumberParamVM.ValueKey, v) }
 }
 
-export class BoolParamVM extends Model
+export class BoolParamVM extends MuralBase
 {
-    static readonly LabelKey = Model.RegisterProperty<string>(BoolParamVM, 'Label', '', MetaData.None)
-    static readonly ValueKey = Model.RegisterProperty<boolean>(BoolParamVM, 'Value', false, MetaData.None)
+    static readonly LabelKey = MuralBase.RegisterProperty<string>(BoolParamVM, 'Label', '', MetaData.None)
+    static readonly ValueKey = MuralBase.RegisterProperty<boolean>(BoolParamVM, 'Value', false, MetaData.None)
 
     constructor(public readonly Key: string, label: string, def: boolean, private readonly onChange: (key: string, value: boolean) => void)
     {

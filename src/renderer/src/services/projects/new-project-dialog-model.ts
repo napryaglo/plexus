@@ -1,6 +1,6 @@
 import {
     MetaData,
-    Model,
+    MuralBase,
     ObservableCollection,
     RelayCommand,
     type ICommand,
@@ -11,7 +11,7 @@ import type { BaseRef } from './base-binding.js'
 
 // The New Project dialog's view-model + its per-type choice model. Rendered by
 // DataTemplate[NewProjectDialogModel] / DataTemplate[ProjectTypeChoice]. It is a
-// plain Model (not a service): the ProjectExplorerService builds one, hands it a
+// plain MuralBase (not a service): the ProjectExplorerService builds one, hands it a
 // `close` callback wired to DialogService.Close, and awaits the result.
 
 export interface NewProjectResult
@@ -30,17 +30,17 @@ export interface NewProjectResult
 // One selectable project type in the picker (always a full list, even with a
 // single registered factory). Marker is the selection glyph the VM toggles —
 // themable text, no triggers/converters needed.
-export class ProjectTypeChoice extends Model
+export class ProjectTypeChoice extends MuralBase
 {
-    static readonly TypeKey = Model.RegisterProperty<string>(ProjectTypeChoice, 'Type', '', MetaData.None)
-    static readonly TitleKey = Model.RegisterProperty<string>(ProjectTypeChoice, 'Title', '', MetaData.None)
-    static readonly DescriptionKey = Model.RegisterProperty<string>(ProjectTypeChoice, 'Description', '', MetaData.None)
-    static readonly MarkerKey = Model.RegisterProperty<string>(ProjectTypeChoice, 'Marker', '○', MetaData.None)
-    static readonly RequiresMetaModelKey = Model.RegisterProperty<boolean>(
+    static readonly TypeKey = MuralBase.RegisterProperty<string>(ProjectTypeChoice, 'Type', '', MetaData.None)
+    static readonly TitleKey = MuralBase.RegisterProperty<string>(ProjectTypeChoice, 'Title', '', MetaData.None)
+    static readonly DescriptionKey = MuralBase.RegisterProperty<string>(ProjectTypeChoice, 'Description', '', MetaData.None)
+    static readonly MarkerKey = MuralBase.RegisterProperty<string>(ProjectTypeChoice, 'Marker', '○', MetaData.None)
+    static readonly RequiresMetaModelKey = MuralBase.RegisterProperty<boolean>(
         ProjectTypeChoice, 'RequiresMetaModel', false, MetaData.None)
-    static readonly OffersLibrariesKey = Model.RegisterProperty<boolean>(
+    static readonly OffersLibrariesKey = MuralBase.RegisterProperty<boolean>(
         ProjectTypeChoice, 'OffersLibraries', false, MetaData.None)
-    static readonly SelectCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly SelectCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         ProjectTypeChoice, 'SelectCommand', undefined, MetaData.None)
 
     constructor(type: string, title: string, description: string, requiresMetaModel = false, offersLibraries = false)
@@ -68,9 +68,9 @@ export class ProjectTypeChoice extends Model
 
 // One selectable meta-model in the library picker: a published BaseRef plus a
 // human `id @ version` label the combo displays.
-export class MetaModelChoice extends Model
+export class MetaModelChoice extends MuralBase
 {
-    static readonly LabelKey = Model.RegisterProperty<string>(MetaModelChoice, 'Label', '', MetaData.None)
+    static readonly LabelKey = MuralBase.RegisterProperty<string>(MetaModelChoice, 'Label', '', MetaData.None)
 
     constructor(public readonly Ref: BaseRef)
     {
@@ -84,10 +84,10 @@ export class MetaModelChoice extends Model
 
 // One selectable library in the architecture picker: a published BaseRef, a
 // human `id @ version` label, and a two-way IsSelected the Switch row binds.
-export class LibraryChoice extends Model
+export class LibraryChoice extends MuralBase
 {
-    static readonly LabelKey = Model.RegisterProperty<string>(LibraryChoice, 'Label', '', MetaData.None)
-    static readonly IsSelectedKey = Model.RegisterProperty<boolean>(LibraryChoice, 'IsSelected', false, MetaData.None)
+    static readonly LabelKey = MuralBase.RegisterProperty<string>(LibraryChoice, 'Label', '', MetaData.None)
+    static readonly IsSelectedKey = MuralBase.RegisterProperty<boolean>(LibraryChoice, 'IsSelected', false, MetaData.None)
 
     constructor(public readonly Ref: BaseRef)
     {
@@ -101,31 +101,31 @@ export class LibraryChoice extends Model
     public toString(): string { return this.Label }
 }
 
-export class NewProjectDialogModel extends Model
+export class NewProjectDialogModel extends MuralBase
 {
-    static readonly TypesKey = Model.RegisterProperty<ObservableCollection<ProjectTypeChoice>>(
+    static readonly TypesKey = MuralBase.RegisterProperty<ObservableCollection<ProjectTypeChoice>>(
         NewProjectDialogModel, 'Types', undefined as unknown as ObservableCollection<ProjectTypeChoice>, MetaData.None)
-    static readonly SelectedTypeKey = Model.RegisterProperty<ProjectTypeChoice | undefined>(
+    static readonly SelectedTypeKey = MuralBase.RegisterProperty<ProjectTypeChoice | undefined>(
         NewProjectDialogModel, 'SelectedType', undefined, MetaData.None)
-    static readonly NameKey = Model.RegisterProperty<string>(NewProjectDialogModel, 'Name', '', MetaData.None)
-    static readonly LocationKey = Model.RegisterProperty<string>(NewProjectDialogModel, 'Location', '', MetaData.None)
-    static readonly MetaModelsKey = Model.RegisterProperty<ObservableCollection<MetaModelChoice>>(
+    static readonly NameKey = MuralBase.RegisterProperty<string>(NewProjectDialogModel, 'Name', '', MetaData.None)
+    static readonly LocationKey = MuralBase.RegisterProperty<string>(NewProjectDialogModel, 'Location', '', MetaData.None)
+    static readonly MetaModelsKey = MuralBase.RegisterProperty<ObservableCollection<MetaModelChoice>>(
         NewProjectDialogModel, 'MetaModels', undefined as unknown as ObservableCollection<MetaModelChoice>, MetaData.None)
-    static readonly SelectedMetaModelKey = Model.RegisterProperty<MetaModelChoice | undefined>(
+    static readonly SelectedMetaModelKey = MuralBase.RegisterProperty<MetaModelChoice | undefined>(
         NewProjectDialogModel, 'SelectedMetaModel', undefined, MetaData.None)
-    static readonly ShowMetaModelPickerKey = Model.RegisterProperty<boolean>(
+    static readonly ShowMetaModelPickerKey = MuralBase.RegisterProperty<boolean>(
         NewProjectDialogModel, 'ShowMetaModelPicker', false, MetaData.None)
-    static readonly LibrariesKey = Model.RegisterProperty<ObservableCollection<LibraryChoice>>(
+    static readonly LibrariesKey = MuralBase.RegisterProperty<ObservableCollection<LibraryChoice>>(
         NewProjectDialogModel, 'Libraries', undefined as unknown as ObservableCollection<LibraryChoice>, MetaData.None)
-    static readonly ShowLibrariesPickerKey = Model.RegisterProperty<boolean>(
+    static readonly ShowLibrariesPickerKey = MuralBase.RegisterProperty<boolean>(
         NewProjectDialogModel, 'ShowLibrariesPicker', false, MetaData.None)
-    static readonly ErrorKey = Model.RegisterProperty<string>(NewProjectDialogModel, 'Error', '', MetaData.None)
-    static readonly CanConfirmKey = Model.RegisterProperty<boolean>(NewProjectDialogModel, 'CanConfirm', false, MetaData.None)
-    static readonly BrowseCommandKey = Model.RegisterProperty<ICommand>(
+    static readonly ErrorKey = MuralBase.RegisterProperty<string>(NewProjectDialogModel, 'Error', '', MetaData.None)
+    static readonly CanConfirmKey = MuralBase.RegisterProperty<boolean>(NewProjectDialogModel, 'CanConfirm', false, MetaData.None)
+    static readonly BrowseCommandKey = MuralBase.RegisterProperty<ICommand>(
         NewProjectDialogModel, 'BrowseCommand', undefined as unknown as ICommand, MetaData.None)
-    static readonly ConfirmCommandKey = Model.RegisterProperty<ICommand>(
+    static readonly ConfirmCommandKey = MuralBase.RegisterProperty<ICommand>(
         NewProjectDialogModel, 'ConfirmCommand', undefined as unknown as ICommand, MetaData.None)
-    static readonly CancelCommandKey = Model.RegisterProperty<ICommand>(
+    static readonly CancelCommandKey = MuralBase.RegisterProperty<ICommand>(
         NewProjectDialogModel, 'CancelCommand', undefined as unknown as ICommand, MetaData.None)
 
     constructor(

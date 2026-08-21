@@ -6,7 +6,7 @@
 import {
     Key,
     MetaData,
-    Model,
+    MuralBase,
     ObservableCollection,
     RelayCommand,
     ServiceBase,
@@ -29,31 +29,31 @@ export class AgentService extends ServiceBase implements IDockPanel
     public static readonly Key = new ServiceKey<AgentService>('AgentService')
 
     // IDockPanel: identify + label the Chat tab in the right panel dock.
-    public static readonly IdKey = Model.RegisterProperty<string>(
+    public static readonly IdKey = MuralBase.RegisterProperty<string>(
         AgentService, 'Id', 'agent', MetaData.None)
-    public static readonly TitleKey = Model.RegisterProperty<string>(
+    public static readonly TitleKey = MuralBase.RegisterProperty<string>(
         AgentService, 'Title', 'Chat', MetaData.None)
 
-    public static readonly TranscriptKey = Model.RegisterProperty<ObservableCollection<Model>>(
-        AgentService, 'Transcript', undefined as unknown as ObservableCollection<Model>, MetaData.None)
-    public static readonly DraftKey = Model.RegisterProperty<string>(
+    public static readonly TranscriptKey = MuralBase.RegisterProperty<ObservableCollection<MuralBase>>(
+        AgentService, 'Transcript', undefined as unknown as ObservableCollection<MuralBase>, MetaData.None)
+    public static readonly DraftKey = MuralBase.RegisterProperty<string>(
         AgentService, 'Draft', '', MetaData.None)
-    public static readonly StatusKey = Model.RegisterProperty<string>(
+    public static readonly StatusKey = MuralBase.RegisterProperty<string>(
         AgentService, 'Status', 'idle', MetaData.None)
     // False while the agent is blocked on a pending AskUserQuestion card — the
     // input row binds IsEnabled = $CanInput so a turn can't be sent mid-question.
-    public static readonly CanInputKey = Model.RegisterProperty<boolean>(
+    public static readonly CanInputKey = MuralBase.RegisterProperty<boolean>(
         AgentService, 'CanInput', true, MetaData.None)
-    public static readonly SendCommandKey = Model.RegisterProperty<ICommand>(
+    public static readonly SendCommandKey = MuralBase.RegisterProperty<ICommand>(
         AgentService, 'SendCommand', undefined as unknown as ICommand, MetaData.None)
     // Bound to a KeyDown EventTrigger on the input row; fires the turn only when
     // the pressed key is Return (the trigger fires for every bubbled keystroke).
-    public static readonly SubmitCommandKey = Model.RegisterProperty<ICommand>(
+    public static readonly SubmitCommandKey = MuralBase.RegisterProperty<ICommand>(
         AgentService, 'SubmitCommand', undefined as unknown as ICommand, MetaData.None)
     // The current project's persistent tool-approval rules (review + revoke). The
     // chat template shows it as a collapsible "Approved tools" section (only when
     // the project has rules).
-    public static readonly ApprovalsKey = Model.RegisterProperty<ApprovalRulesVM>(
+    public static readonly ApprovalsKey = MuralBase.RegisterProperty<ApprovalRulesVM>(
         AgentService, 'Approvals', undefined as unknown as ApprovalRulesVM, MetaData.None)
 
     private readonly reducer = new TranscriptReducer()
@@ -142,7 +142,7 @@ export class AgentService extends ServiceBase implements IDockPanel
 
     public get Id(): string { return this.get_property_value(AgentService.IdKey) }
     public get Title(): string { return this.get_property_value(AgentService.TitleKey) }
-    public get Transcript(): ObservableCollection<Model> { return this.get_property_value(AgentService.TranscriptKey) }
+    public get Transcript(): ObservableCollection<MuralBase> { return this.get_property_value(AgentService.TranscriptKey) }
     public get Draft(): string { return this.get_property_value(AgentService.DraftKey) }
     public set Draft(value: string) { this.set_property_value(AgentService.DraftKey, value) }
     public get Status(): string { return this.get_property_value(AgentService.StatusKey) }

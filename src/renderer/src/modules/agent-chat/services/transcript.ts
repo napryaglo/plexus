@@ -2,7 +2,7 @@
 // agent-chat.resources.mu) and the pure reducer that folds AgentEvents into an
 // ObservableCollection. Kept free of ServiceBase/window so it is unit-testable;
 // AgentService is a thin shell over it.
-import { MetaData, Model, ObservableCollection, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, ObservableCollection, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
 import { type FlowDocument } from '@pragmatic-lab/mural/basic'
 import { AgentEventKind, type AgentEvent, type QuestionAnswer, type ToolApprovalAnswer } from '../../../../../shared/agent-api.js'
 import { buildFlowDocument } from '../../../services/markdown/markdown-document.js'
@@ -11,20 +11,20 @@ import { ToolApprovalCard } from './approval-card.js'
 
 export enum TranscriptRole { User = 'user', Assistant = 'assistant', Tool = 'tool' }
 
-export class UserMessage extends Model
+export class UserMessage extends MuralBase
 {
-    public static readonly TextKey = Model.RegisterProperty<string>(UserMessage, 'Text', '', MetaData.None)
+    public static readonly TextKey = MuralBase.RegisterProperty<string>(UserMessage, 'Text', '', MetaData.None)
     constructor(text: string) { super(); this.set_property_value(UserMessage.TextKey, text) }
     public get Text(): string { return this.get_property_value(UserMessage.TextKey) }
 }
 
-export class AssistantMessage extends Model
+export class AssistantMessage extends MuralBase
 {
-    public static readonly TextKey = Model.RegisterProperty<string>(AssistantMessage, 'Text', '', MetaData.None)
+    public static readonly TextKey = MuralBase.RegisterProperty<string>(AssistantMessage, 'Text', '', MetaData.None)
     // The formatted view of Text — the agent writes markdown, so we parse it into
     // a FlowDocument the RichTextBlock lays out (headings, bold, code, lists, …).
     // Rebuilt on every delta so formatting appears live as the response streams.
-    public static readonly DocumentKey = Model.RegisterProperty<FlowDocument | undefined>(
+    public static readonly DocumentKey = MuralBase.RegisterProperty<FlowDocument | undefined>(
         AssistantMessage, 'Document', undefined, MetaData.None)
 
     public get Text(): string { return this.get_property_value(AssistantMessage.TextKey) }
@@ -45,21 +45,21 @@ export class AssistantMessage extends Model
 // shown; the body — IN (the tool's command / input) and OUT (a capped slice of
 // the result) — collapses. Starts collapsed; ToggleCommand flips it. Every
 // view-bound field is a DP (mural binds via get_property_value).
-export class ToolActivity extends Model
+export class ToolActivity extends MuralBase
 {
-    public static readonly NameKey           = Model.RegisterProperty<string>(ToolActivity, 'Name', '', MetaData.None)
-    public static readonly DescriptionKey    = Model.RegisterProperty<string>(ToolActivity, 'Description', '', MetaData.None)
-    public static readonly HasDescriptionKey = Model.RegisterProperty<boolean>(ToolActivity, 'HasDescription', false, MetaData.None)
-    public static readonly CommandKey        = Model.RegisterProperty<string>(ToolActivity, 'Command', '', MetaData.None)
-    public static readonly HasCommandKey     = Model.RegisterProperty<boolean>(ToolActivity, 'HasCommand', false, MetaData.None)
-    public static readonly OutputKey         = Model.RegisterProperty<string>(ToolActivity, 'Output', '', MetaData.None)
-    public static readonly HasOutputKey      = Model.RegisterProperty<boolean>(ToolActivity, 'HasOutput', false, MetaData.None)
-    public static readonly StatusKey         = Model.RegisterProperty<string>(ToolActivity, 'Status', 'running', MetaData.None)
+    public static readonly NameKey           = MuralBase.RegisterProperty<string>(ToolActivity, 'Name', '', MetaData.None)
+    public static readonly DescriptionKey    = MuralBase.RegisterProperty<string>(ToolActivity, 'Description', '', MetaData.None)
+    public static readonly HasDescriptionKey = MuralBase.RegisterProperty<boolean>(ToolActivity, 'HasDescription', false, MetaData.None)
+    public static readonly CommandKey        = MuralBase.RegisterProperty<string>(ToolActivity, 'Command', '', MetaData.None)
+    public static readonly HasCommandKey     = MuralBase.RegisterProperty<boolean>(ToolActivity, 'HasCommand', false, MetaData.None)
+    public static readonly OutputKey         = MuralBase.RegisterProperty<string>(ToolActivity, 'Output', '', MetaData.None)
+    public static readonly HasOutputKey      = MuralBase.RegisterProperty<boolean>(ToolActivity, 'HasOutput', false, MetaData.None)
+    public static readonly StatusKey         = MuralBase.RegisterProperty<string>(ToolActivity, 'Status', 'running', MetaData.None)
     // IsExpanded + its inverse — no inverse Visibility converter exists, so the
     // collapsed-caret binds $IsCollapsed and the body binds $IsExpanded.
-    public static readonly IsExpandedKey     = Model.RegisterProperty<boolean>(ToolActivity, 'IsExpanded', false, MetaData.None)
-    public static readonly IsCollapsedKey    = Model.RegisterProperty<boolean>(ToolActivity, 'IsCollapsed', true, MetaData.None)
-    public static readonly ToggleCommandKey  = Model.RegisterProperty<ICommand>(
+    public static readonly IsExpandedKey     = MuralBase.RegisterProperty<boolean>(ToolActivity, 'IsExpanded', false, MetaData.None)
+    public static readonly IsCollapsedKey    = MuralBase.RegisterProperty<boolean>(ToolActivity, 'IsCollapsed', true, MetaData.None)
+    public static readonly ToggleCommandKey  = MuralBase.RegisterProperty<ICommand>(
         ToolActivity, 'ToggleCommand', undefined as unknown as ICommand, MetaData.None)
 
     public readonly Id: string
@@ -133,7 +133,7 @@ function toolDetail(input: unknown): string
 
 export class TranscriptReducer
 {
-    public readonly Transcript = new ObservableCollection<Model>()
+    public readonly Transcript = new ObservableCollection<MuralBase>()
 
     // The assistant bubble currently being streamed into, or null when the next
     // text delta should open a fresh one.
@@ -164,7 +164,7 @@ export class TranscriptReducer
     // form AgentService assembles asynchronously), mirroring how the Question case
     // adds a QuestionCard: reset the open assistant bubble, track it as a blocking
     // card so input is gated, and insert it.
-    public addPendingCard(id: string, card: Model): void
+    public addPendingCard(id: string, card: MuralBase): void
     {
         this.currentAssistant = null
         this.pendingQuestions.add(id)

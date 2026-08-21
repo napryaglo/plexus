@@ -1,4 +1,4 @@
-import { Model, Element } from '@pragmatic-lab/mural/runtime'
+import { MuralBase, Element } from '@pragmatic-lab/mural/runtime'
 import { TabControl } from '@pragmatic-lab/mural/framework'
 
 // ExtendedTabControl — a mural TabControl that reserves the top-right corner of
@@ -15,7 +15,7 @@ import { TabControl } from '@pragmatic-lab/mural/framework'
 export class ExtendedTabControl extends TabControl
 {
     static {
-        Model.OverrideMetadata(
+        MuralBase.OverrideMetadata(
             ExtendedTabControl, Element.DefaultStyleKeyKey,
             { default_value: ExtendedTabControl })
     }

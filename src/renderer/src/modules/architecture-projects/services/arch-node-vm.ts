@@ -1,4 +1,4 @@
-import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime'
 import { DiagramSettings, NodeViewModel, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 
 // Initial box for a freshly-dropped arch tile. The container fits its content
@@ -15,8 +15,8 @@ export const ARCH_TILE_DEFAULT = { w: 72, h: 56 } as const
 // SizeToContent (set when the container binds a VM). See the container-owned-
 // geometry redesign.
 export class ArchNodeVM extends NodeViewModel {
-    static readonly LabelKey = Model.RegisterProperty<string>(ArchNodeVM, 'Label', '', MetaData.None)
-    static readonly DescriptorKey = Model.RegisterProperty<ToolboxVisualDescriptor | undefined>(
+    static readonly LabelKey = MuralBase.RegisterProperty<string>(ArchNodeVM, 'Label', '', MetaData.None)
+    static readonly DescriptorKey = MuralBase.RegisterProperty<ToolboxVisualDescriptor | undefined>(
         ArchNodeVM,
         'Descriptor',
         undefined,
@@ -26,13 +26,13 @@ export class ArchNodeVM extends NodeViewModel {
     // setting (read once at construction, exactly as Figure.fromKind reads it)
     // so an arch node's icon renders at the same size as a geometric shape.
     // A real DP so the tile template can bind `$IconSize`.
-    static readonly IconSizeKey = Model.RegisterProperty<number>(ArchNodeVM, 'IconSize', 80, MetaData.None)
+    static readonly IconSizeKey = MuralBase.RegisterProperty<number>(ArchNodeVM, 'IconSize', 80, MetaData.None)
 
     // The concept this node instantiates + whether it has an openable wiki page.
     // Drive the "Open Wiki" context menu (Visibility via HasWiki, CommandParameter
     // via Concept). Populated by ArchDiagramBinding.rescan.
-    static readonly ConceptKey = Model.RegisterProperty<string>(ArchNodeVM, 'Concept', '', MetaData.None)
-    static readonly HasWikiKey = Model.RegisterProperty<boolean>(ArchNodeVM, 'HasWiki', false, MetaData.None)
+    static readonly ConceptKey = MuralBase.RegisterProperty<string>(ArchNodeVM, 'Concept', '', MetaData.None)
+    static readonly HasWikiKey = MuralBase.RegisterProperty<boolean>(ArchNodeVM, 'HasWiki', false, MetaData.None)
 
     constructor() {
         super()

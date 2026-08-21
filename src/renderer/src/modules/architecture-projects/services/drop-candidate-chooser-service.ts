@@ -1,13 +1,13 @@
 import {
-    MetaData, Model, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
+    MetaData, MuralBase, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
 
-// One selectable candidate row. A Model so the .mu template binds $Label / $Command.
-export class ChooserRow extends Model
+// One selectable candidate row. A MuralBase so the .mu template binds $Label / $Command.
+export class ChooserRow extends MuralBase
 {
-    public static readonly LabelKey = Model.RegisterProperty<string>(ChooserRow, 'Label', '', MetaData.None)
-    public static readonly CommandKey = Model.RegisterProperty<ICommand | undefined>(ChooserRow, 'Command', undefined, MetaData.None)
+    public static readonly LabelKey = MuralBase.RegisterProperty<string>(ChooserRow, 'Label', '', MetaData.None)
+    public static readonly CommandKey = MuralBase.RegisterProperty<ICommand | undefined>(ChooserRow, 'Command', undefined, MetaData.None)
 
     public constructor(label: string, command: ICommand)
     {
@@ -27,8 +27,8 @@ export class DropCandidateChooserService extends ServiceBase
 {
     public static readonly Key = new ServiceKey<DropCandidateChooserService>('DropCandidateChooserService')
 
-    public static readonly IsOpenKey = Model.RegisterProperty<boolean>(DropCandidateChooserService, 'IsOpen', false, MetaData.None)
-    public static readonly RowsKey = Model.RegisterProperty<ObservableCollection<ChooserRow>>(
+    public static readonly IsOpenKey = MuralBase.RegisterProperty<boolean>(DropCandidateChooserService, 'IsOpen', false, MetaData.None)
+    public static readonly RowsKey = MuralBase.RegisterProperty<ObservableCollection<ChooserRow>>(
         DropCandidateChooserService, 'Rows', undefined as unknown as ObservableCollection<ChooserRow>, MetaData.None)
 
     public constructor(provider: IServiceProvider)

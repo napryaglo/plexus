@@ -4,7 +4,7 @@ import {
     TextAlignment, TextBlock,
     type Block, type Inline,
 } from '@pragmatic-lab/mural/basic'
-import { DynamicResource, Model, PropertyKey, Thickness } from '@pragmatic-lab/mural/runtime'
+import { DynamicResource, MuralBase, PropertyKey, Thickness } from '@pragmatic-lab/mural/runtime'
 
 // markdown-document.ts — turns the agent's markdown text into a mural
 // FlowDocument so a RichTextBlock can lay it out with real formatting
@@ -420,7 +420,7 @@ function codeChip(text: string): InlineUIContainer
 // the DP's value, but the runtime also accepts a Binding here (the documented
 // DynamicResource pattern) — it resolves against the ambient theme and tracks
 // light/dark swaps. The cast is the static-typing tax on that pattern.
-function bindTheme<T>(target: Model, key: PropertyKey<T>, token: string): void
+function bindTheme<T>(target: MuralBase, key: PropertyKey<T>, token: string): void
 {
     target.set_property_value(key, DynamicResource(target, token) as unknown as T)
 }

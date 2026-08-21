@@ -1,4 +1,4 @@
-import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime'
 import { FlowDocument } from '@pragmatic-lab/mural/basic'
 import type { IDocument } from '@pragmatic-lab/mural/framework'
 
@@ -15,13 +15,13 @@ function fileName(path: string): string
 // editable text and never saves: it holds the parsed FlowDocument the
 // DataTemplate[WikiDocument] lays out with a RichTextBlock. Id is the file's
 // absolute path, so re-opening the same page dedupes to one tab.
-export class WikiDocument extends Model implements IDocument
+export class WikiDocument extends MuralBase implements IDocument
 {
-    public static readonly IdKey = Model.RegisterProperty<string>(
+    public static readonly IdKey = MuralBase.RegisterProperty<string>(
         WikiDocument, 'Id', '', MetaData.None)
-    public static readonly TitleKey = Model.RegisterProperty<string>(
+    public static readonly TitleKey = MuralBase.RegisterProperty<string>(
         WikiDocument, 'Title', '', MetaData.None)
-    public static readonly DocumentKey = Model.RegisterProperty<FlowDocument>(
+    public static readonly DocumentKey = MuralBase.RegisterProperty<FlowDocument>(
         WikiDocument, 'Document', undefined as unknown as FlowDocument, MetaData.None)
 
     public constructor(path: string, text: string)

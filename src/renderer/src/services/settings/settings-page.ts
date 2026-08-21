@@ -1,7 +1,7 @@
 import {
     type ICommand,
     MetaData,
-    Model,
+    MuralBase,
     ObservableCollection,
     RelayCommand,
 } from '@pragmatic-lab/mural/runtime'
@@ -22,13 +22,13 @@ import type { FileSystemService } from '../file-system/file-system-service.js'
 // `$path` binding's first segment MUST be a DP or it silently resolves to
 // undefined (a plain getter would leave the label column blank). The subclass
 // type is what selects the editor template.
-export abstract class SettingRow extends Model
+export abstract class SettingRow extends MuralBase
 {
-    public static readonly SettingKey = Model.RegisterProperty<Setting>(
+    public static readonly SettingKey = MuralBase.RegisterProperty<Setting>(
         SettingRow, 'Setting', undefined as unknown as Setting, MetaData.None)
-    public static readonly LabelKey = Model.RegisterProperty<string>(
+    public static readonly LabelKey = MuralBase.RegisterProperty<string>(
         SettingRow, 'Label', '', MetaData.None)
-    public static readonly DescriptionKey = Model.RegisterProperty<string>(
+    public static readonly DescriptionKey = MuralBase.RegisterProperty<string>(
         SettingRow, 'Description', '', MetaData.None)
 
     constructor(setting: Setting)
@@ -53,9 +53,9 @@ export class BooleanSettingRow extends SettingRow { }
 // Minimum/Maximum are DPs so the SpinEdit's `$Minimum`/`$Maximum` bindings resolve.
 export class NumberSettingRow extends SettingRow
 {
-    public static readonly MinimumKey = Model.RegisterProperty<number>(
+    public static readonly MinimumKey = MuralBase.RegisterProperty<number>(
         NumberSettingRow, 'Minimum', -Number.MAX_VALUE, MetaData.None)
-    public static readonly MaximumKey = Model.RegisterProperty<number>(
+    public static readonly MaximumKey = MuralBase.RegisterProperty<number>(
         NumberSettingRow, 'Maximum', Number.MAX_VALUE, MetaData.None)
 
     constructor(setting: Setting)
@@ -80,7 +80,7 @@ export class ColorSettingRow extends SettingRow { }
 // Choices is a DP so the ComboBox's `$Choices` binding resolves.
 export class ChoiceSettingRow extends SettingRow
 {
-    public static readonly ChoicesKey = Model.RegisterProperty<ObservableCollection<string> | undefined>(
+    public static readonly ChoicesKey = MuralBase.RegisterProperty<ObservableCollection<string> | undefined>(
         ChoiceSettingRow, 'Choices', undefined, MetaData.None)
 
     constructor(setting: Setting)
@@ -97,7 +97,7 @@ export class ChoiceSettingRow extends SettingRow
 // path back to the value.
 export class FilePathSettingRow extends SettingRow
 {
-    public static readonly BrowseCommandKey = Model.RegisterProperty<ICommand>(
+    public static readonly BrowseCommandKey = MuralBase.RegisterProperty<ICommand>(
         FilePathSettingRow, 'BrowseCommand', undefined as unknown as ICommand, MetaData.None)
 
     constructor(setting: Setting, files: FileSystemService | undefined)
@@ -128,11 +128,11 @@ function createRow(setting: Setting, files: FileSystemService | undefined): Sett
 }
 
 // One category section (grouping bucket) with its rows.
-export class SettingsCategory extends Model
+export class SettingsCategory extends MuralBase
 {
-    public static readonly NameKey = Model.RegisterProperty<string>(
+    public static readonly NameKey = MuralBase.RegisterProperty<string>(
         SettingsCategory, 'Name', '', MetaData.None)
-    public static readonly RowsKey = Model.RegisterProperty<ObservableCollection<SettingRow>>(
+    public static readonly RowsKey = MuralBase.RegisterProperty<ObservableCollection<SettingRow>>(
         SettingsCategory, 'Rows', undefined as unknown as ObservableCollection<SettingRow>, MetaData.None)
 
     constructor(name: string)
@@ -156,9 +156,9 @@ export class SettingsCategory extends Model
 // so re-opening the gear dedupes to the one page rather than stacking tabs.
 // Never dirty (edits persist live through ApplicationSettings' store), so Save
 // is a no-op.
-export class SettingsPage extends Model implements IDocument
+export class SettingsPage extends MuralBase implements IDocument
 {
-    public static readonly CategoriesKey = Model.RegisterProperty<ObservableCollection<SettingsCategory>>(
+    public static readonly CategoriesKey = MuralBase.RegisterProperty<ObservableCollection<SettingsCategory>>(
         SettingsPage, 'Categories', undefined as unknown as ObservableCollection<SettingsCategory>, MetaData.None)
 
     public readonly Id = 'settings'

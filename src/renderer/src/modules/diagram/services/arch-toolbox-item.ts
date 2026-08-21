@@ -1,4 +1,4 @@
-import { MetaData, Model, type ServiceKey } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, type ServiceKey } from '@pragmatic-lab/mural/runtime'
 import { ToolboxItem, type ToolboxVisualDescriptor, type IToolboxDropFactory } from '@pragmatic-lab/mural/framework'
 
 // A Plexus toolbox item that also exposes Display (= the term label) so a class
@@ -6,14 +6,14 @@ import { ToolboxItem, type ToolboxVisualDescriptor, type IToolboxDropFactory } f
 // DataContext. The mural base carries Id/Label/Descriptor/FactoryKey/BeginDragData.
 export class ArchToolboxItem extends ToolboxItem
 {
-    public static readonly DisplayKey = Model.RegisterProperty<string>(
+    public static readonly DisplayKey = MuralBase.RegisterProperty<string>(
         ArchToolboxItem, 'Display', '', MetaData.None)
     // The concept this tile drops + whether it has an openable wiki page. Drive
     // the shared "Open Wiki" context menu (Visibility via HasWiki, CommandParameter
     // via Concept). HasWiki is filled asynchronously by the contributor.
-    public static readonly ConceptKey = Model.RegisterProperty<string>(
+    public static readonly ConceptKey = MuralBase.RegisterProperty<string>(
         ArchToolboxItem, 'Concept', '', MetaData.None)
-    public static readonly HasWikiKey = Model.RegisterProperty<boolean>(
+    public static readonly HasWikiKey = MuralBase.RegisterProperty<boolean>(
         ArchToolboxItem, 'HasWiki', false, MetaData.None)
 
     constructor(

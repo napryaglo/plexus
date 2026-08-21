@@ -1,4 +1,4 @@
-import { MetaData, Model, ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, ObservableCollection } from '@pragmatic-lab/mural/runtime'
 import type { CatalogStrategy, CatalogParam, LayoutStageSpec } from '@pragmatic-lab/fresco'
 
 import { NumberParamVM, BoolParamVM } from './layout-param-vm.js'
@@ -13,20 +13,20 @@ export const DEFAULT_OPTION = '(default)'
 // parameters of the currently selected strategy. Selecting a strategy or
 // editing a parameter re-emits the stage's value ({ className, params }, or
 // undefined for "(default)") into PipelineConfiguration.layout.
-export class LayoutStageVM extends Model
+export class LayoutStageVM extends MuralBase
 {
-    static readonly LabelKey = Model.RegisterProperty<string>(
+    static readonly LabelKey = MuralBase.RegisterProperty<string>(
         LayoutStageVM, 'Label', '', MetaData.None)
-    static readonly OptionsKey = Model.RegisterProperty<ObservableCollection<string>>(
+    static readonly OptionsKey = MuralBase.RegisterProperty<ObservableCollection<string>>(
         LayoutStageVM, 'Options', undefined as unknown as ObservableCollection<string>, MetaData.None)
-    static readonly SelectedKey = Model.RegisterProperty<string>(
+    static readonly SelectedKey = MuralBase.RegisterProperty<string>(
         LayoutStageVM, 'Selected', DEFAULT_OPTION, MetaData.None)
-    static readonly ParamsKey = Model.RegisterProperty<ObservableCollection<Model>>(
-        LayoutStageVM, 'Params', undefined as unknown as ObservableCollection<Model>, MetaData.None)
+    static readonly ParamsKey = MuralBase.RegisterProperty<ObservableCollection<MuralBase>>(
+        LayoutStageVM, 'Params', undefined as unknown as ObservableCollection<MuralBase>, MetaData.None)
     // Whether this stage's ComboBox is interactive. Set false to disable a
     // stage made irrelevant by another stage's choice (e.g. the Port
     // Assigner when the Edge Router does native diagram routing).
-    static readonly EnabledKey = Model.RegisterProperty<boolean>(
+    static readonly EnabledKey = MuralBase.RegisterProperty<boolean>(
         LayoutStageVM, 'Enabled', true, MetaData.None)
 
     private readonly byName = new Map<string, CatalogStrategy>()
@@ -52,7 +52,7 @@ export class LayoutStageVM extends Model
             this.byClassName.set(s.className, s.name)
         }
         this.set_property_value(LayoutStageVM.OptionsKey, opts)
-        this.set_property_value(LayoutStageVM.ParamsKey, new ObservableCollection<Model>())
+        this.set_property_value(LayoutStageVM.ParamsKey, new ObservableCollection<MuralBase>())
 
         this.AddPropertyChangedListener(LayoutStageVM.SelectedKey, () => this.onSelected())
     }
@@ -61,7 +61,7 @@ export class LayoutStageVM extends Model
     public get Options(): ObservableCollection<string> { return this.get_property_value(LayoutStageVM.OptionsKey) }
     public get Selected(): string { return this.get_property_value(LayoutStageVM.SelectedKey) }
     public set Selected(v: string) { this.set_property_value(LayoutStageVM.SelectedKey, v) }
-    public get Params(): ObservableCollection<Model> { return this.get_property_value(LayoutStageVM.ParamsKey) }
+    public get Params(): ObservableCollection<MuralBase> { return this.get_property_value(LayoutStageVM.ParamsKey) }
     public get Enabled(): boolean { return this.get_property_value(LayoutStageVM.EnabledKey) }
     public set Enabled(v: boolean) { this.set_property_value(LayoutStageVM.EnabledKey, v) }
 

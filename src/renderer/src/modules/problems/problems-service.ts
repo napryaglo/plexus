@@ -1,5 +1,5 @@
 import {
-    Model, MetaData, ObservableCollection, ServiceBase, ServiceKey, RelayCommand,
+    MuralBase, MetaData, ObservableCollection, ServiceBase, ServiceKey, RelayCommand,
     type ICommand, type IServiceProvider, type PropertyDescriptor,
 } from '@pragmatic-lab/mural/runtime'
 import { DiagnosticsService } from '../../services/diagnostics/diagnostics-service.js'
@@ -24,24 +24,24 @@ export const ProblemsServiceKey = new ServiceKey<ProblemsService>('ProblemsServi
 // projects have problems), then one self-contained Diagnostic row per problem.
 export enum ProblemRowKind { ProjectHeader, Diagnostic }
 
-// One row in the dock. A Model so the .mu template binds $Label / $Detail / etc.
-export class ProblemsRow extends Model
+// One row in the dock. A MuralBase so the .mu template binds $Label / $Detail / etc.
+export class ProblemsRow extends MuralBase
 {
-    public static readonly KindKey = Model.RegisterProperty<ProblemRowKind>(
+    public static readonly KindKey = MuralBase.RegisterProperty<ProblemRowKind>(
         ProblemsRow, 'Kind', ProblemRowKind.Diagnostic, MetaData.None)
-    public static readonly LabelKey = Model.RegisterProperty<string>(ProblemsRow, 'Label', '', MetaData.None)
-    public static readonly DetailKey = Model.RegisterProperty<string>(ProblemsRow, 'Detail', '', MetaData.None)
-    public static readonly SeverityKey = Model.RegisterProperty<DiagnosticSeverity>(
+    public static readonly LabelKey = MuralBase.RegisterProperty<string>(ProblemsRow, 'Label', '', MetaData.None)
+    public static readonly DetailKey = MuralBase.RegisterProperty<string>(ProblemsRow, 'Detail', '', MetaData.None)
+    public static readonly SeverityKey = MuralBase.RegisterProperty<DiagnosticSeverity>(
         ProblemsRow, 'Severity', DiagnosticSeverity.Error, MetaData.None)
-    public static readonly IsErrorKey = Model.RegisterProperty<boolean>(ProblemsRow, 'IsError', false, MetaData.None)
-    public static readonly IsDiagnosticKey = Model.RegisterProperty<boolean>(ProblemsRow, 'IsDiagnostic', false, MetaData.None)
-    public static readonly ProjectIdKey = Model.RegisterProperty<string>(ProblemsRow, 'ProjectId', '', MetaData.None)
-    public static readonly UriKey = Model.RegisterProperty<string | null>(ProblemsRow, 'Uri', null, MetaData.None)
-    public static readonly LineKey = Model.RegisterProperty<number>(ProblemsRow, 'Line', 1, MetaData.None)
-    public static readonly ColumnKey = Model.RegisterProperty<number>(ProblemsRow, 'Column', 1, MetaData.None)
-    public static readonly ActivateCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    public static readonly IsErrorKey = MuralBase.RegisterProperty<boolean>(ProblemsRow, 'IsError', false, MetaData.None)
+    public static readonly IsDiagnosticKey = MuralBase.RegisterProperty<boolean>(ProblemsRow, 'IsDiagnostic', false, MetaData.None)
+    public static readonly ProjectIdKey = MuralBase.RegisterProperty<string>(ProblemsRow, 'ProjectId', '', MetaData.None)
+    public static readonly UriKey = MuralBase.RegisterProperty<string | null>(ProblemsRow, 'Uri', null, MetaData.None)
+    public static readonly LineKey = MuralBase.RegisterProperty<number>(ProblemsRow, 'Line', 1, MetaData.None)
+    public static readonly ColumnKey = MuralBase.RegisterProperty<number>(ProblemsRow, 'Column', 1, MetaData.None)
+    public static readonly ActivateCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         ProblemsRow, 'ActivateCommand', undefined, MetaData.None)
-    public static readonly CopyCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    public static readonly CopyCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         ProblemsRow, 'CopyCommand', undefined, MetaData.None)
 
     constructor(init: {
@@ -88,37 +88,37 @@ export class ProblemsService extends ServiceBase
 {
     public static readonly Key = ProblemsServiceKey
 
-    public static readonly RowsKey = Model.RegisterProperty<ObservableCollection<ProblemsRow>>(
+    public static readonly RowsKey = MuralBase.RegisterProperty<ObservableCollection<ProblemsRow>>(
         ProblemsService, 'Rows', undefined as unknown as ObservableCollection<ProblemsRow>, MetaData.None)
-    public static readonly ErrorCountKey = Model.RegisterProperty<number>(ProblemsService, 'ErrorCount', 0, MetaData.None)
-    public static readonly WarningCountKey = Model.RegisterProperty<number>(ProblemsService, 'WarningCount', 0, MetaData.None)
+    public static readonly ErrorCountKey = MuralBase.RegisterProperty<number>(ProblemsService, 'ErrorCount', 0, MetaData.None)
+    public static readonly WarningCountKey = MuralBase.RegisterProperty<number>(ProblemsService, 'WarningCount', 0, MetaData.None)
     // The status-bar cell's face text (e.g. "3 errors, 2 warnings" / "No problems").
-    public static readonly SummaryTextKey = Model.RegisterProperty<string>(ProblemsService, 'SummaryText', 'No problems', MetaData.None)
+    public static readonly SummaryTextKey = MuralBase.RegisterProperty<string>(ProblemsService, 'SummaryText', 'No problems', MetaData.None)
     // Drives the MenuButton popup open (bound one-way IsOpen = $IsOpen): a failed
     // publish sets it true via Expand() to surface the problems.
-    public static readonly IsOpenKey = Model.RegisterProperty<boolean>(ProblemsService, 'IsOpen', false, MetaData.None)
+    public static readonly IsOpenKey = MuralBase.RegisterProperty<boolean>(ProblemsService, 'IsOpen', false, MetaData.None)
 
     // Toolbar filter state. Any change re-runs rebuild() (see OnPropertyChanged),
     // which filters the diagnostics before grouping. Counts stay full totals.
-    public static readonly ShowErrorsKey = Model.RegisterProperty<boolean>(ProblemsService, 'ShowErrors', true, MetaData.None)
-    public static readonly ShowWarningsKey = Model.RegisterProperty<boolean>(ProblemsService, 'ShowWarnings', true, MetaData.None)
-    public static readonly FilterTextKey = Model.RegisterProperty<string>(ProblemsService, 'FilterText', '', MetaData.None)
+    public static readonly ShowErrorsKey = MuralBase.RegisterProperty<boolean>(ProblemsService, 'ShowErrors', true, MetaData.None)
+    public static readonly ShowWarningsKey = MuralBase.RegisterProperty<boolean>(ProblemsService, 'ShowWarnings', true, MetaData.None)
+    public static readonly FilterTextKey = MuralBase.RegisterProperty<string>(ProblemsService, 'FilterText', '', MetaData.None)
 
     // MaxHeight for the popup's scrollable list = 30% of the live window height.
     // Bound by the .mu ScrollViewer; recomputed whenever ViewportService.Height
     // changes.
-    public static readonly ListMaxHeightKey = Model.RegisterProperty<number>(
+    public static readonly ListMaxHeightKey = MuralBase.RegisterProperty<number>(
         ProblemsService, 'ListMaxHeight', FALLBACK_LIST_MAX_HEIGHT, MetaData.None)
 
     // Popup width = the live window width, so the dropdown spans the whole window.
     // Bound by the .mu popup container; recomputed on resize.
-    public static readonly PopupWidthKey = Model.RegisterProperty<number>(
+    public static readonly PopupWidthKey = MuralBase.RegisterProperty<number>(
         ProblemsService, 'PopupWidth', 0, MetaData.None)
 
     // Toolbar commands: copy the (filtered) list to the clipboard; reset filters.
-    public static readonly CopyAllCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    public static readonly CopyAllCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         ProblemsService, 'CopyAllCommand', undefined, MetaData.None)
-    public static readonly ClearFiltersCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    public static readonly ClearFiltersCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         ProblemsService, 'ClearFiltersCommand', undefined, MetaData.None)
 
     // Set true while ClearFilters mutates several filter DPs, so their individual

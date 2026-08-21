@@ -11,7 +11,7 @@
 // first expand (see MetaModelTreeNode / meta-model-tree-builder).
 import {
     MetaData,
-    Model,
+    MuralBase,
     ObservableCollection,
     ServiceBase,
     ServiceKey,
@@ -33,12 +33,12 @@ export class MetaModelsService extends ServiceBase implements IActivatable
 {
     public static readonly Key = new ServiceKey<MetaModelsService>('MetaModelsService')
 
-    public static readonly NodesKey = Model.RegisterProperty<ObservableCollection<MetaModelTreeNode>>(
+    public static readonly NodesKey = MuralBase.RegisterProperty<ObservableCollection<MetaModelTreeNode>>(
         MetaModelsService, 'Nodes',
         undefined as unknown as ObservableCollection<MetaModelTreeNode>, MetaData.None)
 
     // True when nothing has been published yet — drives the empty-state text.
-    public static readonly IsEmptyKey = Model.RegisterProperty<boolean>(
+    public static readonly IsEmptyKey = MuralBase.RegisterProperty<boolean>(
         MetaModelsService, 'IsEmpty', false, MetaData.None)
 
     // Bumped each reload; a slower earlier scan whose seq is stale is discarded,
@@ -113,7 +113,7 @@ export class MetaModelsService extends ServiceBase implements IActivatable
             const deps = await this.dependentLibraries(target.id, target.version)
             const message = await this.confirmMessage(backend, target, deps)
             const vm = new ConfirmDialogModel(message, 'Delete', (r) => dialogs.Close(r))
-            const ok = await dialogs.Show<boolean>({ Title: 'Delete Meta-Model', Content: vm, Width: 440 })
+            const ok = await dialogs.Show<boolean>({ Title: 'Delete Meta-MuralBase', Content: vm, Width: 440 })
             if (ok !== true) return
         }
 

@@ -1,14 +1,14 @@
-import { MetaData, Model, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, type ICommand } from '@pragmatic-lab/mural/runtime'
 
 // One entry in a project's / node's "Add New" submenu: a labelled command that
 // creates a file of a specific declared format in the target container. The host
 // (ProjectExplorerService) builds one per ProjectFileFormat; the submenu's item
-// template binds $Label and $Command. A Model (not a plain object) so those
+// template binds $Label and $Command. A MuralBase (not a plain object) so those
 // bindings resolve — bindings only walk dependency properties.
-export class NewItemChoice extends Model
+export class NewItemChoice extends MuralBase
 {
-    static readonly LabelKey = Model.RegisterProperty<string>(NewItemChoice, 'Label', '', MetaData.None)
-    static readonly CommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly LabelKey = MuralBase.RegisterProperty<string>(NewItemChoice, 'Label', '', MetaData.None)
+    static readonly CommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         NewItemChoice, 'Command', undefined, MetaData.None)
 
     constructor(label: string, command: ICommand)

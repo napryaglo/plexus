@@ -5,7 +5,7 @@
 // real agent. Seeded as a tab in main.js ONLY when EnvironmentService.IsDevelopment,
 // so it never appears in packaged builds.
 import {
-    MetaData, Model, ObservableCollection, ServiceBase, ServiceKey, type IServiceProvider,
+    MetaData, MuralBase, ObservableCollection, ServiceBase, ServiceKey, type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
 import type { IDockPanel } from '@pragmatic-lab/mural/framework'
 import { ProjectExplorerService } from '../../project-explorer/services/project-explorer-service.js'
@@ -17,18 +17,18 @@ export class TemplateGalleryService extends ServiceBase implements IDockPanel
     public static readonly Key = new ServiceKey<TemplateGalleryService>('TemplateGalleryService')
 
     // IDockPanel: identify + label the Gallery tab in the right panel dock.
-    public static readonly IdKey = Model.RegisterProperty<string>(
+    public static readonly IdKey = MuralBase.RegisterProperty<string>(
         TemplateGalleryService, 'Id', 'template-gallery', MetaData.None)
-    public static readonly TitleKey = Model.RegisterProperty<string>(
+    public static readonly TitleKey = MuralBase.RegisterProperty<string>(
         TemplateGalleryService, 'Title', 'Card Gallery', MetaData.None)
     // The cards rendered by DataTemplate[TemplateGalleryService] via an ItemsControl.
-    public static readonly CardsKey = Model.RegisterProperty<ObservableCollection<Model>>(
-        TemplateGalleryService, 'Cards', undefined as unknown as ObservableCollection<Model>, MetaData.None)
+    public static readonly CardsKey = MuralBase.RegisterProperty<ObservableCollection<MuralBase>>(
+        TemplateGalleryService, 'Cards', undefined as unknown as ObservableCollection<MuralBase>, MetaData.None)
 
     constructor(provider: IServiceProvider)
     {
         super(provider)
-        const cards = new ObservableCollection<Model>()
+        const cards = new ObservableCollection<MuralBase>()
         for (const card of galleryCards()) cards.Add(card)
         this.set_property_value(TemplateGalleryService.CardsKey, cards)
 
@@ -49,7 +49,7 @@ export class TemplateGalleryService extends ServiceBase implements IDockPanel
 
     public get Id(): string { return this.get_property_value(TemplateGalleryService.IdKey) }
     public get Title(): string { return this.get_property_value(TemplateGalleryService.TitleKey) }
-    public get Cards(): ObservableCollection<Model> { return this.get_property_value(TemplateGalleryService.CardsKey) }
+    public get Cards(): ObservableCollection<MuralBase> { return this.get_property_value(TemplateGalleryService.CardsKey) }
 
     // Stop any live card timers (the approval card's countdown) when the tab is
     // torn down; harmless if it isn't.

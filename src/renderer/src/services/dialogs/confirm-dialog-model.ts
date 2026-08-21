@@ -1,6 +1,6 @@
 import {
     MetaData,
-    Model,
+    MuralBase,
     RelayCommand,
     type ICommand,
 } from '@pragmatic-lab/mural/runtime'
@@ -14,15 +14,15 @@ import {
 // so any destructive action (delete, discard, overwrite) can reuse it. The
 // DialogService supplies the title/surface; the caller passes the confirm label
 // so the primary button reads as the action ("Delete", "Discard", …).
-export class ConfirmDialogModel extends Model
+export class ConfirmDialogModel extends MuralBase
 {
-    static readonly MessageKey = Model.RegisterProperty<string>(
+    static readonly MessageKey = MuralBase.RegisterProperty<string>(
         ConfirmDialogModel, 'Message', '', MetaData.None)
-    static readonly ConfirmLabelKey = Model.RegisterProperty<string>(
+    static readonly ConfirmLabelKey = MuralBase.RegisterProperty<string>(
         ConfirmDialogModel, 'ConfirmLabel', 'OK', MetaData.None)
-    static readonly ConfirmCommandKey = Model.RegisterProperty<ICommand>(
+    static readonly ConfirmCommandKey = MuralBase.RegisterProperty<ICommand>(
         ConfirmDialogModel, 'ConfirmCommand', undefined as unknown as ICommand, MetaData.None)
-    static readonly CancelCommandKey = Model.RegisterProperty<ICommand>(
+    static readonly CancelCommandKey = MuralBase.RegisterProperty<ICommand>(
         ConfirmDialogModel, 'CancelCommand', undefined as unknown as ICommand, MetaData.None)
 
     constructor(

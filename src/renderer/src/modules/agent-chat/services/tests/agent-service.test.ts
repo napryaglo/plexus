@@ -1,5 +1,5 @@
 import { test, expect, beforeEach, afterEach } from 'vitest'
-import { Model, ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { MuralBase, ServiceProvider } from '@pragmatic-lab/mural/runtime'
 
 import { AgentEventKind, type AgentEvent, type CreateProjectResult, type IAgentApi } from '../../../../../../shared/agent-api.js'
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
@@ -96,7 +96,7 @@ test('a CreateProject event adds a card, creates via the explorer, and posts the
 
     const provider = providerWith(fakeStore([]))
     let created: unknown
-    const form = new Model()   // stand-in for the form VM; only identity matters here
+    const form = new MuralBase()   // stand-in for the form VM; only identity matters here
     provider.registerInstance(ProjectExplorerService.Key, {
         NewProjectFormFor: async (close: (r?: unknown) => void) => { (form as { close?: unknown }).close = close; return form },
         CreateProject: async (data: unknown) => { created = data; return { created: true, folder: 'C:/x', name: 'X', type: 'diagram' } },

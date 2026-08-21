@@ -1,4 +1,4 @@
-import { Application, MetaData, Model, ObservableCollection, RelayCommand, ServiceBase, ServiceKey, type IServiceProvider, type PropertyDescriptor, type ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { Application, MetaData, MuralBase, ObservableCollection, RelayCommand, ServiceBase, ServiceKey, type IServiceProvider, type PropertyDescriptor, type ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { DialogService, type IActivatable } from '@pragmatic-lab/mural/framework'
 
 import { LibraryRegistry } from './library-registry.js'
@@ -19,13 +19,13 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
 {
     public static readonly Key = new ServiceKey<LibrariesPanelService>('LibrariesPanelService')
 
-    public static readonly RootsKey = Model.RegisterProperty<ObservableCollection<LibraryTreeNode>>(
+    public static readonly RootsKey = MuralBase.RegisterProperty<ObservableCollection<LibraryTreeNode>>(
         LibrariesPanelService, 'Roots', undefined as unknown as ObservableCollection<LibraryTreeNode>, MetaData.None)
-    public static readonly SelectedNodeKey = Model.RegisterProperty<LibraryTreeNode | undefined>(
+    public static readonly SelectedNodeKey = MuralBase.RegisterProperty<LibraryTreeNode | undefined>(
         LibrariesPanelService, 'SelectedNode', undefined, MetaData.None)
-    public static readonly IsEmptyKey = Model.RegisterProperty<boolean>(LibrariesPanelService, 'IsEmpty', false, MetaData.None)
+    public static readonly IsEmptyKey = MuralBase.RegisterProperty<boolean>(LibrariesPanelService, 'IsEmpty', false, MetaData.None)
     // True while discover() runs — bound to a loading indicator in the panel .mu.
-    public static readonly IsLoadingKey = Model.RegisterProperty<boolean>(LibrariesPanelService, 'IsLoading', false, MetaData.None)
+    public static readonly IsLoadingKey = MuralBase.RegisterProperty<boolean>(LibrariesPanelService, 'IsLoading', false, MetaData.None)
 
     // Bottom preview pane, driven by the selected class leaf. The preview hosts
     // the selected NODE itself (Content = $PreviewData); the node carries its visual
@@ -35,9 +35,9 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
     // bare ContentPresenter pins its own DataContext to the content it renders, which
     // would break a service-scoped binding after the first class (the preview then
     // froze on the first selection). See [[library-preview-datacontext]].
-    public static readonly PreviewDataKey = Model.RegisterProperty<LibraryTreeNode | undefined>(
+    public static readonly PreviewDataKey = MuralBase.RegisterProperty<LibraryTreeNode | undefined>(
         LibrariesPanelService, 'PreviewData', undefined, MetaData.None)
-    public static readonly HasPreviewKey = Model.RegisterProperty<boolean>(LibrariesPanelService, 'HasPreview', false, MetaData.None)
+    public static readonly HasPreviewKey = MuralBase.RegisterProperty<boolean>(LibrariesPanelService, 'HasPreview', false, MetaData.None)
 
     private reloadSeq = 0
 

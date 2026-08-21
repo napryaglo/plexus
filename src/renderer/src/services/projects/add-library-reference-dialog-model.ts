@@ -1,6 +1,6 @@
 import {
     MetaData,
-    Model,
+    MuralBase,
     ObservableCollection,
     RelayCommand,
     type ICommand,
@@ -17,19 +17,19 @@ import { LibraryChoice } from './new-project-dialog-model.js'
 //
 // Reuses LibraryChoice (a two-way `IsSelected` Switch row) so it shares the
 // DataTemplate[LibraryChoice] the New-Project libraries picker already renders.
-export class AddLibraryReferenceDialogModel extends Model
+export class AddLibraryReferenceDialogModel extends MuralBase
 {
-    static readonly LibrariesKey = Model.RegisterProperty<ObservableCollection<LibraryChoice>>(
+    static readonly LibrariesKey = MuralBase.RegisterProperty<ObservableCollection<LibraryChoice>>(
         AddLibraryReferenceDialogModel, 'Libraries', undefined as unknown as ObservableCollection<LibraryChoice>, MetaData.None)
     // Guidance shown when there is nothing to add (every published library is
     // already bound, or none are published) — the confirm button stays disabled.
-    static readonly EmptyLabelKey = Model.RegisterProperty<string>(
+    static readonly EmptyLabelKey = MuralBase.RegisterProperty<string>(
         AddLibraryReferenceDialogModel, 'EmptyLabel', '', MetaData.None)
-    static readonly CanConfirmKey = Model.RegisterProperty<boolean>(
+    static readonly CanConfirmKey = MuralBase.RegisterProperty<boolean>(
         AddLibraryReferenceDialogModel, 'CanConfirm', false, MetaData.None)
-    static readonly ConfirmCommandKey = Model.RegisterProperty<ICommand>(
+    static readonly ConfirmCommandKey = MuralBase.RegisterProperty<ICommand>(
         AddLibraryReferenceDialogModel, 'ConfirmCommand', undefined as unknown as ICommand, MetaData.None)
-    static readonly CancelCommandKey = Model.RegisterProperty<ICommand>(
+    static readonly CancelCommandKey = MuralBase.RegisterProperty<ICommand>(
         AddLibraryReferenceDialogModel, 'CancelCommand', undefined as unknown as ICommand, MetaData.None)
 
     constructor(

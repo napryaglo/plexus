@@ -1,4 +1,4 @@
-import { MetaData, Model, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
 
 import { isValidVersion } from './semver-bump.js'
 
@@ -13,16 +13,16 @@ export interface SetVersionResult
     publish: boolean
 }
 
-export class SetVersionDialogModel extends Model
+export class SetVersionDialogModel extends MuralBase
 {
-    static readonly CurrentKey = Model.RegisterProperty<string>(SetVersionDialogModel, 'Current', '', MetaData.None)
-    static readonly NewVersionKey = Model.RegisterProperty<string>(SetVersionDialogModel, 'NewVersion', '', MetaData.None)
-    static readonly PublishKey = Model.RegisterProperty<boolean>(SetVersionDialogModel, 'Publish', false, MetaData.None)
-    static readonly ErrorKey = Model.RegisterProperty<string>(SetVersionDialogModel, 'Error', '', MetaData.None)
-    static readonly CanConfirmKey = Model.RegisterProperty<boolean>(SetVersionDialogModel, 'CanConfirm', false, MetaData.None)
-    static readonly ConfirmCommandKey = Model.RegisterProperty<ICommand>(
+    static readonly CurrentKey = MuralBase.RegisterProperty<string>(SetVersionDialogModel, 'Current', '', MetaData.None)
+    static readonly NewVersionKey = MuralBase.RegisterProperty<string>(SetVersionDialogModel, 'NewVersion', '', MetaData.None)
+    static readonly PublishKey = MuralBase.RegisterProperty<boolean>(SetVersionDialogModel, 'Publish', false, MetaData.None)
+    static readonly ErrorKey = MuralBase.RegisterProperty<string>(SetVersionDialogModel, 'Error', '', MetaData.None)
+    static readonly CanConfirmKey = MuralBase.RegisterProperty<boolean>(SetVersionDialogModel, 'CanConfirm', false, MetaData.None)
+    static readonly ConfirmCommandKey = MuralBase.RegisterProperty<ICommand>(
         SetVersionDialogModel, 'ConfirmCommand', undefined as unknown as ICommand, MetaData.None)
-    static readonly CancelCommandKey = Model.RegisterProperty<ICommand>(
+    static readonly CancelCommandKey = MuralBase.RegisterProperty<ICommand>(
         SetVersionDialogModel, 'CancelCommand', undefined as unknown as ICommand, MetaData.None)
 
     constructor(current: string, private readonly close: (result?: SetVersionResult) => void)

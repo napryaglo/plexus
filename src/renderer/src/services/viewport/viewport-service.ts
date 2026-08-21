@@ -1,4 +1,4 @@
-import { Model, MetaData, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { MuralBase, MetaData, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
 
 // The window-height feed behind a seam so ViewportService is testable without a
 // real DOM. The default implementation (windowViewportSource) reads the renderer
@@ -29,8 +29,8 @@ function windowViewportSource(): IViewportSource
 export class ViewportService extends ServiceBase
 {
     public static readonly Key = new ServiceKey<ViewportService>('ViewportService')
-    public static readonly HeightKey = Model.RegisterProperty<number>(ViewportService, 'Height', 0, MetaData.None)
-    public static readonly WidthKey = Model.RegisterProperty<number>(ViewportService, 'Width', 0, MetaData.None)
+    public static readonly HeightKey = MuralBase.RegisterProperty<number>(ViewportService, 'Height', 0, MetaData.None)
+    public static readonly WidthKey = MuralBase.RegisterProperty<number>(ViewportService, 'Width', 0, MetaData.None)
 
     private readonly listeners = new Set<() => void>()
 

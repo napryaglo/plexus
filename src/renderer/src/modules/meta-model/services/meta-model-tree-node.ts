@@ -1,4 +1,4 @@
-import { MetaData, Model, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
 
 // A uniform tree node for the Meta-models panel — one type for every level
 // (model id, version, kind group, entity) so a single HierarchicalDataTemplate
@@ -21,26 +21,26 @@ export enum MetaModelNodeKind
 // Identifies a published ontology entity so a tree row can open its drawer.
 export interface EntityRef { modelId: string; version: string; id: string }
 
-export class MetaModelTreeNode extends Model
+export class MetaModelTreeNode extends MuralBase
 {
-    public static readonly KindKey = Model.RegisterProperty<MetaModelNodeKind>(
+    public static readonly KindKey = MuralBase.RegisterProperty<MetaModelNodeKind>(
         MetaModelTreeNode, 'Kind', MetaModelNodeKind.Entity, MetaData.None)
 
-    public static readonly LabelKey = Model.RegisterProperty<string>(
+    public static readonly LabelKey = MuralBase.RegisterProperty<string>(
         MetaModelTreeNode, 'Label', '', MetaData.None)
 
-    public static readonly ChildrenKey = Model.RegisterProperty<ObservableCollection<MetaModelTreeNode>>(
+    public static readonly ChildrenKey = MuralBase.RegisterProperty<ObservableCollection<MetaModelTreeNode>>(
         MetaModelTreeNode, 'Children',
         undefined as unknown as ObservableCollection<MetaModelTreeNode>, MetaData.None)
 
     // Delete wiring — set on Model and Version nodes by buildCatalog. ModelId is
     // the published id; ModelVersion is the version (empty on a Model node);
     // DeleteCommand removes the target (see MetaModelsService.deleteTarget).
-    public static readonly ModelIdKey = Model.RegisterProperty<string>(
+    public static readonly ModelIdKey = MuralBase.RegisterProperty<string>(
         MetaModelTreeNode, 'ModelId', '', MetaData.None)
-    public static readonly ModelVersionKey = Model.RegisterProperty<string>(
+    public static readonly ModelVersionKey = MuralBase.RegisterProperty<string>(
         MetaModelTreeNode, 'ModelVersion', '', MetaData.None)
-    public static readonly DeleteCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    public static readonly DeleteCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         MetaModelTreeNode, 'DeleteCommand', undefined, MetaData.None)
 
     // Whether this row can be deleted (Model / Version only). A registered
@@ -48,15 +48,15 @@ export class MetaModelTreeNode extends Model
     // only against the property table (see the `when ($IsDeletable)` trigger in
     // meta-model.resources.mu); a plain getter binds to undefined and the menu
     // never attaches. Set once at construction from Kind.
-    public static readonly IsDeletableKey = Model.RegisterProperty<boolean>(
+    public static readonly IsDeletableKey = MuralBase.RegisterProperty<boolean>(
         MetaModelTreeNode, 'IsDeletable', false, MetaData.None)
 
     // Wiki wiring — Entity rows only. Concept is the ontology entity's local id
     // (the concept the `@wiki` annotation is keyed on); HasWiki (filled async by
     // MetaModelsService) drives the shared "Open Wiki" menu-item visibility.
-    public static readonly ConceptKey = Model.RegisterProperty<string>(
+    public static readonly ConceptKey = MuralBase.RegisterProperty<string>(
         MetaModelTreeNode, 'Concept', '', MetaData.None)
-    public static readonly HasWikiKey = Model.RegisterProperty<boolean>(
+    public static readonly HasWikiKey = MuralBase.RegisterProperty<boolean>(
         MetaModelTreeNode, 'HasWiki', false, MetaData.None)
 
     // Lazy machinery (view-invisible → plain fields). Only lazy() sets a loader.

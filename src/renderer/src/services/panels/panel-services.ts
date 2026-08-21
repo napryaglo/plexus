@@ -16,17 +16,17 @@
 
 import {
     MetaData,
-    Model,
+    MuralBase,
     ObservableCollection,
     ServiceBase,
     type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime';
 
-// One row in a capability's section list. A Model so the panel template binds
+// One row in a capability's section list. A MuralBase so the panel template binds
 // $Label; mirrors the demo's DemoVM row.
-export class PanelSection extends Model
+export class PanelSection extends MuralBase
 {
-    public static readonly LabelKey = Model.RegisterProperty<string>(
+    public static readonly LabelKey = MuralBase.RegisterProperty<string>(
         PanelSection, 'Label', '', MetaData.None);
 
     constructor(label: string)
@@ -51,7 +51,7 @@ export class PanelSection extends Model
 // per-service token.
 export abstract class PlexusPanelService extends ServiceBase
 {
-    public static readonly SectionsKey = Model.RegisterProperty<ObservableCollection<PanelSection>>(
+    public static readonly SectionsKey = MuralBase.RegisterProperty<ObservableCollection<PanelSection>>(
         PlexusPanelService, 'Sections',
         undefined as unknown as ObservableCollection<PanelSection>, MetaData.None);
 

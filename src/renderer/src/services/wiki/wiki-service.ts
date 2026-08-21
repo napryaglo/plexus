@@ -1,5 +1,5 @@
 import {
-    MetaData, Model, RelayCommand, ServiceBase, ServiceKey,
+    MetaData, MuralBase, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
 
@@ -17,9 +17,9 @@ export class WikiService extends ServiceBase
 {
     public static readonly Key = new ServiceKey<WikiService>('WikiService')
 
-    public static readonly StatusKey = Model.RegisterProperty<string>(
+    public static readonly StatusKey = MuralBase.RegisterProperty<string>(
         WikiService, 'Status', '', MetaData.None)
-    public static readonly OpenWikiCommandKey = Model.RegisterProperty<ICommand>(
+    public static readonly OpenWikiCommandKey = MuralBase.RegisterProperty<ICommand>(
         WikiService, 'OpenWikiCommand', undefined as unknown as ICommand, MetaData.None)
 
     // Open wiki tabs keyed by absolute path, so re-opening a page re-activates

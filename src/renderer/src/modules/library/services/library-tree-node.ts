@@ -1,4 +1,4 @@
-import { DataObject, DragDropEffects, MetaData, Model, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { DataObject, DragDropEffects, MetaData, MuralBase, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
 import { ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT } from '@pragmatic-lab/mural/framework'
 import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolver.js'
 
@@ -12,36 +12,36 @@ export enum LibraryNodeKind { Library = 'library', Concept = 'concept', Class = 
 // by the preview's ToolboxVisualPresenter), and a drag payload emitting the term's
 // repository item id (TOOLBOX_ITEM_FORMAT) so the leaf can be dropped onto a
 // diagram — the drop router no-ops for a class that isn't a toolbox item.
-export class LibraryTreeNode extends Model
+export class LibraryTreeNode extends MuralBase
 {
-    public static readonly NameKey = Model.RegisterProperty<string>(LibraryTreeNode, 'Name', '', MetaData.None)
-    public static readonly KindKey = Model.RegisterProperty<LibraryNodeKind>(LibraryTreeNode, 'Kind', LibraryNodeKind.Class, MetaData.None)
-    public static readonly ChildrenKey = Model.RegisterProperty<ObservableCollection<LibraryTreeNode>>(
+    public static readonly NameKey = MuralBase.RegisterProperty<string>(LibraryTreeNode, 'Name', '', MetaData.None)
+    public static readonly KindKey = MuralBase.RegisterProperty<LibraryNodeKind>(LibraryTreeNode, 'Kind', LibraryNodeKind.Class, MetaData.None)
+    public static readonly ChildrenKey = MuralBase.RegisterProperty<ObservableCollection<LibraryTreeNode>>(
         LibraryTreeNode, 'Children', undefined as unknown as ObservableCollection<LibraryTreeNode>, MetaData.None)
-    public static readonly IsLibraryKey = Model.RegisterProperty<boolean>(LibraryTreeNode, 'IsLibrary', false, MetaData.None)
-    public static readonly IsDraggableKey = Model.RegisterProperty<boolean>(LibraryTreeNode, 'IsDraggable', false, MetaData.None)
+    public static readonly IsLibraryKey = MuralBase.RegisterProperty<boolean>(LibraryTreeNode, 'IsLibrary', false, MetaData.None)
+    public static readonly IsDraggableKey = MuralBase.RegisterProperty<boolean>(LibraryTreeNode, 'IsDraggable', false, MetaData.None)
     // Whether this class's concept has an openable wiki page (filled async by the
     // libraries panel service). Drives the shared "Open Wiki" menu-item visibility.
-    public static readonly HasWikiKey = Model.RegisterProperty<boolean>(LibraryTreeNode, 'HasWiki', false, MetaData.None)
+    public static readonly HasWikiKey = MuralBase.RegisterProperty<boolean>(LibraryTreeNode, 'HasWiki', false, MetaData.None)
 
     // Library-node identity (id/version of the installed library) + the uninstall
     // command the row's context menu invokes. Set only on Library nodes.
-    public static readonly LibIdKey = Model.RegisterProperty<string>(LibraryTreeNode, 'LibId', '', MetaData.None)
-    public static readonly LibVersionKey = Model.RegisterProperty<string>(LibraryTreeNode, 'LibVersion', '', MetaData.None)
-    public static readonly DeleteCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    public static readonly LibIdKey = MuralBase.RegisterProperty<string>(LibraryTreeNode, 'LibId', '', MetaData.None)
+    public static readonly LibVersionKey = MuralBase.RegisterProperty<string>(LibraryTreeNode, 'LibVersion', '', MetaData.None)
+    public static readonly DeleteCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         LibraryTreeNode, 'DeleteCommand', undefined, MetaData.None)
 
     // Class-leaf render surface + drag payload.
-    public static readonly TermIdKey = Model.RegisterProperty<string>(LibraryTreeNode, 'TermId', '', MetaData.None)
-    public static readonly ConceptKey = Model.RegisterProperty<string>(LibraryTreeNode, 'Concept', '', MetaData.None)
-    public static readonly DisplayKey = Model.RegisterProperty<string>(LibraryTreeNode, 'Display', '', MetaData.None)
-    public static readonly LabelKey = Model.RegisterProperty<string>(LibraryTreeNode, 'Label', '', MetaData.None)
-    public static readonly LocalIdKey = Model.RegisterProperty<string>(LibraryTreeNode, 'LocalId', '', MetaData.None)
+    public static readonly TermIdKey = MuralBase.RegisterProperty<string>(LibraryTreeNode, 'TermId', '', MetaData.None)
+    public static readonly ConceptKey = MuralBase.RegisterProperty<string>(LibraryTreeNode, 'Concept', '', MetaData.None)
+    public static readonly DisplayKey = MuralBase.RegisterProperty<string>(LibraryTreeNode, 'Display', '', MetaData.None)
+    public static readonly LabelKey = MuralBase.RegisterProperty<string>(LibraryTreeNode, 'Label', '', MetaData.None)
+    public static readonly LocalIdKey = MuralBase.RegisterProperty<string>(LibraryTreeNode, 'LocalId', '', MetaData.None)
     // The visual descriptor the preview's ToolboxVisualPresenter renders (Tile
     // context); the presenter's DataContext is this node, so $Display binds here.
-    public static readonly DescriptorKey = Model.RegisterProperty<ToolboxVisualDescriptor | undefined>(
+    public static readonly DescriptorKey = MuralBase.RegisterProperty<ToolboxVisualDescriptor | undefined>(
         LibraryTreeNode, 'Descriptor', undefined, MetaData.None)
-    public static readonly BeginDragDataKey = Model.RegisterProperty<(() => { data: DataObject; effects: DragDropEffects }) | undefined>(
+    public static readonly BeginDragDataKey = MuralBase.RegisterProperty<(() => { data: DataObject; effects: DragDropEffects }) | undefined>(
         LibraryTreeNode, 'BeginDragData', undefined, MetaData.None)
 
     constructor()

@@ -12,7 +12,7 @@
 import {
     Application,
     MetaData,
-    Model,
+    MuralBase,
     ObservableCollection,
     ResourceDictionary,
     ServiceKey,
@@ -90,7 +90,7 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
 
     // The palette panel binds `$Pages`; this DP is pointed at the repository's
     // Pages collection on the first reload so the panel reflects it live.
-    public static readonly PagesKey = Model.RegisterProperty<ObservableCollection<ToolboxPage>>(
+    public static readonly PagesKey = MuralBase.RegisterProperty<ObservableCollection<ToolboxPage>>(
         ToolboxService, 'Pages',
         undefined as unknown as ObservableCollection<ToolboxPage>, MetaData.None)
 

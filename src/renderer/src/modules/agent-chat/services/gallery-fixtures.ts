@@ -4,7 +4,7 @@
 // agent. Commands are wired to no-ops; clicking through a card still previews
 // its answered/recap state. Kept as pure builders so the sample data lives in
 // one place and is easy to extend.
-import { Model } from '@pragmatic-lab/mural/runtime'
+import { MuralBase } from '@pragmatic-lab/mural/runtime'
 import type { ApprovalRule } from '../../../../../shared/agent-api.js'
 import { UserMessage, AssistantMessage, ToolActivity } from './transcript.js'
 import { QuestionCard } from './question-card.js'
@@ -23,9 +23,9 @@ const SAMPLE_MARKDOWN =
     + '> A short block quote to check quote styling.'
 
 // One instance of every card type, in the order they'd plausibly appear.
-export function galleryCards(): Model[]
+export function galleryCards(): MuralBase[]
 {
-    const cards: Model[] = []
+    const cards: MuralBase[] = []
 
     cards.push(new UserMessage('Run the tests and tell me what fails.'))
 

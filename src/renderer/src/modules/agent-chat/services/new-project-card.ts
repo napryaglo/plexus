@@ -1,4 +1,4 @@
-import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime'
 import type { NewProjectDialogModel } from '../../../services/projects/new-project-dialog-model.js'
 import type { CreateOutcome } from '../../project-explorer/services/project-explorer-service.js'
 
@@ -6,15 +6,15 @@ import type { CreateOutcome } from '../../project-explorer/services/project-expl
 // pending, then collapses to a one-line recap once the project is created or the
 // user cancels. The orchestration (build form, create, post back to the agent)
 // lives in AgentService; this is a pure view-model.
-export class NewProjectCard extends Model
+export class NewProjectCard extends MuralBase
 {
-    public static readonly FormKey = Model.RegisterProperty<NewProjectDialogModel | undefined>(
+    public static readonly FormKey = MuralBase.RegisterProperty<NewProjectDialogModel | undefined>(
         NewProjectCard, 'Form', undefined, MetaData.None)
-    public static readonly IsPendingKey = Model.RegisterProperty<boolean>(NewProjectCard, 'IsPending', true, MetaData.None)
+    public static readonly IsPendingKey = MuralBase.RegisterProperty<boolean>(NewProjectCard, 'IsPending', true, MetaData.None)
     // Complement of IsPending (no inverse Visibility converter — bind the form to
     // $IsPending and the recap to $IsDone).
-    public static readonly IsDoneKey = Model.RegisterProperty<boolean>(NewProjectCard, 'IsDone', false, MetaData.None)
-    public static readonly ResultSummaryKey = Model.RegisterProperty<string>(NewProjectCard, 'ResultSummary', '', MetaData.None)
+    public static readonly IsDoneKey = MuralBase.RegisterProperty<boolean>(NewProjectCard, 'IsDone', false, MetaData.None)
+    public static readonly ResultSummaryKey = MuralBase.RegisterProperty<string>(NewProjectCard, 'ResultSummary', '', MetaData.None)
 
     public readonly Id: string
 

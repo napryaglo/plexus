@@ -1,4 +1,4 @@
-import { MetaData, Model, ObservableCollection, type ICommand, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, ObservableCollection, type ICommand, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
 
 import type { IProjectFactory } from './project-factory.js'
 import type { IStorage } from '../storage/storage.js'
@@ -11,74 +11,74 @@ import { NewItemChoice } from './new-item-choice.js'
 // Publish, Close) that its context menu binds. The explorer constructs one per
 // open project and sets each command to a RelayCommand closing over this
 // instance, so every action unambiguously names its project.
-export class OpenProject extends Model
+export class OpenProject extends MuralBase
 {
-    static readonly NameKey = Model.RegisterProperty<string>(OpenProject, 'Name', '', MetaData.None)
-    static readonly RootKey = Model.RegisterProperty<ProjectNode>(
+    static readonly NameKey = MuralBase.RegisterProperty<string>(OpenProject, 'Name', '', MetaData.None)
+    static readonly RootKey = MuralBase.RegisterProperty<ProjectNode>(
         OpenProject, 'Root', undefined as unknown as ProjectNode, MetaData.None)
     // The "Add New" submenu's choices — one per the factory's declared formats,
     // set by the host (ProjectExplorerService.wireProjectCommands).
-    static readonly NewItemChoicesKey = Model.RegisterProperty<ObservableCollection<NewItemChoice>>(
+    static readonly NewItemChoicesKey = MuralBase.RegisterProperty<ObservableCollection<NewItemChoice>>(
         OpenProject, 'NewItemChoices', undefined as unknown as ObservableCollection<NewItemChoice>, MetaData.None)
-    static readonly ImportFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly ImportFileCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'ImportFileCommand', undefined, MetaData.None)
-    static readonly ImportFolderCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly ImportFolderCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'ImportFolderCommand', undefined, MetaData.None)
-    static readonly NewFolderCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly NewFolderCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'NewFolderCommand', undefined, MetaData.None)
     // Keyboard handler for the project's TreeView (bound via `on KeyDown`): the
     // host inspects the KeyEventArgs and drives F2 (begin rename of SelectedNode),
     // Enter (commit the EditingNode) and Escape (cancel).
-    static readonly TreeKeyCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly TreeKeyCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'TreeKeyCommand', undefined, MetaData.None)
-    static readonly PublishCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly PublishCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'PublishCommand', undefined, MetaData.None)
     // Bump the producer project's published version by one semver part, or set it
     // via a dialog — all enabled only for factories that expose a version.
-    static readonly BumpVersionMajorCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly BumpVersionMajorCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'BumpVersionMajorCommand', undefined, MetaData.None)
-    static readonly BumpVersionMinorCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly BumpVersionMinorCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'BumpVersionMinorCommand', undefined, MetaData.None)
-    static readonly BumpVersionPatchCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly BumpVersionPatchCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'BumpVersionPatchCommand', undefined, MetaData.None)
-    static readonly SetVersionCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly SetVersionCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'SetVersionCommand', undefined, MetaData.None)
     // Refresh the project's agent scaffold docs (.claude/**) to the current
     // bundled version — enabled for any TODL project.
-    static readonly UpdateAgentMetadataCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly UpdateAgentMetadataCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'UpdateAgentMetadataCommand', undefined, MetaData.None)
     // (Re)generate the project's presentation dictionary — one command per icon mode
     // (colorful / monochrome), both enabled only for factories that support it.
-    static readonly GeneratePresentationColorfulCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly GeneratePresentationColorfulCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'GeneratePresentationColorfulCommand', undefined, MetaData.None)
-    static readonly GeneratePresentationMonochromeCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly GeneratePresentationMonochromeCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'GeneratePresentationMonochromeCommand', undefined, MetaData.None)
     // Re-resolve the project's declared bases (drop the validator's per-storage
     // cache + revalidate) — picks up a republished meta-model/library.
-    static readonly RefreshBasesCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly RefreshBasesCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'RefreshBasesCommand', undefined, MetaData.None)
     // Bind an already-published library to this project's manifest — enabled only
     // for a factory that OffersLibraries (architecture). Covers a library not
     // chosen at creation time (or published later).
-    static readonly AddLibraryReferenceCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly AddLibraryReferenceCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'AddLibraryReferenceCommand', undefined, MetaData.None)
-    static readonly CloseCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly CloseCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'CloseCommand', undefined, MetaData.None)
     // Move dragged node(s) into a target folder — the drag behavior executes this
     // with a { nodes, destPath } argument (see MoveArg in the explorer service).
-    static readonly MoveNodesCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly MoveNodesCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         OpenProject, 'MoveNodesCommand', undefined, MetaData.None)
     // The tree's selected node — two-way target of the TreeView's
     // SelectedDataItem. Selecting a row pushes the ProjectNode here; the
     // OnPropertyChanged hook activates it (a leaf opens, a folder no-ops via its
     // OpenCommand). Lets the whole tree stay declarative (ItemsSource +
     // HierarchicalDataTemplate) with no view-tree wiring.
-    static readonly SelectedNodeKey = Model.RegisterProperty<ProjectNode | undefined>(
+    static readonly SelectedNodeKey = MuralBase.RegisterProperty<ProjectNode | undefined>(
         OpenProject, 'SelectedNode', undefined, MetaData.None)
     // Whether the project's file tree is shown. Pure view state, owned here and
     // two-way bound to the header chevron's ToggleButton.IsChecked; the chevron
     // glyph and the tree's Visibility both bind to it.
-    static readonly IsExpandedKey = Model.RegisterProperty<boolean>(
+    static readonly IsExpandedKey = MuralBase.RegisterProperty<boolean>(
         OpenProject, 'IsExpanded', true, MetaData.None)
 
     private project: Project

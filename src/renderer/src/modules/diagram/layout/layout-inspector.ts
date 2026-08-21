@@ -1,4 +1,4 @@
-import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime'
 import { Inspector } from '@pragmatic-lab/mural/framework'
 import type { Diagram } from '@pragmatic-lab/mural/framework'
 
@@ -9,7 +9,7 @@ import type { Diagram } from '@pragmatic-lab/mural/framework'
 // which the template resolves via $service(LayoutPipelineService).
 export class LayoutInspector extends Inspector
 {
-    static readonly ViewKey = Model.RegisterProperty<Diagram | undefined>(LayoutInspector, 'View', undefined, MetaData.None)
+    static readonly ViewKey = MuralBase.RegisterProperty<Diagram | undefined>(LayoutInspector, 'View', undefined, MetaData.None)
 
     constructor()
     {

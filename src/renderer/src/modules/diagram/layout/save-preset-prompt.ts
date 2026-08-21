@@ -1,5 +1,5 @@
 import {
-    MetaData, Model, RelayCommand, type ICommand,
+    MetaData, MuralBase, RelayCommand, type ICommand,
 } from '@pragmatic-lab/mural/runtime'
 import { DialogService } from '@pragmatic-lab/mural/framework'
 
@@ -9,13 +9,13 @@ import { DialogService } from '@pragmatic-lab/mural/framework'
 // closes with the trimmed name, CancelCommand closes with undefined (as does a
 // scrim/Escape dismiss). Confirm is blocked while the name is blank (CanConfirm
 // drives the button's IsEnabled).
-export class SavePresetPromptModel extends Model
+export class SavePresetPromptModel extends MuralBase
 {
-    public static readonly NameKey = Model.RegisterProperty<string>(SavePresetPromptModel, 'Name', '', MetaData.None)
-    public static readonly CanConfirmKey = Model.RegisterProperty<boolean>(SavePresetPromptModel, 'CanConfirm', false, MetaData.None)
-    public static readonly ConfirmCommandKey = Model.RegisterProperty<ICommand>(
+    public static readonly NameKey = MuralBase.RegisterProperty<string>(SavePresetPromptModel, 'Name', '', MetaData.None)
+    public static readonly CanConfirmKey = MuralBase.RegisterProperty<boolean>(SavePresetPromptModel, 'CanConfirm', false, MetaData.None)
+    public static readonly ConfirmCommandKey = MuralBase.RegisterProperty<ICommand>(
         SavePresetPromptModel, 'ConfirmCommand', undefined as unknown as ICommand, MetaData.None)
-    public static readonly CancelCommandKey = Model.RegisterProperty<ICommand>(
+    public static readonly CancelCommandKey = MuralBase.RegisterProperty<ICommand>(
         SavePresetPromptModel, 'CancelCommand', undefined as unknown as ICommand, MetaData.None)
 
     public constructor(initial: string, private readonly close: (name: string | undefined) => void)

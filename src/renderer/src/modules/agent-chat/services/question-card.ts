@@ -7,17 +7,17 @@
 // Selection reaction lives in OnPropertyChanged so it fires for binding-driven
 // writes too (a binding calls set_property_value, not the TS setter).
 import {
-    MetaData, Model, ObservableCollection, RelayCommand,
+    MetaData, MuralBase, ObservableCollection, RelayCommand,
     type ICommand, type PropertyDescriptor,
 } from '@pragmatic-lab/mural/runtime'
 import type { Question, QuestionAnswer, QuestionOption, QuestionRequest } from '../../../../../shared/agent-api.js'
 
-export class OptionVM extends Model
+export class OptionVM extends MuralBase
 {
-    public static readonly LabelKey          = Model.RegisterProperty<string>(OptionVM, 'Label', '', MetaData.None)
-    public static readonly DescriptionKey     = Model.RegisterProperty<string>(OptionVM, 'Description', '', MetaData.None)
-    public static readonly HasDescriptionKey  = Model.RegisterProperty<boolean>(OptionVM, 'HasDescription', false, MetaData.None)
-    public static readonly IsSelectedKey      = Model.RegisterProperty<boolean>(OptionVM, 'IsSelected', false, MetaData.None)
+    public static readonly LabelKey          = MuralBase.RegisterProperty<string>(OptionVM, 'Label', '', MetaData.None)
+    public static readonly DescriptionKey     = MuralBase.RegisterProperty<string>(OptionVM, 'Description', '', MetaData.None)
+    public static readonly HasDescriptionKey  = MuralBase.RegisterProperty<boolean>(OptionVM, 'HasDescription', false, MetaData.None)
+    public static readonly IsSelectedKey      = MuralBase.RegisterProperty<boolean>(OptionVM, 'IsSelected', false, MetaData.None)
 
     // The synthetic "Other" row carries IsOther = true. Not view-bound
     // (the row renders like any other via $Label), so a plain field is fine;
@@ -46,25 +46,25 @@ export class OptionVM extends Model
     }
 }
 
-export class QuestionVM extends Model
+export class QuestionVM extends MuralBase
 {
-    public static readonly HeaderKey        = Model.RegisterProperty<string>(QuestionVM, 'Header', '', MetaData.None)
-    public static readonly QuestionKey      = Model.RegisterProperty<string>(QuestionVM, 'Question', '', MetaData.None)
-    public static readonly OptionsKey       = Model.RegisterProperty<ObservableCollection<OptionVM>>(
+    public static readonly HeaderKey        = MuralBase.RegisterProperty<string>(QuestionVM, 'Header', '', MetaData.None)
+    public static readonly QuestionKey      = MuralBase.RegisterProperty<string>(QuestionVM, 'Question', '', MetaData.None)
+    public static readonly OptionsKey       = MuralBase.RegisterProperty<ObservableCollection<OptionVM>>(
         QuestionVM, 'Options', undefined as unknown as ObservableCollection<OptionVM>, MetaData.None)
-    public static readonly OtherTextKey     = Model.RegisterProperty<string>(QuestionVM, 'OtherText', '', MetaData.None)
+    public static readonly OtherTextKey     = MuralBase.RegisterProperty<string>(QuestionVM, 'OtherText', '', MetaData.None)
     // True while the "Other" row is the current choice — drives the free-text
     // editor's visibility (it appears only then).
-    public static readonly IsOtherChosenKey = Model.RegisterProperty<boolean>(QuestionVM, 'IsOtherChosen', false, MetaData.None)
+    public static readonly IsOtherChosenKey = MuralBase.RegisterProperty<boolean>(QuestionVM, 'IsOtherChosen', false, MetaData.None)
     // Single-select: the option the RadioButtonGroup has chosen (two-way
     // bound to its SelectedItem). Undefined = nothing picked (or "Other").
-    public static readonly SelectedOptionKey = Model.RegisterProperty<OptionVM | undefined>(
+    public static readonly SelectedOptionKey = MuralBase.RegisterProperty<OptionVM | undefined>(
         QuestionVM, 'SelectedOption', undefined, MetaData.None)
     // Which option UI to show: a RadioButtonGroup for single-select, the
     // toggle list for multi. Two complementary bools because $Path <<
     // ToVisibility has no inverse converter — bind each branch to its own.
-    public static readonly IsSingleSelectKey = Model.RegisterProperty<boolean>(QuestionVM, 'IsSingleSelect', false, MetaData.None)
-    public static readonly IsMultiSelectKey  = Model.RegisterProperty<boolean>(QuestionVM, 'IsMultiSelect',  false, MetaData.None)
+    public static readonly IsSingleSelectKey = MuralBase.RegisterProperty<boolean>(QuestionVM, 'IsSingleSelect', false, MetaData.None)
+    public static readonly IsMultiSelectKey  = MuralBase.RegisterProperty<boolean>(QuestionVM, 'IsMultiSelect',  false, MetaData.None)
 
     // Not view-bound (used only by the selection logic), so a plain field is fine.
     public readonly MultiSelect: boolean
@@ -155,17 +155,17 @@ export class QuestionVM extends Model
     public get HasSelection(): boolean { return this.SelectedLabels().length > 0 }
 }
 
-export class QuestionCard extends Model
+export class QuestionCard extends MuralBase
 {
-    public static readonly QuestionsKey      = Model.RegisterProperty<ObservableCollection<QuestionVM>>(
+    public static readonly QuestionsKey      = MuralBase.RegisterProperty<ObservableCollection<QuestionVM>>(
         QuestionCard, 'Questions', undefined as unknown as ObservableCollection<QuestionVM>, MetaData.None)
-    public static readonly IsAnsweredKey     = Model.RegisterProperty<boolean>(QuestionCard, 'IsAnswered', false, MetaData.None)
+    public static readonly IsAnsweredKey     = MuralBase.RegisterProperty<boolean>(QuestionCard, 'IsAnswered', false, MetaData.None)
     // Complement of IsAnswered — no inverse Visibility converter, so bind the
     // question list + Submit to $IsPending and the summary to $IsAnswered.
-    public static readonly IsPendingKey      = Model.RegisterProperty<boolean>(QuestionCard, 'IsPending', true, MetaData.None)
-    public static readonly IsSubmittableKey  = Model.RegisterProperty<boolean>(QuestionCard, 'IsSubmittable', false, MetaData.None)
-    public static readonly AnswerSummaryKey  = Model.RegisterProperty<string>(QuestionCard, 'AnswerSummary', '', MetaData.None)
-    public static readonly SubmitCommandKey  = Model.RegisterProperty<ICommand>(
+    public static readonly IsPendingKey      = MuralBase.RegisterProperty<boolean>(QuestionCard, 'IsPending', true, MetaData.None)
+    public static readonly IsSubmittableKey  = MuralBase.RegisterProperty<boolean>(QuestionCard, 'IsSubmittable', false, MetaData.None)
+    public static readonly AnswerSummaryKey  = MuralBase.RegisterProperty<string>(QuestionCard, 'AnswerSummary', '', MetaData.None)
+    public static readonly SubmitCommandKey  = MuralBase.RegisterProperty<ICommand>(
         QuestionCard, 'SubmitCommand', undefined as unknown as ICommand, MetaData.None)
 
     // Not view-bound (correlation id for the answer), so a plain field is fine.

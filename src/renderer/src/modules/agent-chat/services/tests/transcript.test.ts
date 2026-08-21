@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { Model } from '@pragmatic-lab/mural/runtime'
+import { MuralBase } from '@pragmatic-lab/mural/runtime'
 import { AgentEventKind, type QuestionAnswer } from '../../../../../../shared/agent-api.js'
 import { TranscriptReducer, UserMessage, AssistantMessage, ToolActivity } from '../transcript.js'
 import { QuestionCard } from '../question-card.js'
@@ -126,7 +126,7 @@ test('addPendingCard adds the card, blocks input, and resets the assistant bubbl
     r.onPendingChange = () => { pendingChanges += 1 }
     r.apply({ Kind: AgentEventKind.AssistantText, Text: 'hi' })   // opens an assistant bubble
 
-    const card = new Model()
+    const card = new MuralBase()
     r.addPendingCard('c1', card)
     expect(items(r).includes(card)).toBe(true)
     expect(r.HasPendingQuestion).toBe(true)      // input gated

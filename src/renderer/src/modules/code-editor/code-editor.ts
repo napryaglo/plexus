@@ -1,7 +1,7 @@
 import * as monaco from 'monaco-editor'
 import './monaco-env.js'
 import { DomHost } from '@pragmatic-lab/mural/basic'
-import { Color, DataContextBinding, Model, MetaData, ObservableCollection, Size, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { Color, DataContextBinding, MuralBase, MetaData, ObservableCollection, Size, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
 import { SolidColorBrush } from '@pragmatic-lab/mural/visual-engine'
 import { toMarkers, markerSignature, type EditorDiagnostic } from './editor-diagnostic.js'
 import { handleCrossFileOpen, type CrossFileSelection } from './cross-file-open.js'
@@ -31,30 +31,30 @@ export class CodeEditor extends DomHost
 {
     // The editor's text, TwoWay by default: the document binds $Content here and
     // receives edits back through the same binding.
-    public static readonly TextKey = Model.RegisterProperty<string>(
+    public static readonly TextKey = MuralBase.RegisterProperty<string>(
         CodeEditor, 'Text', '', MetaData.BindsTwoWayByDefault)
 
     // Monaco language id (e.g. 'typescript'). The document derives it from the
     // file extension and binds $Language.
-    public static readonly LanguageKey = Model.RegisterProperty<string>(
+    public static readonly LanguageKey = MuralBase.RegisterProperty<string>(
         CodeEditor, 'Language', 'plaintext', MetaData.None)
 
     // Stable model URI (bound from the document's $Uri). When set, the Monaco
     // model is created/looked up by this URI so language-server providers,
     // diagnostics, and edits key on it. Empty ⇒ anonymous model (back-compat).
-    public static readonly ModelUriKey = Model.RegisterProperty<string>(
+    public static readonly ModelUriKey = MuralBase.RegisterProperty<string>(
         CodeEditor, 'ModelUri', '', MetaData.None)
 
     // Diagnostics against the text — the document binds its Diagnostics channel
     // here; we render them as Monaco markers. It is one ObservableCollection
     // instance whose CONTENTS change (Clear/Add) rather than being replaced, so
     // we subscribe to the collection, not just the DP.
-    public static readonly DiagnosticsKey = Model.RegisterProperty<ObservableCollection<EditorDiagnostic>>(
+    public static readonly DiagnosticsKey = MuralBase.RegisterProperty<ObservableCollection<EditorDiagnostic>>(
         CodeEditor, 'Diagnostics', undefined as unknown as ObservableCollection<EditorDiagnostic>, MetaData.None)
 
     // A one-shot reveal request from the document (Problems-dock navigation): the
     // document binds its RevealRequest here; on change we scroll to + select it.
-    public static readonly RevealRequestKey = Model.RegisterProperty<{ line: number; column: number; seq: number } | undefined>(
+    public static readonly RevealRequestKey = MuralBase.RegisterProperty<{ line: number; column: number; seq: number } | undefined>(
         CodeEditor, 'RevealRequest', undefined, MetaData.None)
 
     private editor: monaco.editor.IStandaloneCodeEditor | undefined
@@ -83,7 +83,7 @@ export class CodeEditor extends DomHost
     {
         super()
         // `as unknown as T`: set_property_value accepts a Binding at runtime
-        // (Model special-cases `value instanceof Binding`); the cast satisfies
+        // (MuralBase special-cases `value instanceof Binding`); the cast satisfies
         // its typed signature — the same idiom mural uses (inspector-stack.ts).
         this.set_property_value(
             CodeEditor.TextKey, DataContextBinding(this, 'Content') as unknown as string)

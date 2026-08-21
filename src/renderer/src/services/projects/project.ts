@@ -1,4 +1,4 @@
-import { MetaData, Model, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
 
 import { NewItemChoice } from './new-item-choice.js'
 
@@ -12,61 +12,61 @@ import { NewItemChoice } from './new-item-choice.js'
 // attachment (opened via the OS); 'folder' groups.
 export type ProjectNodeKind = 'folder' | 'diagram' | 'todl' | 'file'
 
-export class ProjectNode extends Model
+export class ProjectNode extends MuralBase
 {
-    static readonly NameKey = Model.RegisterProperty<string>(ProjectNode, 'Name', '', MetaData.None)
-    static readonly PathKey = Model.RegisterProperty<string>(ProjectNode, 'Path', '', MetaData.None)
-    static readonly KindKey = Model.RegisterProperty<ProjectNodeKind>(ProjectNode, 'Kind', 'file', MetaData.None)
-    static readonly ChildrenKey = Model.RegisterProperty<ObservableCollection<ProjectNode>>(
+    static readonly NameKey = MuralBase.RegisterProperty<string>(ProjectNode, 'Name', '', MetaData.None)
+    static readonly PathKey = MuralBase.RegisterProperty<string>(ProjectNode, 'Path', '', MetaData.None)
+    static readonly KindKey = MuralBase.RegisterProperty<ProjectNodeKind>(ProjectNode, 'Kind', 'file', MetaData.None)
+    static readonly ChildrenKey = MuralBase.RegisterProperty<ObservableCollection<ProjectNode>>(
         ProjectNode, 'Children', undefined as unknown as ObservableCollection<ProjectNode>, MetaData.None)
     // The action to run when this node is activated in the tree — set by the
     // host (ProjectExplorerService) so the row can bind `Command = $OpenCommand`
     // without threading the node through a CommandParameter.
-    static readonly OpenCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly OpenCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'OpenCommand', undefined, MetaData.None)
     // The "Add New" submenu's choices for this node's container — one per the
     // factory's declared formats, set by the host (ProjectExplorerService.wireNodes).
     // A folder node creates inside itself; a file node beside itself.
-    static readonly NewItemChoicesKey = Model.RegisterProperty<ObservableCollection<NewItemChoice>>(
+    static readonly NewItemChoicesKey = MuralBase.RegisterProperty<ObservableCollection<NewItemChoice>>(
         ProjectNode, 'NewItemChoices', undefined as unknown as ObservableCollection<NewItemChoice>, MetaData.None)
-    static readonly NewFolderCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly NewFolderCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'NewFolderCommand', undefined, MetaData.None)
-    static readonly ImportFileCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly ImportFileCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'ImportFileCommand', undefined, MetaData.None)
-    static readonly ImportFolderCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly ImportFolderCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'ImportFolderCommand', undefined, MetaData.None)
     // In-place rename state. IsEditing swaps the row's label for a TextBox (see
     // the ProjectNodeTemplate); EditingName is that box's two-way text buffer.
     // BeginRename (context-menu "Rename" / F2) opens the editor; the TreeView's
     // key handler commits on Enter and cancels on Escape (host-driven).
-    static readonly IsEditingKey = Model.RegisterProperty<boolean>(
+    static readonly IsEditingKey = MuralBase.RegisterProperty<boolean>(
         ProjectNode, 'IsEditing', false, MetaData.None)
-    static readonly EditingNameKey = Model.RegisterProperty<string>(
+    static readonly EditingNameKey = MuralBase.RegisterProperty<string>(
         ProjectNode, 'EditingName', '', MetaData.None)
-    static readonly BeginRenameCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly BeginRenameCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'BeginRenameCommand', undefined, MetaData.None)
     // Delete this node (file or folder, with its contents) from the project,
     // after a confirmation. Set by the host (ProjectExplorerService.wireNodes)
     // so a row's context menu can bind `Command = $DeleteCommand`; disabled on
     // the (unshown) root. When the node is part of a multi-selection, deleting
     // it removes the whole selected set.
-    static readonly DeleteCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly DeleteCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'DeleteCommand', undefined, MetaData.None)
     // An optional project-type-specific context-menu action for this node,
     // contributed by a module through the INodeCommandContributor seam (e.g. the
     // architecture "Edit Viewpoints…" on a .diagram node). HasNodeAction gates the
     // menu item's visibility so nothing shows for nodes with no contribution.
-    static readonly NodeActionLabelKey = Model.RegisterProperty<string>(
+    static readonly NodeActionLabelKey = MuralBase.RegisterProperty<string>(
         ProjectNode, 'NodeActionLabel', '', MetaData.None)
-    static readonly NodeActionCommandKey = Model.RegisterProperty<ICommand | undefined>(
+    static readonly NodeActionCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
         ProjectNode, 'NodeActionCommand', undefined, MetaData.None)
-    static readonly HasNodeActionKey = Model.RegisterProperty<boolean>(
+    static readonly HasNodeActionKey = MuralBase.RegisterProperty<boolean>(
         ProjectNode, 'HasNodeAction', false, MetaData.None)
     // Self-reference so a row can hand the whole node to a ContentControl's
     // Content (`Content = $Data`). The rename editor is stamped lazily through
     // that ContentControl — see the ProjectNodeTemplate — so the heavy TextBox
     // only materialises for the one node being renamed, not once per row.
-    static readonly DataKey = Model.RegisterProperty<ProjectNode>(
+    static readonly DataKey = MuralBase.RegisterProperty<ProjectNode>(
         ProjectNode, 'Data', undefined as unknown as ProjectNode, MetaData.None)
 
     constructor(name: string, path: string, kind: ProjectNodeKind)
@@ -125,12 +125,12 @@ export class ProjectNode extends Model
     public set HasNodeAction(v: boolean) { this.set_property_value(ProjectNode.HasNodeActionKey, v) }
 }
 
-export class Project extends Model
+export class Project extends MuralBase
 {
-    static readonly NameKey = Model.RegisterProperty<string>(Project, 'Name', '', MetaData.None)
-    static readonly TypeKey = Model.RegisterProperty<string>(Project, 'Type', '', MetaData.None)
-    static readonly RootPathKey = Model.RegisterProperty<string>(Project, 'RootPath', '', MetaData.None)
-    static readonly RootKey = Model.RegisterProperty<ProjectNode>(
+    static readonly NameKey = MuralBase.RegisterProperty<string>(Project, 'Name', '', MetaData.None)
+    static readonly TypeKey = MuralBase.RegisterProperty<string>(Project, 'Type', '', MetaData.None)
+    static readonly RootPathKey = MuralBase.RegisterProperty<string>(Project, 'RootPath', '', MetaData.None)
+    static readonly RootKey = MuralBase.RegisterProperty<ProjectNode>(
         Project, 'Root', undefined as unknown as ProjectNode, MetaData.None)
 
     constructor(type: string, name: string, rootPath: string, root: ProjectNode)
