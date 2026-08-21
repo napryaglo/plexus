@@ -1,5 +1,5 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ModelDraft, Repository, graphFromJSON, parse, type SourceFile } from '@pragmatic-lab/todl'
+import { ModelDraft, checkAgainst, parse, type SourceFile } from '@pragmatic-lab/todl'
 
 import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base-resolver.js'
 import { collectTodlSources } from '../../../services/todl/todl-sources.js'
@@ -42,8 +42,15 @@ export class ArchitectureModelService extends ServiceBase
         const { bases } = await resolver.ResolveForStorage(op.Storage)
         const sources = await collectTodlSources(op.Storage)
         const namespace = deriveNamespace(sources, op.Project.Name)
-        const baseRepos = bases.map((d) => new Repository(graphFromJSON(d)))
-        const draft = ModelDraft.fromSources(baseRepos, sources, { namespace })
+        // Published bases are OWN-ONLY documents: each carries only its own
+        // compiled content and dangles at cross-references into sibling bases and
+        // the prelude (a library class -> a meta-model concept -> the prelude
+        // `Element`). Wrapping each in its own Repository throws ("edge target ...
+        // does not exist"); they only form a closed graph once merged together
+        // with the prelude. checkAgainst with no sources does exactly that merge,
+        // yielding a single self-contained base Repository to compose against.
+        const merged = checkAgainst(bases, []).model
+        const draft = ModelDraft.fromSources([merged], sources, { namespace })
 
         const model = new ArchModel(draft, op.Storage, namespace)
         this.models.set(key, model)
