@@ -231,6 +231,43 @@ test.describe.serial('Size & Position sub-editors drive the selected shape', () 
         expect(near(st.fig!.L, 300 - st.fig!.W / 2, 1), `L=${st.fig!.L}, W=${st.fig!.W}`).toBe(true)
     })
 
+    test('lock-linked width edits stay uniform across repeated edits', async () => {
+        // Regression: the mirror used to re-seed from a half-updated figure on a
+        // lock-linked resize, desyncing the control so the next edit scaled from
+        // a stale width (80x80 -> 81x81 -> 82x83 instead of 82x82).
+        await setFromCombo(l, 'Top Left Corner')
+        await setSpin(l, SPIN.ScaleWidth, 100)
+        await setSpin(l, SPIN.ScaleHeight, 100)
+        await setSpin(l, SPIN.Width, 80)
+        await setSpin(l, SPIN.Height, 80)
+        await setSwitch(l, true)
+        await l.win.waitForTimeout(200)
+        for (const v of [81, 82, 83]) {
+            await setSpin(l, SPIN.Width, v)
+            await l.win.waitForTimeout(200)
+            const st = await readState(l)
+            expect(near(st.fig!.W, v) && near(st.fig!.H, v), `at ${v}: ${st.fig!.W}x${st.fig!.H}`).toBe(true)
+        }
+        await setSwitch(l, false)
+        await l.win.waitForTimeout(200)
+    })
+
+    test('unlocked width edit does not move the height scale', async () => {
+        await setSpin(l, SPIN.Width, 80)
+        await setSpin(l, SPIN.Height, 80)
+        await setSpin(l, SPIN.ScaleWidth, 100)
+        await setSpin(l, SPIN.ScaleHeight, 100)
+        await l.win.waitForTimeout(200)
+        await setSpin(l, SPIN.Width, 120)
+        await l.win.waitForTimeout(300)
+        const st = await readState(l)
+        // spins order: [Height, Width, Rotation, ScaleHeight, ScaleWidth, ...]
+        expect(near(st.fig!.W, 120), `W=${st.fig!.W}`).toBe(true)
+        expect(near(st.fig!.H, 80), `H moved to ${st.fig!.H}`).toBe(true)
+        expect(near(st.spins[SPIN.ScaleWidth], 150), `scaleW=${st.spins[SPIN.ScaleWidth]}`).toBe(true)
+        expect(near(st.spins[SPIN.ScaleHeight], 100), `scaleH drifted to ${st.spins[SPIN.ScaleHeight]}`).toBe(true)
+    })
+
     test('no renderer errors while driving the editor', async () => {
         expect(appErrors(l.errors), appErrors(l.errors).join('\n')).toEqual([])
     })
