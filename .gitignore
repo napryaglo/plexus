@@ -20,3 +20,4 @@ debug/
 
 # Local npm auth/registry config (Verdaccio token) — never commit.
 .npmrc
+e2e/.artifacts/

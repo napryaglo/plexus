@@ -1,0 +1,167 @@
+// Reusable Electron launch + introspection helper for Plexus e2e tests.
+//
+// Plexus renders through mural, which paints Visuals to an SVG tree; every
+// rendered SVG element carries a back-reference to its Visual under
+// Symbol.for('mural:visual-backref'). The root Visual is the `EditorShell`
+// (exposes `.Services` and `.DataContext`). These helpers reach that tree so
+// tests can introspect the live app (figure counts, service graph, problems)
+// and locate visuals to click by type/label without brittle CSS selectors.
+import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
+import path from 'node:path'
+import fs from 'node:fs'
+import os from 'node:os'
+
+export const PLEXUS_ROOT = path.resolve(__dirname, '..')
+export const MAIN = path.join(PLEXUS_ROOT, 'out/main/index.js')
+export const ELECTRON_EXE = path.join(PLEXUS_ROOT, 'node_modules/electron/dist/electron.exe')
+
+// Live corpus of test projects (meta-model + two libraries + arch consumer).
+// Override the root with PLEXUS_TEST_CORPUS if it lives elsewhere.
+const CORPUS = process.env.PLEXUS_TEST_CORPUS ?? 'C:/Users/Eugene/Projects/plexus_tests'
+export const TEST_PROJECTS = [
+    path.join(CORPUS, 'meta-models/tech-architecture'),
+    path.join(CORPUS, 'libraries/microsoft'),
+    path.join(CORPUS, 'libraries/aws'),
+    path.join(CORPUS, 'architecures/test_architecture'),
+]
+
+// Electron default userData (no productName override → "Electron").
+const SESSION_FILE = path.join(os.homedir(), 'AppData/Roaming/Electron/open-projects.json')
+
+export function corpusAvailable(): boolean {
+    return fs.existsSync(MAIN) && fs.existsSync(ELECTRON_EXE) && TEST_PROJECTS.every((p) => fs.existsSync(p))
+}
+
+// Seed the restore-session file with the given projects; returns a restore()
+// that puts the previous contents back (call in afterAll).
+export function seedSession(projects: string[] = TEST_PROJECTS): () => void {
+    const prev = fs.existsSync(SESSION_FILE) ? fs.readFileSync(SESSION_FILE, 'utf8') : null
+    fs.mkdirSync(path.dirname(SESSION_FILE), { recursive: true })
+    fs.writeFileSync(SESSION_FILE, JSON.stringify(projects))
+    return () => {
+        if (prev === null) fs.rmSync(SESSION_FILE, { force: true })
+        else fs.writeFileSync(SESSION_FILE, prev)
+    }
+}
+
+export interface Launched {
+    app: ElectronApplication
+    win: Page
+    errors: string[]
+    warnings: string[]
+}
+
+// Launch the built app as a GUI (ELECTRON_RUN_AS_NODE must be stripped, or
+// Electron runs as a plain node process and never opens a window). Collects
+// renderer console.error + uncaught page errors into `errors`.
+export async function launchPlexus(): Promise<Launched> {
+    const env = { ...process.env }
+    delete env.ELECTRON_RUN_AS_NODE
+    const app = await electron.launch({ executablePath: ELECTRON_EXE, args: [MAIN], cwd: PLEXUS_ROOT, env })
+    const win = await app.firstWindow()
+    const errors: string[] = []
+    const warnings: string[] = []
+    win.on('console', (m) => {
+        const t = m.type()
+        if (t === 'error') errors.push(m.text())
+        else if (t === 'warning') warnings.push(m.text())
+    })
+    win.on('pageerror', (e) => errors.push('pageerror: ' + (e.stack ?? e.message)))
+    await win.waitForLoadState('domcontentloaded').catch(() => {})
+    return { app, win, errors, warnings }
+}
+
+// Renderer errors that are environmental noise, not app faults.
+const IGNORABLE = [
+    /Insecure Content-Security-Policy/i,
+    /Electron Security Warning/i,
+    /devtools/i,
+    /Autofill\./i,
+]
+export function appErrors(errors: string[]): string[] {
+    return errors.filter((e) => !IGNORABLE.some((re) => re.test(e)))
+}
+
+// ── Visual-tree introspection (runs in the renderer) ──────────────────────
+
+// Histogram of Visual constructor names across the whole rendered tree, plus
+// the root Visual's ctor and whether it exposes a service provider.
+export async function snapshot(win: Page): Promise<{
+    totalEls: number
+    visualCount: number
+    rootCtor: string | undefined
+    hasServices: boolean
+    ctorHisto: Record<string, number>
+    problemsText: string | undefined
+    bodyText: string
+}> {
+    return win.evaluate(() => {
+        const S = Symbol.for('mural:visual-backref')
+        const histo: Record<string, number> = {}
+        let visualCount = 0
+        let root: any
+        for (const el of document.querySelectorAll('*')) {
+            const v = (el as any)[S]
+            if (!v) continue
+            visualCount++
+            if (!root) root = v
+            const n = v.constructor?.name
+            if (n) histo[n] = (histo[n] ?? 0) + 1
+        }
+        const bodyText = (document.body.innerText || '').replace(/\s+/g, ' ').trim()
+        // The status-bar problems pill reads "No problems" or "N problems".
+        const pm = bodyText.match(/(No problems|\d+\s+problems?)/i)
+        return {
+            totalEls: document.querySelectorAll('*').length,
+            visualCount,
+            rootCtor: root?.constructor?.name,
+            hasServices: !!(root && root.Services),
+            ctorHisto: histo,
+            problemsText: pm?.[0],
+            bodyText: bodyText.slice(0, 2000),
+        }
+    })
+}
+
+export async function countByCtor(win: Page, ctor: string): Promise<number> {
+    return win.evaluate((c) => {
+        const S = Symbol.for('mural:visual-backref')
+        let n = 0
+        for (const el of document.querySelectorAll('*')) {
+            const v = (el as any)[S]
+            if (v && v.constructor?.name === c) n++
+        }
+        return n
+    }, ctor)
+}
+
+// Bounding rects (viewport coords) of every visual whose ctor matches, in DOM
+// order. Optionally filter by the visual's rendered text (innerText of its
+// element). Used to click by Visual type instead of a fragile selector.
+export async function rectsForCtor(
+    win: Page,
+    ctor: string,
+    labelIncludes?: string,
+): Promise<Array<{ x: number; y: number; w: number; h: number; text: string }>> {
+    return win.evaluate(
+        ({ ctor, labelIncludes }) => {
+            const S = Symbol.for('mural:visual-backref')
+            const out: Array<{ x: number; y: number; w: number; h: number; text: string }> = []
+            for (const el of document.querySelectorAll('*')) {
+                const v = (el as any)[S]
+                if (!v || v.constructor?.name !== ctor) continue
+                const r = (el as Element).getBoundingClientRect()
+                if (r.width === 0 || r.height === 0) continue
+                const text = ((el as HTMLElement).innerText || '').replace(/\s+/g, ' ').trim()
+                if (labelIncludes && !text.toLowerCase().includes(labelIncludes.toLowerCase())) continue
+                out.push({ x: r.x, y: r.y, w: r.width, h: r.height, text })
+            }
+            return out
+        },
+        { ctor, labelIncludes },
+    )
+}
+
+export async function clickCenter(win: Page, r: { x: number; y: number; w: number; h: number }): Promise<void> {
+    await win.mouse.click(r.x + r.w / 2, r.y + r.h / 2)
+}
