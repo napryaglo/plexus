@@ -34,6 +34,12 @@ export class ArchNodeVM extends NodeViewModel {
     static readonly ConceptKey = MuralBase.RegisterProperty<string>(ArchNodeVM, 'Concept', '', MetaData.None)
     static readonly HasWikiKey = MuralBase.RegisterProperty<boolean>(ArchNodeVM, 'HasWiki', false, MetaData.None)
 
+    // Whether this node's concept is a container (holds nested children). Read
+    // duck-typed by mural's GetContainerForItemOverride (0.21.0) to realize the
+    // node as a ContentContainerFigure instead of a plain content tile. Set from
+    // the concept by ArchDiagramBinding.rescan.
+    static readonly IsContainerKey = MuralBase.RegisterProperty<boolean>(ArchNodeVM, 'IsContainer', false, MetaData.None)
+
     // ── In-place title editing (F2 / double-click) ──────────────────────────
     // An arch node's editable text is its TITLE ($Label), NOT the container
     // Figure's ShapeText (a geometric shape's centred caption). Implementing the
@@ -104,6 +110,14 @@ export class ArchNodeVM extends NodeViewModel {
 
     set HasWiki(v: boolean) {
         this.set_property_value(ArchNodeVM.HasWikiKey, v)
+    }
+
+    get IsContainer(): boolean {
+        return this.get_property_value(ArchNodeVM.IsContainerKey)
+    }
+
+    set IsContainer(v: boolean) {
+        this.set_property_value(ArchNodeVM.IsContainerKey, v)
     }
 
     get EntityId(): string | undefined {

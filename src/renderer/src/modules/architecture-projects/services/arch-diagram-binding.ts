@@ -5,6 +5,7 @@ import type { ArchModel } from './arch-model.js'
 import { ArchNodeVM } from './arch-node-vm.js'
 import { iconEntityKey } from './arch-icon.js'
 import { desiredEdges, edgeKey } from './edge-projection.js'
+import { isContainerConcept } from './containment.js'
 import { resolveConnectorActions, type ConnectorAction } from './arch-connector-resolver.js'
 import { scenarioStepPairs, type FlowEntity } from './scenario-flow.js'
 import type { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
@@ -141,6 +142,9 @@ export class ArchDiagramBinding
                 const key = iconEntityKey(this.model.repository(), entity) ?? entity.concept
                 node.Descriptor = new ToolboxVisualDescriptor(TodlVisualResolverKey, key)
                 node.Concept = entity.concept
+                // A container concept realizes as a ContentContainerFigure (mural
+                // reads IsContainer duck-typed); its `in` refs project as nesting.
+                node.IsContainer = isContainerConcept(this.model.repository(), entity.concept)
                 if (this.wiki !== undefined) {
                     const concept = entity.concept
                     void this.wiki.hasWiki(concept).then((h) => {
