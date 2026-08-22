@@ -40,12 +40,30 @@ function readState(l: Launched) {
         const fromCombos = combos.filter((c) => c.SelectedItem === 'Top Left Corner' || c.SelectedItem === 'Center')
         return {
             fig: sel ? { L: sel.Left, T: sel.Top, W: sel.Width, H: sel.Height, R: sel.Rotation } : null,
+            // The persisted per-shape intents live on the FIGURE itself.
+            figLock: sel?.LockAspectRatio ?? null,
+            figAnchor: sel?.PositionFrom ?? null,
             spins: spins.map((s) => s.Value),
             lock: ctl?.LockAspectRatio ?? null,
             positionFrom: ctl?.PositionFrom ?? null,
             fromComboCount: fromCombos.length,
         }
     })
+}
+
+// Deterministically select the i-th diagram node through the real selection
+// path (HandleContainerClick), independent of canvas position — clicking by
+// pixel is unreliable once earlier tests have moved/resized shapes.
+function selectFigureByIndex(l: Launched, index: number) {
+    return l.win.evaluate((index) => {
+        const S = Symbol.for('mural:visual-backref')
+        let diagram: any
+        for (const el of document.querySelectorAll('*')) { const v = (el as any)[S]; if (v?.constructor?.name === 'Diagram') { diagram = v; break } }
+        const items = diagram?.ItemsSource ?? diagram?.Items
+        const item = items?.Get ? items.Get(index) : items?.[index]
+        const container = diagram?.Generator?.ContainerFromItem(item)
+        if (container) diagram.HandleContainerClick(container, 0) // ModifierKeys.None
+    }, index)
 }
 
 // Commit a value into the Nth SpinEdit (its Value DP is the $$ binding target,
@@ -266,6 +284,38 @@ test.describe.serial('Size & Position sub-editors drive the selected shape', () 
         expect(near(st.fig!.H, 80), `H moved to ${st.fig!.H}`).toBe(true)
         expect(near(st.spins[SPIN.ScaleWidth], 150), `scaleW=${st.spins[SPIN.ScaleWidth]}`).toBe(true)
         expect(near(st.spins[SPIN.ScaleHeight], 100), `scaleH drifted to ${st.spins[SPIN.ScaleHeight]}`).toBe(true)
+    })
+
+    test('lock aspect + anchor are per-shape (persist on the figure, no leak)', async () => {
+        // Node 0: turn lock on and pick Center anchor — writes onto the figure.
+        await selectFigureByIndex(l, 0)
+        await l.win.waitForTimeout(300)
+        await setSwitch(l, true)
+        await setFromCombo(l, 'Center')
+        await l.win.waitForTimeout(300)
+        let st = await readState(l)
+        expect(st.figLock, 'lock written onto node 0').toBe(true)
+        expect(String(st.figAnchor).toLowerCase(), `anchor on node 0=${st.figAnchor}`).toContain('center')
+
+        // Node 1: the editor must seed from ITS state, not leak node 0's.
+        await selectFigureByIndex(l, 1)
+        await l.win.waitForTimeout(400)
+        st = await readState(l)
+        expect(st.lock, 'lock leaked to node 1').toBe(false)
+        expect(String(st.positionFrom).toLowerCase(), `anchor leaked=${st.positionFrom}`).not.toContain('center')
+        expect(st.figLock, 'node 1 figure should be unlocked').toBe(false)
+
+        // Back to node 0: its lock/anchor persisted on the figure.
+        await selectFigureByIndex(l, 0)
+        await l.win.waitForTimeout(400)
+        st = await readState(l)
+        expect(st.figLock, 'node 0 forgot its lock').toBe(true)
+        expect(String(st.figAnchor).toLowerCase(), `node 0 forgot anchor=${st.figAnchor}`).toContain('center')
+        expect(st.lock, 'inspector re-seeded node 0 lock').toBe(true)
+        // restore for a clean session
+        await setSwitch(l, false)
+        await setFromCombo(l, 'Top Left Corner')
+        await l.win.waitForTimeout(200)
     })
 
     test('no renderer errors while driving the editor', async () => {
