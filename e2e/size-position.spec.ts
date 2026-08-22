@@ -94,6 +94,29 @@ function setFromCombo(l: Launched, label: string) {
     }, label)
 }
 
+// Click the inspector rail's icon tab whose bound page Title matches. The rail
+// now renders icons (no text label), so we locate the NavigationItem by its
+// DataContext (the InspectorPage) and click its real DOM rect — exercising the
+// rail while staying deterministic. Ignores the activity-bar NavigationItems
+// (their DataContext is a NavigationDestination, no matching Title).
+async function clickInspectorTab(l: Launched, title: string): Promise<boolean> {
+    const pt = await l.win.evaluate((title) => {
+        const S = Symbol.for('mural:visual-backref')
+        for (const el of document.querySelectorAll('*')) {
+            const v = (el as any)[S]
+            if (v?.constructor?.name === 'NavigationItem' && v.DataContext?.Title === title) {
+                const r = (el as HTMLElement).getBoundingClientRect()
+                if (r.width === 0 || r.height === 0) return null
+                return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+            }
+        }
+        return null
+    }, title)
+    if (!pt) return false
+    await l.win.mouse.click(pt.x, pt.y)
+    return true
+}
+
 test.describe.serial('Size & Position sub-editors drive the selected shape', () => {
     let l: Launched
     let restore: () => void
@@ -142,8 +165,8 @@ test.describe.serial('Size & Position sub-editors drive the selected shape', () 
         expect(await clickText('Format Shape'), 'Format Shape menu item clicked').toBe(true)
         await l.win.waitForTimeout(1200)
 
-        // 3. switch to the Size & Position page.
-        expect(await clickText('Size & Position'), 'Size & Position page tab clicked').toBe(true)
+        // 3. switch to the Size & Position page (icon rail — click by page Title).
+        expect(await clickInspectorTab(l, 'Size & Position'), 'Size & Position page tab clicked').toBe(true)
         await l.win.waitForTimeout(1000)
 
         const spins = await rectsForCtor(l.win, 'SpinEdit')
