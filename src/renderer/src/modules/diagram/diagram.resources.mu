@@ -363,6 +363,12 @@ resources DiagramResources {
                   // the node; the container sizes the box to this wrapped tile.
                   MaxWidth            = 120,
                   TextAlignment       = Center,
+                  // Measure the width with the paint engine's own SVG <text> layout,
+                  // not Canvas measureText — the two disagree by a fraction of a pixel
+                  // per glyph, so under the node's ClipToBounds the last glyph was
+                  // sheared off ("Data Source|s"). Same reason mural's ShapeText /
+                  // Chip / markers use Exact. See TextBlock.MeasurementFidelity.
+                  MeasurementFidelity = Exact,
                   HorizontalAlignment = Center,
                   Margin              = (0,4,0,0) ]
         }
