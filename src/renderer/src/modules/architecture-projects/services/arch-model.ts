@@ -79,6 +79,12 @@ export class ArchModel
         this.fire()
     }
 
+    public removeRef(from: string, member: string, to: string): void
+    {
+        this.draft.removeRef(from, member, to)
+        this.fire()
+    }
+
     public remove(id: string): void
     {
         this.draft.remove(id)
