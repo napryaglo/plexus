@@ -22,7 +22,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@pragmatic-lab/fresco": "^0.4.1",
-    "@pragmatic-lab/mural": "^0.20.9",
+    "@pragmatic-lab/mural": "^0.20.10",
     "@pragmatic-lab/todl": "^0.32.0",
     "chokidar": "^5.0.0",
     "monaco-editor": "^0.55.1",
