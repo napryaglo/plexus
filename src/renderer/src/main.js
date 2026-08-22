@@ -14,15 +14,12 @@ import { app } from './app.mu.js'
 import { HtmlTarget } from '@pragmatic-lab/mural/visual-engine'
 import { ThemeManager, Density } from '@pragmatic-lab/mural/runtime'
 import { ContentHostService, PanelDockService } from '@pragmatic-lab/mural/framework'
-import { DiagramWorkspaceService } from './modules/diagram/services/diagram-workspace-service.js'
 import { AgentService } from './modules/agent-chat/services/agent-service.js'
 import { TemplateGalleryService } from './modules/agent-chat/services/template-gallery-service.js'
 import { attachAutoOpenInspector } from './modules/diagram/behaviors/auto-open-inspector-behavior.js'
 import { attachSaveShortcuts } from './services/documents/save-shortcuts.js'
 import { attachZoomShortcuts } from './modules/diagram/behaviors/zoom-shortcuts.js'
 import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'
-import { CodeEditorService } from './modules/code-editor/code-editor-service.js'
-import { EnvironmentService } from './services/environment/environment-service.js'
 import { ProjectExplorerService } from './modules/project-explorer/services/project-explorer-service.js'
 import { WorkspaceRefreshService } from './services/workspace/workspace-refresh-service.js'
 import { FileWatchService } from './services/file-watch/file-watch-service.js'
@@ -33,6 +30,7 @@ import { ArchDiagramBindingService } from './modules/architecture-projects/servi
 import { ArchModelToolboxContributor } from './modules/architecture-projects/services/arch-model-toolbox-contributor.js'
 import { DiagramCameraService } from './modules/diagram/services/diagram-camera-service.js'
 import { DiagramGuidesService } from './modules/diagram/services/diagram-guides-service.js'
+import { DiagramCanvasService } from './modules/diagram/services/diagram-canvas-service.js'
 import { ArchNewDiagramParticipant } from './modules/architecture-projects/services/arch-new-diagram-participant.js'
 import { NewFileParticipantKey } from './services/documents/new-file-participant.js'
 import { ArchEditViewpointsCommand } from './modules/architecture-projects/services/arch-edit-viewpoints-command.js'
@@ -103,6 +101,12 @@ try {
     // Generic to every .diagram, like the camera service above.
     app.Services.register(DiagramGuidesService.Key, (p) => new DiagramGuidesService(p))
     app.Services.get(DiagramGuidesService.Key)
+    // Diagram canvas background: drive each diagram's PaginatedCanvas from the
+    // "Diagram" settings — page size (page width/height) and the "Show grid"
+    // pattern (grid size + colour). Generic to every .diagram; construct now so
+    // it observes documents + settings from boot.
+    app.Services.register(DiagramCanvasService.Key, (p) => new DiagramCanvasService(p))
+    app.Services.get(DiagramCanvasService.Key)
     // Arch new-diagram participant: aliased under the generic NewFileParticipant
     // key so the ProjectExplorer prompts for governing viewpoints when a new
     // .diagram is created in an architecture project.
@@ -136,32 +140,19 @@ try {
             return true
         })
     }
-    // Open the seeded diagram as the initial document. The content region is
-    // document-driven (DocumentsContentHostService under ContentHostService.Key),
-    // so opening the workspace's document activates it → the canvas renders via
-    // DataTemplate[DiagramDocument]. Composition-root concern: the bootstrap
-    // decides what's open at launch.
+    // The content region is document-driven (DocumentsContentHostService under
+    // ContentHostService.Key). Nothing is opened at launch: the app starts with
+    // no document tabs, and the user opens diagrams/files from the explorer. (We
+    // used to seed an in-memory "Untitled Diagram" + a scratch.md tab here, but a
+    // fixed seeded diagram fought the active-document model — the Format Shape
+    // inspector bound to it instead of the diagram the user actually opened.)
     const host = app.Services.get(ContentHostService.Key)
-    const workspace = app.Services.get(DiagramWorkspaceService.Key)
-    if (host !== undefined && workspace !== undefined) host.Open(workspace.Document)
 
     // Ctrl+S / Ctrl+Shift+S → Save / Save All on the document host.
     if (host !== undefined) attachSaveShortcuts(host)
 
     // Ctrl +/−/0 → zoom in / out / reset on the active diagram's camera.
     if (host !== undefined) attachZoomShortcuts(host)
-
-    // Open a scratch file in the app's storage folder as a Monaco-backed code
-    // document (DomHost + Monaco through a document tab). Opened after the
-    // diagram so the editor tab is the active one on launch. The file need not
-    // exist — the editor opens empty and Save() creates it under userData.
-    const codeEditor = app.Services.get(CodeEditorService.Key)
-    const env = app.Services.get(EnvironmentService.Key)
-    if (codeEditor !== undefined && env !== undefined)
-    {
-        const sep = env.PathSeparator ?? '/'
-        codeEditor.OpenFile(`${env.UserDataDirectory}${sep}scratch.md`)
-    }
 
     // Restore the previous session's open projects into the explorer (skips
     // folders whose project manifest is gone). Fire-and-forget after mount.
@@ -184,9 +175,9 @@ try {
     //     const gallery = app.Services.get(TemplateGalleryService.Key)
     //     if (gallery !== undefined) dock.Add(gallery)
     // }
-    if (workspace !== undefined && dock !== undefined)
+    if (host !== undefined && dock !== undefined)
     {
-        attachAutoOpenInspector(workspace.Document, dock)
+        attachAutoOpenInspector(host, dock)
     }
 } catch (err) {
     console.error('[plexus] mount failed:', err)

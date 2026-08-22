@@ -31,9 +31,9 @@ module DiagramModule [ Name = "Diagram" ] {
     // live, user-modifiable value from it, overlaying any persisted value.
     .settings: {
         SettingDefinition
-            [ Key         = "diagram.grid.snap",
-              Label       = "Snap to grid",
-              Description = "Snap shapes to the grid while dragging.",
+            [ Key         = "diagram.grid.show",
+              Label       = "Show grid",
+              Description = "Show a grid on the diagram background.",
               Kind        = Boolean,
               Default     = true,
               Category    = "Diagram" ]
@@ -42,16 +42,28 @@ module DiagramModule [ Name = "Diagram" ] {
               Label       = "Grid size",
               Description = "Grid cell size in pixels.",
               Kind        = Number,
-              Default     = 8,
+              Default     = 20,
               Min         = 1,
               Max         = 128,
               Category    = "Diagram" ]
         SettingDefinition
-            [ Key      = "diagram.grid.color",
-              Label    = "Grid color",
-              Kind     = Color,
-              Default  = #E0E0E0,
-              Category = "Diagram" ]
+            [ Key         = "diagram.page.width",
+              Label       = "Page width",
+              Description = "Diagram page width in pixels.",
+              Kind        = Number,
+              Default     = 2000,
+              Min         = 1,
+              Max         = 20000,
+              Category    = "Diagram" ]
+        SettingDefinition
+            [ Key         = "diagram.page.height",
+              Label       = "Page height",
+              Description = "Diagram page height in pixels.",
+              Kind        = Number,
+              Default     = 2000,
+              Min         = 1,
+              Max         = 20000,
+              Category    = "Diagram" ]
         // Toolbox item figure size. The toolbox tile's visual slot
         // (ToolboxVisualPresenter) binds @ToolboxItemWidth/@ToolboxItemHeight,
         // which ToolboxService mirrors from these settings.
