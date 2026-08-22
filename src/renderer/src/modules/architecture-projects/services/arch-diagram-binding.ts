@@ -25,6 +25,8 @@ export class ArchDiagramBinding
     private detachView: (() => void) | undefined
     private readonly bound = new Map<string, Figure | ArchNodeVM>()   // entityId -> node
     private readonly boundEdges = new Map<string, Connector>()         // edgeKey -> projected connector
+    private readonly titleWired = new WeakSet<ArchNodeVM>()            // nodes whose title-commit is subscribed
+    private readonly titleUnsubs: Array<() => void> = []              // title-commit unsubscribes (for dispose)
     private scope: string[] = []                                       // selected viewpoints ([] = all)
     private scenarios: string[] = []                                   // scenarios whose steps are shown
     private readonly onActiveViewChanged = (): void => this.attachView()
@@ -121,6 +123,18 @@ export class ArchDiagramBinding
                 if (entity === undefined) continue
                 this.bound.set(id, node)
                 node.Label = displayLabel(entity)
+                // Persist an in-place title edit back to the entity's `label`
+                // field (subscribe once per node; the WeakSet guards re-scans).
+                // setField fires onChanged → rescan re-derives the same Label,
+                // and save() writes it to the entity's home .todl file.
+                if (!this.titleWired.has(node)) {
+                    this.titleWired.add(node)
+                    const entityId = id
+                    this.titleUnsubs.push(node.AddLabelCommittedListener((title) => {
+                        this.model.setField(entityId, 'label', title)
+                        void this.model.save()
+                    }))
+                }
                 // Key the icon by the entity's stamped icon-annotation resource key
                 // (referenced term first, then own concept); fall back to the bare
                 // concept when nothing carries an icon (→ default glyph).
@@ -272,6 +286,7 @@ export class ArchDiagramBinding
         this.doc.RemovePropertyChangedListener(DiagramDocument.ActiveViewKey, this.onActiveViewChanged)
         this.detachView?.()
         this.detachView = undefined
+        for (const un of this.titleUnsubs.splice(0)) un()
     }
 }
 

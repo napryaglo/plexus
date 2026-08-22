@@ -13,6 +13,7 @@ import ToolboxService from "./services/diagram-panel-services.js"
 import LayoutPipelineService from "./layout/layout-pipeline-service.js"
 import DropCandidateChooserService from "../architecture-projects/services/drop-candidate-chooser-service.js"
 import ArchNodeVM from "../architecture-projects/services/arch-node-vm.js"
+import ArchTitleEditBehavior from "../architecture-projects/behaviors/arch-title-edit-behavior.js"
 import ZoomPercent from "./services/diagram-zoom-percent.js"
 
 resources DiagramResources {
@@ -352,7 +353,7 @@ resources DiagramResources {
                   Width               = $IconSize,
                   Height              = $IconSize,
                   HorizontalAlignment = Center ]
-            TextBlock
+            TextBlock x:name="PART_Title"
                 [ Text                = $Label,
                   Style               = @BodySmall,
                   // Caption ink tracks the theme so it reads on the (now theme-
@@ -371,9 +372,34 @@ resources DiagramResources {
                   MeasurementFidelity = Exact,
                   HorizontalAlignment = Center,
                   Margin              = (0,4,0,0) ]
+            // In-place TITLE editor — F2 / double-click on the node begins editing
+            // $Label here (not the container's blank ShapeText). Hidden until the
+            // $IsEditing trigger reveals it; FocusOnVisibleBehavior focuses + selects
+            // the box on reveal, ArchTitleEditBehavior commits on Enter / click-away
+            // and cancels on Escape (the commit persists to the entity via the
+            // binding — see ArchNodeVM.CommitEdit). A non-focusable Border wraps the
+            // TextBox because a TextBox has no content model to host a Behaviors block.
+            Border x:name="PART_TitleEditor"
+                [ Visibility          = Collapsed,
+                  HorizontalAlignment = Center,
+                  Margin              = (0,4,0,0) ] {
+                .Behaviors: { FocusOnVisibleBehavior ArchTitleEditBehavior }
+                TextBox
+                    [ Text                = $EditingLabel,
+                      Variant             = Plain,
+                      MinWidth            = 60,
+                      MaxWidth            = 120 ]
+            }
         }
         // "Open Wiki" when this node's concept has an openable wiki page.
         when ( $HasWiki = true ) { ContextMenuService.ContextMenu = @OpenWikiMenu; }
+        // Reveal the inline title editor while this node is being renamed (data
+        // trigger — `$IsEditing`, not a root-property trigger — so it fires on the
+        // ArchNodeVM's DP; see the project-explorer rename template for the idiom).
+        when ( $IsEditing = true ) {
+            PART_Title.Visibility       = Collapsed;
+            PART_TitleEditor.Visibility = Visible;
+        }
     }
 
     // ── ToolBox capability panel — the shapes palette in the left pane.

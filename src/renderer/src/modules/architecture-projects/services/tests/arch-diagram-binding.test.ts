@@ -97,6 +97,37 @@ test('model label change re-syncs the bound VM; delete removes its VM', () => {
     expect(ids).not.toContain('host')
 })
 
+test('an in-place title edit commit persists to the entity label + saves; rescan re-derives it', async () => {
+    const model = buildModel()
+    const storage = new FakeStorage('fake://Arch')
+    // Rebuild the ArchModel over a storage we can read back (buildModel makes its
+    // own); reuse buildModel's draft by constructing directly here instead.
+    const mmDoc = toJSON(load([{ uri: 'archmm.todl', text: MM }]).model)
+    const baseRepo = new Repository(graphFromJSON(mmDoc))
+    const draft = ModelDraft.fromSources([baseRepo], [fileA, fileB], { namespace: 'archmm' })
+    const model2 = new ArchModel(draft, storage, 'archmm')
+    void model
+
+    const doc = new DiagramDocument()
+    const web = addVM(doc, 'web')
+    new ArchDiagramBinding(doc, model2).attach()
+    expect(web.Label).toBe('web')   // id fallback before edit
+
+    // Edit the title in place and commit — the binding writes the entity's label.
+    web.BeginEdit()
+    web.EditingLabel = 'Web App'
+    web.CommitEdit()
+
+    // setField fired onChanged → rescan re-derived the label from the entity.
+    expect(web.Label).toBe('Web App')
+    // ...and the entity now carries it.
+    expect(model2.entities().find((e) => e.id === 'web')?.field('label')).toBe('Web App')
+
+    // save() round-trips it to the entity's home .todl file.
+    await model2.save()
+    expect(await storage.ReadText('model-a.todl')).toContain('Web App')
+})
+
 test('dispose stops further syncing', () => {
     const model = buildModel()
     const doc = new DiagramDocument()
