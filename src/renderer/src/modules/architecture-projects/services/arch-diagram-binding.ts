@@ -5,7 +5,7 @@ import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolv
 import type { ArchModel } from './arch-model.js'
 import { ArchNodeVM } from './arch-node-vm.js'
 import { iconEntityKey } from './arch-icon.js'
-import { desiredEdges, edgeKey } from './edge-projection.js'
+import { desiredEdges, edgeKey, desiredConnectorEntityEdges } from './edge-projection.js'
 import { isContainerConcept, containmentParentOf, containmentMemberOf, containmentMemberFor } from './containment.js'
 import { resolveConnectorActions, type ConnectorAction } from './arch-connector-resolver.js'
 import { scenarioStepPairs, type FlowEntity } from './scenario-flow.js'
@@ -320,7 +320,8 @@ export class ArchDiagramBinding
             const e = byId.get(id)
             if (e !== undefined) placed.set(id, e)
         }
-        const desired = desiredEdges(this.model.repository(), placed, this.scopeSet())
+        const repo = this.model.repository()
+        const desired = desiredEdges(repo, placed, this.scopeSet())
 
         // Scenario overlay: each active scenario projects its steps as connectors
         // between placed participants. These are model-derived (the steps live in
@@ -334,6 +335,12 @@ export class ArchDiagramBinding
                 desired.add(edgeKey(s, SCENARIO_STEP_MEMBER, d))
         }
 
+        // Standalone `connector` entities ({from, to, type}) project as labeled
+        // edges between their placed endpoints — the meta-model's actual
+        // component↔component connector. Their type term is the connector label.
+        const connEntityEdges = desiredConnectorEntityEdges(repo, this.model.entities(), new Set(this.bound.keys()), this.scopeSet())
+        for (const key of connEntityEdges.keys()) desired.add(key)
+
         // Add missing projected connectors.
         for (const key of desired) {
             if (this.boundEdges.has(key)) continue
@@ -345,7 +352,11 @@ export class ArchDiagramBinding
                 new ConnectorEndpoint({ Node: src }),
                 new ConnectorEndpoint({ Node: tgt }),
             )
-            if (c !== null) this.boundEdges.set(key, c)
+            if (c !== null) {
+                const label = connEntityEdges.get(key)
+                if (label !== undefined) c.LabelText = label
+                this.boundEdges.set(key, c)
+            }
         }
         // Remove projected connectors no longer desired.
         for (const [key, c] of [...this.boundEdges]) {
