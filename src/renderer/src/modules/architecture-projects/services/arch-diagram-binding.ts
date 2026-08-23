@@ -1,4 +1,5 @@
 import { Connector, ConnectorEndpoint, DiagramDocument, Figure, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { ContentContainerFigure } from '@pragmatic-lab/mural/framework/diagram/content-container-figure.js'
 import type { Entity } from '@pragmatic-lab/todl'
 import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolver.js'
 import type { ArchModel } from './arch-model.js'
@@ -178,8 +179,43 @@ export class ArchDiagramBinding
             }
         }
 
+        this.reconcileContainerRealization()
         this.projectEdges(byId)
         this.projectContainment(byId)
+    }
+
+    // Container-ness (ArchNodeVM.IsContainer) is discovered only once the model
+    // loads (async) and rescan runs — but a node realizes its Figure earlier, when
+    // the view first mounts, so mural's GetContainerForItemOverride saw IsContainer
+    // still false and minted a PLAIN Figure. That decision is one-shot per
+    // realization, so flipping IsContainer afterward doesn't upgrade it. Force a
+    // re-realization: a node that is now a container but whose realized Figure is
+    // not a ContentContainerFigure is removed and re-inserted, so the ItemsControl
+    // recycles the stale container and mints a fresh one reading the now-true flag.
+    // Runs once per container node (subsequent rescans see the right type → skip);
+    // geometry survives (the NodeVisualStore keys it by id).
+    private reconcileContainerRealization(): void
+    {
+        const view = this.doc.ActiveView
+        if (view === undefined) return
+        const stale: Array<{ vm: ArchNodeVM; index: number }> = []
+        for (const [, node] of this.bound) {
+            if (!(node instanceof ArchNodeVM) || !node.IsContainer) continue
+            const fig = view.Generator.ContainerFromItem(node)
+            if (fig instanceof ContentContainerFigure) continue   // already the right container
+            const index = this.doc.Nodes.IndexOf(node)
+            if (index >= 0) stale.push({ vm: node, index })
+        }
+        if (stale.length === 0) return
+        this._writingBack = true   // suppress NodeReparented echoes during the churn
+        try {
+            for (const { vm, index } of stale) {
+                this.doc.Nodes.Remove(vm)
+                this.doc.Nodes.Insert(index, vm)   // re-mints the container as a ContentContainerFigure (mural styles its default box)
+            }
+        } finally {
+            this._writingBack = false
+        }
     }
 
     // Project each bound node's containment ref (`in`) as visual NESTING: the
