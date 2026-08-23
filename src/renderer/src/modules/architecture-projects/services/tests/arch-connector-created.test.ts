@@ -43,9 +43,10 @@ function setup(model: ArchModel, srcConcept: string, tgtConcept: string) {
     doc.Nodes.Add(a); doc.Nodes.Add(b)
     let shown: { actions: readonly ConnectorAction[]; onPick: (a: ConnectorAction) => void } | undefined
     const chooser = { Show: vi.fn((actions: readonly ConnectorAction[], onPick: (a: ConnectorAction) => void) => { shown = { actions, onPick } }) }
-    const binding = new ArchDiagramBinding(doc, model, chooser as never)
+    const status = { Text: '' }
+    const binding = new ArchDiagramBinding(doc, model, chooser as never, undefined, status)
     binding.attach()
-    return { binding, src, tgt, a, b, chooser, getShown: () => shown }
+    return { binding, src, tgt, a, b, chooser, status, getShown: () => shown }
 }
 
 const connectors = (model: ArchModel) => model.entities().filter((e) => isConnectorEntity(model.repository(), e))
@@ -78,6 +79,18 @@ test('a concept relationship still auto-writes its ref (no connector entity)', (
     expect(addRef).toHaveBeenCalledWith(src.id, 'implemented_by', tgt.id)
     expect(connectors(model).length).toBe(0)
     expect(chooser.Show).not.toHaveBeenCalled()
+})
+
+test('an illegal pair (no relationship, not a connector pair) sets a status message', () => {
+    const model = buildModel()
+    // technology has no relationships and is not a legal connector from/to target.
+    const { binding, a, b, status, chooser } = setup(model, 'technology', 'technology')
+
+    binding.handleConnectorCreated(a, b)
+
+    expect(connectors(model).length).toBe(0)
+    expect(chooser.Show).not.toHaveBeenCalled()
+    expect(status.Text).toMatch(/can't connect a technology to a technology/i)
 })
 
 test('a pair with BOTH a relationship and a legal connector shows a chooser; picking connect mints the entity', () => {

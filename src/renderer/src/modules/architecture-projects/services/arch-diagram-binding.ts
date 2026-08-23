@@ -17,6 +17,9 @@ import type { WikiService } from '../../../services/wiki/wiki-service.js'
 // edgeKey never collides with a real model relationship member.
 const SCENARIO_STEP_MEMBER = '__scenario_step__'
 
+// A status-bar sink (StatusService satisfies it) — settable message text.
+export interface IStatusSink { Text: string }
+
 // Binds an opened diagram to a project's ArchModel. On every model change it
 // rescans doc.Nodes: ArchNodeVMs (and legacy Figures) whose Id is a live entity
 // are tracked + labelled (this binds drop-created nodes too, since the drop fires
@@ -43,6 +46,9 @@ export class ArchDiagramBinding
         public readonly model: ArchModel,
         private readonly chooser?: DropCandidateChooserService,
         private readonly wiki?: WikiService,
+        // A status sink (StatusService) for user feedback on a rejected draw.
+        // Minimal shape so the binding doesn't hard-depend on the shell service.
+        private readonly status?: IStatusSink,
     ) {}
 
     public attach(): void
@@ -149,9 +155,14 @@ export class ArchDiagramBinding
         this.chooser?.Show(actions, (a) => applyByMember.get(a.member)?.())
     }
 
-    // A drawn connector resolved to nothing legal. Task 6 replaces the body with a
-    // status message; the raw connector was already reconciled away.
-    private rejectDraw(_srcConcept: string, _tgtConcept: string): void {}
+    // A drawn connector resolved to nothing legal (no relationship member accepts
+    // the pair and it is not a valid `connector` from/to). The raw connector was
+    // already reconciled away; tell the user why instead of leaving it a silent
+    // vanish.
+    private rejectDraw(srcConcept: string, tgtConcept: string): void
+    {
+        if (this.status !== undefined) this.status.Text = `Can't connect a ${srcConcept} to a ${tgtConcept} here`
+    }
 
     // The concept an already-placed entity instantiates (from the live model).
     private conceptOf(id: string): string | undefined
