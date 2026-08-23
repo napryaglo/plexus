@@ -5,7 +5,7 @@ import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolv
 import type { ArchModel } from './arch-model.js'
 import { ArchNodeVM } from './arch-node-vm.js'
 import { iconEntityKey } from './arch-icon.js'
-import { desiredEdges, edgeKey, desiredConnectorEntityEdges } from './edge-projection.js'
+import { desiredEdges, edgeKey, desiredConnectorEntityEdges, connectorEntityIdOf } from './edge-projection.js'
 import { isContainerConcept, containmentParentOf, containmentMemberOf, containmentMemberFor } from './containment.js'
 import { resolveConnectorActions, type ConnectorAction } from './arch-connector-resolver.js'
 import { canDrawConnectorEntity, mintConnectorEntity, CONNECTOR_DEFAULT_TYPE, CONNECTOR_DRAW_MEMBER } from './connector-entity.js'
@@ -65,8 +65,8 @@ export class ArchDiagramBinding
         if (view === undefined) return
         const onConnector = (args: { Source?: ConnectorEndpoint; Target?: ConnectorEndpoint }): void =>
             this.handleConnectorCreated(args.Source?.Node, args.Target?.Node)
-        const onDelete = (args: { Items: readonly unknown[]; Shift: boolean }): void =>
-            this.handleDeleteRequested(args.Items, args.Shift)
+        const onDelete = (args: { Items: readonly unknown[]; Connectors: readonly Connector[]; Shift: boolean }): void =>
+            this.handleDeleteRequested(args.Items, args.Connectors, args.Shift)
         const onReparent = (args: { Node: { Id?: string }; OldParentId?: string; NewParentId?: string }): void =>
             this.handleReparent(args)
         view.AddConnectorCreatedListener(onConnector)
@@ -80,10 +80,13 @@ export class ArchDiagramBinding
     }
 
     // Delete routing: plain Delete is view-only (the standard mutator removes the
-    // figures; the entity stays and re-appears in the Model page). Shift+Delete
-    // ALSO removes the underlying entity from the model (→ rescan drops the node +
-    // its edges everywhere).
-    public handleDeleteRequested(items: readonly unknown[], shift: boolean): void
+    // figures/connectors; the model entity stays and re-projects on reload).
+    // Shift+Delete ALSO removes the underlying entity from the model — for a node,
+    // its entity (→ rescan drops the node + its edges); for a projected `connector`
+    // entity edge, the connector entity (→ the edge is gone for good). Relationship
+    // and scenario-step edges have no standalone entity, so Shift+Delete on those
+    // is a no-op here (the ref/step lives on another entity).
+    public handleDeleteRequested(items: readonly unknown[], connectors: readonly Connector[], shift: boolean): void
     {
         if (!shift) return
         let removed = false
@@ -91,7 +94,19 @@ export class ArchDiagramBinding
             const id = (it as { Id?: string } | undefined)?.Id
             if (id !== undefined && this.bound.has(id)) { this.model.remove(id); removed = true }
         }
+        for (const c of connectors) {
+            const entityId = this.connectorEntityIdFor(c)
+            if (entityId !== undefined) { this.model.remove(entityId); removed = true }
+        }
         if (removed) void this.model.save()
+    }
+
+    // The `connector` entity id behind a projected connector, or undefined when the
+    // connector derives from a relationship / scenario step (no entity to delete).
+    private connectorEntityIdFor(c: Connector): string | undefined
+    {
+        for (const [key, conn] of this.boundEdges) if (conn === c) return connectorEntityIdOf(key)
+        return undefined
     }
 
     // A user drew a connector between two nodes. Reconcile away the raw connector

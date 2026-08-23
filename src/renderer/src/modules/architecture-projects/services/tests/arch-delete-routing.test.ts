@@ -30,7 +30,7 @@ test('plain Delete (shift=false) does not remove the entity from the model', () 
     const { model, binding, node } = setup()
     const remove = vi.spyOn(model, 'remove')
 
-    binding.handleDeleteRequested([node], false)
+    binding.handleDeleteRequested([node], [], false)
 
     expect(remove).not.toHaveBeenCalled()
 })
@@ -39,7 +39,7 @@ test('Shift+Delete removes the entity from the model and saves', () => {
     const { model, binding, node, comp } = setup()
     const remove = vi.spyOn(model, 'remove')
 
-    binding.handleDeleteRequested([node], true)
+    binding.handleDeleteRequested([node], [], true)
 
     expect(remove).toHaveBeenCalledWith(comp.id)
     expect(model.save).toHaveBeenCalled()
@@ -50,7 +50,7 @@ test('non-arch items are ignored on Shift+Delete', () => {
     const remove = vi.spyOn(model, 'remove')
 
     const unbound = new ArchNodeVM(); unbound.Id = 'not-an-entity'
-    binding.handleDeleteRequested([unbound], true)
+    binding.handleDeleteRequested([unbound], [], true)
 
     expect(remove).not.toHaveBeenCalled()
 })
