@@ -5,7 +5,7 @@ import type { ArchModel } from './arch-model.js'
 import { ArchNodeVM } from './arch-node-vm.js'
 import { iconEntityKey } from './arch-icon.js'
 import { desiredEdges, edgeKey } from './edge-projection.js'
-import { isContainerConcept } from './containment.js'
+import { isContainerConcept, containmentParentOf } from './containment.js'
 import { resolveConnectorActions, type ConnectorAction } from './arch-connector-resolver.js'
 import { scenarioStepPairs, type FlowEntity } from './scenario-flow.js'
 import type { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
@@ -30,7 +30,10 @@ export class ArchDiagramBinding
     private readonly titleUnsubs: Array<() => void> = []              // title-commit unsubscribes (for dispose)
     private scope: string[] = []                                       // selected viewpoints ([] = all)
     private scenarios: string[] = []                                   // scenarios whose steps are shown
-    private readonly onActiveViewChanged = (): void => this.attachView()
+    // On mount (or view swap) re-wire the view listeners AND rescan, so the
+    // containment projection — which needs realized Figures — runs once the view
+    // exists (attach's first rescan may precede the mount).
+    private readonly onActiveViewChanged = (): void => { this.attachView(); this.rescan() }
 
     public constructor(
         private readonly doc: DiagramDocument,
@@ -171,6 +174,40 @@ export class ArchDiagramBinding
         }
 
         this.projectEdges(byId)
+        this.projectContainment(byId)
+    }
+
+    // Project each bound node's containment ref (`in`) as visual NESTING: the
+    // node's realized Figure is re-parented into its container's Figure. Model is
+    // the source of truth — a node's container is whatever its containment ref
+    // points at (and is placed + a container concept); everything else sits at
+    // root. Needs the mounted view (nesting operates on realized Figures), so it
+    // no-ops until ActiveView exists; onActiveViewChanged re-rescans on mount.
+    //
+    // Reconcile-only: on load the visual store already restored the nesting
+    // (ContainerParent === target → skip), and a user drag already nested the
+    // Figure before the write-back rescans (also a skip). It actively reparents
+    // only when the model and the visual tree disagree (model wins). The write-
+    // back observer (Task C5) guards against the reparents THIS pass emits.
+    private projectContainment(byId: ReadonlyMap<string, Entity>): void
+    {
+        const view = this.doc.ActiveView
+        if (view === undefined) return
+        const repo = this.model.repository()
+        const placement = view.ContainerPlacement
+        placement.placeAll()   // register realized containers + restore saved nesting
+        for (const [id, node] of this.bound) {
+            if (!(node instanceof ArchNodeVM)) continue
+            const entity = byId.get(id)
+            if (entity === undefined) continue
+            const fig = view.Generator.ContainerFromItem(node)
+            if (!(fig instanceof Figure)) continue
+            const parent = containmentParentOf(repo, entity)
+            const targetId = (parent !== undefined && this.bound.has(parent.id)
+                && isContainerConcept(repo, parent.concept)) ? parent.id : undefined
+            if ((fig.ContainerParent?.Id) === targetId) continue   // already nested correctly
+            placement.reparent(fig, targetId)
+        }
     }
 
     // Project the model's relationships between placed nodes as connectors, and
