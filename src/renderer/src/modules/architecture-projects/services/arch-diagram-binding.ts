@@ -245,11 +245,16 @@ export class ArchDiagramBinding
             return
         }
 
-        // Nest: the parent must be a placed entity and the meta-model must permit
-        // child --containment--> parent; otherwise reject (snap back, no write).
+        // Nest into a NON-entity parent (a generic container / freeform shape):
+        // visual-only grouping — accept it, write no model ref (a reload restores
+        // the nesting from the visual store, not the model). Generic accepts any.
         const parent = this.entityById(args.NewParentId)
-        const member = parent !== undefined ? containmentMemberFor(repo, child.concept, parent.concept) : undefined
-        if (parent === undefined || member === undefined) {
+        if (parent === undefined) return
+
+        // Nest into a MODEL-backed parent: the meta-model must permit
+        // child --containment--> parent; otherwise reject (snap back, no write).
+        const member = containmentMemberFor(repo, child.concept, parent.concept)
+        if (member === undefined) {
             this._writingBack = true
             try { this.doc.ActiveView?.ContainerPlacement.reparent(args.Node as unknown as Figure, undefined) }
             finally { this._writingBack = false }

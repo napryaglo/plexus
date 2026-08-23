@@ -103,3 +103,11 @@ test('a reparent of a node with no backing entity is ignored (visual-only groupi
     fire({ Node: { Id: 'ghost' }, OldParentId: undefined, NewParentId: 'loc' })
     expect(snapBacks).not.toContain('ghost')   // no rejection, no model write — just left alone
 })
+
+test('nesting a model node into a generic (non-entity) container is accepted visually, no ref, no snap-back', () => {
+    const { fire, refsIn, snapBacks } = setup()
+    // 'container:1' is a generic container Figure (no backing entity).
+    fire({ Node: { Id: 'comp' }, OldParentId: undefined, NewParentId: 'container:1' })
+    expect(refsIn('comp')).toEqual([])            // no model ref written (generic = visual-only)
+    expect(snapBacks).not.toContain('comp')       // accepted, not rejected
+})
