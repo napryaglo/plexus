@@ -26,6 +26,22 @@ export function connectorTypeOf(entity: Entity): string {
     return typeof t === 'string' && t.length > 0 ? t : CONNECTOR_DEFAULT_TYPE
 }
 
+// True when the meta-model's `connector` `from`/`to` accept the (src → tgt) pair
+// (subtype-aware) — i.e. drawing a line between two nodes of these concepts can
+// mint a connector entity. False when the meta-model has no `connector` concept.
+export function canDrawConnectorEntity(repo: Repository, srcConcept: string, tgtConcept: string): boolean {
+    if (repo.resolve(CONNECTOR_CONCEPT) === undefined) return false
+    const rels = repo.effectiveSchema(CONNECTOR_CONCEPT).relationships
+    const fromRel = rels.find((r) => r.name === CONNECTOR_FROM_MEMBER)
+    const toRel = rels.find((r) => r.name === CONNECTOR_TO_MEMBER)
+    if (fromRel === undefined || toRel === undefined) return false
+    const accepts = (targets: readonly string[], concept: string): boolean => {
+        const accept = acceptSet(repo, concept)
+        return targets.some((t) => accept.has(t))
+    }
+    return accepts(fromRel.targets, srcConcept) && accepts(toRel.targets, tgtConcept)
+}
+
 // Mint a `connector` entity linking `fromId → toId` with the given type term.
 // Routes it to the `from` endpoint's home file so it round-trips to real source.
 // Returns the new entity id. Does NOT save — the caller saves once.

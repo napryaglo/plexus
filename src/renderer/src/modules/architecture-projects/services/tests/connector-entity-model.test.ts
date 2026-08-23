@@ -2,22 +2,24 @@ import { test, expect } from 'vitest'
 import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
-import { mintConnectorEntity, isConnectorEntity, connectorTypeOf } from '../connector-entity.js'
+import { mintConnectorEntity, isConnectorEntity, connectorTypeOf, canDrawConnectorEntity } from '../connector-entity.js'
 
-// Minimal meta-model with a `connector` concept (from/to) and a `connectors`
-// taxonomy representing it — mirrors tech-architecture's shape.
+// Minimal meta-model with a `connector` concept (from/to over several concepts)
+// and a `connectors` taxonomy representing it — mirrors tech-architecture's shape.
 const MM = `namespace archmm {
   concept location {}
-  concept component { relationship in -> location?; }
+  concept technology {}
+  concept actor {}
+  concept component { relationship in -> location?; relationship implemented_by -> technology?; }
   concept connector {
-    relationship from -> component;
-    relationship to -> component;
+    relationship from -> actor | component | location;
+    relationship to -> actor | component | location;
   }
   taxonomy connectors : represents connector {
     term calls {}
     term event {}
   }
-  viewpoint V : frames component, location, connector
+  viewpoint V : frames component, location, actor, technology, connector
 }`
 
 function buildModel(): { model: ArchModel; storage: FakeStorage } {
@@ -54,6 +56,15 @@ test('mintConnectorEntity creates a connector {from,to,type} that round-trips', 
     // Round-trips as `connector <id> { type = "calls"; from = comp_a; to = comp_b; }`.
     const todl = await emit(model, storage)
     expect(todl).toMatch(/connector\s+\w+\s*\{[\s\S]*?type\s*=\s*"calls"[\s\S]*?from\s*=\s*comp_a[\s\S]*?to\s*=\s*comp_b/)
+})
+
+test('canDrawConnectorEntity accepts legal from/to pairs and rejects others', () => {
+    const { model } = buildModel()
+    const repo = model.repository()
+    expect(canDrawConnectorEntity(repo, 'component', 'component')).toBe(true)   // both legal endpoints
+    expect(canDrawConnectorEntity(repo, 'actor', 'component')).toBe(true)
+    expect(canDrawConnectorEntity(repo, 'component', 'location')).toBe(true)
+    expect(canDrawConnectorEntity(repo, 'component', 'technology')).toBe(false) // technology isn't a from/to target
 })
 
 test('connectorTypeOf falls back to the default when type is unset', () => {
