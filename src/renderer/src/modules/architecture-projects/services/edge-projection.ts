@@ -1,4 +1,5 @@
 import type { Entity, Repository } from '@pragmatic-lab/todl'
+import { isContainmentRelationship } from './containment.js'
 
 // A stable, unique key for a projected connector: one per (from, member, to).
 // Multi-member relationships between the same pair yield distinct keys.
@@ -19,6 +20,7 @@ export function desiredEdges(
         repo.viewpointsFraming(concept).some((v) => scope.has(v))
     for (const [fromId, e] of placed) {
         for (const rel of repo.effectiveSchema(e.concept).relationships) {
+            if (isContainmentRelationship(repo, e.concept, rel.name)) continue   // nests, not a connector
             for (const target of e.refs(rel.name)) {
                 if (!placed.has(target.id)) continue
                 if (!inScope(target.concept)) continue
