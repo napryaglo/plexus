@@ -5,7 +5,7 @@ import type { ArchModel } from './arch-model.js'
 import { ArchNodeVM } from './arch-node-vm.js'
 import { iconEntityKey } from './arch-icon.js'
 import { desiredEdges, edgeKey } from './edge-projection.js'
-import { isContainerConcept, containmentParentOf } from './containment.js'
+import { isContainerConcept, containmentParentOf, containmentMemberOf, containmentMemberFor } from './containment.js'
 import { resolveConnectorActions, type ConnectorAction } from './arch-connector-resolver.js'
 import { scenarioStepPairs, type FlowEntity } from './scenario-flow.js'
 import type { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
@@ -30,6 +30,7 @@ export class ArchDiagramBinding
     private readonly titleUnsubs: Array<() => void> = []              // title-commit unsubscribes (for dispose)
     private scope: string[] = []                                       // selected viewpoints ([] = all)
     private scenarios: string[] = []                                   // scenarios whose steps are shown
+    private _writingBack = false                                       // true while the binding drives reparents (projection / snap-back) — the NodeReparented observer ignores those echoes
     // On mount (or view swap) re-wire the view listeners AND rescan, so the
     // containment projection — which needs realized Figures — runs once the view
     // exists (attach's first rescan may precede the mount).
@@ -64,11 +65,15 @@ export class ArchDiagramBinding
             this.handleConnectorCreated(args.Source?.Node, args.Target?.Node)
         const onDelete = (args: { Items: readonly unknown[]; Shift: boolean }): void =>
             this.handleDeleteRequested(args.Items, args.Shift)
+        const onReparent = (args: { Node: { Id?: string }; OldParentId?: string; NewParentId?: string }): void =>
+            this.handleReparent(args)
         view.AddConnectorCreatedListener(onConnector)
         view.AddDeleteRequestedListener(onDelete)
+        view.AddNodeReparentedListener(onReparent)
         this.detachView = () => {
             view.RemoveConnectorCreatedListener(onConnector)
             view.RemoveDeleteRequestedListener(onDelete)
+            view.RemoveNodeReparentedListener(onReparent)
         }
     }
 
@@ -195,19 +200,71 @@ export class ArchDiagramBinding
         if (view === undefined) return
         const repo = this.model.repository()
         const placement = view.ContainerPlacement
-        placement.placeAll()   // register realized containers + restore saved nesting
-        for (const [id, node] of this.bound) {
-            if (!(node instanceof ArchNodeVM)) continue
-            const entity = byId.get(id)
-            if (entity === undefined) continue
-            const fig = view.Generator.ContainerFromItem(node)
-            if (!(fig instanceof Figure)) continue
-            const parent = containmentParentOf(repo, entity)
-            const targetId = (parent !== undefined && this.bound.has(parent.id)
-                && isContainerConcept(repo, parent.concept)) ? parent.id : undefined
-            if ((fig.ContainerParent?.Id) === targetId) continue   // already nested correctly
-            placement.reparent(fig, targetId)
+        this._writingBack = true
+        try {
+            placement.placeAll()   // register realized containers + restore saved nesting
+            for (const [id, node] of this.bound) {
+                if (!(node instanceof ArchNodeVM)) continue
+                const entity = byId.get(id)
+                if (entity === undefined) continue
+                const fig = view.Generator.ContainerFromItem(node)
+                if (!(fig instanceof Figure)) continue
+                const parent = containmentParentOf(repo, entity)
+                const targetId = (parent !== undefined && this.bound.has(parent.id)
+                    && isContainerConcept(repo, parent.concept)) ? parent.id : undefined
+                if ((fig.ContainerParent?.Id) === targetId) continue   // already nested correctly
+                placement.reparent(fig, targetId)
+            }
+        } finally {
+            this._writingBack = false
         }
+    }
+
+    // A drag nested / un-nested a node (mural's NodeReparented). Mirror the
+    // membership change into the model: nest → write the containment ref, un-nest
+    // → remove it. Model-backed nodes only — a reparent of a node with no backing
+    // entity (a generic container / freeform shape) is visual-only, left alone. An
+    // illegal nesting (the meta-model has no relationship that can hold it) is
+    // rejected: no ref is written and the node is snapped back out.
+    private handleReparent(args: { Node: { Id?: string }; OldParentId?: string; NewParentId?: string }): void
+    {
+        if (this._writingBack) return                     // ignore the echo of our own projection / snap-back
+        const childId = args.Node.Id
+        if (childId === undefined) return
+        const child = this.entityById(childId)
+        if (child === undefined) return                   // visual-only node (no model backing)
+        const repo = this.model.repository()
+
+        if (args.NewParentId === undefined) {
+            // Un-nest: drop the containment ref to the old parent (if it was an entity).
+            const oldId = args.OldParentId
+            if (oldId !== undefined && this.entityById(oldId) !== undefined) {
+                this.model.removeRef(childId, containmentMemberOf(repo, child.concept), oldId)
+                void this.model.save()
+            }
+            return
+        }
+
+        // Nest: the parent must be a placed entity and the meta-model must permit
+        // child --containment--> parent; otherwise reject (snap back, no write).
+        const parent = this.entityById(args.NewParentId)
+        const member = parent !== undefined ? containmentMemberFor(repo, child.concept, parent.concept) : undefined
+        if (parent === undefined || member === undefined) {
+            this._writingBack = true
+            try { this.doc.ActiveView?.ContainerPlacement.reparent(args.Node as unknown as Figure, undefined) }
+            finally { this._writingBack = false }
+            return
+        }
+        // Legal: rewrite the containment ref (drop the old parent, if any, then add).
+        if (args.OldParentId !== undefined && this.entityById(args.OldParentId) !== undefined)
+            this.model.removeRef(childId, member, args.OldParentId)
+        this.model.addRef(childId, member, args.NewParentId)
+        void this.model.save()
+    }
+
+    private entityById(id: string): Entity | undefined
+    {
+        return this.model.entities().find((e) => e.id === id)
     }
 
     // Project the model's relationships between placed nodes as connectors, and

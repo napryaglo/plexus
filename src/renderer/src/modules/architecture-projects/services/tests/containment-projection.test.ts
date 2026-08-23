@@ -51,6 +51,8 @@ function fakeView(): { view: Diagram; reparents: Array<{ id: string | undefined;
         RemoveConnectorCreatedListener: () => {},
         AddDeleteRequestedListener: () => {},
         RemoveDeleteRequestedListener: () => {},
+        AddNodeReparentedListener: () => {},
+        RemoveNodeReparentedListener: () => {},
     } as unknown as Diagram
     return { view, reparents, figFor }
 }

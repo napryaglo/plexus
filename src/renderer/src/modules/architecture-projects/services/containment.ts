@@ -71,3 +71,18 @@ export function containmentMemberOf(repo: Repository, concept: string): string
         if (isContainmentRelationship(repo, concept, rel.name)) return rel.name
     return CONTAINMENT_MEMBER_DEFAULT
 }
+
+// The containment member on `childConcept` that may point at `parentConcept` (or a
+// supertype of it), or undefined when the meta-model permits no such nesting. A
+// defined result is the legality proof AND the member to write: nesting is legal
+// iff this returns a member. The write-back path rejects a nest that returns
+// undefined (no relationship can hold it).
+export function containmentMemberFor(repo: Repository, childConcept: string, parentConcept: string): string | undefined
+{
+    const parentTypes = new Set<string>([parentConcept, ...repo.supertypesOf(parentConcept)])
+    for (const rel of repo.effectiveSchema(childConcept).relationships) {
+        if (!isContainmentRelationship(repo, childConcept, rel.name)) continue
+        if (rel.targets.some((t) => parentTypes.has(t))) return rel.name
+    }
+    return undefined
+}
