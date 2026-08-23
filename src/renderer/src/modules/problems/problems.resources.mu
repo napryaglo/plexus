@@ -49,7 +49,7 @@ resources ProblemsResources {
     // text summary rather than a single glyph. ContentPresenter shows the
     // trigger's PART_TriggerStack.
     Template x:key="ProblemsTriggerChrome" [ TargetType = Button ] {
-        Border x:name="PART_Primary" [ Fill = @SurfaceContainerHigh, CornerRadius = @ShapeFull, BorderThickness = (0) ] {
+        Border x:name="PART_Primary" [ Fill = @SurfaceContainerHigh, CornerRadius = @ShapeFull ] {
             Border x:name="PART_PrimaryState" [ Fill = #00000000, CornerRadius = @ShapeFull, Padding = (10,3,10,3) ] {
                 ContentPresenter [ HorizontalAlignment = Center, VerticalAlignment = Center ]
             }
@@ -89,10 +89,10 @@ resources ProblemsResources {
     // is the ProblemsService (from the @ProblemsDock DataTemplate).
     Template x:key="ProblemsPopup" [ TargetType = MenuButton ] {
         MenuPopupHost x:name="PART_PopupHost" {
-            ClickAwayScrim x:name="PART_Scrim" [ BorderThickness = (0) ]
+            ClickAwayScrim x:name="PART_Scrim"
             Border x:name="PART_PopupContainer"
                 [ Width = $PopupWidth,
-                  Fill = @SurfaceContainerHigh, Stroke = Pen [ Brush = @OutlineVariant ], BorderThickness = (1),
+                  Fill = @SurfaceContainerHigh, Stroke = Pen [ Brush = @OutlineVariant ],
                   CornerRadius = @ShapeExtraSmall, Effect = @Elevation2, Padding = (0) ] {
                 DockPanel [ LastChildFill = true ] {
                     // Header + toolbar (docked Top).

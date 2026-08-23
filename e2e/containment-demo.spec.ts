@@ -8,7 +8,7 @@
 import { test, expect } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
-import { launchPlexus, seedSession, corpusAvailable, appErrors, type Launched } from './plexus-app'
+import { launchPlexus, seedSession, corpusAvailable, appErrors, cloneCorpus, writeContainmentDemoFixture, type Launched } from './plexus-app'
 
 const ART = path.join(__dirname, '.artifacts')
 const shot = (l: Launched, name: string) =>
@@ -43,11 +43,17 @@ async function nodes(l: Launched): Promise<Array<{ id: string; concept: string; 
 test.describe.serial('DEMO: model-backed containment', () => {
     let l: Launched
     let restoreSession: () => void
+    let cloneRoot: string
 
     test.beforeAll(async () => {
         test.skip(!corpusAvailable(), 'built app (out/) or test corpus not available')
         fs.mkdirSync(ART, { recursive: true })
-        restoreSession = seedSession()
+        // Generate the demo diagram into a corpus clone (never shipped in the real
+        // corpus): places on_premises + its two `in` children.
+        const clone = cloneCorpus()
+        cloneRoot = clone.root
+        writeContainmentDemoFixture(clone.archDir)
+        restoreSession = seedSession(clone.projects)
         l = await launchPlexus()
         await l.win.waitForTimeout(12_000)
 
@@ -75,6 +81,7 @@ test.describe.serial('DEMO: model-backed containment', () => {
     test.afterAll(async () => {
         restoreSession?.()
         await l?.app.close()
+        if (cloneRoot) fs.rmSync(cloneRoot, { recursive: true, force: true })
     })
 
     test('the location realizes as a container and its `in` children nest inside it', async () => {

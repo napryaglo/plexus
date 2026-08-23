@@ -262,7 +262,7 @@ resources ProjectExplorerResources {
     DataTemplate [ DataType = NewProjectDialogModel ] {
         StackPanel [ Orientation = Vertical, HorizontalAlignment = Stretch ] {
             TextBlock [ Style = @BodyLarge, Text = "Project type", Foreground = @OnSurface, Margin = (0,0,0,4) ]
-            Border [ Stroke = Pen [ Brush = @OutlineVariant ], BorderThickness = (1,1,1,1), CornerRadius = 6,
+            Border [ Stroke = Pen [ Brush = @OutlineVariant ], CornerRadius = 6,
                      Padding = (4,4,4,4), Margin = (0,0,0,14) ] {
                 ItemsControl [ ItemsSource = $Types, ItemsPanel = @VerticalStackPanel ]
             }

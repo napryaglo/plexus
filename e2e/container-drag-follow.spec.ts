@@ -17,7 +17,7 @@ import { test, expect } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
-import { launchPlexus, seedSession, corpusAvailable, appErrors, type Launched } from './plexus-app'
+import { launchPlexus, seedSession, corpusAvailable, appErrors, writeContainmentDemoFixture, type Launched } from './plexus-app'
 
 const ART = path.join(__dirname, '.artifacts')
 const CORPUS = process.env.PLEXUS_TEST_CORPUS ?? 'C:/Users/Eugene/Projects/plexus_tests'
@@ -63,6 +63,8 @@ async function probe(l: Launched) {
                 domDescendantOfContainer: !!(contEl && el && contEl !== el && contEl.contains(el)),
                 screenX: r ? Math.round(r.x) : undefined,
                 screenY: r ? Math.round(r.y) : undefined,
+                screenCX: r ? Math.round(r.x + r.width / 2) : undefined,
+                screenCY: r ? Math.round(r.y + r.height / 2) : undefined,
             })
         }
         return { rows }
@@ -85,6 +87,9 @@ test.describe.serial('container drag carries nested children', () => {
             fs.cpSync(path.join(CORPUS, rel), dst, { recursive: true })
             projects.push(dst)
         }
+        // The demo diagram is generated per-run into the clone (never shipped in
+        // the real corpus): places on_premises + its two `in` children.
+        writeContainmentDemoFixture(path.join(copyRoot, 'architecures/test_architecture'))
         restoreSession = seedSession(projects)
         l = await launchPlexus()
         await l.win.waitForTimeout(12_000)
@@ -147,8 +152,10 @@ test.describe.serial('container drag carries nested children', () => {
         // The container actually moved (sanity that the drag engaged).
         const cb = byId(before, 'on_premises'), ca = byId(after, 'on_premises')
         const contDx = ca.screenX - cb.screenX, contDy = ca.screenY - cb.screenY
-        expect(Math.abs(contDx - DX), `container moved ~${DX}px in X (got ${contDx})`).toBeLessThanOrEqual(4)
-        expect(Math.abs(contDy - DY), `container moved ~${DY}px in Y (got ${contDy})`).toBeLessThanOrEqual(4)
+        // A pointer drag has a small engage threshold, so the container's screen
+        // delta trails the nominal drag by a few px — only require it actually moved.
+        expect(contDx, `container moved in X (got ${contDx})`).toBeGreaterThan(DX / 2)
+        expect(contDy, `container moved in Y (got ${contDy})`).toBeGreaterThan(DY / 2)
 
         // Every nested child is a true DOM descendant and moved by the same delta.
         for (const ch of children) {
@@ -159,6 +166,78 @@ test.describe.serial('container drag carries nested children', () => {
             expect(Math.abs(dx - contDx), `${ch.id} followed in X (child Δ${dx} vs container Δ${contDx})`).toBeLessThanOrEqual(4)
             expect(Math.abs(dy - contDy), `${ch.id} followed in Y (child Δ${dy} vs container Δ${contDy})`).toBeLessThanOrEqual(4)
         }
+
+        expect(appErrors(l.errors), appErrors(l.errors).join('\n')).toEqual([])
+    })
+
+    // Fresh-nest path: a node dragged INTO the container at runtime (reparent MOVE,
+    // not placeAll RESTORE) must ALSO ride the container's transform on a later move.
+    // This is the gesture a user does by hand — drop a container, drag a node in,
+    // then reposition the box — and the one most likely to expose a stale <g>.
+    test('a node dragged into the container then follows a container move', async () => {
+        // Pick a loose (un-nested) node to drag in.
+        const start = (await probe(l)).rows
+        const loose = start.find((r: any) => r.figure && r.figure !== '(unrealized)'
+            && !r.containerParentId && r.id !== 'on_premises')
+        expect(loose, 'a loose node exists to drag in').toBeTruthy()
+
+        // Nest it through the exact code path a hand drag-in runs
+        // (ContainerPlacement.reparent = MOVE), isolating the follow question from
+        // the flakiness of a synthetic drop landing pixel-perfectly in the box.
+        const reparented = await l.win.evaluate((looseId: string) => {
+            const S = Symbol.for('mural:visual-backref')
+            let diagram: any
+            for (const el of document.querySelectorAll('*')) {
+                const v = (el as any)[S]
+                if (v?.constructor?.name === 'Diagram') { diagram = v; break }
+            }
+            if (!diagram) return { ok: false, reason: 'no diagram' }
+            const arr: any[] = diagram.ItemsSource?.ToArray?.() ?? []
+            const figOf = (vm: any) => vm?.constructor?.name === 'Figure' ? vm : diagram.Generator?.ContainerFromItem(vm)
+            const looseVm = arr.find((vm: any) => (vm?.Id ?? figOf(vm)?.Id) === looseId)
+            const fig = figOf(looseVm)
+            if (!fig) return { ok: false, reason: 'no figure for loose node' }
+            diagram.ContainerPlacement.reparent(fig, 'on_premises')
+            return { ok: true }
+        }, loose.id)
+        expect(reparented.ok, `reparent fired: ${JSON.stringify(reparented)}`).toBe(true)
+        await l.win.waitForTimeout(400)
+
+        const nested = (await probe(l)).rows.find((r: any) => r.id === loose.id)
+        expect(nested.containerParentId, `${loose.id} nested into the container`).toBe('on_premises')
+        expect(nested.domDescendantOfContainer, `${loose.id} is a DOM descendant after drag-in`).toBe(true)
+
+        // Move the container by bumping its figure frame (drives the SAME render
+        // transform a drag produces, deterministically) and confirm the freshly-
+        // nested child rides along on screen.
+        const DX = 140, DY = 90
+        const before = (await probe(l)).rows
+        await l.win.evaluate(({ dx, dy }) => {
+            const S = Symbol.for('mural:visual-backref')
+            let diagram: any
+            for (const el of document.querySelectorAll('*')) {
+                const v = (el as any)[S]
+                if (v?.constructor?.name === 'Diagram') { diagram = v; break }
+            }
+            const arr: any[] = diagram.ItemsSource?.ToArray?.() ?? []
+            const figOf = (vm: any) => vm?.constructor?.name === 'Figure' ? vm : diagram.Generator?.ContainerFromItem(vm)
+            const contVm = arr.find((vm: any) => (vm?.Id ?? figOf(vm)?.Id) === 'on_premises')
+            const cont = figOf(contVm)
+            cont.Left = cont.Left + dx
+            cont.Top = cont.Top + dy
+        }, { dx: DX, dy: DY })
+        await l.win.waitForTimeout(400)
+        const after = (await probe(l)).rows
+
+        const byId = (rows: any[], id: string) => rows.find((r: any) => r.id === id)
+        const cb = byId(before, 'on_premises'), ca = byId(after, 'on_premises')
+        const contDx = ca.screenX - cb.screenX, contDy = ca.screenY - cb.screenY
+        expect(contDx, `container moved in X (got ${contDx})`).toBeGreaterThan(DX / 2)
+
+        const b = byId(before, loose.id), a = byId(after, loose.id)
+        const dx = a.screenX - b.screenX, dy = a.screenY - b.screenY
+        expect(Math.abs(dx - contDx), `${loose.id} followed in X (Δ${dx} vs container Δ${contDx})`).toBeLessThanOrEqual(4)
+        expect(Math.abs(dy - contDy), `${loose.id} followed in Y (Δ${dy} vs container Δ${contDy})`).toBeLessThanOrEqual(4)
 
         expect(appErrors(l.errors), appErrors(l.errors).join('\n')).toEqual([])
     })

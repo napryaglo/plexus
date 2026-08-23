@@ -28,19 +28,25 @@ resources DockTabsResources {
     // the panel, so $Title resolves even though the panel also carries a
     // full-body DataTemplate (rendered below, not here).
     Template x:key="DockRailItemTemplate" [ TargetType = NavigationItem ] {
-        Border x:name="PART_Outer"
-            [ Fill      = #00000000,
-              Stroke     = Pen [ Brush = #00000000 ],
-              BorderThickness = (0,0,0,2),
-              Padding         = (12,8,12,8) ] {
-            TextBlock x:name="PART_Label"
-                [ Style             = @TitleSmall,
-                  Text              = $Title,
-                  Foreground        = @OnSurfaceVariant,
-                  VerticalAlignment = Center ]
+        Border x:name="PART_Outer" [ Fill = #00000000 ] {
+            DockPanel {
+                // 2dp selection accent at the very bottom edge (transparent at
+                // rest, @Primary when selected). The label carries the former
+                // Border padding as a margin so the rule stays flush to the edge.
+                Line x:name="PART_Indicator"
+                    [ DockPanel.Dock = Bottom,
+                      Orientation    = Horizontal,
+                      Stroke         = (#00000000, 2) ]
+                TextBlock x:name="PART_Label"
+                    [ Style             = @TitleSmall,
+                      Text              = $Title,
+                      Foreground        = @OnSurfaceVariant,
+                      VerticalAlignment = Center,
+                      Margin            = (12,8,12,8) ]
+            }
         }
         when ( IsSelected ) {
-            PART_Outer.Stroke = Pen [ Brush = @Primary ];
+            PART_Indicator.Stroke = (@Primary, 2);
             PART_Label.Foreground  = @Primary;
         }
         when ( IsMouseOver ) { PART_Label.Foreground = @OnSurface; }
@@ -56,11 +62,13 @@ resources DockTabsResources {
     // (the strip divider). No Header / Footer slots (the dock has none). Items
     // render left-aligned via the horizontal panel above.
     Template x:key="DockRailTemplate" [ TargetType = NavigationRail ] {
-        Border x:name="PART_Border"
-            [ Fill      = @Surface,
-              Stroke     = Pen [ Brush = @OutlineVariant ],
-              BorderThickness = (0,0,0,1) ] {
-            ItemsPresenter x:name="PART_ItemsPresenter"
+        Border x:name="PART_Border" [ Fill = @Surface ] {
+            DockPanel {
+                Line [ DockPanel.Dock = Bottom,
+                       Orientation    = Horizontal,
+                       Stroke         = (@OutlineVariant, 1) ]
+                ItemsPresenter x:name="PART_ItemsPresenter"
+            }
         }
     }
 

@@ -4,7 +4,7 @@ import { MetaKind, type Entity, type Repository } from '@pragmatic-lab/todl'
 // relationship's refs project as visual NESTING (a child node inside a container
 // node) instead of a connector; the ref lives on the CONTAINED entity and points
 // at its container (`component --in--> location`). Both facts are read from the
-// prelude annotations (`@container`, `@containment`) with sensible defaults so a
+// prelude annotations (`@containerNode`, `@containment`) with sensible defaults so a
 // meta-model that only names its member `in` needs no annotations at all.
 
 // The default containment member name: a relationship called `in` is containment
@@ -42,11 +42,11 @@ function containmentTargets(repo: Repository): Set<string>
     return set
 }
 
-// A concept renders as a container when it carries the `@container` annotation OR
-// (the default) it is the target of some containment relationship.
+// A concept renders as a container when it carries the `@containerNode` annotation
+// OR (the default) it is the target of some containment relationship.
 export function isContainerConcept(repo: Repository, concept: string): boolean
 {
-    if (repo.resolve(`${concept}@container`) !== undefined) return true
+    if (repo.resolve(`${concept}@containerNode`) !== undefined) return true
     return containmentTargets(repo).has(concept)
 }
 

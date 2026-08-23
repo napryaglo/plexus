@@ -150,20 +150,14 @@ test.describe.serial('Size & Position sub-editors drive the selected shape', () 
         }
         expect(figs.length, 'diagram opened with canvas figures').toBeGreaterThan(0)
 
-        // 2. select a shape, right-click it → Format Shape (opens the inspector).
-        const fig = figs[0]!
-        await clickCenter(l.win, fig)
-        await l.win.waitForTimeout(800)
-        await l.win.mouse.click(fig.x + fig.w / 2, fig.y + fig.h / 2, { button: 'right' })
-        await l.win.waitForTimeout(800)
-        const clickText = async (text: string): Promise<boolean> => {
-            const bb = await l.win.getByText(text, { exact: false }).first().boundingBox().catch(() => null)
-            if (!bb) return false
-            await l.win.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2)
-            return true
-        }
-        expect(await clickText('Format Shape'), 'Format Shape menu item clicked').toBe(true)
-        await l.win.waitForTimeout(1200)
+        // 2. Select the first shape through the real selection path
+        //    (HandleContainerClick). Pixel clicks are unreliable — the corpus
+        //    diagram's layout can put a shape under the toolbar or behind a
+        //    container, so a screen-center click selects nothing. Selecting a shape
+        //    AUTO-OPENS the Format Shape inspector bound to the active document
+        //    (see auto-open-inspector.spec), so no right-click menu is needed.
+        await selectFigureByIndex(l, 0)
+        await l.win.waitForTimeout(1500)
 
         // 3. switch to the Size & Position page (icon rail — click by page Title).
         expect(await clickInspectorTab(l, 'Size & Position'), 'Size & Position page tab clicked').toBe(true)
@@ -171,6 +165,12 @@ test.describe.serial('Size & Position sub-editors drive the selected shape', () 
 
         const spins = await rectsForCtor(l.win, 'SpinEdit')
         expect(spins.length, 'seven Size/Position spin editors present').toBe(7)
+
+        // Node 0 persists lockAspect=true in the corpus; the early width/height/
+        // scale tests assume a free shape. Clear the lock before they run — the
+        // lock-specific tests below turn it on themselves.
+        await setSwitch(l, false)
+        await l.win.waitForTimeout(200)
     })
 
     test.afterAll(async () => { await l.app.close().catch(() => {}); restore?.() })

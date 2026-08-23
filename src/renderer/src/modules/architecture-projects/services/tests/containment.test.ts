@@ -10,13 +10,13 @@ import {
 } from '../containment.js'
 
 // Triplet: location contains component contains technology, via the default `in`
-// containment member. `region` is a leaf marked @container by override (it is the
-// target of no containment relationship).
+// containment member. `region` is a leaf marked @containerNode by override (it is
+// the target of no containment relationship).
 const MM = `namespace archmm {
   concept location {}
   concept component { relationship in -> location; }
   concept technology { relationship in -> component; }
-  concept region { annotate container {} }
+  concept region { annotate containerNode {} }
   viewpoint V : frames location, component, technology, region
 }`
 const file = { uri: 'model.todl', text: `namespace archmm {
@@ -46,7 +46,7 @@ test('containment targets are container concepts by default', () => {
     expect(isContainerConcept(repo, 'technology')).toBe(false) // target of nothing
 })
 
-test('@container annotation overrides a non-target leaf into a container', () => {
+test('@containerNode annotation overrides a non-target leaf into a container', () => {
     const repo = build().repository()
     expect(isContainerConcept(repo, 'region')).toBe(true)
 })

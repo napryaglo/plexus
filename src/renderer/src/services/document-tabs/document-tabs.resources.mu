@@ -87,7 +87,7 @@ resources DocumentTabsResources {
     // (@MoreHoriz) glyph, self-centred (StackPanel HorizontalAlignment=Center,
     // no leading margin).
     Template x:key="TabOverflowTrigger" [ TargetType = ToolBarSplitButton ] {
-        Border x:name="PART_Primary" [ Fill = @SurfaceContainerHigh, CornerRadius = @ShapeFull, BorderThickness = (0) ] {
+        Border x:name="PART_Primary" [ Fill = @SurfaceContainerHigh, CornerRadius = @ShapeFull ] {
             Border x:name="PART_PrimaryState" [ Fill = #00000000, CornerRadius = @ShapeFull, Padding = (4,4,4,4) ] {
                 StackPanel [ Orientation = Horizontal, HorizontalAlignment = Center, VerticalAlignment = Center ] {
                     Border x:name="PART_Content" [ HorizontalAlignment = Center, VerticalAlignment = Center ]
@@ -122,11 +122,11 @@ resources DocumentTabsResources {
     // spill under the actions), and the action area (module command buttons + the
     // ⋯ overflow dropdown) pins to column 1. The content presenter is unchanged.
     Template x:key="ExtendedTabControlTemplate" [ TargetType = ExtendedTabControl ] {
-        Border x:name="PART_Border"
-            [ Fill      = @Surface,
-              Stroke     = Pen [ Brush = @OutlineVariant ],
-              BorderThickness = (0,0,0,1) ] {
+        Border x:name="PART_Border" [ Fill = @Surface ] {
             DockPanel [ LastChildFill = true ] {
+                Line [ DockPanel.Dock = Bottom,
+                       Orientation    = Horizontal,
+                       Stroke         = (@OutlineVariant, 1) ]
                 Grid [ DockPanel.Dock = Top ] {
                     // The header row hugs the tab height (Auto). Without an
                     // explicit RowDefinition the Grid falls back to a single

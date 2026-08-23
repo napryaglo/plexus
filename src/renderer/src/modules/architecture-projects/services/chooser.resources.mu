@@ -23,9 +23,9 @@ resources ChooserResources {
     // The popup control template: preserves the MenuButton popup contract.
     Template x:key="ChooserPopup" [ TargetType = MenuButton ] {
         MenuPopupHost x:name="PART_PopupHost" {
-            ClickAwayScrim x:name="PART_Scrim" [ BorderThickness = (0) ]
+            ClickAwayScrim x:name="PART_Scrim"
             Border x:name="PART_PopupContainer"
-                [ Fill = @SurfaceContainerHigh, Stroke = Pen [ Brush = @OutlineVariant ], BorderThickness = (1),
+                [ Fill = @SurfaceContainerHigh, Stroke = Pen [ Brush = @OutlineVariant ],
                   CornerRadius = @ShapeSmall, MinWidth = 240 ] {
                 ScrollViewer [ MaxHeight = 320, HorizontalScrollEnabled = false ] {
                     ItemsControl [ ItemsSource = $Rows, ItemsPanel = @ChooserListPanel ]

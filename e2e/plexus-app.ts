@@ -44,6 +44,60 @@ export function seedSession(projects: string[] = TEST_PROJECTS): () => void {
     }
 }
 
+// Relative project paths under the corpus root — used to clone the corpus into a
+// throwaway temp dir so a test can mutate it (autosave, generated fixtures)
+// without ever touching the real corpus.
+export const PROJECT_RELS = [
+    'meta-models/tech-architecture',
+    'libraries/microsoft',
+    'libraries/aws',
+    'architecures/test_architecture',
+]
+
+// Clone the corpus projects into a fresh temp dir. Returns the clone root (remove
+// it in afterAll), the cloned project dirs (pass to seedSession), and the arch
+// project dir (where diagram fixtures live).
+export function cloneCorpus(): { root: string; projects: string[]; archDir: string } {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'plexus-corpus-'))
+    const projects: string[] = []
+    for (const rel of PROJECT_RELS) {
+        const dst = path.join(root, rel)
+        fs.cpSync(path.join(CORPUS, rel), dst, { recursive: true })
+        projects.push(dst)
+    }
+    return { root, projects, archDir: path.join(root, 'architecures/test_architecture') }
+}
+
+// Write the `containment-demo.diagram` fixture into a corpus CLONE's arch project.
+// It places the `on_premises` location plus its two `in = on_premises` children
+// (component `enterprise_legacy_app`, network `on_prem_network`) — all entities in
+// landscape.todl. On open, the containment projection realizes `on_premises` as a
+// ContentContainerFigure and nests the two children straight from the model refs,
+// with no model mutation. The children sit inside the container's bounds so the
+// reparent keeps them there. Kept out of the real corpus (never mutated) and
+// generated per-run instead. A fourth node (`m365_copilot_chat`, a component with
+// no `in` ref) is placed OUTSIDE the container as a loose node — the drag-in test
+// nests it at runtime (component→location containment is legal, same as the
+// enterprise_legacy_app child).
+export function writeContainmentDemoFixture(archDir: string): void {
+    const diagram = {
+        version: 3,
+        nodes: [
+            { id: 'on_premises', type: 'arch', data: {} },
+            { id: 'enterprise_legacy_app', type: 'arch', data: {} },
+            { id: 'on_prem_network', type: 'arch', data: {} },
+            { id: 'm365_copilot_chat', type: 'arch', data: {} },
+        ],
+        visuals: {
+            on_premises: { left: 180, top: 140, w: 380, h: 320, baseWidth: 380, baseHeight: 320 },
+            enterprise_legacy_app: { left: 240, top: 230, w: 150, h: 80, baseWidth: 150, baseHeight: 80 },
+            on_prem_network: { left: 240, top: 340, w: 150, h: 80, baseWidth: 150, baseHeight: 80 },
+            m365_copilot_chat: { left: 640, top: 200, w: 150, h: 80, baseWidth: 150, baseHeight: 80 },
+        },
+    }
+    fs.writeFileSync(path.join(archDir, 'containment-demo.diagram'), JSON.stringify(diagram, null, 1))
+}
+
 export interface Launched {
     app: ElectronApplication
     win: Page

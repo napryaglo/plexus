@@ -312,7 +312,6 @@ resources DiagramResources {
               OnDragStart     = $BeginDragData,
               Fill      = @Surface,
               Stroke     = Pen [ Brush = @OutlineVariant ],
-              BorderThickness = (1),
               CornerRadius    = 4,
               Padding         = (4,8,4,8),
               Margin          = (2,0,2,4),

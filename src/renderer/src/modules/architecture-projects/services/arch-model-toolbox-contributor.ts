@@ -3,7 +3,6 @@ import {
     ContentHostService,
     DiagramDocument,
     DocumentsContentHostService,
-    ShapeVisualResolverKey,
     ToolboxRepository,
     ToolboxVisualDescriptor,
     type IDocument,
@@ -15,7 +14,6 @@ import { ArchToolboxItem } from '../../diagram/services/arch-toolbox-item.js'
 import { iconEntityKey } from './arch-icon.js'
 import { ArchModelInstanceDropFactoryKey } from './arch-model-instance-drop-factory.js'
 import { ArchScenarioDropFactoryKey } from './arch-scenario-drop-factory.js'
-import { GenericContainerDropFactoryKey } from './generic-container-drop-factory.js'
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import { WikiService } from '../../../services/wiki/wiki-service.js'
 import type { ArchModel } from './arch-model.js'
@@ -76,17 +74,6 @@ export function scenarioPageItems(model: ArchModel, scope: ReadonlySet<string>):
     return items
 }
 
-// Static, model-independent tiles for an arch diagram: a generic "Container" tile
-// that drops a visual-only ContainerFigure (kind `container`) for grouping shapes
-// and text — NOT a model entity, so it routes through the generic-container drop
-// factory (not the instance factory) and its nesting never touches the model. Its
-// preview renders through the shape visual resolver (which draws `container`).
-export function staticPageItems(): ArchToolboxItem[]
-{
-    const descriptor = new ToolboxVisualDescriptor(ShapeVisualResolverKey, 'container')
-    return [new ArchToolboxItem('shape:container', 'Container', descriptor, GenericContainerDropFactoryKey)]
-}
-
 // App-scoped: watches the ACTIVE document and, when it is an architecture
 // diagram, contributes a dynamic "Model: <namespace>" toolbox page listing the
 // in-scope entities not yet on the canvas. Refreshes on model change, scope
@@ -143,8 +130,8 @@ export class ArchModelToolboxContributor extends ServiceBase
         page.Items.Clear()
         const modelItems = modelPageItems(model, scope, placed)
         for (const item of modelItems) page.Items.Add(item)
-        // Static tiles (e.g. the generic container) sit alongside the entity tiles.
-        for (const item of staticPageItems()) page.Items.Add(item)
+        // Generic drawing tools (container, text, callout) live on the framework's
+        // "Callouts, Text & Containers" page (ensureToolboxDefaults), not here.
         this.markWiki(modelItems)
 
         // A "Scenarios" page lists the in-scope scenarios; dropping one

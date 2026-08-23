@@ -62,9 +62,9 @@ describe('ToolboxService', () => {
     expect(svc.Pages.ToArray().find((p) => p.Id === 'actors')!.Items.Count).toBe(1)
   })
 
-  it('empty backends → only the mural Shapes page', async () => {
+  it('empty backends → the mural default pages (Shapes + annotate)', async () => {
     const svc = new ToolboxService(provider(() => {}))
     await svc.reload()
-    expect(pageIds(svc)).toEqual(['shapes'])
+    expect(pageIds(svc)).toEqual(['shapes', 'annotate'])
   })
 })
