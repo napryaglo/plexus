@@ -14,6 +14,9 @@ export const CONNECTOR_TO_MEMBER = 'to'
 // The meta-model's shorthand default (connector.todl: "Two-element list,
 // shorthand for `type: calls`").
 export const CONNECTOR_DEFAULT_TYPE = 'calls'
+// Synthetic action member identifying the "mint a connector entity" outcome in a
+// draw chooser (distinct from any real relationship member name).
+export const CONNECTOR_DRAW_MEMBER = '__connector_draw__'
 
 // True when an entity is (or subtypes) the `connector` concept.
 export function isConnectorEntity(repo: Repository, entity: Entity): boolean {

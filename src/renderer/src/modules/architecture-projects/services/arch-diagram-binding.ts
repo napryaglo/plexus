@@ -8,6 +8,7 @@ import { iconEntityKey } from './arch-icon.js'
 import { desiredEdges, edgeKey, desiredConnectorEntityEdges } from './edge-projection.js'
 import { isContainerConcept, containmentParentOf, containmentMemberOf, containmentMemberFor } from './containment.js'
 import { resolveConnectorActions, type ConnectorAction } from './arch-connector-resolver.js'
+import { canDrawConnectorEntity, mintConnectorEntity, CONNECTOR_DEFAULT_TYPE, CONNECTOR_DRAW_MEMBER } from './connector-entity.js'
 import { scenarioStepPairs, type FlowEntity } from './scenario-flow.js'
 import type { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
 import type { WikiService } from '../../../services/wiki/wiki-service.js'
@@ -95,9 +96,11 @@ export class ArchDiagramBinding
 
     // A user drew a connector between two nodes. Reconcile away the raw connector
     // the standard mutator just created (arch diagrams are connector-authoritative),
-    // then, when both endpoints are bound arch nodes, resolve the meta-model
-    // relationship member(s) and write the ref (0 reject / 1 auto / many chooser).
-    // The projection redraws it as a model-backed edge on the ensuing rescan.
+    // then, when both endpoints are bound arch nodes, offer the legal outcomes:
+    // concept relationship member(s) — write the ref — PLUS, when the meta-model's
+    // `connector` from/to accept the pair, minting a typed `connector` entity
+    // (default `calls`). 0 outcomes → reject (feedback); 1 → auto; many → chooser.
+    // The projection redraws the result as a model-backed edge on the next rescan.
     public handleConnectorCreated(source: unknown, target: unknown): void
     {
         const fromId = (source as { Id?: string } | undefined)?.Id
@@ -108,12 +111,32 @@ export class ArchDiagramBinding
         const srcConcept = this.conceptOf(fromId)
         const tgtConcept = this.conceptOf(toId)
         if (srcConcept === undefined || tgtConcept === undefined) return
-        const actions = resolveConnectorActions(this.model.repository(), srcConcept, tgtConcept, this.scopeSet())
-        if (actions.length === 0) return
-        const apply = (a: ConnectorAction): void => { this.model.addRef(fromId, a.member, toId); void this.model.save() }
-        if (actions.length === 1) { apply(actions[0]); return }
-        this.chooser?.Show(actions, apply)
+
+        const repo = this.model.repository()
+        const actions: ConnectorAction[] = []
+        const applyByMember = new Map<string, () => void>()
+
+        // Concept-relationship outcomes: write the ref on the source.
+        for (const a of resolveConnectorActions(repo, srcConcept, tgtConcept, this.scopeSet())) {
+            actions.push(a)
+            applyByMember.set(a.member, () => { this.model.addRef(fromId, a.member, toId); void this.model.save() })
+        }
+        // Connector-entity outcome: mint a typed `connector` entity (default calls).
+        if (canDrawConnectorEntity(repo, srcConcept, tgtConcept)) {
+            actions.push({ member: CONNECTOR_DRAW_MEMBER, label: `connect (${CONNECTOR_DEFAULT_TYPE})` })
+            applyByMember.set(CONNECTOR_DRAW_MEMBER, () => {
+                mintConnectorEntity(this.model, fromId, toId, CONNECTOR_DEFAULT_TYPE); void this.model.save()
+            })
+        }
+
+        if (actions.length === 0) { this.rejectDraw(srcConcept, tgtConcept); return }
+        if (actions.length === 1) { applyByMember.get(actions[0].member)?.(); return }
+        this.chooser?.Show(actions, (a) => applyByMember.get(a.member)?.())
     }
+
+    // A drawn connector resolved to nothing legal. Task 6 replaces the body with a
+    // status message; the raw connector was already reconciled away.
+    private rejectDraw(_srcConcept: string, _tgtConcept: string): void {}
 
     // The concept an already-placed entity instantiates (from the live model).
     private conceptOf(id: string): string | undefined
