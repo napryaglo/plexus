@@ -137,7 +137,7 @@ export class ArchModel
 
     // A model-unique id: `concept1`, `concept2`, … Numbered from 1 so it never
     // collides with the concept node itself (which shares the lowercased name).
-    private uniqueId(concept: string): string
+    public uniqueId(concept: string): string
     {
         const base = concept.toLowerCase()
         let i = 1

@@ -1,0 +1,39 @@
+import type { Entity, Repository } from '@pragmatic-lab/todl'
+import type { ArchModel } from './arch-model.js'
+import { acceptSet } from './arch-concept-type.js'
+
+// The tech-architecture meta-model models a typed edge between two nodes as a
+// first-class `connector` ENTITY: `connector <id> { type = "calls"; from = A;
+// to = B; }`. The `type` is a `connectors`-taxonomy term (the taxonomy
+// `represents connector`), stored as a plain scalar attr — read via
+// `entity.field('type')`, NOT a classification (`entity.is('calls')` is false).
+export const CONNECTOR_CONCEPT = 'connector'
+export const CONNECTOR_TYPE_FIELD = 'type'
+export const CONNECTOR_FROM_MEMBER = 'from'
+export const CONNECTOR_TO_MEMBER = 'to'
+// The meta-model's shorthand default (connector.todl: "Two-element list,
+// shorthand for `type: calls`").
+export const CONNECTOR_DEFAULT_TYPE = 'calls'
+
+// True when an entity is (or subtypes) the `connector` concept.
+export function isConnectorEntity(repo: Repository, entity: Entity): boolean {
+    return acceptSet(repo, entity.concept).has(CONNECTOR_CONCEPT)
+}
+
+// A connector entity's type term (e.g. 'calls'), or the default when unset.
+export function connectorTypeOf(entity: Entity): string {
+    const t = entity.field(CONNECTOR_TYPE_FIELD)
+    return typeof t === 'string' && t.length > 0 ? t : CONNECTOR_DEFAULT_TYPE
+}
+
+// Mint a `connector` entity linking `fromId → toId` with the given type term.
+// Routes it to the `from` endpoint's home file so it round-trips to real source.
+// Returns the new entity id. Does NOT save — the caller saves once.
+export function mintConnectorEntity(model: ArchModel, fromId: string, toId: string, type: string): string {
+    const id = model.uniqueId(CONNECTOR_CONCEPT)
+    model.create(CONNECTOR_CONCEPT, id, model.homeOf(fromId))
+    model.addRef(id, CONNECTOR_FROM_MEMBER, fromId)
+    model.addRef(id, CONNECTOR_TO_MEMBER, toId)
+    model.setField(id, CONNECTOR_TYPE_FIELD, type)
+    return id
+}
