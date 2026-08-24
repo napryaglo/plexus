@@ -1,5 +1,5 @@
 import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DiagramDocument, StatusService, type DocumentsContentHostService, type IDocument } from '@pragmatic-lab/mural/framework'
+import { ContentHostService, DiagramDocument, DialogService, StatusService, type DocumentsContentHostService, type IDocument } from '@pragmatic-lab/mural/framework'
 
 import { FileDiagramStorage } from '../../diagram/persistence/file-diagram-storage.js'
 import { ProjectExplorerService } from '../../project-explorer/services/project-explorer-service.js'
@@ -77,7 +77,8 @@ export class ArchDiagramBindingService extends ServiceBase
             const chooser = this.Provider.get(DropCandidateChooserService.Key)
             const wiki = this.Provider.get(WikiService.Key)
             const status = this.Provider.get(StatusService.Key)
-            const binding = new ArchDiagramBinding(doc, model, chooser, wiki, status)
+            const dialogs = this.Provider.get(DialogService.Key)
+            const binding = new ArchDiagramBinding(doc, model, chooser, wiki, status, dialogs)
             binding.attach()
             const store = doc.Storage
             if (store instanceof FileDiagramStorage) {

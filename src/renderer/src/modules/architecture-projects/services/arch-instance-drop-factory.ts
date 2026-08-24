@@ -1,7 +1,9 @@
 import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument, DialogService, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
 
 import { resolveDropActions, DropActionKind, type DropAction } from './arch-drop-resolver.js'
+import { containmentMemberFor, isContainerConcept } from './containment.js'
+import { showContainmentRejected } from './containment-modal.js'
 import { propagationFills } from './arch-propagate.js'
 import { materializeOf } from './arch-materialize.js'
 import { conceptTypeOf } from './arch-concept-type.js'
@@ -52,6 +54,29 @@ export class ArchInstanceDropFactory implements IToolboxDropFactory
         const vp = [...model.repository().viewpointsFraming(action.concept)].find((v) => scope.has(v))
         if (vp === undefined) return null
 
+        // Drop landed inside a model-backed container? Validate containment against
+        // the meta-model BEFORE creating anything: illegal → modal + abort (no
+        // entity); legal → record the member to write after creation, so the model
+        // ref drives the visual nest (projectContainment). A generic container (id
+        // not a repo entity) or empty canvas skips this — no model relation.
+        const repo = model.repository()
+        let nestMember: string | undefined
+        let nestTarget: string | undefined
+        const target = context.TargetContainer
+        if (target?.Id !== undefined && repo.has(target.Id)) {
+            const containerEntity = repo.entity(target.Id)
+            if (containerEntity !== undefined && isContainerConcept(repo, containerEntity.concept)) {
+                const member = containmentMemberFor(repo, action.concept, containerEntity.concept)
+                if (member === undefined) {
+                    const parentLabel = String(containerEntity.field('label') ?? containerEntity.id)
+                    showContainmentRejected(this.provider.get(DialogService.Key), defaultLabel(repo, action), parentLabel)
+                    return null
+                }
+                nestMember = member
+                nestTarget = target.Id
+            }
+        }
+
         const entity = model.createInViewpoint(action.concept, vp)
         const schema = model.repository().effectiveSchema(action.concept)
         if (schema.fields.some((f) => f.name === 'label'))
@@ -70,6 +95,12 @@ export class ArchInstanceDropFactory implements IToolboxDropFactory
                 for (const fill of propagationFills(model.repository(), action.concept, action.term, action.member))
                     model.addRef(entity.id, fill.member, fill.term)
         }
+
+        // Legal drop into a model-backed container: write the containment ref. The
+        // projection (projectContainment on the rescan below) nests the new node
+        // under the container, preserving its drop-point position.
+        if (nestMember !== undefined && nestTarget !== undefined)
+            model.addRef(entity.id, nestMember, nestTarget)
 
         const { X, Y } = context.Position
         const vm = new ArchNodeVM()

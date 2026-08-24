@@ -66,15 +66,23 @@ function fakeView(): { view: Diagram; fire: (a: ReparentArgs) => void; snapBacks
     return { view, fire: (a) => { for (const l of [...listeners]) l(a) }, snapBacks }
 }
 
-function setup(): { model: ArchModel; doc: TestDoc; fire: (a: ReparentArgs) => void; snapBacks: string[]; refsIn: (id: string) => string[] } {
+// A spy DialogService: records each Show() so tests can assert the rejection modal.
+function fakeDialogs(): { dialogs: unknown; shows: Array<{ Title?: string }> } {
+    const shows: Array<{ Title?: string }> = []
+    const dialogs = { Show: (o: { Title?: string }) => { shows.push(o); return Promise.resolve(undefined) }, Close: () => {} }
+    return { dialogs, shows }
+}
+
+function setup(): { model: ArchModel; doc: TestDoc; fire: (a: ReparentArgs) => void; snapBacks: string[]; shows: Array<{ Title?: string }>; refsIn: (id: string) => string[] } {
     const model = buildModel()
     const doc = new TestDoc()
     for (const id of ['loc', 'comp', 'tech']) { const vm = new ArchNodeVM(); vm.Id = id; doc.Nodes.Add(vm) }
     const { view, fire, snapBacks } = fakeView()
     doc.fakeView = view
-    new ArchDiagramBinding(doc, model).attach()
+    const { dialogs, shows } = fakeDialogs()
+    new ArchDiagramBinding(doc, model, undefined, undefined, undefined, dialogs as never).attach()
     const refsIn = (id: string): string[] => model.entities().find((e) => e.id === id)!.refs('in').map((e) => e.id)
-    return { model, doc, fire, snapBacks, refsIn }
+    return { model, doc, fire, snapBacks, shows, refsIn }
 }
 
 test('nesting a component into a location writes the `in` ref', () => {
@@ -96,6 +104,47 @@ test('an illegal nesting (location into technology) is rejected: no ref, node sn
     fire({ Node: { Id: 'loc' }, OldParentId: undefined, NewParentId: 'tech' })
     expect(refsIn('loc')).toEqual([])          // no ref written
     expect(snapBacks).toContain('loc')          // un-nested (snapped back)
+})
+
+test('an illegal drag-in shows the rejection modal (same modal as the drop path)', () => {
+    const { fire, shows } = setup()
+    fire({ Node: { Id: 'loc' }, OldParentId: undefined, NewParentId: 'tech' })
+    expect(shows.length).toBe(1)
+    expect(shows[0]!.Title).toBe('Cannot nest here')
+})
+
+test('a legal drag-in shows no modal', () => {
+    const { fire, shows } = setup()
+    fire({ Node: { Id: 'comp' }, OldParentId: undefined, NewParentId: 'loc' })
+    expect(shows.length).toBe(0)
+})
+
+test('dragging a component into a LIBRARY (non-own) location writes the `in` ref', () => {
+    // Base repo carries a location INSTANCE (libloc) — like an imported library
+    // location. It is NOT an own instance of the project model, so the parent must
+    // resolve via repo.entity (resolveEntity), and the write lands on the own child.
+    const baseGraph = toJSON(load([
+        { uri: 'archmm.todl', text: MM },
+        { uri: 'lib.todl', text: `namespace archmm { model Lib : archmm conforms V { location libloc {} } }` },
+    ]).model)
+    const baseRepo = new Repository(graphFromJSON(baseGraph))
+    const projectFile = { uri: 'model.todl', text: `namespace archmm { model Arch : archmm conforms V { component comp {} } }` }
+    const draft = ModelDraft.fromSources([baseRepo], [projectFile], { namespace: 'archmm' })
+    const model = new ArchModel(draft, new FakeStorage('fake://Arch'), 'archmm')
+
+    // libloc is a repo entity but NOT an own instance.
+    expect(model.entities().some((e) => e.id === 'libloc')).toBe(false)
+    expect(model.repository().has('libloc')).toBe(true)
+
+    const doc = new TestDoc()
+    for (const id of ['comp', 'libloc']) { const vm = new ArchNodeVM(); vm.Id = id; doc.Nodes.Add(vm) }
+    const { view, fire } = fakeView()
+    doc.fakeView = view
+    new ArchDiagramBinding(doc, model, undefined, undefined, undefined, fakeDialogs().dialogs as never).attach()
+
+    fire({ Node: { Id: 'comp' }, OldParentId: undefined, NewParentId: 'libloc' })
+    const comp = model.entities().find((e) => e.id === 'comp')!
+    expect(comp.refs('in').map((e) => e.id)).toEqual(['libloc'])
 })
 
 test('a reparent of a node with no backing entity is ignored (visual-only grouping)', () => {

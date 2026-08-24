@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, Figure, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument, DialogService, Figure, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
 import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
@@ -107,4 +107,71 @@ test('dropping a technology wires the primary member AND back-fills the category
     expect(model.repository().refs(comp.id, 'implementedBy')).toContain('Stack.azure')
     // Category back-filled from the technology term's own applicableTo ref.
     expect(model.repository().refs(comp.id, 'categorisedAs')).toContain('Cats.ai')
+})
+
+// ── Drop INTO a container: validate containment, modal on reject (Task 5) ──────
+// `location` and `zone` are both container concepts (targets of component.in and
+// region.in). A dropped component may nest in a location (component.in -> location)
+// but NOT in a zone (no relationship).
+const CONTAIN_MM = `namespace archmm {
+  annotation materialize { concept : identifier?; via : identifier?; propagate : boolean?; }
+  concept location {}
+  concept zone {}
+  concept region { relationship in -> zone; }
+  concept technology {}
+  concept component {
+    annotate materialize {}
+    relationship realisedBy -> technology;
+    relationship in -> location;
+  }
+  viewpoint V : frames component, location, zone
+  taxonomy Stack : represents technology { term azure {} }
+}`
+function buildContainModel(storage: FakeStorage): ArchModel {
+    const draft = ModelDraft.fromSources([new Repository(graphFromJSON(toJSON(load([{ uri: 'mm.todl', text: CONTAIN_MM }]).model)))], [], { namespace: 'archmm' })
+    return new ArchModel(draft, storage, 'archmm')
+}
+// A provider that also carries a spy DialogService, so the reject modal is observable.
+function wireWithDialogs(doc: DiagramDocument, model: ArchModel): { provider: ServiceProvider; shows: Array<{ Title?: string }> } {
+    const provider = wire(doc, model)
+    const shows: Array<{ Title?: string }> = []
+    provider.registerInstance(DialogService.Key, { Show: (o: { Title?: string }) => { shows.push(o); return Promise.resolve(undefined) }, Close: () => {} } as unknown as DialogService)
+    return { provider, shows }
+}
+function ctxInto(doc: DiagramDocument, key: string, targetId: string): ToolboxDropContext {
+    return { Descriptor: { Key: key }, Position: { X: 5, Y: 6 }, Diagram: {}, Mutator: doc, TargetContainer: { Id: targetId } } as unknown as ToolboxDropContext
+}
+
+test('a legal drop into a model-backed container writes the containment ref, no modal', () => {
+    const storage = new FakeStorage('fake://Acme')
+    const model = buildContainModel(storage)
+    const doc = new DiagramDocument()
+    const loc = model.createInViewpoint('location', 'V')
+    const { provider, shows } = wireWithDialogs(doc, model)
+    const factory = new ArchInstanceDropFactory(provider)
+
+    const result = factory.CreateDropped(ctxInto(doc, 'Stack.azure', loc.id)) as ArchNodeVM
+    expect(result).toBeInstanceOf(ArchNodeVM)
+    const comp = model.entities().find((e) => e.concept === 'component')!
+    // The containment ref was written → projection will nest it under the container.
+    expect(model.repository().refs(comp.id, 'in')).toContain(loc.id)
+    expect(shows.length).toBe(0)
+})
+
+test('an illegal drop into a container shows the modal, creates no entity', () => {
+    const storage = new FakeStorage('fake://Acme')
+    const model = buildContainModel(storage)
+    const doc = new DiagramDocument()
+    const zone = model.createInViewpoint('zone', 'V')
+    const before = model.entities().length
+    const { provider, shows } = wireWithDialogs(doc, model)
+    const factory = new ArchInstanceDropFactory(provider)
+
+    const result = factory.CreateDropped(ctxInto(doc, 'Stack.azure', zone.id))
+    expect(result).toBeNull()
+    expect(shows.length).toBe(1)
+    expect(shows[0]!.Title).toBe('Cannot nest here')
+    // No component was created (the drop aborted before createInViewpoint).
+    expect(model.entities().length).toBe(before)
+    expect(model.entities().some((e) => e.concept === 'component')).toBe(false)
 })

@@ -98,6 +98,35 @@ export function writeContainmentDemoFixture(archDir: string): void {
     fs.writeFileSync(path.join(archDir, 'containment-demo.diagram'), JSON.stringify(diagram, null, 1))
 }
 
+// Write the `nesting-demo.diagram` fixture: a 4-level MODEL-BACKED nest —
+// azure ⊃ m365 ⊃ power_platform ⊃ business_agent. The three locations
+// (microsoft_tech.*) carry a `parent` chain in the microsoft library
+// (m365.parent = azure, power_platform.parent = m365); once the tech-architecture
+// meta-model annotates `location.parent` @containment, that chain projects as
+// nesting. `business_agent` is a component with `in = microsoft_tech.power_platform`,
+// so it nests as the leaf. Each location is a container concept (target of
+// `component.in`) → realizes as a ContentContainerFigure, exercising the
+// re-mint-at-depth path. Nodes are placed at diagram-space coords that are visually
+// nested; membership itself comes from the model (projectContainment), not geometry.
+export function writeNestingFixture(archDir: string): void {
+    const diagram = {
+        version: 3,
+        nodes: [
+            { id: 'microsoft_tech.azure', type: 'arch', data: {} },
+            { id: 'microsoft_tech.m365', type: 'arch', data: {} },
+            { id: 'microsoft_tech.power_platform', type: 'arch', data: {} },
+            { id: 'business_agent', type: 'arch', data: {} },
+        ],
+        visuals: {
+            'microsoft_tech.azure': { left: 100, top: 100, w: 600, h: 480, baseWidth: 600, baseHeight: 480, userSized: true },
+            'microsoft_tech.m365': { left: 140, top: 170, w: 440, h: 360, baseWidth: 440, baseHeight: 360, userSized: true },
+            'microsoft_tech.power_platform': { left: 180, top: 240, w: 280, h: 240, baseWidth: 280, baseHeight: 240, userSized: true },
+            business_agent: { left: 210, top: 300, w: 150, h: 80, baseWidth: 150, baseHeight: 80 },
+        },
+    }
+    fs.writeFileSync(path.join(archDir, 'nesting-demo.diagram'), JSON.stringify(diagram, null, 1))
+}
+
 export interface Launched {
     app: ElectronApplication
     win: Page

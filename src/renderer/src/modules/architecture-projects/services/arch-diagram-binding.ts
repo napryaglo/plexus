@@ -1,6 +1,7 @@
-import { Connector, ConnectorEndpoint, DiagramDocument, Figure, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { Connector, ConnectorEndpoint, DiagramDocument, DialogService, Figure, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 import { ContentContainerFigure } from '@pragmatic-lab/mural/framework/diagram/content-container-figure.js'
 import type { Entity } from '@pragmatic-lab/todl'
+import { showContainmentRejected } from './containment-modal.js'
 import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolver.js'
 import type { ArchModel } from './arch-model.js'
 import { ArchNodeVM } from './arch-node-vm.js'
@@ -49,6 +50,8 @@ export class ArchDiagramBinding
         // A status sink (StatusService) for user feedback on a rejected draw.
         // Minimal shape so the binding doesn't hard-depend on the shell service.
         private readonly status?: IStatusSink,
+        // Modal host for the illegal-drag-in rejection (shared with the drop path).
+        private readonly dialogs?: DialogService,
     ) {}
 
     public attach(): void
@@ -173,6 +176,18 @@ export class ArchDiagramBinding
     private rescan(): void
     {
         const byId = new Map(this.model.entities().map((e) => [e.id, e]))
+        // Also resolve placed nodes that are NOT own instances but DO resolve to a
+        // repo entity — imported library terms (e.g. the `microsoft_tech.*` locations
+        // referenced by the model's `in`/`parent` chains). The user placed them
+        // deliberately; they carry a concept + containment refs, so they bind, render,
+        // and (for container concepts) nest exactly like an own arch node. Read-only:
+        // write-back (handleReparent) still guards against mutating library entities.
+        const repo = this.model.repository()
+        for (const node of this.doc.Nodes.ToArray()) {
+            const id = (node as { Id?: string }).Id
+            if (id === undefined || byId.has(id)) continue
+            if (repo.has(id)) { const e = repo.entity(id); if (e !== undefined) byId.set(id, e) }
+        }
         // Bind + derive label/icon for every node that maps to a live entity.
         for (const node of this.doc.Nodes.ToArray()) {
             if (node instanceof ArchNodeVM) {
@@ -321,9 +336,9 @@ export class ArchDiagramBinding
         const repo = this.model.repository()
 
         if (args.NewParentId === undefined) {
-            // Un-nest: drop the containment ref to the old parent (if it was an entity).
+            // Un-nest: drop the containment ref to the old parent (own OR library entity).
             const oldId = args.OldParentId
-            if (oldId !== undefined && this.entityById(oldId) !== undefined) {
+            if (oldId !== undefined && this.resolveEntity(oldId) !== undefined) {
                 this.model.removeRef(childId, containmentMemberOf(repo, child.concept), oldId)
                 void this.model.save()
             }
@@ -333,28 +348,48 @@ export class ArchDiagramBinding
         // Nest into a NON-entity parent (a generic container / freeform shape):
         // visual-only grouping — accept it, write no model ref (a reload restores
         // the nesting from the visual store, not the model). Generic accepts any.
-        const parent = this.entityById(args.NewParentId)
+        // The parent resolves against ANY repo entity, so a model-backed container
+        // that is an imported LIBRARY location (not an own instance) still gets its
+        // `in`/containment ref written — the child stays own-instance-only, so we
+        // never mutate a library entity.
+        const parent = this.resolveEntity(args.NewParentId)
         if (parent === undefined) return
 
         // Nest into a MODEL-backed parent: the meta-model must permit
-        // child --containment--> parent; otherwise reject (snap back, no write).
+        // child --containment--> parent; otherwise reject (modal + snap back, no write).
         const member = containmentMemberFor(repo, child.concept, parent.concept)
         if (member === undefined) {
             this._writingBack = true
             try { this.doc.ActiveView?.ContainerPlacement.reparent(args.Node as unknown as Figure, undefined) }
             finally { this._writingBack = false }
+            showContainmentRejected(this.dialogs, displayLabel(child), displayLabel(parent))
             return
         }
         // Legal: rewrite the containment ref (drop the old parent, if any, then add).
-        if (args.OldParentId !== undefined && this.entityById(args.OldParentId) !== undefined)
+        if (args.OldParentId !== undefined && this.resolveEntity(args.OldParentId) !== undefined)
             this.model.removeRef(childId, member, args.OldParentId)
         this.model.addRef(childId, member, args.NewParentId)
         void this.model.save()
     }
 
+    // Own instances only — the write-back CHILD guard: dragging a library entity
+    // (not an own instance) resolves to undefined here, so handleReparent leaves it
+    // alone rather than mutating a library file.
     private entityById(id: string): Entity | undefined
     {
         return this.model.entities().find((e) => e.id === id)
+    }
+
+    // Own instance OR any resolvable repo entity (e.g. an imported library
+    // location). Used for write-back PARENT/target resolution and rescan binding —
+    // a library-location container is a legitimate containment target even though
+    // it is not an own instance.
+    private resolveEntity(id: string): Entity | undefined
+    {
+        const own = this.model.entities().find((e) => e.id === id)
+        if (own !== undefined) return own
+        const repo = this.model.repository()
+        return repo.has(id) ? repo.entity(id) : undefined
     }
 
     // Project the model's relationships between placed nodes as connectors, and
