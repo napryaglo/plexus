@@ -1,10 +1,12 @@
 import { MetaKind, type Repository } from '@pragmatic-lab/todl'
 import { conceptTypeOf, acceptSet } from './arch-concept-type.js'
 import { materializeOf, materializeRoots } from './arch-materialize.js'
+import { isContainerConcept } from './containment.js'
 
-// What a term-drop can create: a direct instance of a materialize root, or an
-// instance of a root X whose reference member m targets the dropped term's type.
-export enum DropActionKind { Instance = 'instance', Reference = 'reference' }
+// What a term-drop can create: PLACE the dropped term's own entity (a container
+// concept, e.g. a library location), a direct instance of a materialize root, or
+// an instance of a root X whose reference member m targets the dropped term's type.
+export enum DropActionKind { Place = 'place', Instance = 'instance', Reference = 'reference' }
 
 export interface DropAction
 {
@@ -32,6 +34,16 @@ export function resolveDropActions(repo: Repository, descriptorKey: string, scop
     const accept = acceptSet(repo, ct)
     const framed = (concept: string): boolean => repo.viewpointsFraming(concept).some((v) => scope.has(v))
     const isClassTerm = node.attrs.get('class') === true
+
+    // 0. PLACE: the dropped term is itself a container-concept entity (e.g. a
+    //    library location like `microsoft_tech.azure`). Place THAT entity as a
+    //    container — the binding then reads its children (its `parent`/`in` chain)
+    //    from the model — instead of referencing it from a materialize root (which
+    //    would create a component `in` the location, never the location itself).
+    //    Takes priority. Location terms are class-terms yet concrete placeable
+    //    entities, so isContainerConcept (NOT the class flag) is the gate.
+    if (isContainerConcept(repo, ct) && framed(ct))
+        return [{ kind: DropActionKind.Place, concept: ct, term: termId, label: ct }]
 
     // 1. Direct: the term's own class (or a supertype) is a root → instantiate it.
     //    Class-terms are excluded — a bare instance would lose which term it is,

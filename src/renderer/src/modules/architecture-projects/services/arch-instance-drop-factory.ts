@@ -51,6 +51,24 @@ export class ArchInstanceDropFactory implements IToolboxDropFactory
     // binding's rescan() (T6) is the sole authority that derives them.
     private apply(model: ArchModel, context: ToolboxDropContext, scope: Set<string>, action: DropAction): ArchNodeVM | null
     {
+        // PLACE: bind the dropped term's OWN entity (a container concept, e.g. a
+        // library location) as a node — no new instance, no model mutation. The
+        // binding renders it as a container and projects its children from the
+        // model. Skipped if it is already on this diagram (no duplicate).
+        if (action.kind === DropActionKind.Place) {
+            const entityId = action.term
+            if (entityId === undefined) return null
+            const doc = context.Mutator as unknown as DiagramDocument
+            if ([...doc.Nodes].some((n) => (n as { Id?: string }).Id === entityId)) return null
+            const vm = new ArchNodeVM()
+            vm.Id = entityId
+            const { X, Y } = context.Position
+            doc.SetNodeVisual(entityId, { left: X, top: Y, ...ARCH_TILE_DEFAULT })
+            context.Mutator.AddNode(vm)
+            model.notifyChanged()   // rescan binds the placed entity + realizes its container
+            return vm
+        }
+
         const vp = [...model.repository().viewpointsFraming(action.concept)].find((v) => scope.has(v))
         if (vp === undefined) return null
 

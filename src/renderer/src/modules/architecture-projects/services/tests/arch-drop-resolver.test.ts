@@ -51,3 +51,20 @@ test('a term framed by nothing and unreferenced yields no candidates (reject)', 
     // concept has a member targeting lonely → 0 actions.
     expect(resolveDropActions(repo(), 'Solo.hermit', scope)).toEqual([])
 })
+
+// A container-concept term (e.g. a library location) is PLACED as a container,
+// not referenced from a materialize root. `location` is a container concept
+// (target of component.in); dropping the `azure` location term places it.
+const CONTAIN_MM = `namespace archmm {
+  annotation materialize { concept : identifier?; via : identifier?; propagate : boolean?; }
+  concept location {}
+  concept component { annotate materialize {} relationship in -> location; }
+  viewpoint V : frames component, location
+  taxonomy Regions : represents location { term azure {} }
+}`
+test('dropping a container-concept term (location) yields a single Place action, not a component reference', () => {
+    const r = load([{ uri: 'mm.todl', text: CONTAIN_MM }]).model
+    const actions = resolveDropActions(r, 'Regions.azure', new Set(['V']))
+    expect(actions).toHaveLength(1)
+    expect(actions[0]).toMatchObject({ kind: DropActionKind.Place, concept: 'location', term: 'Regions.azure' })
+})

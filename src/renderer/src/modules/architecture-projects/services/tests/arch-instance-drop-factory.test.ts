@@ -158,6 +158,40 @@ test('a legal drop into a model-backed container writes the containment ref, no 
     expect(shows.length).toBe(0)
 })
 
+// A container-concept term is PLACED as-is (binds the existing entity), not
+// materialized into a component. `Regions.azure` is a location term (container
+// concept); dropping it places that location as a node, creating no new entity.
+const PLACE_MM = `namespace archmm {
+  annotation materialize { concept : identifier?; via : identifier?; propagate : boolean?; }
+  concept location {}
+  concept component { annotate materialize {} relationship in -> location; }
+  viewpoint V : frames component, location
+  taxonomy Regions : represents location { term azure {} }
+}`
+function buildPlaceModel(storage: FakeStorage): ArchModel {
+    const draft = ModelDraft.fromSources([new Repository(graphFromJSON(toJSON(load([{ uri: 'mm.todl', text: PLACE_MM }]).model)))], [], { namespace: 'archmm' })
+    return new ArchModel(draft, storage, 'archmm')
+}
+
+test('dropping a location term places the location entity itself (container), no new entity', () => {
+    const storage = new FakeStorage('fake://Acme')
+    const model = buildPlaceModel(storage)
+    const doc = new DiagramDocument()
+    const before = model.entities().length
+    const factory = new ArchInstanceDropFactory(wire(doc, model))
+
+    const result = factory.CreateDropped(ctx(doc, 'Regions.azure')) as ArchNodeVM
+    expect(result).toBeInstanceOf(ArchNodeVM)
+    expect(result.Id).toBe('Regions.azure')          // the location entity itself, not a fresh component
+    expect(model.entities().length).toBe(before)     // no new instance materialized
+    expect([...doc.Nodes].includes(result)).toBe(true)
+    const visual = doc.GetNodeVisual('Regions.azure')
+    expect(visual?.left).toBe(5)
+
+    // Dropping it again does not place a duplicate.
+    expect(factory.CreateDropped(ctx(doc, 'Regions.azure'))).toBeNull()
+})
+
 test('an illegal drop into a container shows the modal, creates no entity', () => {
     const storage = new FakeStorage('fake://Acme')
     const model = buildContainModel(storage)
