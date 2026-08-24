@@ -52,6 +52,32 @@ export interface PlannedNode { id: string; left: number; top: number; isNew: boo
 
 const DEFAULT_DIMS: DropDims = { colDx: 200, rowDy: 120 }
 
+// Placement context that lets a scenario drop target existing location/block
+// containers already on the canvas: a participant whose model containment parent
+// (`in` / `in_block`) is a placed container gets laid out INSIDE that container
+// instead of in the free flow. The factory builds this from the ArchModel + doc;
+// when absent (or no participant nests) the layout is the plain L-R flow.
+export interface ContainmentLayout {
+  // The placed container a participant nests into, or undefined for free flow.
+  containerOf(participantId: string): string | undefined
+  // Current diagram-space top-left of a placed container (undefined if unplaced).
+  containerAt(containerId: string): { left: number; top: number } | undefined
+  // How many children already sit in a container — the slot offset new members
+  // start from, so a scenario drop stacks below existing landscape content.
+  existingChildren(containerId: string): number
+}
+
+// Wrapping grid used to place a scenario's components INSIDE a target container.
+// The insets clear mural's container title band + padding (ContentOrigin =
+// CONTAINER_PADDING across, CONTAINER_TITLE_BAND + CONTAINER_PADDING down) so a
+// child's converted local origin lands in the content area; the container
+// auto-grows on reparent to bound whatever we place.
+const CONTAIN_COLS = 3
+const CONTAIN_DX = 96
+const CONTAIN_DY = 76
+const CONTAIN_INSET_X = 8    // mural CONTAINER_PADDING
+const CONTAIN_INSET_TOP = 32 // mural CONTAINER_TITLE_BAND + CONTAINER_PADDING
+
 // Drop the edges that close a cycle (a DFS back-edge), so the layering graph is
 // a DAG. Dropped edges are still drawn as connectors — they just don't drive
 // columns.
@@ -102,22 +128,62 @@ export function planScenarioDrop(
   placed: ReadonlySet<string>,
   origin: { x: number; y: number },
   dims: DropDims = DEFAULT_DIMS,
+  layout?: ContainmentLayout,
 ): { nodes: PlannedNode[]; edges: Array<[string, string]> } {
   const { participants, edges } = collectScenarioFlow(scenario)
-  const col = layoutColumns(participants, edges)
+
+  // Partition: a participant whose containment parent is a PLACED container is
+  // laid out inside that container; everything else flows in the free grid.
+  const containerFor = new Map<string, string>()
+  if (layout !== undefined)
+    for (const id of participants) {
+      const cid = layout.containerOf(id)
+      if (cid !== undefined && layout.containerAt(cid) !== undefined) containerFor.set(id, cid)
+    }
+
+  const nodes: PlannedNode[] = []
+
+  // Contained: wrapping grid inside each container, new members appended after
+  // the container's existing children (already-placed participants keep place).
+  const nextSlot = new Map<string, number>()
+  for (const id of participants) {
+    const cid = containerFor.get(id)
+    if (cid === undefined) continue
+    const base = layout!.containerAt(cid)!
+    if (placed.has(id)) { nodes.push({ id, left: base.left, top: base.top, isNew: false }); continue }
+    const slot = nextSlot.get(cid) ?? layout!.existingChildren(cid)
+    nextSlot.set(cid, slot + 1)
+    const c = slot % CONTAIN_COLS
+    const r = Math.floor(slot / CONTAIN_COLS)
+    nodes.push({
+      id,
+      left: base.left + CONTAIN_INSET_X + c * CONTAIN_DX,
+      top: base.top + CONTAIN_INSET_TOP + r * CONTAIN_DY,
+      isNew: true,
+    })
+  }
+
+  // Free flow: the L-R column algorithm over the participants that did NOT nest,
+  // and the edges between them (identical to the pre-container behavior when no
+  // participant nests — the whole set flows here).
+  const free = participants.filter((id) => !containerFor.has(id))
+  const freeEdges = edges.filter(([s, d]) => !containerFor.has(s) && !containerFor.has(d))
+  const col = layoutColumns(free, freeEdges)
   const rowOf = new Map<string, number>()
   const nextRow = new Map<number, number>()   // column -> next free row
-  for (const id of participants) {             // stable first-seen order
+  for (const id of free) {                     // stable first-seen order
     const c = col.get(id) ?? 0
     const r = nextRow.get(c) ?? 0
     rowOf.set(id, r)
     nextRow.set(c, r + 1)
   }
-  const nodes: PlannedNode[] = participants.map((id) => ({
-    id,
-    left: origin.x + (col.get(id) ?? 0) * dims.colDx,
-    top: origin.y + (rowOf.get(id) ?? 0) * dims.rowDy,
-    isNew: !placed.has(id),
-  }))
+  for (const id of free)
+    nodes.push({
+      id,
+      left: origin.x + (col.get(id) ?? 0) * dims.colDx,
+      top: origin.y + (rowOf.get(id) ?? 0) * dims.rowDy,
+      isNew: !placed.has(id),
+    })
+
   return { nodes, edges }
 }

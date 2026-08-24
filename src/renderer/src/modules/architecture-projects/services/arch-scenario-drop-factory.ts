@@ -3,7 +3,9 @@ import { DiagramDocument, type IDocument, type IToolboxDropFactory, type Toolbox
 
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import { ArchNodeVM, ARCH_TILE_DEFAULT } from './arch-node-vm.js'
-import { planScenarioDrop, type FlowEntity } from './scenario-flow.js'
+import { planScenarioDrop, type ContainmentLayout, type FlowEntity } from './scenario-flow.js'
+import { containmentParentOf, isContainerConcept } from './containment.js'
+import type { ArchModel } from './arch-model.js'
 
 export const ArchScenarioDropFactoryKey = new ServiceKey<IToolboxDropFactory>('ArchScenarioDropFactory')
 
@@ -40,7 +42,13 @@ export class ArchScenarioDropFactory implements IToolboxDropFactory {
     for (const n of doc.Nodes.ToArray())
       if (n instanceof ArchNodeVM && typeof n.Id === 'string') placed.add(n.Id)
 
-    const plan = planScenarioDrop(scenario, placed, { x: context.Position.X, y: context.Position.Y })
+    // Lay each participant out. Components whose model container (`in`/`in_block`)
+    // is already a placed container on the canvas are positioned INSIDE it; the
+    // rest keep the free L-R flow. Membership nesting itself comes from the
+    // binding's projectContainment (model ref → reparent), which also grows the
+    // container to fit — this only decides where each new node starts.
+    const layout = this.buildContainmentLayout(model as unknown as ArchModel, doc, placed)
+    const plan = planScenarioDrop(scenario, placed, { x: context.Position.X, y: context.Position.Y }, undefined, layout)
     for (const nd of plan.nodes) {
       if (!nd.isNew) continue
       const vm = new ArchNodeVM()
@@ -53,5 +61,39 @@ export class ArchScenarioDropFactory implements IToolboxDropFactory {
     // (and binds the just-added nodes' labels/icons in the same rescan).
     void bindingSvc.addScenario(doc as unknown as IDocument, scenarioId)
     return null
+  }
+
+  // Build the placement context that targets existing containers, or undefined
+  // when the model can't answer containment (e.g. a stub) — then the drop is the
+  // plain L-R flow. Mirrors projectContainment's predicate exactly (parent placed
+  // AND a container concept) so a node is positioned inside precisely the
+  // container the binding will nest it into. `placedBefore` excludes the nodes
+  // this drop is about to add.
+  private buildContainmentLayout(model: ArchModel, doc: DiagramDocument, placedBefore: ReadonlySet<string>): ContainmentLayout | undefined {
+    if (typeof model.repository !== 'function') return undefined
+    const repo = model.repository()
+    const entityById = (id: string): ReturnType<ArchModel['entities']>[number] | undefined =>
+      model.entities().find((e) => e.id === id)
+    const containerOf = (id: string): string | undefined => {
+      const entity = entityById(id)
+      if (entity === undefined) return undefined
+      const parent = containmentParentOf(repo, entity)
+      if (parent === undefined || !placedBefore.has(parent.id)) return undefined
+      return isContainerConcept(repo, parent.concept) ? parent.id : undefined
+    }
+    // Existing children per container: already-placed nodes that nest in it.
+    const existing = new Map<string, number>()
+    for (const id of placedBefore) {
+      const cid = containerOf(id)
+      if (cid !== undefined) existing.set(cid, (existing.get(cid) ?? 0) + 1)
+    }
+    return {
+      containerOf,
+      containerAt: (cid) => {
+        const v = doc.GetNodeVisual(cid)
+        return v === undefined ? undefined : { left: v.left, top: v.top }
+      },
+      existingChildren: (cid) => existing.get(cid) ?? 0,
+    }
   }
 }

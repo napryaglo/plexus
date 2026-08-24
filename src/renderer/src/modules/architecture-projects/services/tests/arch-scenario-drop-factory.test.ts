@@ -53,6 +53,43 @@ test('dropping a scenario adds a node per participant and registers the scenario
   expect(model.save).not.toHaveBeenCalled()
 })
 
+// A model rich enough for the containment reader: components c1/c2 both nest in
+// location 'azure' (marked @has_children), a scenario c1->c2. The fake repo answers
+// only what containmentParentOf / isContainerConcept touch here.
+function containedProvider() {
+  const azure = { id: 'azure', concept: 'location', schema: () => ({ relationships: [] }), refs: () => [] }
+  const comp = (id: string): FlowEntity & { concept: string; schema: () => { relationships: Array<{ name: string; targets: string[] }> } } => ({
+    id,
+    concept: 'component',
+    schema: () => ({ relationships: [{ name: 'in', targets: ['location'] }] }),
+    refs: (m) => (m === 'in' ? [azure] : []),
+  })
+  const c1 = comp('c1'), c2 = comp('c2')
+  const stepE = (s: FlowEntity, d: FlowEntity): FlowEntity => ({ id: 'step', refs: (m) => (m === 'src' ? [s] : m === 'dst' ? [d] : []) })
+  const scenario: FlowEntity = { id: 'sc', refs: (m) => (m === 'sequences' ? [{ id: 'seq', refs: (mm) => (mm === 'steps' ? [stepE(c1, c2)] : []) }] : []) }
+  const repo = { resolve: (p: string) => (p === 'location@has_children' ? {} : undefined) }
+  const model = { entities: () => [scenario, c1, c2, azure], repository: () => repo, create: vi.fn(), addRef: vi.fn(), save: vi.fn() }
+  const bindingSvc = { modelForDocument: () => model, addScenario: vi.fn(() => Promise.resolve()) }
+  const provider = { get: (k: unknown) => (k === ArchDiagramBindingService.Key ? bindingSvc : undefined) } as unknown as IServiceProvider
+  return { provider, bindingSvc }
+}
+
+test('places components inside an existing location container instead of the free flow', () => {
+  const doc = new DiagramDocument()
+  const az = new ArchNodeVM(); az.Id = 'azure'
+  doc.AddNode(az)
+  doc.SetNodeVisual('azure', { left: 1000, top: 500, w: 200, h: 160 })   // placed container
+  const { provider, bindingSvc } = containedProvider()
+
+  new ArchScenarioDropFactory(provider).CreateDropped(makeContext(doc, 'sc'))
+
+  // c1/c2 land INSIDE azure: origin (1000,500) + inset (8,32), then a grid column
+  // step (96) for the second — not on the free flow at the drop point (100,50).
+  expect(doc.GetNodeVisual('c1')).toMatchObject({ left: 1008, top: 532 })
+  expect(doc.GetNodeVisual('c2')).toMatchObject({ left: 1104, top: 532 })
+  expect(bindingSvc.addScenario).toHaveBeenCalledWith(doc, 'sc')
+})
+
 test('re-uses an already-present node instead of duplicating it', () => {
   const doc = new DiagramDocument()
   const pre = new ArchNodeVM(); pre.Id = 'b'
