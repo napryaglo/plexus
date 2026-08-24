@@ -1,5 +1,6 @@
 import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime'
-import { DiagramSettings, NodeViewModel, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { DiagramSettings, NodeViewModel, ToolboxVisualDescriptor, type ITextStyleTarget } from '@pragmatic-lab/mural/framework'
+import { Brush, FontFamily, FontStyle, FontWeight, TextAlignment, TextDecorations } from '@pragmatic-lab/mural/visual-engine'
 
 // Initial box for a freshly-dropped arch tile. The container fits its content
 // once measured (SizeToContent), but a drop needs a starting box before the
@@ -58,6 +59,27 @@ export class ArchNodeVM extends NodeViewModel {
     // rescan re-derives the same title.
     static readonly IsEditingKey = MuralBase.RegisterProperty<boolean>(ArchNodeVM, 'IsEditing', false, MetaData.None)
     static readonly EditingLabelKey = MuralBase.RegisterProperty<string>(ArchNodeVM, 'EditingLabel', '', MetaData.None)
+
+    // ── Per-node label text style (Format Shape → Text page) ────────────────
+    // The tile's $Label is a template TextBlock, not the container Figure's blank
+    // ShapeText, so the Text page reaches it through the `TextStyle` adapter below
+    // (mural FormatMirror routes a content VM's char/paragraph edits to its
+    // ITextStyleTarget). Each DP is undefined until the user overrides it, so the
+    // template keeps the @BodySmall / @OnSurface defaults (`$LabelX is set`
+    // triggers) and only the touched properties override — no visual drift on
+    // existing diagrams. Persisted per-node in the .diagram visual (labelStyle),
+    // like the per-shape lock/anchor intents.
+    static readonly LabelFontFamilyKey = MuralBase.RegisterProperty<string | undefined>(ArchNodeVM, 'LabelFontFamily', undefined, MetaData.None)
+    static readonly LabelFontSizeKey = MuralBase.RegisterProperty<number | undefined>(ArchNodeVM, 'LabelFontSize', undefined, MetaData.None)
+    static readonly LabelForegroundKey = MuralBase.RegisterProperty<Brush | undefined>(ArchNodeVM, 'LabelForeground', undefined, MetaData.None)
+    static readonly LabelFontWeightKey = MuralBase.RegisterProperty<FontWeight | undefined>(ArchNodeVM, 'LabelFontWeight', undefined, MetaData.None)
+    static readonly LabelFontStyleKey = MuralBase.RegisterProperty<FontStyle | undefined>(ArchNodeVM, 'LabelFontStyle', undefined, MetaData.None)
+    static readonly LabelTextDecorationsKey = MuralBase.RegisterProperty<TextDecorations | undefined>(ArchNodeVM, 'LabelTextDecorations', undefined, MetaData.None)
+    static readonly LabelTextAlignmentKey = MuralBase.RegisterProperty<TextAlignment | undefined>(ArchNodeVM, 'LabelTextAlignment', undefined, MetaData.None)
+
+    // The @BodySmall size the label inherits when LabelFontSize is unset — the
+    // value the Text page shows as the starting point (mural typography token).
+    static readonly LABEL_DEFAULT_FONT_SIZE = 12
 
     // Listeners notified when an edit COMMITS with a changed, non-empty title.
     // The ArchDiagramBinding subscribes to persist the new title to the entity.
@@ -140,6 +162,29 @@ export class ArchNodeVM extends NodeViewModel {
         this.set_property_value(ArchNodeVM.EditingLabelKey, v)
     }
 
+    // ── Label text-style DPs + adapter ──────────────────────────────────────
+    get LabelFontFamily(): string | undefined { return this.get_property_value(ArchNodeVM.LabelFontFamilyKey) }
+    set LabelFontFamily(v: string | undefined) { this.set_property_value(ArchNodeVM.LabelFontFamilyKey, v) }
+    get LabelFontSize(): number | undefined { return this.get_property_value(ArchNodeVM.LabelFontSizeKey) }
+    set LabelFontSize(v: number | undefined) { this.set_property_value(ArchNodeVM.LabelFontSizeKey, v) }
+    get LabelForeground(): Brush | undefined { return this.get_property_value(ArchNodeVM.LabelForegroundKey) }
+    set LabelForeground(v: Brush | undefined) { this.set_property_value(ArchNodeVM.LabelForegroundKey, v) }
+    get LabelFontWeight(): FontWeight | undefined { return this.get_property_value(ArchNodeVM.LabelFontWeightKey) }
+    set LabelFontWeight(v: FontWeight | undefined) { this.set_property_value(ArchNodeVM.LabelFontWeightKey, v) }
+    get LabelFontStyle(): FontStyle | undefined { return this.get_property_value(ArchNodeVM.LabelFontStyleKey) }
+    set LabelFontStyle(v: FontStyle | undefined) { this.set_property_value(ArchNodeVM.LabelFontStyleKey, v) }
+    get LabelTextDecorations(): TextDecorations | undefined { return this.get_property_value(ArchNodeVM.LabelTextDecorationsKey) }
+    set LabelTextDecorations(v: TextDecorations | undefined) { this.set_property_value(ArchNodeVM.LabelTextDecorationsKey, v) }
+    get LabelTextAlignment(): TextAlignment | undefined { return this.get_property_value(ArchNodeVM.LabelTextAlignmentKey) }
+    set LabelTextAlignment(v: TextAlignment | undefined) { this.set_property_value(ArchNodeVM.LabelTextAlignmentKey, v) }
+
+    // The text-style target mural's FormatMirror seeds from + broadcasts to for
+    // this node's label (the Text page). Lazily built; wraps the DPs above.
+    private _textStyle: ArchLabelTextStyle | undefined
+    get TextStyle(): ITextStyleTarget {
+        return (this._textStyle ??= new ArchLabelTextStyle(this))
+    }
+
     // Enter in-place title editing: seed the buffer from the current title and
     // reveal the editor (the trigger swaps in the TextBox; FocusOnVisibleBehavior
     // focuses + selects it). No-op when already editing.
@@ -177,4 +222,32 @@ export class ArchNodeVM extends NodeViewModel {
             if (i >= 0) this.labelCommitted.splice(i, 1)
         }
     }
+}
+
+// Block-level text style over an ArchNodeVM's Label* DPs. The Apply* set the DP
+// (which the tile's PART_Title binds), the Current* read the effective value the
+// Text page reflects. Bold/italic map to FontWeight/FontStyle; underline +
+// strikethrough share the TextDecorations flags so both can be on at once.
+class ArchLabelTextStyle implements ITextStyleTarget {
+    constructor(private readonly vm: ArchNodeVM) {}
+
+    private decos(): TextDecorations { return this.vm.LabelTextDecorations ?? TextDecorations.None }
+
+    ApplyFontFamily(family: FontFamily | string): void { this.vm.LabelFontFamily = typeof family === 'string' ? family : family.Source }
+    ApplyFontSize(size: number): void { this.vm.LabelFontSize = size }
+    ApplyForeground(brush: Brush): void { this.vm.LabelForeground = brush }
+    ApplyBold(on: boolean): void { this.vm.LabelFontWeight = on ? FontWeight.Bold : FontWeight.Normal }
+    ApplyItalic(on: boolean): void { this.vm.LabelFontStyle = on ? FontStyle.Italic : FontStyle.Normal }
+    ApplyUnderline(on: boolean): void { this.vm.LabelTextDecorations = on ? (this.decos() | TextDecorations.Underline) : (this.decos() & ~TextDecorations.Underline) }
+    ApplyStrikethrough(on: boolean): void { this.vm.LabelTextDecorations = on ? (this.decos() | TextDecorations.Strikethrough) : (this.decos() & ~TextDecorations.Strikethrough) }
+    ApplyParagraphAlignment(align: TextAlignment): void { this.vm.LabelTextAlignment = align }
+
+    CurrentFontFamily(): string { return this.vm.LabelFontFamily ?? '' }
+    CurrentFontSize(): number { return this.vm.LabelFontSize ?? ArchNodeVM.LABEL_DEFAULT_FONT_SIZE }
+    CurrentForeground(): Brush | undefined { return this.vm.LabelForeground }
+    CurrentBold(): boolean { return this.vm.LabelFontWeight === FontWeight.Bold }
+    CurrentItalic(): boolean { return this.vm.LabelFontStyle === FontStyle.Italic }
+    CurrentUnderline(): boolean { return (this.decos() & TextDecorations.Underline) !== 0 }
+    CurrentStrikethrough(): boolean { return (this.decos() & TextDecorations.Strikethrough) !== 0 }
+    CurrentParagraphAlignment(): TextAlignment { return this.vm.LabelTextAlignment ?? TextAlignment.Center }
 }

@@ -399,6 +399,17 @@ resources DiagramResources {
             PART_Title.Visibility       = Collapsed;
             PART_TitleEditor.Visibility = Visible;
         }
+        // Per-node label text style (Format Shape → Text page, via the VM's
+        // TextStyle adapter). Each property overrides the @BodySmall / @OnSurface /
+        // Center defaults ONLY once the user sets it (the DP is undefined until
+        // then), so untouched labels — and existing diagrams — are unchanged.
+        when ( $LabelFontFamily is set )     { PART_Title.FontFamily = $LabelFontFamily; }
+        when ( $LabelFontSize is set )       { PART_Title.FontSize = $LabelFontSize; }
+        when ( $LabelForeground is set )     { PART_Title.Foreground = $LabelForeground; }
+        when ( $LabelFontWeight is set )     { PART_Title.FontWeight = $LabelFontWeight; }
+        when ( $LabelFontStyle is set )      { PART_Title.FontStyle = $LabelFontStyle; }
+        when ( $LabelTextDecorations is set ){ PART_Title.TextDecorations = $LabelTextDecorations; }
+        when ( $LabelTextAlignment is set )  { PART_Title.TextAlignment = $LabelTextAlignment; }
     }
 
     // ── ToolBox capability panel — the shapes palette in the left pane.

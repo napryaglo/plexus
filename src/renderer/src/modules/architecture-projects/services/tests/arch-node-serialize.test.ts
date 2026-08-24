@@ -1,5 +1,6 @@
 import { test, expect, beforeAll } from 'vitest'
 import { Application } from '@pragmatic-lab/mural/runtime'
+import { Color, SolidColorBrush, TextAlignment } from '@pragmatic-lab/mural/visual-engine'
 import { DiagramDocument, DiagramSettings } from '@pragmatic-lab/mural/framework'
 import { serializerByType } from '@pragmatic-lab/mural/framework'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
@@ -92,6 +93,48 @@ test('ArchNodeVM round-trips id + content (geometry is the container/store conce
     // Icon / label must NOT be persisted — binding re-derives them on open.
     expect(archVM.Label).toBe('')
     expect(archVM.Descriptor).toBeUndefined()
+})
+
+test('label text-style overrides round-trip; an unstyled node stays empty', () => {
+    const { diagStore } = makeStorage()
+    const saveDoc = new DiagramDocument(diagStore)
+
+    const styled = new ArchNodeVM()
+    styled.Id = 's1'
+    styled.TextStyle.ApplyFontSize(20)
+    styled.TextStyle.ApplyBold(true)
+    styled.TextStyle.ApplyUnderline(true)
+    styled.TextStyle.ApplyParagraphAlignment(TextAlignment.Right)
+    styled.TextStyle.ApplyForeground(new SolidColorBrush(Color.FromHex('#ff0000')))
+
+    const plain = new ArchNodeVM()
+    plain.Id = 'p1'
+
+    saveDoc.Nodes.Add(styled)
+    saveDoc.Nodes.Add(plain)
+    saveDoc.Save()
+
+    // The unstyled node still serializes to bare {} — no drift for existing diagrams.
+    const parsed = JSON.parse(diagStore.GetItem('') as string) as { nodes: Array<{ id: string; data: Record<string, unknown> }> }
+    expect(parsed.nodes.find((n) => n.id === 'p1')!.data).toEqual({})
+    expect(parsed.nodes.find((n) => n.id === 's1')!.data).toHaveProperty('labelStyle')
+
+    const loadDoc = new DiagramDocument(diagStore)
+    loadDoc.Load()
+    const nodes: ArchNodeVM[] = []
+    for (let i = 0; i < loadDoc.Nodes.Count; i++) nodes.push(loadDoc.Nodes.Get(i) as ArchNodeVM)
+
+    const rs = nodes.find((n) => n.Id === 's1')!
+    expect(rs.TextStyle.CurrentFontSize()).toBe(20)
+    expect(rs.TextStyle.CurrentBold()).toBe(true)
+    expect(rs.TextStyle.CurrentUnderline()).toBe(true)
+    expect(rs.TextStyle.CurrentParagraphAlignment()).toBe(TextAlignment.Right)
+    expect((rs.LabelForeground as SolidColorBrush).Color.ToHex().toLowerCase().slice(0, 7)).toBe('#ff0000')
+
+    // The unstyled node reloads with all overrides unset.
+    const rp = nodes.find((n) => n.Id === 'p1')!
+    expect(rp.LabelFontSize).toBeUndefined()
+    expect(rp.TextStyle.CurrentFontSize()).toBe(12)
 })
 
 test('without serializer registration the node is dropped on reload', () => {
