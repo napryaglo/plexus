@@ -1,4 +1,4 @@
-import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, type PropertyKey } from '@pragmatic-lab/mural/runtime'
 import { DiagramSettings, NodeViewModel, ToolboxVisualDescriptor, type ITextStyleTarget } from '@pragmatic-lab/mural/framework'
 import { Brush, FontFamily, FontStyle, FontWeight, TextAlignment, TextDecorations } from '@pragmatic-lab/mural/visual-engine'
 
@@ -183,6 +183,23 @@ export class ArchNodeVM extends NodeViewModel {
     private _textStyle: ArchLabelTextStyle | undefined
     get TextStyle(): ITextStyleTarget {
         return (this._textStyle ??= new ArchLabelTextStyle(this))
+    }
+
+    // The persisted style DPs whose edit must dirty the diagram (mural's
+    // DiagramDocument watches these — a content VM has no Fill/Stroke/geometry of
+    // its own, so without this a label-style edit never marks the doc dirty and is
+    // never saved). The card fill/stroke lives on the container Figure, which the
+    // document tracks separately.
+    DirtyStyleKeys(): PropertyKey<unknown>[] {
+        return [
+            ArchNodeVM.LabelFontFamilyKey,
+            ArchNodeVM.LabelFontSizeKey,
+            ArchNodeVM.LabelForegroundKey,
+            ArchNodeVM.LabelFontWeightKey,
+            ArchNodeVM.LabelFontStyleKey,
+            ArchNodeVM.LabelTextDecorationsKey,
+            ArchNodeVM.LabelTextAlignmentKey,
+        ] as PropertyKey<unknown>[]
     }
 
     // Enter in-place title editing: seed the buffer from the current title and
