@@ -343,8 +343,8 @@ resources DiagramResources {
     // Figure context (same resolver path as the toolbox tile, but sized for the
     // canvas); the TextBlock shows the entity's display label below the icon.
     DataTemplate [DataType = ArchNodeVM] {
-        StackPanel [ Orientation = Vertical, HorizontalAlignment = Center ] {
-            ToolboxVisualPresenter
+        StackPanel x:name="PART_TileStack" [ Orientation = Vertical, HorizontalAlignment = Center ] {
+            ToolboxVisualPresenter x:name="PART_Icon"
                 [ Descriptor          = $Descriptor,
                   Context             = VisualContext.Figure,
                   // Sized from the shared shape-default-size setting so an arch
@@ -398,6 +398,19 @@ resources DiagramResources {
         when ( $IsEditing = true ) {
             PART_Title.Visibility       = Collapsed;
             PART_TitleEditor.Visibility = Visible;
+        }
+        // A CONTAINER node's header is just its label, pinned to the top-left
+        // corner — the icon+label tile is for leaf nodes; a container reads as a
+        // titled box that holds children, so it drops the icon and left-aligns the
+        // title above its child region. IsContainer is set on placed diagram nodes
+        // by the arch binding (never on toolbox items), so this is diagram-only.
+        when ( $IsContainer = true ) {
+            PART_Icon.Visibility            = Collapsed;
+            PART_TileStack.HorizontalAlignment = Left;
+            PART_TileStack.VerticalAlignment   = Top;
+            PART_Title.HorizontalAlignment  = Left;
+            PART_Title.TextAlignment        = Left;
+            PART_Title.Margin               = (0,0,0,0);
         }
         // Per-node label text style (Format Shape → Text page, via the VM's
         // TextStyle adapter). Each property overrides the @BodySmall / @OnSurface /
