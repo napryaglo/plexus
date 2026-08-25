@@ -60,6 +60,7 @@ const CONTAIN_MM = `namespace archmm {
   concept location {}
   concept component { annotate materialize {} relationship in -> location; }
   viewpoint V : frames component, location
+  viewpoint Flow : frames component
   taxonomy Regions : represents location { term azure {} }
 }`
 test('dropping a container-concept term (location) yields a single Place action, not a component reference', () => {
@@ -67,4 +68,14 @@ test('dropping a container-concept term (location) yields a single Place action,
     const actions = resolveDropActions(r, 'Regions.azure', new Set(['V']))
     expect(actions).toHaveLength(1)
     expect(actions[0]).toMatchObject({ kind: DropActionKind.Place, concept: 'location', term: 'Regions.azure' })
+})
+
+test('dropping a container-concept term where its concept is NOT framed is REJECTED (no silent component)', () => {
+    // scope Flow frames component but NOT location. Placing azure is illegal here,
+    // and the facet-drop fallback would mint a component `in` azure — the surprise.
+    // The resolver returns a Rejected action so the factory can interrupt + explain.
+    const r = load([{ uri: 'mm.todl', text: CONTAIN_MM }]).model
+    const actions = resolveDropActions(r, 'Regions.azure', new Set(['Flow']))
+    expect(actions).toHaveLength(1)
+    expect(actions[0]).toMatchObject({ kind: DropActionKind.Rejected, concept: 'location', term: 'Regions.azure' })
 })

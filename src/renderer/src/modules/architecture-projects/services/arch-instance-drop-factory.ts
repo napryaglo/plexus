@@ -4,6 +4,7 @@ import { DiagramDocument, DialogService, type IDocument, type IToolboxDropFactor
 import { resolveDropActions, DropActionKind, type DropAction } from './arch-drop-resolver.js'
 import { containmentMemberFor, isContainerConcept } from './containment.js'
 import { showContainmentRejected } from './containment-modal.js'
+import { showDropRejected } from './drop-rejection.js'
 import { propagationFills } from './arch-propagate.js'
 import { materializeOf } from './arch-materialize.js'
 import { conceptTypeOf } from './arch-concept-type.js'
@@ -39,6 +40,14 @@ export class ArchInstanceDropFactory implements IToolboxDropFactory
         const scope = bindingSvc?.scopeForDocument(doc) ?? new Set(model.viewpoints().map((v) => v.id))
         const actions = resolveDropActions(model.repository(), context.Descriptor.Key, scope)
         if (actions.length === 0) return null
+        // A rejected drop can't be honored here (a container concept the diagram's
+        // viewpoint doesn't frame). Interrupt with a comprehensive modal explaining
+        // the problem instead of silently minting the wrong node.
+        if (actions.length === 1 && actions[0].kind === DropActionKind.Rejected) {
+            const termId = actions[0].term ?? context.Descriptor.Key
+            showDropRejected(this.provider.get(DialogService.Key), model.repository(), termId, scope)
+            return null
+        }
         if (actions.length === 1) return this.apply(model, context, scope, actions[0])
 
         this.provider.getRequired(DropCandidateChooserService.Key).Show(actions, (chosen) => { this.apply(model, context, scope, chosen) })

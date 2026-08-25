@@ -192,6 +192,46 @@ test('dropping a location term places the location entity itself (container), no
     expect(factory.CreateDropped(ctx(doc, 'Regions.azure'))).toBeNull()
 })
 
+// A container-concept term dropped on a diagram whose viewpoint does NOT frame it
+// must be REJECTED with an explanatory modal — not silently turned into a component
+// (the facet-drop fallback). `Scenarios` frames component but not location.
+const REJECT_MM = `namespace archmm {
+  annotation materialize { concept : identifier?; via : identifier?; propagate : boolean?; }
+  concept location {}
+  concept component { annotate materialize {} relationship in -> location; }
+  viewpoint Model : frames component, location
+  viewpoint Scenarios : frames component
+  taxonomy Regions : represents location { term azure {} }
+}`
+function buildRejectModel(storage: FakeStorage): ArchModel {
+    const draft = ModelDraft.fromSources([new Repository(graphFromJSON(toJSON(load([{ uri: 'mm.todl', text: REJECT_MM }]).model)))], [], { namespace: 'archmm' })
+    return new ArchModel(draft, storage, 'archmm')
+}
+
+test('dropping a location where its viewpoint is not framed is REJECTED with a modal, no component', () => {
+    const storage = new FakeStorage('fake://Acme')
+    const model = buildRejectModel(storage)
+    const doc = new DiagramDocument()
+    const before = model.entities().length
+    const provider = new ServiceProvider()
+    const shows: Array<{ Title?: string }> = []
+    provider.registerInstance(ArchDiagramBindingService.Key, {
+        modelForDocument: (d: unknown) => (d === doc ? model : undefined),
+        scopeForDocument: () => new Set(['Scenarios']),   // frames component, NOT location
+    } as unknown as ArchDiagramBindingService)
+    provider.registerInstance(DropCandidateChooserService.Key, new DropCandidateChooserService(provider))
+    provider.registerInstance(DialogService.Key, { Show: (o: { Title?: string }) => { shows.push(o); return Promise.resolve(undefined) }, Close: () => {} } as unknown as DialogService)
+    const factory = new ArchInstanceDropFactory(provider)
+
+    const result = factory.CreateDropped(ctx(doc, 'Regions.azure'))
+    expect(result).toBeNull()                          // nothing placed
+    expect(shows.length).toBe(1)                       // the explanatory modal fired
+    expect(shows[0]!.Title).toContain('Azure')         // "Can't place "Azure" here"
+    expect(model.entities().length).toBe(before)       // NO component minted
+    expect(model.entities().some((e) => e.concept === 'component')).toBe(false)
+    expect([...doc.Nodes].length).toBe(0)
+})
+
 test('an illegal drop into a container shows the modal, creates no entity', () => {
     const storage = new FakeStorage('fake://Acme')
     const model = buildContainModel(storage)

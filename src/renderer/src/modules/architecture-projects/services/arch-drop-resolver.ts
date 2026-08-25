@@ -4,9 +4,11 @@ import { materializeOf, materializeRoots } from './arch-materialize.js'
 import { isContainerConcept } from './containment.js'
 
 // What a term-drop can create: PLACE the dropped term's own entity (a container
-// concept, e.g. a library location), a direct instance of a materialize root, or
-// an instance of a root X whose reference member m targets the dropped term's type.
-export enum DropActionKind { Place = 'place', Instance = 'instance', Reference = 'reference' }
+// concept, e.g. a library location), a direct instance of a materialize root, an
+// instance of a root X whose reference member m targets the dropped term's type,
+// or REJECTED — the drop can't be honored on this diagram and must be interrupted
+// with an explanation instead of silently producing a surprising node.
+export enum DropActionKind { Place = 'place', Instance = 'instance', Reference = 'reference', Rejected = 'rejected' }
 
 export interface DropAction
 {
@@ -44,6 +46,16 @@ export function resolveDropActions(repo: Repository, descriptorKey: string, scop
     //    entities, so isContainerConcept (NOT the class flag) is the gate.
     if (isContainerConcept(repo, ct) && framed(ct))
         return [{ kind: DropActionKind.Place, concept: ct, term: termId, label: ct }]
+
+    // 0b. REJECT: the dropped term IS a container concept (a placeable location /
+    //     block / subscription / …) but this diagram's viewpoint does NOT frame it.
+    //     Placing it here is illegal, and the facet-drop fallback (step 3) would
+    //     silently mint a DIFFERENT concept — e.g. dropping a location `azure` on a
+    //     Scenarios diagram would create a component whose `in` points at azure.
+    //     That surprise is the bug; interrupt with an explanation instead. The
+    //     factory turns this into a modal (it owns the dialog service + labels).
+    if (isContainerConcept(repo, ct))
+        return [{ kind: DropActionKind.Rejected, concept: ct, term: termId, label: ct }]
 
     // 1. Direct: the term's own class (or a supertype) is a root → instantiate it.
     //    Class-terms are excluded — a bare instance would lose which term it is,
