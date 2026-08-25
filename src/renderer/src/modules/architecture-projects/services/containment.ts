@@ -77,6 +77,19 @@ export function membershipFieldFor(repo: Repository, containerConcept: string, c
     return undefined
 }
 
+// The children a container entity declares via its forward membership fields
+// (e.g. a block's `components`). Reads every reference-typed field: a scalar field
+// (id, label) yields no refs, and an `in`-style up-ref is a relationship (not a
+// field), so both are naturally excluded. Used to materialize a container's full
+// membership when it is placed on the diagram.
+export function membershipChildrenOf(repo: Repository, container: Entity): Entity[]
+{
+    const out: Entity[] = []
+    for (const f of repo.effectiveSchema(container.concept).fields)
+        out.push(...container.refs(f.name))
+    return out
+}
+
 // The container an entity sits in, resolving BOTH containment channels:
 //   (a) the child's own @containment up-ref (`in_block`) — the canonical form,
 //       read by containmentParentOf; and

@@ -3,9 +3,10 @@ import { DiagramDocument, type IDocument, type IToolboxDropFactory, type Toolbox
 
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import { ArchNodeVM, ARCH_TILE_DEFAULT } from './arch-node-vm.js'
-import { planScenarioDrop, type ContainmentLayout, type FlowEntity } from './scenario-flow.js'
-import { containingContainerOf, isContainerConcept } from './containment.js'
+import { planScenarioDrop, collectScenarioFlow, containerChildSlot, type ContainmentLayout, type FlowEntity } from './scenario-flow.js'
+import { containingContainerOf, isContainerConcept, membershipChildrenOf } from './containment.js'
 import type { ArchModel } from './arch-model.js'
+import type { Entity } from '@pragmatic-lab/todl'
 
 export const ArchScenarioDropFactoryKey = new ServiceKey<IToolboxDropFactory>('ArchScenarioDropFactory')
 
@@ -37,18 +38,20 @@ export class ArchScenarioDropFactory implements IToolboxDropFactory {
     const scenario = model.entities().find((e) => e.id === scenarioId) as unknown as FlowEntity | undefined
     if (scenario === undefined) return null
 
-    // Existing arch nodes on the canvas, by entity id (reuse targets).
-    const placed = new Set<string>()
+    // Existing arch nodes on the canvas, by entity id (reuse targets). Snapshotted
+    // BEFORE the drop: a node already here keeps its place (never repositioned).
+    const placedBefore = new Set<string>()
     for (const n of doc.Nodes.ToArray())
-      if (n instanceof ArchNodeVM && typeof n.Id === 'string') placed.add(n.Id)
+      if (n instanceof ArchNodeVM && typeof n.Id === 'string') placedBefore.add(n.Id)
 
     // Lay each participant out. Components whose model container (`in`/`in_block`)
     // is already a placed container on the canvas are positioned INSIDE it; the
     // rest keep the free L-R flow. Membership nesting itself comes from the
     // binding's projectContainment (model ref → reparent), which also grows the
     // container to fit — this only decides where each new node starts.
-    const layout = this.buildContainmentLayout(model as unknown as ArchModel, doc, placed)
-    const plan = planScenarioDrop(scenario, placed, { x: context.Position.X, y: context.Position.Y }, undefined, layout)
+    const layout = this.buildContainmentLayout(model as unknown as ArchModel, doc, placedBefore)
+    const plan = planScenarioDrop(scenario, placedBefore, { x: context.Position.X, y: context.Position.Y }, undefined, layout)
+    const placedNow = new Set(placedBefore)
     for (const nd of plan.nodes) {
       if (!nd.isNew) continue
       const vm = new ArchNodeVM()
@@ -56,11 +59,69 @@ export class ArchScenarioDropFactory implements IToolboxDropFactory {
       // Geometry lives on the container Figure + the document store, not the VM.
       doc.SetNodeVisual(nd.id, { left: nd.left, top: nd.top, ...ARCH_TILE_DEFAULT })
       context.Mutator.AddNode(vm)
+      placedNow.add(nd.id)
     }
+    // A block that participates in the scenario brings its WHOLE `components` list
+    // onto the canvas nested inside it — the unconnected members are structural
+    // context, not just the ones a step touches.
+    this.materializeMembership(model as unknown as ArchModel, doc, context.Mutator, scenario, placedBefore, placedNow)
     // Persist the scenario + re-notify; the binding projects its step connectors
     // (and binds the just-added nodes' labels/icons in the same rescan).
     void bindingSvc.addScenario(doc as unknown as IDocument, scenarioId)
     return null
+  }
+
+  // Materialize the full membership of every scenario-participant container: for
+  // each placed block, lay ALL its `components` (not only step participants) into
+  // the in-container grid, creating a node for each new member and reusing any
+  // already placed. A member that is itself a container is expanded too, so nested
+  // blocks fill. Members added by THIS drop (including flow participants) are
+  // positioned inside the block; nodes present before the drop keep their place.
+  // Pure visualization — the members already exist in the model via the list;
+  // projectContainment nests them on the binding's rescan.
+  private materializeMembership(
+    model: ArchModel,
+    doc: DiagramDocument,
+    mutator: { AddNode(vm: ArchNodeVM): void },
+    scenario: FlowEntity,
+    placedBefore: ReadonlySet<string>,
+    placedNow: Set<string>,
+  ): void {
+    if (typeof model.repository !== 'function') return
+    const repo = model.repository()
+    const entityById = (id: string): Entity | undefined => model.entities().find((e) => e.id === id)
+    const isContainer = (e: Entity): boolean => isContainerConcept(repo, e.concept)
+
+    // Seed with the scenario's participant containers; recurse into nested ones.
+    const queue = collectScenarioFlow(scenario).participants
+      .map(entityById)
+      .filter((e): e is Entity => e !== undefined && isContainer(e))
+    const expanded = new Set<string>()
+    while (queue.length > 0) {
+      const container = queue.shift()!
+      if (expanded.has(container.id)) continue
+      expanded.add(container.id)
+      const base = doc.GetNodeVisual(container.id)
+      if (base === undefined) continue
+      const members = membershipChildrenOf(repo, container)
+      // Append after any members already sitting in the container before this drop.
+      let slot = members.filter((m) => placedBefore.has(m.id)).length
+      for (const member of members) {
+        if (!placedBefore.has(member.id)) {
+          const pos = containerChildSlot({ left: base.left, top: base.top }, slot)
+          slot++
+          if (!placedNow.has(member.id)) {
+            const vm = new ArchNodeVM()
+            vm.Id = member.id
+            mutator.AddNode(vm)
+            placedNow.add(member.id)
+          }
+          // Position (or reposition a same-drop flow participant) inside the block.
+          doc.SetNodeVisual(member.id, { left: pos.left, top: pos.top, ...ARCH_TILE_DEFAULT })
+        }
+        if (isContainer(member) && !expanded.has(member.id)) queue.push(member)
+      }
+    }
   }
 
   // Build the placement context that targets existing containers, or undefined

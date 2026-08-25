@@ -78,6 +78,15 @@ const CONTAIN_DY = 76
 const CONTAIN_INSET_X = 8    // mural CONTAINER_PADDING
 const CONTAIN_INSET_TOP = 32 // mural CONTAINER_TITLE_BAND + CONTAINER_PADDING
 
+// The diagram-space top-left for the `slot`-th child inside a container whose
+// top-left is `base` — the wrapping grid shared by planScenarioDrop's contained
+// participants and the factory's full-membership materialization.
+export function containerChildSlot(base: { left: number; top: number }, slot: number): { left: number; top: number } {
+  const c = slot % CONTAIN_COLS
+  const r = Math.floor(slot / CONTAIN_COLS)
+  return { left: base.left + CONTAIN_INSET_X + c * CONTAIN_DX, top: base.top + CONTAIN_INSET_TOP + r * CONTAIN_DY }
+}
+
 // Drop the edges that close a cycle (a DFS back-edge), so the layering graph is
 // a DAG. Dropped edges are still drawn as connectors — they just don't drive
 // columns.
@@ -153,14 +162,8 @@ export function planScenarioDrop(
     if (placed.has(id)) { nodes.push({ id, left: base.left, top: base.top, isNew: false }); continue }
     const slot = nextSlot.get(cid) ?? layout!.existingChildren(cid)
     nextSlot.set(cid, slot + 1)
-    const c = slot % CONTAIN_COLS
-    const r = Math.floor(slot / CONTAIN_COLS)
-    nodes.push({
-      id,
-      left: base.left + CONTAIN_INSET_X + c * CONTAIN_DX,
-      top: base.top + CONTAIN_INSET_TOP + r * CONTAIN_DY,
-      isNew: true,
-    })
+    const pos = containerChildSlot(base, slot)
+    nodes.push({ id, left: pos.left, top: pos.top, isNew: true })
   }
 
   // Free flow: the L-R column algorithm over the participants that did NOT nest,
