@@ -57,12 +57,13 @@ test('dropping a scenario adds a node per participant and registers the scenario
 // location 'azure' (marked @has_children), a scenario c1->c2. The fake repo answers
 // only what containmentParentOf / isContainerConcept touch here.
 function containedProvider() {
-  const azure = { id: 'azure', concept: 'location', schema: () => ({ relationships: [] }), refs: () => [] }
-  const comp = (id: string): FlowEntity & { concept: string; schema: () => { relationships: Array<{ name: string; targets: string[] }> } } => ({
+  const azure = { id: 'azure', concept: 'location', schema: () => ({ relationships: [] }), refs: () => [], referrers: () => [] }
+  const comp = (id: string): FlowEntity & { concept: string; schema: () => { relationships: Array<{ name: string; targets: string[] }> }; referrers: () => FlowEntity[] } => ({
     id,
     concept: 'component',
     schema: () => ({ relationships: [{ name: 'in', targets: ['location'] }] }),
     refs: (m) => (m === 'in' ? [azure] : []),
+    referrers: () => [],
   })
   const c1 = comp('c1'), c2 = comp('c2')
   const stepE = (s: FlowEntity, d: FlowEntity): FlowEntity => ({ id: 'step', refs: (m) => (m === 'src' ? [s] : m === 'dst' ? [d] : []) })

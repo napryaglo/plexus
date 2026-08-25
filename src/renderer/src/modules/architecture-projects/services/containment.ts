@@ -62,6 +62,39 @@ export function containmentParentOf(repo: Repository, entity: Entity): Entity | 
     return undefined
 }
 
+// The forward "membership" field on a container concept that lists children of the
+// given child concept — e.g. `block.components : component[]`. This is the PARENT-
+// side face of containment; the child-side face is the @containment relationship
+// read by containmentParentOf. Returns the field name, or undefined when the
+// container declares no list typed to the child. A reference-typed field carries
+// the child concept as its `type`; a scalar field (id, label) never matches a
+// concept id, so those are naturally skipped.
+export function membershipFieldFor(repo: Repository, containerConcept: string, childConcept: string): string | undefined
+{
+    const childTypes = new Set<string>([childConcept, ...repo.supertypesOf(childConcept)])
+    for (const f of repo.effectiveSchema(containerConcept).fields)
+        if (childTypes.has(f.type)) return f.name
+    return undefined
+}
+
+// The container an entity sits in, resolving BOTH containment channels:
+//   (a) the child's own @containment up-ref (`in_block`) — the canonical form,
+//       read by containmentParentOf; and
+//   (b) the forward face — a container that LISTS this entity in a membership field
+//       (`block.components`), found via reverse navigation (`referrers`).
+// (a) wins when both are present. The membership-field predicate also excludes an
+// `in`-style referrer (a CHILD pointing up via a relationship, not a field), so a
+// location is never mistaken for being contained in its own blocks. undefined when
+// the entity is top-level.
+export function containingContainerOf(repo: Repository, entity: Entity): Entity | undefined
+{
+    const own = containmentParentOf(repo, entity)
+    if (own !== undefined) return own
+    for (const referrer of entity.referrers())
+        if (membershipFieldFor(repo, referrer.concept, entity.concept) !== undefined) return referrer
+    return undefined
+}
+
 // The containment member name for a concept — the first containment relationship
 // on its schema, or the default `in`. The write-back path uses this to addRef /
 // removeRef the right member when a node is nested / un-nested.

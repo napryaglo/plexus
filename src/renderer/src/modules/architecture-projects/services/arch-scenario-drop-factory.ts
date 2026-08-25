@@ -4,7 +4,7 @@ import { DiagramDocument, type IDocument, type IToolboxDropFactory, type Toolbox
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import { ArchNodeVM, ARCH_TILE_DEFAULT } from './arch-node-vm.js'
 import { planScenarioDrop, type ContainmentLayout, type FlowEntity } from './scenario-flow.js'
-import { containmentParentOf, isContainerConcept } from './containment.js'
+import { containingContainerOf, isContainerConcept } from './containment.js'
 import type { ArchModel } from './arch-model.js'
 
 export const ArchScenarioDropFactoryKey = new ServiceKey<IToolboxDropFactory>('ArchScenarioDropFactory')
@@ -77,7 +77,7 @@ export class ArchScenarioDropFactory implements IToolboxDropFactory {
     const containerOf = (id: string): string | undefined => {
       const entity = entityById(id)
       if (entity === undefined) return undefined
-      const parent = containmentParentOf(repo, entity)
+      const parent = containingContainerOf(repo, entity)
       if (parent === undefined || !placedBefore.has(parent.id)) return undefined
       return isContainerConcept(repo, parent.concept) ? parent.id : undefined
     }

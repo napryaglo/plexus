@@ -7,7 +7,7 @@ import type { ArchModel } from './arch-model.js'
 import { ArchNodeVM } from './arch-node-vm.js'
 import { iconEntityKey } from './arch-icon.js'
 import { desiredEdges, edgeKey, desiredConnectorEntityEdges, connectorEntityIdOf } from './edge-projection.js'
-import { isContainerConcept, containmentParentOf, containmentMemberOf, containmentMemberFor } from './containment.js'
+import { isContainerConcept, containingContainerOf, containmentMemberOf, containmentMemberFor, membershipFieldFor } from './containment.js'
 import { resolveConnectorActions, type ConnectorAction } from './arch-connector-resolver.js'
 import { canDrawConnectorEntity, mintConnectorEntity, CONNECTOR_DEFAULT_TYPE, CONNECTOR_DRAW_MEMBER } from './connector-entity.js'
 import { scenarioStepPairs, type FlowEntity } from './scenario-flow.js'
@@ -309,7 +309,7 @@ export class ArchDiagramBinding
                 if (entity === undefined) continue
                 const fig = view.Generator.ContainerFromItem(node)
                 if (!(fig instanceof Figure)) continue
-                const parent = containmentParentOf(repo, entity)
+                const parent = containingContainerOf(repo, entity)
                 const targetId = (parent !== undefined && this.bound.has(parent.id)
                     && isContainerConcept(repo, parent.concept)) ? parent.id : undefined
                 if ((fig.ContainerParent?.Id) === targetId) continue   // already nested correctly
@@ -336,10 +336,11 @@ export class ArchDiagramBinding
         const repo = this.model.repository()
 
         if (args.NewParentId === undefined) {
-            // Un-nest: drop the containment ref to the old parent (own OR library entity).
+            // Un-nest: sever every containment tie to the old parent (own OR library
+            // entity) — both the child's up-ref and the parent's membership list.
             const oldId = args.OldParentId
             if (oldId !== undefined && this.resolveEntity(oldId) !== undefined) {
-                this.model.removeRef(childId, containmentMemberOf(repo, child.concept), oldId)
+                this.severContainment(childId, child, oldId)
                 void this.model.save()
             }
             return
@@ -365,11 +366,31 @@ export class ArchDiagramBinding
             showContainmentRejected(this.dialogs, displayLabel(child), displayLabel(parent))
             return
         }
-        // Legal: rewrite the containment ref (drop the old parent, if any, then add).
+        // Legal: rewrite the containment ref (sever the old parent's ties, if any,
+        // then add the canonical child up-ref to the new one).
         if (args.OldParentId !== undefined && this.resolveEntity(args.OldParentId) !== undefined)
-            this.model.removeRef(childId, member, args.OldParentId)
+            this.severContainment(childId, child, args.OldParentId)
         this.model.addRef(childId, member, args.NewParentId)
         void this.model.save()
+    }
+
+    // Sever every containment tie between a child and an old parent: the child's own
+    // @containment up-ref AND the parent's forward membership list (block.components),
+    // so an un-nest or cross-parent move sticks regardless of which channel made it a
+    // member. A no-op for a channel that doesn't hold it. The up-ref member is the one
+    // that targets THIS parent's concept (a component has both `in` → location and
+    // `in_block` → block; stripping the wrong one leaves the nesting in place).
+    private severContainment(childId: string, child: Entity, oldParentId: string): void
+    {
+        const repo = this.model.repository()
+        const oldParent = this.resolveEntity(oldParentId)
+        const upMember = oldParent !== undefined
+            ? containmentMemberFor(repo, child.concept, oldParent.concept)
+            : undefined
+        this.model.removeRef(childId, upMember ?? containmentMemberOf(repo, child.concept), oldParentId)
+        if (oldParent === undefined) return
+        const field = membershipFieldFor(repo, oldParent.concept, child.concept)
+        if (field !== undefined) this.model.removeRef(oldParentId, field, childId)
     }
 
     // Own instances only — the write-back CHILD guard: dragging a library entity
@@ -425,7 +446,11 @@ export class ArchDiagramBinding
         const connEntityEdges = desiredConnectorEntityEdges(repo, this.model.entities(), new Set(this.bound.keys()), this.scopeSet())
         for (const key of connEntityEdges.keys()) desired.add(key)
 
-        // Add missing projected connectors.
+        // Add missing projected connectors eagerly. An endpoint whose container
+        // Figure is already realized is re-homed onto it up front by CreateConnector
+        // (_hostEndpoint); one that isn't stays a VM ref and is re-pointed onto its
+        // container when it later binds (ContainerBound → _repointEndpointsToContainer)
+        // — the same recovery a reopen relies on.
         for (const key of desired) {
             if (this.boundEdges.has(key)) continue
             const [fromId, , toId] = key.split('|')
