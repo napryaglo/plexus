@@ -87,6 +87,28 @@ test('loadVersionEntities groups entities by kind, non-empty groups only, labell
     expect(concepts.Children.Get(0)!.Kind).toBe(MetaModelNodeKind.Entity)
 })
 
+test('loadVersionEntities surfaces viewpoints in a Viewpoints group', async () => {
+    // Viewpoints are Ontology-tier `viewpoint` nodes (published in model.json);
+    // the tree must present them like any other ontology kind.
+    const model = JSON.stringify({
+        nodes: [
+            { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} },
+            { id: 'Model', tier: 'Ontology', typeOf: 'viewpoint', attrs: { namespace: 'tech' } },
+            { id: 'Scenarios', tier: 'Ontology', typeOf: 'viewpoint', attrs: {} },
+        ],
+        edges: [],
+    })
+    const storage = backendWith([['tech/0.1.0/model.json', model]])
+    const groups = await loadVersionEntities(storage, 'tech', '0.1.0', NO_ACTIVATE)
+
+    const vp = groups.find((g) => g.Label === 'Viewpoints')
+    expect(vp, 'a Viewpoints group is present').toBeDefined()
+    expect(vp!.Kind).toBe(MetaModelNodeKind.Group)
+    // No `label` attr → humanized id.
+    expect(vp!.Children.ToArray().map((c) => c.Label)).toEqual(['Model', 'Scenarios'])
+    expect(vp!.Children.Get(0)!.Kind).toBe(MetaModelNodeKind.Entity)
+})
+
 test('loadVersionEntities returns a "No entities" leaf for a model with none', async () => {
     const empty = JSON.stringify({ nodes: [], edges: [] })
     const storage = backendWith([['tech/0.1.0/model.json', empty]])

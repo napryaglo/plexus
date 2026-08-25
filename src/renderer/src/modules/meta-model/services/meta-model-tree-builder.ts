@@ -74,6 +74,7 @@ const GROUPS: ReadonlyArray<{ kind: OntologyKind; label: string }> = [
     { kind: OntologyKind.Concept, label: 'Concepts' },
     { kind: OntologyKind.Relationship, label: 'Relationships' },
     { kind: OntologyKind.Taxonomy, label: 'Taxonomies' },
+    { kind: OntologyKind.Viewpoint, label: 'Viewpoints' },
     { kind: OntologyKind.Primitive, label: 'Primitives' },
 ]
 

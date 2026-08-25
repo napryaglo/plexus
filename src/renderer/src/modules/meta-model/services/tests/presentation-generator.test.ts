@@ -39,16 +39,17 @@ test('includeLine: monochrome mode uses a plain include for SVG too', () => {
     expect(includeLine('resources/a.png', 'mm_icon_a', false)).toBe('    include "resources/a.png" as mm_icon_a')
 })
 
-test('ontologyEntities keeps concept/relationship/taxonomy/primitive, drops field + instances', () => {
+test('ontologyEntities keeps concept/relationship/taxonomy/viewpoint/primitive, drops field + instances', () => {
     const m = doc([
         { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} },
         { id: 'depends-on', tier: 'Ontology', typeOf: 'relationship', attrs: {} },
         { id: 'actor-kind', tier: 'Ontology', typeOf: 'taxonomy', attrs: {} },
+        { id: 'Model', tier: 'Ontology', typeOf: 'viewpoint', attrs: {} },
         { id: 'text', tier: 'Ontology', typeOf: 'primitive', attrs: {} },
         { id: 'actor.label', tier: 'Ontology', typeOf: 'field', attrs: {} },
         { id: 'actors.internal', tier: 'Instance', typeOf: 'actor', attrs: {} },
     ])
-    expect(ontologyEntities(m).map((n) => n.id)).toEqual(['actor', 'depends-on', 'actor-kind', 'text'])
+    expect(ontologyEntities(m).map((n) => n.id)).toEqual(['actor', 'depends-on', 'actor-kind', 'Model', 'text'])
 })
 
 test('distinctIcons collects distinct annotation icon paths, sorted', () => {

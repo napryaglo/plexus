@@ -11,6 +11,7 @@ export enum OntologyKind
     Concept = 'concept',
     Relationship = 'relationship',
     Taxonomy = 'taxonomy',
+    Viewpoint = 'viewpoint',
     Primitive = 'primitive',
 }
 
