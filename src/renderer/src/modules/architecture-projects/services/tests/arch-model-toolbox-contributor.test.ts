@@ -2,7 +2,7 @@ import { test, expect } from 'vitest'
 import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
-import { modelPageItems } from '../arch-model-toolbox-contributor.js'
+import { modelPageItems, scenarioPageTitle } from '../arch-model-toolbox-contributor.js'
 import { ArchModelInstanceDropFactoryKey } from '../arch-model-instance-drop-factory.js'
 
 const MM = `namespace archmm {
@@ -42,4 +42,8 @@ test('modelPageItems excludes out-of-scope entities', () => {
     model.createInViewpoint('widget', 'W')
 
     expect(modelPageItems(model, new Set(['V']), new Set())).toEqual([])
+})
+
+test('scenarioPageTitle carries the model namespace, mirroring the model page', () => {
+    expect(scenarioPageTitle(buildModel())).toBe('Scenarios: archmm')
 })

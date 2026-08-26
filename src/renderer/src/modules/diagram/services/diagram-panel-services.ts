@@ -21,6 +21,8 @@ import {
 } from '@pragmatic-lab/mural/runtime'
 import {
     ApplicationSettings,
+    ContentHostService,
+    DocumentsContentHostService,
     ensureToolboxDefaults,
     Setting,
     ToolboxRepository,
@@ -32,6 +34,8 @@ import type { TodlDocument } from '@pragmatic-lab/todl'
 
 import { PlexusPanelService } from '../../../services/panels/panel-services.js'
 import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'
+import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base-resolver.js'
+import { ArchDiagramBindingService } from '../../architecture-projects/services/arch-diagram-binding-service.js'
 import type { IStorage } from '../../../services/storage/storage.js'
 import { ensureMetaModelsBackend } from '../../meta-model/services/meta-models-backend.js'
 import { ensureLibrariesBackend } from '../../library/services/libraries-backend.js'
@@ -102,7 +106,19 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
         super(provider, [])
         this.set_property_value(ToolboxService.PagesKey, new ObservableCollection<ToolboxPage>())
         this.syncItemSize()
+        this.watchActiveDocument()
         void this.reload()
+    }
+
+    // Re-scope on active-document change so the library / meta-model pages track
+    // the active diagram's model. No-op headless / before the content host is
+    // wired (tests, early startup) — the toolbox then stays global until a
+    // document is active.
+    private watchActiveDocument(): void
+    {
+        const host = this.services().get(ContentHostService.Key) as DocumentsContentHostService | undefined
+        if (host === undefined) return
+        host.AddPropertyChangedListener(DocumentsContentHostService.ActiveDocumentKey, () => { void this.reload() })
     }
 
     // Mirror the toolbox item size settings into app resources (@ToolboxItemWidth /
@@ -145,8 +161,12 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
     public async reload(): Promise<void>
     {
         const seq = ++this.reloadSeq
+        const scope = await this.activeScope()
         const collected = await this.collectTaxonomies()
         if (seq !== this.reloadSeq) return                                 // a newer reload superseded this one
+        // Narrow to the active diagram's referenced bases when there is one; else
+        // (no active architecture diagram) show every published taxonomy.
+        const scoped = scope === undefined ? collected : collected.filter((c) => scope.has(c.sourceRef))
 
         const services = this.services()
         ensureToolboxDefaults(services)
@@ -173,7 +193,7 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
 
         const seen = new Set<string>()
         const pageIds = new Set<string>()
-        for (const { tax, isLibrary } of collected) {
+        for (const { tax, isLibrary } of scoped) {
             contributeTaxonomy(repo, tax, isLibrary, seen)
             pageIds.add(tax.id)
         }
@@ -185,23 +205,46 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
         }
     }
 
-    // Scan the published-content backends into (taxonomy, source) pairs. Overridable
+    // Scan the published-content backends into (taxonomy, source) triples. Overridable
     // seam for tests. Every term's visual resolves through the shared TodlVisualResolver;
     // the `isLibrary` flag only decides the descriptor key (bare class id vs `mm:` term id).
-    protected async collectTaxonomies(): Promise<Array<{ tax: ToolboxTaxonomy; isLibrary: boolean }>>
+    // `sourceRef` is the source package key (`<id>@<version>`) reload() filters against
+    // the active diagram's referenced bases (see activeScope).
+    protected async collectTaxonomies(): Promise<Array<{ tax: ToolboxTaxonomy; isLibrary: boolean; sourceRef: string }>>
     {
-        const out: Array<{ tax: ToolboxTaxonomy; isLibrary: boolean }> = []
+        const out: Array<{ tax: ToolboxTaxonomy; isLibrary: boolean; sourceRef: string }> = []
         for (const { backend, isLibrary } of this.sourceBackends()) {
             const models = await scanPublishedModels(backend)
             for (const { id, versions } of models) {
                 for (const version of versions) {
                     const doc = await this.readModel(backend, `${id}/${version}`)
                     if (doc === undefined) continue
-                    for (const tax of projectToolbox(doc)) out.push({ tax, isLibrary })
+                    const sourceRef = `${id}@${version}`
+                    for (const tax of projectToolbox(doc)) out.push({ tax, isLibrary, sourceRef })
                 }
             }
         }
         return out
+    }
+
+    // The referenced-base scope for the active document: when the active document
+    // is an architecture diagram, the set of published base keys (`<id>@<version>`)
+    // its model references (WorkspaceBaseResolver.referencedPublishedRefs), so the
+    // library / meta-model pages narrow to just those. undefined when there is no
+    // active architecture diagram (or the wiring is headless) — the toolbox then
+    // shows every published taxonomy (the global fallback). Overridable seam for tests.
+    protected async activeScope(): Promise<Set<string> | undefined>
+    {
+        const services = this.services()
+        const host = services.get(ContentHostService.Key) as DocumentsContentHostService | undefined
+        const doc = host?.ActiveDocument
+        const bindingSvc = services.get(ArchDiagramBindingService.Key)
+        const resolver = services.get(WorkspaceBaseResolver.Key)
+        if (doc === undefined || bindingSvc === undefined || resolver === undefined) return undefined
+        await bindingSvc.ensureBound(doc)
+        const model = bindingSvc.modelForDocument(doc)
+        if (model === undefined) return undefined                          // not an architecture diagram → global
+        return resolver.referencedPublishedRefs(model.Storage)
     }
 
     private services(): ServiceProvider

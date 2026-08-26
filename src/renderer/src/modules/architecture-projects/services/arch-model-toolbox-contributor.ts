@@ -57,6 +57,14 @@ export function modelPageItems(model: ArchModel, scope: ReadonlySet<string>, pla
     return items
 }
 
+// The scenarios page title — carries the model namespace so it reads per-model,
+// mirroring the "Model: <namespace>" page (the page is already active-document
+// scoped; this just names which model's scenarios it lists).
+export function scenarioPageTitle(model: ArchModel): string
+{
+    return 'Scenarios: ' + model.namespace
+}
+
 // The toolbox items for a diagram's "Scenarios" page: one per in-scope scenario
 // entity. Each drops through the scenario factory (`scenario:<id>`), which
 // materializes the whole flow (participants + step connectors).
@@ -138,7 +146,7 @@ export class ArchModelToolboxContributor extends ServiceBase
         // materializes its whole flow. Removed when there are none in scope.
         const scenarioItems = scenarioPageItems(model, scope)
         if (scenarioItems.length > 0) {
-            const spage = repo.EnsurePage(SCENARIO_PAGE_ID, 'Scenarios')
+            const spage = repo.EnsurePage(SCENARIO_PAGE_ID, scenarioPageTitle(model))
             spage.Items.Clear()
             for (const item of scenarioItems) spage.Items.Add(item)
             this.markWiki(scenarioItems)

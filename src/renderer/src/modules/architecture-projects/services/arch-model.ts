@@ -32,6 +32,13 @@ export class ArchModel
         return this.draft.model
     }
 
+    // The project's storage — used to read its manifest (bases the model
+    // references) when scoping the toolbox's library pages to the active diagram.
+    public get Storage(): IStorage
+    {
+        return this.storage
+    }
+
     public viewpoints(): Viewpoint[]
     {
         const repo = this.draft.model

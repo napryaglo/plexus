@@ -247,6 +247,49 @@ test('published fallback walks a package\'s recorded dependencies transitively',
     expect(hasNode(bases, 'widget')).toBe(true)
 })
 
+test('referencedPublishedRefs collects the manifest bases as id@version keys', async () => {
+    const { provider, meta, libs } = env([])
+    await meta.WriteText('ea/1.0.0/model.json', ownDoc(['widget']))
+    await libs.WriteText('acme/0.1.0/model.json', ownDoc(['Button']))
+
+    const consumer = new FakeStorage('C:/arch')
+    await consumer.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(
+        { type: 'architecture', metaModel: { id: 'ea', version: '1.0.0' }, libraries: [{ id: 'acme', version: '0.1.0' }] }))
+
+    const resolver = new WorkspaceBaseResolver(provider)
+    const refs = await resolver.referencedPublishedRefs(consumer)
+    expect([...refs].sort()).toEqual(['acme@0.1.0', 'ea@1.0.0'])
+})
+
+test('referencedPublishedRefs walks a package\'s recorded dependencies transitively', async () => {
+    const { provider, meta, libs } = env([])
+    // The consumer binds ONLY the library, which records a dependency on a meta-model.
+    await libs.WriteText('lib/0.1.0/model.json',
+        ownDoc(['Button'], [{ kind: 'meta-model', id: 'ea', version: '1.0.0' }]))
+    await meta.WriteText('ea/1.0.0/model.json', ownDoc(['widget']))
+
+    const consumer = new FakeStorage('C:/arch')
+    await consumer.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(
+        { type: 'architecture', libraries: [{ id: 'lib', version: '0.1.0' }] }))
+
+    const resolver = new WorkspaceBaseResolver(provider)
+    const refs = await resolver.referencedPublishedRefs(consumer)
+    // The meta-model is pulled in via the library's recorded dependency.
+    expect([...refs].sort()).toEqual(['ea@1.0.0', 'lib@0.1.0'])
+})
+
+test('referencedPublishedRefs still records an unpublished base by its own key', async () => {
+    const { provider } = env([])   // no published artifacts
+    const consumer = new FakeStorage('C:/arch')
+    await consumer.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify(
+        { type: 'architecture', libraries: [{ id: 'missing', version: '9.9.9' }] }))
+
+    const resolver = new WorkspaceBaseResolver(provider)
+    const refs = await resolver.referencedPublishedRefs(consumer)
+    // Best-effort: the direct ref is recorded even though its model.json is absent.
+    expect([...refs]).toEqual(['missing@9.9.9'])
+})
+
 test('published transitive walk resolves a shared meta-model only once (diamond)', async () => {
     const { provider, meta, libs } = env([])
     await meta.WriteText('ea/1.0.0/model.json', ownDoc(['widget']))

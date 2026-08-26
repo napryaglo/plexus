@@ -60,6 +60,41 @@ export class WorkspaceBaseResolver extends ServiceBase
         return this.resolveBindingsOf(consumerStorage, new Set<IStorage>([consumerStorage]), new Set<string>())
     }
 
+    // The set of published base package keys (`<id>@<version>`) a project
+    // references, transitively — its manifest's meta-model + libraries plus each
+    // published package's recorded dependencies. Scopes the toolbox's library /
+    // meta-model pages to the active diagram's model. Best-effort: a ref whose
+    // published model.json is absent (e.g. an unpublished local producer) still
+    // contributes its own key; only its transitive deps are then unreachable.
+    // Independent of ResolveForStorage (which merges docs) — here we only need ids.
+    public async referencedPublishedRefs(storage: IStorage): Promise<Set<string>>
+    {
+        const manifest = await this.readManifest(storage)
+        const out = new Set<string>()
+        if (manifest?.metaModel !== undefined)
+            await this.collectPublishedRef(manifest.metaModel, ProducerKind.MetaModel, out)
+        for (const lib of manifest?.libraries ?? [])
+            await this.collectPublishedRef(lib, ProducerKind.Library, out)
+        return out
+    }
+
+    private async collectPublishedRef(ref: BaseRef, kind: ProducerKind, out: Set<string>): Promise<void>
+    {
+        const key = `${ref.id}@${ref.version}`
+        if (out.has(key)) return
+        out.add(key)
+        const backend = kind === ProducerKind.MetaModel
+            ? ensureMetaModelsBackend(this.Provider)
+            : ensureLibrariesBackend(this.Provider)
+        try {
+            const doc = JSON.parse(await backend.ReadText(`${ref.id}/${ref.version}/model.json`)) as PackageDocument
+            for (const dep of doc.dependencies ?? []) {
+                const depKind = dep.kind === PackageKind.Library ? ProducerKind.Library : ProducerKind.MetaModel
+                await this.collectPublishedRef({ id: dep.id, version: dep.version }, depKind, out)
+            }
+        } catch { /* unpublished / absent — its own key is recorded; deps unreachable */ }
+    }
+
     // The producer id this storage publishes, or undefined if it is not a producer.
     public producedIdOf(storage: IStorage): string | undefined
     {
