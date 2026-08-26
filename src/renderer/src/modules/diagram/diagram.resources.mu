@@ -57,6 +57,12 @@ resources DiagramResources {
         // Grow / shrink font.
         text_increase
         text_decrease
+        // Copy Format (format painter) — the paint-roller glyph.
+        format_paint
+        // Figure clipboard — Copy / Cut / Paste.
+        content_copy
+        content_cut
+        content_paste
         // Zoom toolbar (host-built camera UI).
         zoom_in
         zoom_out
@@ -146,6 +152,21 @@ resources DiagramResources {
                 }
             }
             ColorPicker [ ColorHex = $FontColorHex, Margin = (8,0,0,0), VerticalAlignment = Center ]
+            // Copy Format (format painter): a real toggle that two-way binds the
+            // document's FormatPainterActive (mirrored onto the live canvas) — the
+            // same proven pattern as the connector-mode toggle. Checking it arms the
+            // brush; the ToolBarToggleButton's checked chrome fills @Primary and
+            // flips the inherited icon ink to @OnPrimary, so "armed" reads clearly.
+            // The icon Shape leaves Fill UNSET so it follows that checked-ink flip
+            // (@OnSurfaceVariant at rest → @OnPrimary when checked) — hardcoding Fill
+            // pins it to the resting ink and it vanishes on the @Primary fill (see
+            // mural's toolbar-toggle-icon-ink guard). (Select a shape first — arming
+            // with nothing selected disarms straight away.)
+            ToolBar [ Margin = (8,0,0,0) ] {
+                ToolBarToggleButton [ IsChecked = $FormatPainterActive ] {
+                    Shape [ Geometry = @format_paint, Width = 16, Height = 16, Margin = (2) ]
+                }
+            }
         }
     }
 
@@ -241,6 +262,24 @@ resources DiagramResources {
     // dock host. The tab then tracks the live selection through the inspector's
     // View handle.
     ContextMenu x:key="DiagramContextMenu" {
+        // Clipboard — Copy / Cut / Paste, bound to the live canvas's commands via
+        // the document's published ActiveView (the same idiom the align items use).
+        // Copy / Cut self-disable on an empty selection; Paste is always enabled
+        // (the mutator no-ops on foreign / empty clipboard text). Ctrl+C/X/V drive
+        // the same commands from the keyboard.
+        MenuItem
+            [ Header  = "Copy",
+              Command = $ActiveView.CopyCommand,
+              Icon    = Shape [ Geometry = @content_copy, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuItem
+            [ Header  = "Cut",
+              Command = $ActiveView.CutCommand,
+              Icon    = Shape [ Geometry = @content_cut, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuItem
+            [ Header  = "Paste",
+              Command = $ActiveView.PasteCommand,
+              Icon    = Shape [ Geometry = @content_paste, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuSeparator
         // Align + distribute — bound to the live canvas's commands via the
         // document's published ActiveView. Each self-disables when fewer than two
         // shapes are selected (the Diagram command's own CanExecute), so no extra
