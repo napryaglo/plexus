@@ -124,7 +124,8 @@ resources DocumentTabsResources {
     Template x:key="ExtendedTabControlTemplate" [ TargetType = ExtendedTabControl ] {
         Border x:name="PART_Border" [ Fill = @Surface ] {
             DockPanel [ LastChildFill = true ] {
-                Line [ DockPanel.Dock = Bottom,
+                Line x:name="PART_HeaderRule"
+                     [ DockPanel.Dock = Bottom,
                        Orientation    = Horizontal,
                        Stroke         = (@OutlineVariant, 1) ]
                 Grid [ DockPanel.Dock = Top ] {
@@ -165,11 +166,22 @@ resources DocumentTabsResources {
                 // against the tab strip / pane edges. The @Surface pane fill shows
                 // through the gap as a thin frame around the content.
                 Border [ Padding = (3) ] {
+                    // FocusContentOnActivate: when the active document's view is
+                    // slotted here (activation / tab switch), move keyboard focus to
+                    // its root control (a diagram canvas), so shortcuts route there
+                    // and the pane reads as focused (IsKeyboardFocusWithin lights the
+                    // header rule below).
                     ContentPresenter x:name="PART_ContentSlot"
-                        [ Content = $$SelectedContent, ReuseContentViews = true ]
+                        [ Content = $$SelectedContent, ReuseContentViews = true,
+                          FocusContentOnActivate = true ]
                 }
             }
         }
+        // Active-pane affordance: when keyboard focus is anywhere within the
+        // document host (the focused diagram is a descendant, so the control's
+        // IsKeyboardFocusWithin is true), accent the header rule — the visible
+        // "this pane is focused" cue. Recolour only (same thickness) → no reflow.
+        when ( IsKeyboardFocusWithin ) { PART_HeaderRule.Stroke = (@Primary, 1); }
     }
 
     Style [ TargetType = ExtendedTabControl ] {
