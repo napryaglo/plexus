@@ -4,6 +4,7 @@ import type { Entity } from '@pragmatic-lab/todl'
 import { showContainmentRejected } from './containment-modal.js'
 import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolver.js'
 import type { ArchModel } from './arch-model.js'
+import { ModelHistoryLayer } from './model-history-layer.js'
 import { ArchNodeVM } from './arch-node-vm.js'
 import { iconEntityKey } from './arch-icon.js'
 import { desiredEdges, edgeKey, desiredConnectorEntityEdges, connectorEntityIdOf } from './edge-projection.js'
@@ -30,6 +31,8 @@ export class ArchDiagramBinding
 {
     private off: (() => void) | undefined
     private detachView: (() => void) | undefined
+    private modelLayerOff: (() => void) | undefined   // unregisters the undo model layer
+    private appliedOff: (() => void) | undefined       // unsubscribes the post-undo re-projection
     private readonly bound = new Map<string, Figure | ArchNodeVM>()   // entityId -> node
     private readonly boundEdges = new Map<string, Connector>()         // edgeKey -> projected connector
     private readonly titleWired = new WeakSet<ArchNodeVM>()            // nodes whose title-commit is subscribed
@@ -62,6 +65,24 @@ export class ArchDiagramBinding
         // connector-authoring listener whenever it changes.
         this.attachView()
         this.doc.AddPropertyChangedListener(DiagramDocument.ActiveViewKey, this.onActiveViewChanged)
+        // Bridge the model into the document's undo history for the binding's
+        // lifetime, so model-mutating diagram edits (reparent, connector-draw,
+        // Shift+Delete, drop-create — all inside a Diagram-event bracket — and the
+        // rename bracketed below) undo the model alongside the visuals.
+        this.modelLayerOff = this.doc.History.RegisterLayer(new ModelHistoryLayer(this.model))
+        // After any undo/redo, re-project. A DIAGRAM-only restore (a move/delete
+        // undo) runs the diagram layer's _deserialize, which rebuilds node instances
+        // and drops derived connectors, but carries no model layer to reconcile — so
+        // our projection caches (bound / boundEdges) now point at stale nodes and
+        // vanished connectors. Reset them and rescan to rebuild the model-derived
+        // overlay (labels, icons, projected connectors, nesting) against the restored
+        // nodes. A model-affecting undo already reconciled, so this is a cheap
+        // idempotent second pass there.
+        this.appliedOff = this.doc.History.AddAppliedListener(() => {
+            this.bound.clear()
+            this.boundEdges.clear()
+            this.rescan()
+        })
     }
 
     // Attach the ConnectorCreated listener to the current canvas view. A user-drawn
@@ -175,6 +196,27 @@ export class ArchDiagramBinding
 
     private rescan(): void
     {
+        // The rescan REDRAWS diagram content derived from the model — labels,
+        // icons, projected connectors, re-minted containers, nesting. That churn
+        // must be invisible to undo history: it is not a user edit, and undo re-
+        // derives it via the model layer's reconcile (which rescans again). Without
+        // this, each projection pass tripped the safety net, littering the undo
+        // stack with phantom "connectors removed/added" / "nodes churned" entries
+        // (and a load's projection recorded the whole diagram as one giant edit).
+        // Explicit brackets (a drop, the rename) are unaffected — RunSilently only
+        // mutes the un-bracketed safety net.
+        //
+        // BeginSettle additionally holds the mute across the projection's ASYNC tail:
+        // a rescan re-fits containers to new labels and re-routes connectors on a
+        // LATER layout pass, firing the safety net after this synchronous scope has
+        // closed. Without the settle window those async writes land as phantom
+        // geometry/connector undo entries that bury the real edit beneath them.
+        this.doc.History.BeginSettle()
+        this.doc.History.RunSilently(() => this.rescanCore())
+    }
+
+    private rescanCore(): void
+    {
         const byId = new Map(this.model.entities().map((e) => [e.id, e]))
         // Also resolve placed nodes that are NOT own instances but DO resolve to a
         // repo entity — imported library terms (e.g. the `microsoft_tech.*` locations
@@ -205,8 +247,15 @@ export class ArchDiagramBinding
                     this.titleWired.add(node)
                     const entityId = id
                     this.titleUnsubs.push(node.AddLabelCommittedListener((title) => {
-                        this.model.setField(entityId, 'label', title)
-                        void this.model.save()
+                        // Rename is not a Diagram mutating event → bracket it here so
+                        // it is one undo step (the model layer captures the label change).
+                        this.doc.History.Begin('Rename')
+                        try {
+                            this.model.setField(entityId, 'label', title)
+                            void this.model.save()
+                        } finally {
+                            this.doc.History.Commit()
+                        }
                     }))
                 }
                 // Key the icon by the entity's stamped icon-annotation resource key
@@ -462,6 +511,11 @@ export class ArchDiagramBinding
                 new ConnectorEndpoint({ Node: tgt }),
             )
             if (c !== null) {
+                // Projected connectors are model-derived — re-projected on every
+                // reconcile — so they must not persist to the .diagram file nor
+                // enter the undo-history snapshot (else their create/delete/re-route
+                // churn litters history and duplicates on reload).
+                c.IsDerived = true
                 const label = connEntityEdges.get(key)
                 if (label !== undefined) c.LabelText = label
                 this.boundEdges.set(key, c)
@@ -545,6 +599,10 @@ export class ArchDiagramBinding
         this.doc.RemovePropertyChangedListener(DiagramDocument.ActiveViewKey, this.onActiveViewChanged)
         this.detachView?.()
         this.detachView = undefined
+        this.modelLayerOff?.()
+        this.modelLayerOff = undefined
+        this.appliedOff?.()
+        this.appliedOff = undefined
         for (const un of this.titleUnsubs.splice(0)) un()
     }
 }

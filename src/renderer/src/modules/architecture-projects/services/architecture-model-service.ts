@@ -52,7 +52,7 @@ export class ArchitectureModelService extends ServiceBase
         const merged = checkAgainst(bases, []).model
         const draft = ModelDraft.fromSources([merged], sources, { namespace })
 
-        const model = new ArchModel(draft, op.Storage, namespace)
+        const model = new ArchModel(draft, op.Storage, namespace, merged)
         this.models.set(key, model)
         return model
     }

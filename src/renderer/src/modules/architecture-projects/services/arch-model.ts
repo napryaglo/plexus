@@ -1,4 +1,5 @@
-import type { ModelDraft, Repository, Entity } from '@pragmatic-lab/todl'
+import { ModelDraft } from '@pragmatic-lab/todl'
+import type { Repository, Entity, SourceFile } from '@pragmatic-lab/todl'
 import type { IStorage } from '../../../services/storage/storage.js'
 
 // One viewpoint's projection over the model: the concepts it frames and the
@@ -17,9 +18,13 @@ export interface Viewpoint
 export class ArchModel
 {
     public constructor(
-        protected readonly draft: ModelDraft,
+        protected draft: ModelDraft,
         protected readonly storage: IStorage,
         public readonly namespace: string,
+        // The merged base Repository (meta-model + libraries) this model composes
+        // against. Required for restore() to recompose from captured .todl text;
+        // optional so existing 3-arg constructions (tests) still compile.
+        private readonly baseModel?: Repository,
     ) {}
 
     public entities(): Entity[]
@@ -37,6 +42,23 @@ export class ArchModel
     public get Storage(): IStorage
     {
         return this.storage
+    }
+
+    // The own-file delta as uri → TODL text — what save() writes and what the undo
+    // history layer captures as this model's snapshot.
+    public toTodlByFile(): Map<string, string>
+    {
+        return this.draft.toTodlByFile()
+    }
+
+    // Replace the own instances from a previously-captured toTodlByFile snapshot,
+    // recomposed against the (unchanged) base model. Silent: does NOT fire onChanged
+    // — the undo history's reconcile step drives the single rescan + save.
+    public restore(fileTexts: Map<string, string>): void
+    {
+        const sources: SourceFile[] = [...fileTexts].map(([uri, text]) => ({ uri, text }))
+        const bases = this.baseModel !== undefined ? [this.baseModel] : []
+        this.draft = ModelDraft.fromSources(bases, sources, { namespace: this.namespace })
     }
 
     public viewpoints(): Viewpoint[]
