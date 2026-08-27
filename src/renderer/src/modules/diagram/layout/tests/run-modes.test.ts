@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 
-import { planForMode } from '../run-modes.js'
+import { planForMode, RunMode } from '../run-modes.js'
 import type { LayoutOutcome } from '../diagram-graph-adapter.js'
 
 const outcome: LayoutOutcome = {
@@ -9,13 +9,13 @@ const outcome: LayoutOutcome = {
 }
 
 test('positions mode applies positions', () => {
-    const plan = planForMode('positions', outcome)
+    const plan = planForMode(RunMode.Positions, outcome)
     expect(plan.previewOnly).toBe(false)
     expect(plan.mutation.setPositions).toEqual(outcome.setPositions)
 })
 
 test('preview mode mutates nothing and flags previewOnly', () => {
-    const plan = planForMode('preview', outcome)
+    const plan = planForMode(RunMode.Preview, outcome)
     expect(plan.previewOnly).toBe(true)
     expect(plan.mutation.setPositions).toEqual([])
 })

@@ -8,7 +8,7 @@ import {
     type ICommand,
     type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
-import { Connector, ContentHostService, DialogService, DiagramDocument, Figure, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+import { Connector, ContentHostService, DialogService, DiagramDocument, DocumentsContentHostService, Figure, type LayoutPreviewNode, type LayoutPreviewEdge } from '@pragmatic-lab/mural/framework'
 import {
     GetPipelineCatalog,
     BuildPipeline,
@@ -32,12 +32,21 @@ import {
     type NodeSize,
     type PositionSet,
     type SizedLike,
+    type LayoutOutcome,
 } from './diagram-graph-adapter.js'
-import { planForMode } from './run-modes.js'
+import { planForMode, RunMode } from './run-modes.js'
 import { LayoutPresetsStore } from './layout-presets-store.js'
-import { promptPresetName } from './save-preset-prompt.js'
+import { ProjectLayoutPresetsStore } from './project-layout-presets-store.js'
+import { promptSavePreset } from './save-preset-prompt.js'
+import { PresetScope, LayoutPresetRef } from './preset-scope.js'
 import { LayoutInspector } from './layout-inspector.js'
 import { LayoutStageVM } from './layout-stage-vm.js'
+import { FileDiagramStorage } from '../persistence/file-diagram-storage.js'
+import {
+    readLayoutConfig, writeLayoutConfig,
+    diagramPresetNames, getDiagramPreset, saveDiagramPreset, deleteDiagramPreset,
+} from '../persistence/diagram-layout-store.js'
+import type { IStorage } from '../../../services/storage/storage.js'
 
 // Maps a catalog strategy-slot id to its PipelineConfiguration.layout field.
 // graph-transforms is intentionally absent — it is a transform list, not a
@@ -77,6 +86,18 @@ const FALLBACK_SIZE: NodeSize = { width: 80, height: 40 }
 // already-acyclic graph it is a no-op.
 const DEFAULT_CONFIG: PipelineConfiguration = { name: 'default', transforms: ['MakeAcyclicTransform'], layout: {} }
 
+// The product of running the pipeline without committing: the figure index (id →
+// geometry Figure), the connector edges (node-id pairs), the computed target
+// positions/sizes, and any native side-routing. Shared by Run (apply now),
+// Preview (show ghosts), and ApplyPreview (commit the shown result).
+interface LayoutComputation
+{
+    index:          Map<string, FigureLike>
+    connectorEdges: ConnectorEdge[]
+    outcome:        LayoutOutcome
+    lastRoutes:     Map<Edge, EdgeRouting> | undefined
+}
+
 // LayoutPipelineService — composes a Fresco layout pipeline and runs it on
 // the active diagram. Holds the current PipelineConfiguration, exposes the
 // catalog-derived stage rows for the builder UI, manages named presets, and
@@ -98,14 +119,24 @@ export class LayoutPipelineService extends ServiceBase
         LayoutPipelineService, 'Stages', undefined as unknown as ObservableCollection<LayoutStageVM>, MetaData.None)
     public static readonly InspectorKey = MuralBase.RegisterProperty<LayoutInspector>(
         LayoutPipelineService, 'Inspector', undefined as unknown as LayoutInspector, MetaData.None)
-    public static readonly PresetNamesKey = MuralBase.RegisterProperty<ObservableCollection<string>>(
-        LayoutPipelineService, 'PresetNames', undefined as unknown as ObservableCollection<string>, MetaData.None)
-    public static readonly SelectedPresetKey = MuralBase.RegisterProperty<string | undefined>(
+    public static readonly PresetsKey = MuralBase.RegisterProperty<ObservableCollection<LayoutPresetRef>>(
+        LayoutPipelineService, 'Presets', undefined as unknown as ObservableCollection<LayoutPresetRef>, MetaData.None)
+    public static readonly SelectedPresetKey = MuralBase.RegisterProperty<LayoutPresetRef | undefined>(
         LayoutPipelineService, 'SelectedPreset', undefined, MetaData.None)
     public static readonly CanDeleteKey = MuralBase.RegisterProperty<boolean>(
         LayoutPipelineService, 'CanDelete', false, MetaData.None)
     public static readonly RunCommandKey = MuralBase.RegisterProperty<ICommand>(
         LayoutPipelineService, 'RunCommand', undefined as unknown as ICommand, MetaData.None)
+    // True while a preview overlay is showing — drives the Apply/Cancel buttons'
+    // visibility in the preset strip.
+    public static readonly PreviewActiveKey = MuralBase.RegisterProperty<boolean>(
+        LayoutPipelineService, 'PreviewActive', false, MetaData.None)
+    public static readonly PreviewCommandKey = MuralBase.RegisterProperty<ICommand>(
+        LayoutPipelineService, 'PreviewCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly ApplyPreviewCommandKey = MuralBase.RegisterProperty<ICommand>(
+        LayoutPipelineService, 'ApplyPreviewCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly CancelPreviewCommandKey = MuralBase.RegisterProperty<ICommand>(
+        LayoutPipelineService, 'CancelPreviewCommand', undefined as unknown as ICommand, MetaData.None)
     public static readonly SaveCommandKey = MuralBase.RegisterProperty<ICommand>(
         LayoutPipelineService, 'SaveCommand', undefined as unknown as ICommand, MetaData.None)
     public static readonly DeleteCommandKey = MuralBase.RegisterProperty<ICommand>(
@@ -119,7 +150,19 @@ export class LayoutPipelineService extends ServiceBase
     private readonly stageKeys = new Map<LayoutStageVM, string>()
     private _presets: LayoutPresetsStore | undefined
 
-    constructor(provider: IServiceProvider)
+    // True while hydrating Config from a document (or resetting to default) so
+    // the stage callbacks fired by that drive don't loop back into an autosave.
+    private _hydrating = false
+    // Debounce timer + the document a pending autosave targets (captured at
+    // schedule time so a mid-window tab switch persists to the right diagram).
+    private _persistTimer: ReturnType<typeof setTimeout> | undefined
+    private _persistTarget: DiagramDocument | undefined
+
+    // The computation currently shown as a preview overlay, held so ApplyPreview
+    // can commit exactly what was shown. Undefined when no preview is active.
+    private _pendingPreview: { doc: DiagramDocument; comp: LayoutComputation } | undefined
+
+    constructor(provider: IServiceProvider, private readonly persistDelayMs = 500)
     {
         super(provider)
 
@@ -160,28 +203,44 @@ export class LayoutPipelineService extends ServiceBase
                         portAssignerStage.Reapply()
                     }
                 }
+
+                // Every stage/param edit re-emits here — autosave the working
+                // config to the active diagram (debounced; muted during hydrate).
+                this.onConfigChanged()
             })
             stages.Add(stage)
             this.stageKeys.set(stage, key)
             if (slot.slotId === 'port-assigner') portAssignerStage = stage
         }
         this.set_property_value(LayoutPipelineService.StagesKey, stages)
-        this.set_property_value(LayoutPipelineService.PresetNamesKey, new ObservableCollection<string>())
+        this.set_property_value(LayoutPipelineService.PresetsKey, new ObservableCollection<LayoutPresetRef>())
 
         this.set_property_value(LayoutPipelineService.RunCommandKey, new RelayCommand(() => this.Run()))
+        this.set_property_value(LayoutPipelineService.PreviewCommandKey, new RelayCommand(() => this.Preview()))
+        this.set_property_value(LayoutPipelineService.ApplyPreviewCommandKey, new RelayCommand(() => this.ApplyPreview()))
+        this.set_property_value(LayoutPipelineService.CancelPreviewCommandKey, new RelayCommand(() => this.CancelPreview()))
         this.set_property_value(LayoutPipelineService.SaveCommandKey, new RelayCommand(() => { void this.save() }))
         this.set_property_value(LayoutPipelineService.DeleteCommandKey, new RelayCommand(() => { void this.deleteSelected() }))
 
-        // Selecting a preset loads it; whatever is selected also drives whether
-        // Delete is enabled.
+        // Selecting a preset loads it (scope-aware); whatever is selected also
+        // drives whether Delete is enabled.
         this.AddPropertyChangedListener(LayoutPipelineService.SelectedPresetKey, () => {
-            const name = this.SelectedPreset
-            const has = name !== undefined && name.length > 0
-            this.set_property_value(LayoutPipelineService.CanDeleteKey, has)
-            if (has) void this.LoadPreset(name!)
+            const ref = this.SelectedPreset
+            this.set_property_value(LayoutPipelineService.CanDeleteKey, ref !== undefined)
+            if (ref !== undefined) void this.loadRef(ref)
         })
 
-        void this.refreshPresetNames()
+        // Follow the active document: hydrate the inspector from the newly
+        // active diagram's saved config (or the default) and re-list its presets.
+        // The fake host in unit tests has no property-change surface — guard so
+        // construction there still works (and still lists global presets).
+        const host = this.Provider.get(ContentHostService.Key) as DocumentsContentHostService | undefined
+        if (host !== undefined && typeof (host as unknown as MuralBase).AddPropertyChangedListener === 'function') {
+            host.AddPropertyChangedListener(DocumentsContentHostService.ActiveDocumentKey, () => this.onActiveDocumentChanged())
+            this.onActiveDocumentChanged()
+        } else {
+            void this.refreshPresets()
+        }
     }
 
     public get Status(): string { return this.get_property_value(LayoutPipelineService.StatusKey) }
@@ -189,39 +248,89 @@ export class LayoutPipelineService extends ServiceBase
 
     public get Stages(): ObservableCollection<LayoutStageVM> { return this.get_property_value(LayoutPipelineService.StagesKey) }
     public get Inspector(): LayoutInspector { return this.get_property_value(LayoutPipelineService.InspectorKey) }
-    public get PresetNames(): ObservableCollection<string> { return this.get_property_value(LayoutPipelineService.PresetNamesKey) }
-    public get SelectedPreset(): string | undefined { return this.get_property_value(LayoutPipelineService.SelectedPresetKey) }
-    public set SelectedPreset(v: string | undefined) { this.set_property_value(LayoutPipelineService.SelectedPresetKey, v) }
+    public get Presets(): ObservableCollection<LayoutPresetRef> { return this.get_property_value(LayoutPipelineService.PresetsKey) }
+    public get SelectedPreset(): LayoutPresetRef | undefined { return this.get_property_value(LayoutPipelineService.SelectedPresetKey) }
+    public set SelectedPreset(v: LayoutPresetRef | undefined) { this.set_property_value(LayoutPipelineService.SelectedPresetKey, v) }
     public get CanDelete(): boolean { return this.get_property_value(LayoutPipelineService.CanDeleteKey) }
     public get RunCommand(): ICommand { return this.get_property_value(LayoutPipelineService.RunCommandKey) }
+    public get PreviewActive(): boolean { return this.get_property_value(LayoutPipelineService.PreviewActiveKey) }
+    private set PreviewActive(v: boolean) { this.set_property_value(LayoutPipelineService.PreviewActiveKey, v) }
+    public get PreviewCommand(): ICommand { return this.get_property_value(LayoutPipelineService.PreviewCommandKey) }
+    public get ApplyPreviewCommand(): ICommand { return this.get_property_value(LayoutPipelineService.ApplyPreviewCommandKey) }
+    public get CancelPreviewCommand(): ICommand { return this.get_property_value(LayoutPipelineService.CancelPreviewCommandKey) }
     public get SaveCommand(): ICommand { return this.get_property_value(LayoutPipelineService.SaveCommandKey) }
     public get DeleteCommand(): ICommand { return this.get_property_value(LayoutPipelineService.DeleteCommandKey) }
 
-    // Lazily created so a non-desktop context (should not happen in the
-    // renderer) doesn't fail at construction just because presets are unused.
-    public get Presets(): LayoutPresetsStore
+    // ── preset backends (one per scope) ─────────────────────────────────────
+
+    // The global (user-data) preset store. Lazily created so a non-desktop
+    // context (should not happen in the renderer) doesn't fail at construction
+    // just because presets are unused.
+    private get globalPresets(): LayoutPresetsStore
     {
         return (this._presets ??= new LayoutPresetsStore(this.Provider))
     }
 
-    // Reload PresetNames from the store (ctor + after save/delete).
-    private async refreshPresetNames(): Promise<void>
+    // The active diagram's project storage, when it is file-backed — the root
+    // for project-scoped presets. Undefined for an unsaved/non-file diagram (or
+    // no active diagram), in which case the Project scope is unavailable.
+    private projectStorage(): IStorage | undefined
     {
-        const names = await this.Presets.names()
-        const coll = this.PresetNames
-        coll.Clear()
-        for (const n of names) coll.Add(n)
+        const store = this.activeDiagram()?.Storage
+        return store instanceof FileDiagramStorage ? store.ProjectStorage : undefined
     }
 
-    // Load a preset into the current settings: clone it into Config, then drive
+    // A project-scoped preset store over the active diagram's project storage,
+    // or undefined when there is none.
+    private projectPresets(): ProjectLayoutPresetsStore | undefined
+    {
+        const storage = this.projectStorage()
+        return storage === undefined ? undefined : new ProjectLayoutPresetsStore(storage)
+    }
+
+    // The scopes a preset can currently be saved to: Global always; Project when
+    // the active diagram has project storage; Diagram when a diagram is active.
+    public availableScopes(): PresetScope[]
+    {
+        const scopes: PresetScope[] = [PresetScope.Global]
+        if (this.projectStorage() !== undefined) scopes.push(PresetScope.Project)
+        if (this.activeDiagram() !== undefined) scopes.push(PresetScope.Diagram)
+        return scopes
+    }
+
+    // Reload Presets from all scopes for the active diagram (ctor, active-doc
+    // change, and after save/delete). Global first, then project, then diagram.
+    private async refreshPresets(): Promise<void>
+    {
+        const refs: LayoutPresetRef[] = []
+        for (const n of await this.globalPresets.names()) refs.push(new LayoutPresetRef(n, PresetScope.Global))
+        const pp = this.projectPresets()
+        if (pp !== undefined) for (const n of await pp.names()) refs.push(new LayoutPresetRef(n, PresetScope.Project))
+        const doc = this.activeDiagram()
+        if (doc !== undefined) for (const n of diagramPresetNames(doc)) refs.push(new LayoutPresetRef(n, PresetScope.Diagram))
+
+        const coll = this.Presets
+        coll.Clear()
+        for (const r of refs) coll.Add(r)
+    }
+
+    // Fetch a preset's config from its own scope.
+    private async getPreset(ref: LayoutPresetRef): Promise<PipelineConfiguration | undefined>
+    {
+        switch (ref.Scope) {
+            case PresetScope.Global:  return this.globalPresets.get(ref.Name)
+            case PresetScope.Project: return this.projectPresets()?.get(ref.Name)
+            case PresetScope.Diagram: { const d = this.activeDiagram(); return d === undefined ? undefined : getDiagramPreset(d, ref.Name) }
+        }
+    }
+
+    // Drive Config + every stage from a config: clone it into Config, then load
     // each stage from its layout entry. Stages load in insertion order (= Stages
     // order), so the Edge Router's native-routing choice disables the Port
     // Assigner before we reach it; a disabled Port Assigner is skipped so its
     // { off: true } directive (set by the Edge Router) survives.
-    public async LoadPreset(name: string): Promise<void>
+    private applyConfig(cfg: PipelineConfiguration): void
     {
-        const cfg = await this.Presets.get(name)
-        if (cfg === undefined) return
         this.Config = structuredClone(cfg)
         const layout = this.Config.layout as Record<string, LayoutStageSpec | undefined>
         for (const [stage, key] of this.stageKeys) {
@@ -230,68 +339,241 @@ export class LayoutPipelineService extends ServiceBase
         }
     }
 
-    // Prompt for a name and save the current Config as that preset, then select
-    // it. A no-op when there is no DialogService (headless) or the user cancels.
+    // Load a GLOBAL preset by name into the current settings. Retained as the
+    // simple by-name entry point (used directly in tests); the scope-aware path
+    // is loadRef.
+    public async LoadPreset(name: string): Promise<void>
+    {
+        const cfg = await this.globalPresets.get(name)
+        if (cfg === undefined) return
+        this.applyConfig(cfg)
+    }
+
+    // Load a preset from whichever scope it lives in (the SelectedPreset path).
+    private async loadRef(ref: LayoutPresetRef): Promise<void>
+    {
+        const cfg = await this.getPreset(ref)
+        if (cfg === undefined) return
+        this.applyConfig(cfg)
+    }
+
+    // Prompt for a name + scope and save the current Config as that preset, then
+    // select it. A no-op when there is no DialogService (headless) or the user
+    // cancels. The pre-selected scope is the selected preset's scope, else Global.
     private async save(): Promise<void>
     {
         const dialogs = this.Provider.get(DialogService.Key)
         if (dialogs === undefined) return
-        const name = await promptPresetName(dialogs, this.SelectedPreset ?? '')
-        if (name === undefined) return
-        const stem = await this.Presets.save(name, this.Config)
-        await this.refreshPresetNames()
-        this.SelectedPreset = stem
+        const initialScope = this.SelectedPreset?.Scope ?? PresetScope.Global
+        const choice = await promptSavePreset(dialogs, this.SelectedPreset?.Name ?? '', this.availableScopes(), initialScope)
+        if (choice === undefined) return
+        const stem = await this.savePreset(choice.name, choice.scope, this.Config)
+        await this.refreshPresets()
+        this.SelectedPreset = this.Presets.ToArray().find((r) => r.Scope === choice.scope && r.Name === stem)
     }
 
-    // Delete the selected preset and clear the selection; the working Config /
-    // Stages are left as-is (deleting the saved copy does not reset the editor).
+    // Persist a config as a named preset in the given scope; returns the stored
+    // name (sanitized for file-backed scopes). Diagram scope also saves the doc.
+    private async savePreset(name: string, scope: PresetScope, cfg: PipelineConfiguration): Promise<string>
+    {
+        switch (scope) {
+            case PresetScope.Global:
+                return this.globalPresets.save(name, cfg)
+            case PresetScope.Project: {
+                const pp = this.projectPresets()
+                return pp === undefined ? name : pp.save(name, cfg)
+            }
+            case PresetScope.Diagram: {
+                const doc = this.activeDiagram()
+                if (doc !== undefined) { saveDiagramPreset(doc, name.trim(), cfg); this.persistDocument(doc) }
+                return name.trim()
+            }
+        }
+    }
+
+    // Delete the selected preset from its own scope and clear the selection; the
+    // working Config / Stages are left as-is (deleting the saved copy does not
+    // reset the editor).
     private async deleteSelected(): Promise<void>
     {
-        const name = this.SelectedPreset
-        if (name === undefined || name.length === 0) return
-        await this.Presets.delete(name)
-        await this.refreshPresetNames()
+        const ref = this.SelectedPreset
+        if (ref === undefined) return
+        switch (ref.Scope) {
+            case PresetScope.Global:  await this.globalPresets.delete(ref.Name); break
+            case PresetScope.Project: await this.projectPresets()?.delete(ref.Name); break
+            case PresetScope.Diagram: { const d = this.activeDiagram(); if (d !== undefined) { deleteDiagramPreset(d, ref.Name); this.persistDocument(d) } break }
+        }
+        await this.refreshPresets()
         this.SelectedPreset = undefined
     }
 
-    // Compose the pipeline from Config and run it on the active diagram,
-    // writing the new positions to the figures.
+    // ── implicit per-diagram working-config persistence ─────────────────────
+
+    // On active-document change: hydrate the inspector from the newly active
+    // diagram's saved working config (or the default), and re-list its presets.
+    private onActiveDocumentChanged(): void
+    {
+        this.clearPreview()   // a preview belongs to the diagram it was computed for
+        const doc = this.activeDiagram()
+        const saved = doc === undefined ? undefined : readLayoutConfig(doc)
+        this._hydrating = true
+        try { this.applyConfig(saved ?? DEFAULT_CONFIG) } finally { this._hydrating = false }
+        void this.refreshPresets()
+    }
+
+    // A stage/param edit changed Config — autosave it to the active diagram's
+    // working-config slot (debounced). Muted while hydrating so loading a
+    // document doesn't immediately write back. The target doc is captured now so
+    // a tab switch within the debounce window still persists to the right file.
+    private onConfigChanged(): void
+    {
+        if (this._hydrating) return
+        this.clearPreview()   // an edit invalidates the shown preview
+        const doc = this.activeDiagram()
+        if (doc === undefined) return
+        this._persistTarget = doc
+        if (this._persistTimer !== undefined) clearTimeout(this._persistTimer)
+        this._persistTimer = setTimeout(() => {
+            const target = this._persistTarget
+            if (target === undefined) return
+            writeLayoutConfig(target, this.Config)
+            this.persistDocument(target)
+        }, this.persistDelayMs)
+    }
+
+    // Save a document to its storage (no-op without storage), awaiting the disk
+    // write when it is file-backed. Shared by working-config autosave and
+    // diagram-scoped preset writes.
+    private persistDocument(doc: DiagramDocument): void
+    {
+        doc.Save()
+        const store = doc.Storage
+        if (store instanceof FileDiagramStorage) void store.WhenWritten()
+    }
+
+    // Compose the pipeline from Config and run it on the active diagram, writing
+    // the new positions to the figures. A direct Run supersedes any pending
+    // preview.
     public Run(): void
     {
         const doc = this.activeDiagram()
         if (doc === undefined) { this.Status = 'Active document is not a diagram.'; return }
+        this.CancelPreview()
+        const comp = this.computeLayout(doc)
+        if (comp === undefined) return
+        this.applyLayout(doc, comp)
+    }
 
-        // Geometry lives on the container Figure (a shape node IS its own
-        // container; a content VM's container wraps it and mirrors its Id). Lay
-        // out the CONTAINERS — resolve each node to its geometry-owning Figure via
-        // the live view; nodes without a realized container are skipped.
+    // Compose + run the pipeline WITHOUT committing, and return the computation
+    // (figure index, connector edges, target positions, routing). Sets Status and
+    // returns undefined when there is nothing to lay out or the pipeline errors.
+    // Geometry lives on the container Figure (a shape node IS its own container; a
+    // content VM's container wraps it and mirrors its Id), so this lays out the
+    // CONTAINERS — nodes without a realized container are skipped.
+    private computeLayout(doc: DiagramDocument): LayoutComputation | undefined
+    {
         const figures = this.geometryFigures(doc)
-        if (figures.length === 0) { this.Status = 'Diagram has no nodes to lay out.'; return }
+        if (figures.length === 0) { this.Status = 'Diagram has no nodes to lay out.'; return undefined }
         const connectors = doc.Connectors.ToArray() as unknown as ConnectorLike[]
-
         const { graph, index, connectorEdges } = extract(figures, connectors)
 
-        let outcome
-        let lastRoutes: Map<Edge, EdgeRouting> | undefined
         try {
             const { graphPipeline, layoutPipeline } = BuildPipeline(this.Config, LoadElementRepository())
             const transformed = graphPipeline.Apply(graph)
             const positions = layoutPipeline.Apply(transformed)
-            outcome = computeOutcome(index, transformed, positions, (f) => this.sizeOf(f))
-            lastRoutes = layoutPipeline.LastRoutes
+            const outcome = computeOutcome(index, transformed, positions, (f) => this.sizeOf(f))
+            return { index, connectorEdges, outcome, lastRoutes: layoutPipeline.LastRoutes }
         } catch (err) {
             this.Status = `Pipeline error: ${(err as Error).message}`
-            return
+            return undefined
         }
+    }
 
-        const plan = planForMode('positions', outcome)
-        this.applyPositions(index, plan.mutation.setPositions)
+    // Commit a computed layout: write positions, reset connector routing, assign
+    // native sides, and persist the working config + scene.
+    private applyLayout(doc: DiagramDocument, comp: LayoutComputation): void
+    {
+        const plan = planForMode(RunMode.Positions, comp.outcome)
+        this.applyPositions(comp.index, plan.mutation.setPositions)
         this.clearConnectorWaypoints(doc)   // layout is the reset: drop user pins, rebuild routing
 
         let status = `Laid out ${plan.mutation.setPositions.length} nodes.`
-        const n = this.applyDiagramSides(connectorEdges, lastRoutes)
+        const n = this.applyDiagramSides(comp.connectorEdges, comp.lastRoutes)
         if (n > 0) status += ` Assigned sides to ${n} connectors.`
         this.Status = status
+
+        // Record the config that produced this layout as the diagram's working
+        // config (and persist the laid-out scene) — a deliberate apply sticks, even
+        // if the user never edited a stage. Immediate (not the debounced edit
+        // path) so it is deterministic. doc.Save() no-ops without storage.
+        writeLayoutConfig(doc, this.Config)
+        this.persistDocument(doc)
+    }
+
+    // Run the pipeline and PREVIEW the result: publish the target arrangement on
+    // the live diagram's LayoutPreview (the framework overlay paints it over the
+    // canvas) without moving anything. Apply/Cancel then commit or discard.
+    public Preview(): void
+    {
+        const doc = this.activeDiagram()
+        if (doc === undefined) { this.Status = 'Active document is not a diagram.'; return }
+        const comp = this.computeLayout(doc)
+        if (comp === undefined) return
+
+        const nodes: LayoutPreviewNode[] = comp.outcome.setPositions.map((p) => {
+            const fig = comp.index.get(p.id)
+            const size = fig === undefined ? FALLBACK_SIZE : this.sizeOf(fig)
+            return { id: p.id, left: p.left, top: p.top, width: size.width, height: size.height }
+        })
+        const ids = new Set(nodes.map((n) => n.id))
+        const edges: LayoutPreviewEdge[] = comp.connectorEdges
+            .filter((e) => ids.has(e.from) && ids.has(e.to))
+            .map((e) => ({ from: e.from, to: e.to }))
+
+        const view = doc.ActiveView
+        if (view === undefined) { this.Status = 'Diagram view is not ready.'; return }
+        view.LayoutPreview = { nodes, edges }
+        this._pendingPreview = { doc, comp }
+        this.PreviewActive = true
+        this.Status = `Previewing ${nodes.length} nodes — Apply or Cancel.`
+    }
+
+    // Commit the currently-previewed layout, then clear the overlay.
+    public ApplyPreview(): void
+    {
+        const pending = this._pendingPreview
+        if (pending === undefined) return
+        this.clearPreviewOverlay(pending.doc)
+        this._pendingPreview = undefined
+        this.PreviewActive = false
+        this.applyLayout(pending.doc, pending.comp)
+    }
+
+    // Discard the preview without committing anything.
+    public CancelPreview(): void
+    {
+        if (this._pendingPreview === undefined) return
+        this.clearPreviewOverlay(this._pendingPreview.doc)
+        this._pendingPreview = undefined
+        this.PreviewActive = false
+        this.Status = 'Preview cancelled.'
+    }
+
+    // Drop the overlay off the diagram (idempotent).
+    private clearPreviewOverlay(doc: DiagramDocument): void
+    {
+        const view = doc.ActiveView
+        if (view !== undefined) view.LayoutPreview = undefined
+    }
+
+    // Discard any active preview without a status change — used when the context
+    // shifts underneath it (active-doc switch, config edit, direct Run).
+    private clearPreview(): void
+    {
+        if (this._pendingPreview === undefined) return
+        this.clearPreviewOverlay(this._pendingPreview.doc)
+        this._pendingPreview = undefined
+        this.PreviewActive = false
     }
 
     // Apply any `sides` routing directives the edge router produced onto the

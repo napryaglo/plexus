@@ -71,7 +71,7 @@ resources LayoutInspectorResources {
 
                 // Preset strip: [ presets ▾ ]  [Save]  [Delete]  [Run].
                 StackPanel [ Orientation = Horizontal, Margin = (0,0,0,10) ] {
-                    ComboBox [ ItemsSource = $service(LayoutPipelineService).PresetNames,
+                    ComboBox [ ItemsSource = $service(LayoutPipelineService).Presets,
                                SelectedItem = $service(LayoutPipelineService).SelectedPreset,
                                Width = 150, VerticalAlignment = Center, Margin = (0,0,8,0) ]
                     PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).SaveCommand ] {
@@ -80,6 +80,19 @@ resources LayoutInspectorResources {
                     PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).DeleteCommand,
                                   IsEnabled = $service(LayoutPipelineService).CanDelete ] {
                         Shape [ Geometry = @Delete, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                    }
+                    // Preview: paint a ghost of the proposed layout over the canvas.
+                    PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).PreviewCommand ] {
+                        Shape [ Geometry = @Visibility, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                    }
+                    // Apply / Cancel the shown preview — only while one is active.
+                    PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).ApplyPreviewCommand,
+                                  Visibility = $service(LayoutPipelineService).PreviewActive << ToVisibility ] {
+                        Shape [ Geometry = @Check, Fill = @Primary, Width = 20, Height = 20 ]
+                    }
+                    PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).CancelPreviewCommand,
+                                  Visibility = $service(LayoutPipelineService).PreviewActive << ToVisibility ] {
+                        Shape [ Geometry = @Close, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
                     }
                     PanelButton [ Command = $service(LayoutPipelineService).RunCommand ] {
                         Shape [ Geometry = @Play, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
@@ -103,12 +116,16 @@ resources LayoutInspectorResources {
     }
 
     // The save-preset prompt dialog body (DialogService supplies surface/title/
-    // padding). A single name field + Cancel / Save; Save stays disabled until
-    // the name is non-blank (CanConfirm).
+    // padding). A name field, a "Save to" scope picker (Global / Project /
+    // Diagram — only the scopes the caller offers), then Cancel / Save; Save
+    // stays disabled until the name is non-blank (CanConfirm). The scope ComboBox
+    // shows each option's Label via the displayString convention.
     DataTemplate [ DataType = SavePresetPromptModel ] {
         StackPanel [ Orientation = Vertical, HorizontalAlignment = Stretch ] {
             TextBlock [ Style = @BodyLarge, Text = "Preset name", Foreground = @OnSurface, Margin = (0,0,0,4) ]
             TextBox [ Text = $Name, Margin = (0,0,0,14) ]
+            TextBlock [ Style = @BodyLarge, Text = "Save to", Foreground = @OnSurface, Margin = (0,0,0,4) ]
+            ComboBox [ ItemsSource = $Scopes, SelectedItem = $SelectedScope, HorizontalAlignment = Stretch, Margin = (0,0,0,14) ]
             StackPanel [ Orientation = Horizontal, HorizontalAlignment = Right ] {
                 Button [ Variant = Text, Command = $CancelCommand, Margin = (0,0,8,0) ] { TextBlock [ Text = "Cancel" ] }
                 Button [ Variant = Filled, Command = $ConfirmCommand, IsEnabled = $CanConfirm ] { TextBlock [ Text = "Save" ] }

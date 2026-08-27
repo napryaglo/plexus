@@ -46,4 +46,8 @@ resources PlexusIcons {
     // Layout inspector Run + Delete actions.
     include "icons/play.svg"                     as Play
     include "icons/delete.svg"                   as Delete
+    // Layout inspector Preview / Apply / Cancel actions.
+    include "icons/visibility.svg"               as Visibility
+    include "icons/check.svg"                     as Check
+    include "icons/close.svg"                     as Close
 }

@@ -54,7 +54,7 @@ export class LayoutPresetsStore
     // display name), so the caller can select it. Overwrites silently.
     public async save(name: string, cfg: PipelineConfiguration): Promise<string>
     {
-        const stem = safe(name)
+        const stem = safeStem(name)
         await this.fs.CreateDirectory(this.dir())
         await this.fs.WriteText(this.filePath(stem), JSON.stringify(cfg, null, 2))
         return stem
@@ -64,7 +64,7 @@ export class LayoutPresetsStore
     public async delete(name: string): Promise<void>
     {
         try {
-            await this.fs.Delete(this.filePath(safe(name)))
+            await this.fs.Delete(this.filePath(safeStem(name)))
         } catch {
             // already gone — nothing to do
         }
@@ -78,7 +78,8 @@ export class LayoutPresetsStore
 
 // Replace every character outside [A-Za-z0-9._-] with '-' so the name is a safe
 // file stem. The sanitized value is also the display name (filenames round-trip).
-function safe(name: string): string
+// Exported so the project-scoped store sanitizes identically.
+export function safeStem(name: string): string
 {
     return name.trim().replace(/[^A-Za-z0-9._-]/g, '-')
 }

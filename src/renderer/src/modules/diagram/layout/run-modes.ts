@@ -1,16 +1,21 @@
 import type { LayoutOutcome, PositionSet } from './diagram-graph-adapter.js'
 
 // How a pipeline run affects the diagram, chosen before running:
-//   positions — write new positions; keep every node (nodes the
-//               transforms drop stay where they were, just excluded from
-//               the layout computation)
-//   preview   — commit nothing; the service renders a ghost overlay of
-//               the target positions and an explicit Apply commits them
+//   Positions — write new positions; keep every node (nodes the transforms
+//               drop stay where they were, just excluded from the layout
+//               computation)
+//   Preview   — commit nothing; the service publishes the target arrangement
+//               on Diagram.LayoutPreview (the framework overlay renders it) and
+//               an explicit Apply commits it
 //
-// A destructive mode (actually removing dropped nodes) is intentionally
-// out of scope for v1: mural exposes no undo/transaction API, so removal
-// could not be made reversible. Revisit when it does.
-export type RunMode = 'positions' | 'preview'
+// A destructive mode (actually removing dropped nodes) is intentionally out of
+// scope: mural exposes no undo/transaction API, so removal could not be made
+// reversible. Revisit when it does.
+export enum RunMode
+{
+    Positions = 'positions',
+    Preview   = 'preview',
+}
 
 export interface DiagramMutation
 {
@@ -26,9 +31,9 @@ export interface RunPlan
 export function planForMode(mode: RunMode, outcome: LayoutOutcome): RunPlan
 {
     switch (mode) {
-        case 'positions':
+        case RunMode.Positions:
             return { previewOnly: false, mutation: { setPositions: outcome.setPositions } }
-        case 'preview':
+        case RunMode.Preview:
             return { previewOnly: true, mutation: { setPositions: [] } }
     }
 }
