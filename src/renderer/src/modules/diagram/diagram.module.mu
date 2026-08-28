@@ -85,6 +85,15 @@ module DiagramModule [ Name = "Diagram" ] {
               Min         = 16,
               Max         = 256,
               Category    = "Toolbox" ]
+        // How dropped file/hyperlink chips render (image nodes ignore it).
+        SettingDefinition
+            [ Key         = "diagram.media.linkRenderMode",
+              Label       = "Media link display",
+              Description = "How dropped files and hyperlinks are shown on the diagram.",
+              Kind        = Choice,
+              Default     = "thumbnail-label",
+              Choices     = ["icon-label", "thumbnail-label", "plain-link"],
+              Category    = "Diagram" ]
     }
 
     // The document type this module edits. Declarative schema aggregated by the

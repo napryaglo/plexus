@@ -24,8 +24,15 @@ export class MediaNodeVM extends NodeViewModel
     static readonly HyperlinkUriKey = MuralBase.RegisterProperty<string | undefined>(MediaNodeVM, 'HyperlinkUri', undefined, MetaData.None)
     static readonly BitmapKey       = MuralBase.RegisterProperty<BitmapImage | undefined>(MediaNodeVM, 'Bitmap', undefined, MetaData.None)
 
+    // Derived view flags the template triggers on (boolean triggers only — avoids
+    // unproven string-equality data triggers). IsImage = show the picture;
+    // ShowChip = show the icon+label chip (non-image kinds, or an image whose
+    // bitmap failed/hasn't resolved — the error-handling fallback).
+    static readonly IsImageKey  = MuralBase.RegisterProperty<boolean>(MediaNodeVM, 'IsImage', false, MetaData.None)
+    static readonly ShowChipKey = MuralBase.RegisterProperty<boolean>(MediaNodeVM, 'ShowChip', true, MetaData.None)
+
     get MediaKind(): MediaKind { return this.get_property_value(MediaNodeVM.MediaKindKey) }
-    set MediaKind(v: MediaKind) { this.set_property_value(MediaNodeVM.MediaKindKey, v) }
+    set MediaKind(v: MediaKind) { this.set_property_value(MediaNodeVM.MediaKindKey, v); this._refreshViewFlags() }
     get Source(): string | undefined { return this.get_property_value(MediaNodeVM.SourceKey) }
     set Source(v: string | undefined) { this.set_property_value(MediaNodeVM.SourceKey, v) }
     get Label(): string { return this.get_property_value(MediaNodeVM.LabelKey) }
@@ -33,7 +40,16 @@ export class MediaNodeVM extends NodeViewModel
     get HyperlinkUri(): string | undefined { return this.get_property_value(MediaNodeVM.HyperlinkUriKey) }
     set HyperlinkUri(v: string | undefined) { this.set_property_value(MediaNodeVM.HyperlinkUriKey, v) }
     get Bitmap(): BitmapImage | undefined { return this.get_property_value(MediaNodeVM.BitmapKey) }
-    set Bitmap(v: BitmapImage | undefined) { this.set_property_value(MediaNodeVM.BitmapKey, v) }
+    set Bitmap(v: BitmapImage | undefined) { this.set_property_value(MediaNodeVM.BitmapKey, v); this._refreshViewFlags() }
+    get IsImage(): boolean { return this.get_property_value(MediaNodeVM.IsImageKey) }
+    get ShowChip(): boolean { return this.get_property_value(MediaNodeVM.ShowChipKey) }
+
+    private _refreshViewFlags(): void
+    {
+        const isImage = this.MediaKind === MediaKind.Image && this.Bitmap !== undefined
+        this.set_property_value(MediaNodeVM.IsImageKey, isImage)
+        this.set_property_value(MediaNodeVM.ShowChipKey, !isImage)
+    }
 
     // Resolve Source → BitmapImage for image nodes; returns decoded natural size
     // (undefined for non-image kinds, or when the source can't be read/decoded).

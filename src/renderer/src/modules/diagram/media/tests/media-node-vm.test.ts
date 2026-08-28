@@ -32,4 +32,21 @@ describe('MediaNodeVM', () => {
         expect(natural).toBeUndefined()
         expect(vm.Bitmap).toBeUndefined()
     })
+
+    it('derives IsImage/ShowChip from kind + bitmap', async () => {
+        const vm = new MediaNodeVM()
+        // A file link shows the chip, never the picture.
+        vm.MediaKind = MediaKind.FileLink
+        expect(vm.IsImage).toBe(false)
+        expect(vm.ShowChip).toBe(true)
+        // An image with no resolved bitmap falls back to the chip.
+        vm.MediaKind = MediaKind.Image
+        expect(vm.IsImage).toBe(false)
+        expect(vm.ShowChip).toBe(true)
+        // Once the bitmap resolves, it shows the picture.
+        vm.Source = 'data:image/png;base64,AAAA'
+        await vm.LoadAsync({ storage: {} as never, measure: async () => new Size(10, 10) })
+        expect(vm.IsImage).toBe(true)
+        expect(vm.ShowChip).toBe(false)
+    })
 })

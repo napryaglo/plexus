@@ -13,6 +13,7 @@ import ToolboxService from "./services/diagram-panel-services.js"
 import LayoutPipelineService from "./layout/layout-pipeline-service.js"
 import DropCandidateChooserService from "../architecture-projects/services/drop-candidate-chooser-service.js"
 import ArchNodeVM from "../architecture-projects/services/arch-node-vm.js"
+import MediaNodeVM from "./media/media-node-vm.js"
 import ArchTitleEditBehavior from "../architecture-projects/behaviors/arch-title-edit-behavior.js"
 import ZoomPercent from "./services/diagram-zoom-percent.js"
 
@@ -482,6 +483,40 @@ resources DiagramResources {
         when ( $LabelFontStyle is set )      { PART_Title.FontStyle = $LabelFontStyle; }
         when ( $LabelTextDecorations is set ){ PART_Title.TextDecorations = $LabelTextDecorations; }
         when ( $LabelTextAlignment is set )  { PART_Title.TextAlignment = $LabelTextAlignment; }
+    }
+
+    // A media shape dropped/pasted onto the diagram: an image renders as a
+    // picture; a file/hyperlink renders as an icon+label chip. IsImage / ShowChip
+    // are derived boolean flags on the VM (an image with no resolved bitmap —
+    // unreadable file, dead URL — falls back to the chip so the node is never
+    // invisible). Node geometry rides the document visuals like every other node.
+    DataTemplate [DataType = MediaNodeVM] {
+        Grid x:name="PART_MediaRoot" {
+            Image x:name="PART_Image"
+                [ Source     = $Bitmap,
+                  Stretch    = Uniform,
+                  Visibility = Collapsed ]
+            StackPanel x:name="PART_Chip"
+                [ Orientation       = Horizontal,
+                  VerticalAlignment = Center,
+                  Visibility        = Collapsed ] {
+                Border x:name="PART_ChipIcon"
+                    [ Width        = 24,
+                      Height       = 24,
+                      Fill         = @OnSurfaceVariant,
+                      CornerRadius = (4) ]
+                TextBlock x:name="PART_ChipLabel"
+                    [ Text                = $Label,
+                      Style               = @BodySmall,
+                      Foreground          = @OnSurface,
+                      TextWrapping        = Wrap,
+                      MaxWidth            = 160,
+                      Margin              = (6,0,0,0),
+                      MeasurementFidelity = Exact ]
+            }
+        }
+        when ( $IsImage = true )  { PART_Image.Visibility = Visible; }
+        when ( $ShowChip = true ) { PART_Chip.Visibility = Visible; }
     }
 
     // ── ToolBox capability panel — the shapes palette in the left pane.
