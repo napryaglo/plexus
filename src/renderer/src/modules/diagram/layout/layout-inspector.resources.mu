@@ -69,21 +69,29 @@ resources LayoutInspectorResources {
                 TextBlock [ Style = @TitleMedium, Text = "Layout Pipeline",
                             Foreground = @OnSurface, Margin = (0,0,0,10) ]
 
-                // Preset strip: [ presets ▾ ]  [Save]  [Delete]  [Run].
+                // Preset strip: [ presets ▾ ]  [Save]  [Delete]  [Preview]  [Run].
+                // While a preview is active this whole group collapses, leaving
+                // only Apply / Cancel — a focused confirm/discard bar.
                 StackPanel [ Orientation = Horizontal, Margin = (0,0,0,10) ] {
-                    ComboBox [ ItemsSource = $service(LayoutPipelineService).Presets,
-                               SelectedItem = $service(LayoutPipelineService).SelectedPreset,
-                               Width = 150, VerticalAlignment = Center, Margin = (0,0,8,0) ]
-                    PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).SaveCommand ] {
-                        Shape [ Geometry = @Save, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
-                    }
-                    PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).DeleteCommand,
-                                  IsEnabled = $service(LayoutPipelineService).CanDelete ] {
-                        Shape [ Geometry = @Delete, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
-                    }
-                    // Preview: paint a ghost of the proposed layout over the canvas.
-                    PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).PreviewCommand ] {
-                        Shape [ Geometry = @Visibility, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                    StackPanel [ Orientation = Horizontal,
+                                 Visibility = $service(LayoutPipelineService).PreviewInactive << ToVisibility ] {
+                        ComboBox [ ItemsSource = $service(LayoutPipelineService).Presets,
+                                   SelectedItem = $service(LayoutPipelineService).SelectedPreset,
+                                   Width = 150, VerticalAlignment = Center, Margin = (0,0,8,0) ]
+                        PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).SaveCommand ] {
+                            Shape [ Geometry = @Save, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                        }
+                        PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).DeleteCommand,
+                                      IsEnabled = $service(LayoutPipelineService).CanDelete ] {
+                            Shape [ Geometry = @Delete, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                        }
+                        // Preview: paint a ghost of the proposed layout over the canvas.
+                        PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).PreviewCommand ] {
+                            Shape [ Geometry = @Visibility, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                        }
+                        PanelButton [ Command = $service(LayoutPipelineService).RunCommand ] {
+                            Shape [ Geometry = @Play, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                        }
                     }
                     // Apply / Cancel the shown preview — only while one is active.
                     PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).ApplyPreviewCommand,
@@ -93,9 +101,6 @@ resources LayoutInspectorResources {
                     PanelButton [ Margin = (0,0,4,0), Command = $service(LayoutPipelineService).CancelPreviewCommand,
                                   Visibility = $service(LayoutPipelineService).PreviewActive << ToVisibility ] {
                         Shape [ Geometry = @Close, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
-                    }
-                    PanelButton [ Command = $service(LayoutPipelineService).RunCommand ] {
-                        Shape [ Geometry = @Play, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
                     }
                 }
 

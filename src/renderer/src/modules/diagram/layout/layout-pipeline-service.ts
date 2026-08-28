@@ -131,6 +131,12 @@ export class LayoutPipelineService extends ServiceBase
     // visibility in the preset strip.
     public static readonly PreviewActiveKey = MuralBase.RegisterProperty<boolean>(
         LayoutPipelineService, 'PreviewActive', false, MetaData.None)
+    // Logical inverse of PreviewActive, kept in lock-step by the setter. Drives
+    // the `Visibility` of the non-preview controls (presets, Save/Delete, Preview,
+    // Run) so they collapse while a preview is being confirmed — `ToVisibility`
+    // only maps truthy→Visible, so hiding on a flag needs its negation.
+    public static readonly PreviewInactiveKey = MuralBase.RegisterProperty<boolean>(
+        LayoutPipelineService, 'PreviewInactive', true, MetaData.None)
     public static readonly PreviewCommandKey = MuralBase.RegisterProperty<ICommand>(
         LayoutPipelineService, 'PreviewCommand', undefined as unknown as ICommand, MetaData.None)
     public static readonly ApplyPreviewCommandKey = MuralBase.RegisterProperty<ICommand>(
@@ -254,7 +260,12 @@ export class LayoutPipelineService extends ServiceBase
     public get CanDelete(): boolean { return this.get_property_value(LayoutPipelineService.CanDeleteKey) }
     public get RunCommand(): ICommand { return this.get_property_value(LayoutPipelineService.RunCommandKey) }
     public get PreviewActive(): boolean { return this.get_property_value(LayoutPipelineService.PreviewActiveKey) }
-    private set PreviewActive(v: boolean) { this.set_property_value(LayoutPipelineService.PreviewActiveKey, v) }
+    private set PreviewActive(v: boolean)
+    {
+        this.set_property_value(LayoutPipelineService.PreviewActiveKey, v)
+        this.set_property_value(LayoutPipelineService.PreviewInactiveKey, !v)
+    }
+    public get PreviewInactive(): boolean { return this.get_property_value(LayoutPipelineService.PreviewInactiveKey) }
     public get PreviewCommand(): ICommand { return this.get_property_value(LayoutPipelineService.PreviewCommandKey) }
     public get ApplyPreviewCommand(): ICommand { return this.get_property_value(LayoutPipelineService.ApplyPreviewCommandKey) }
     public get CancelPreviewCommand(): ICommand { return this.get_property_value(LayoutPipelineService.CancelPreviewCommandKey) }

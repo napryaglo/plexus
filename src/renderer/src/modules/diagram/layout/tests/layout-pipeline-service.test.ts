@@ -283,6 +283,9 @@ describe('layout preview', () => {
         svc.Preview()
 
         expect(svc.PreviewActive).toBe(true)
+        // PreviewInactive mirrors PreviewActive — it collapses the non-preview
+        // controls (presets/Save/Delete/Preview/Run) in the strip while previewing.
+        expect(svc.PreviewInactive).toBe(false)
         expect(view.LayoutPreview).toBeDefined()
         expect(view.LayoutPreview!.nodes.map((n) => n.id).sort()).toEqual(['a', 'b'])
         expect(view.LayoutPreview!.edges).toEqual([{ from: 'a', to: 'b' }])
@@ -300,6 +303,8 @@ describe('layout preview', () => {
         svc.ApplyPreview()
 
         expect(svc.PreviewActive).toBe(false)
+        // the non-preview controls come back once the preview clears
+        expect(svc.PreviewInactive).toBe(true)
         expect(view.LayoutPreview).toBeUndefined()
         // node 'a' moved to its previewed position
         expect(a.Left).toBe(target.left)
