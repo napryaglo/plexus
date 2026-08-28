@@ -100,6 +100,40 @@ export function attachMediaDrop(view: Diagram, doc: DiagramDocument, deps: Media
     return (): void => view.RemoveExternalDroppedListener(onExternal)
 }
 
+// Extract image/file payloads from a clipboard DataTransfer (Ctrl+V). Only
+// `file` items yield media (a pasted screenshot arrives as an image File).
+export function pasteItemsFromClipboard(data: DataTransfer): DroppedItem[]
+{
+    const out: DroppedItem[] = []
+    const items = data.items
+    for (let i = 0; i < items.length; i++) {
+        const it = items[i]
+        if (it.kind === 'file') {
+            const file = it.getAsFile()
+            if (file !== null) out.push({ file })
+        }
+    }
+    return out
+}
+
+// Paste a clipboard image onto the diagram (Ctrl+V). Listens at the document
+// level but only acts when THIS view holds keyboard focus, so paste isn't
+// hijacked from other panels or a sibling diagram. Places at the view centre.
+export function attachMediaPaste(view: Diagram, doc: DiagramDocument, deps: MediaDropDeps): () => void
+{
+    const onPaste = (e: ClipboardEvent): void => {
+        if (!view.IsKeyboardFocusWithin || e.clipboardData === null) return
+        const items = pasteItemsFromClipboard(e.clipboardData)
+        if (items.length === 0) return
+        e.preventDefault()
+        const r = view.ArrangedRect
+        const centre = view.HostToContent(r.Width / 2, r.Height / 2)
+        void placeDroppedItems(items, doc, deps, centre.X, centre.Y)
+    }
+    document.addEventListener('paste', onPaste)
+    return (): void => document.removeEventListener('paste', onPaste)
+}
+
 // Restore BitmapImages for image media nodes after a document is loaded from
 // disk (deserialize rebuilds the VM but not its bitmap).
 export async function reloadMediaBitmaps(doc: DiagramDocument, storage: IStorage): Promise<void>

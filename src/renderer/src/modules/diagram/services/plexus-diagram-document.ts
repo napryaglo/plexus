@@ -2,7 +2,7 @@ import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { DiagramDocument, type CommandDefinition, type DiagramStorage, type Diagram } from '@pragmatic-lab/mural/framework'
 import { DiagramCommandExtensionKey } from './diagram-command-extension.js'
 import { FileDiagramStorage } from '../persistence/file-diagram-storage.js'
-import { attachMediaDrop, type MediaDropDeps } from '../media/media-drop-handler.js'
+import { attachMediaDrop, attachMediaPaste, type MediaDropDeps } from '../media/media-drop-handler.js'
 import { LargeFileChoice } from '../media/media-storage.js'
 
 // The `.diagram` document used across Plexus: a DiagramDocument that additionally
@@ -15,6 +15,7 @@ export class PlexusDiagramDocument extends DiagramDocument
 {
     private _wiredView: Diagram | undefined
     private _detachMediaDrop: (() => void) | undefined
+    private _detachMediaPaste: (() => void) | undefined
 
     public constructor(storage: DiagramStorage, private readonly provider: IServiceProvider)
     {
@@ -28,11 +29,16 @@ export class PlexusDiagramDocument extends DiagramDocument
         const view = this.ActiveView
         if (view === this._wiredView) return
         this._detachMediaDrop?.()
+        this._detachMediaPaste?.()
         this._detachMediaDrop = undefined
+        this._detachMediaPaste = undefined
         this._wiredView = view
         if (view === undefined) return
         const deps = this._mediaDropDeps()
-        if (deps !== undefined) this._detachMediaDrop = attachMediaDrop(view, this, deps)
+        if (deps !== undefined) {
+            this._detachMediaDrop = attachMediaDrop(view, this, deps)
+            this._detachMediaPaste = attachMediaPaste(view, this, deps)
+        }
     }
 
     private _mediaDropDeps(): MediaDropDeps | undefined
