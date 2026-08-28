@@ -41,6 +41,7 @@ import LibraryModule from "./modules/library/library.module.mu.js"
 import AgentChatModule from "./modules/agent-chat/agent-chat.module.mu.js"
 import ProblemsModule from "./modules/problems/problems.module.mu.js"
 import CodeEditorModule from "./modules/code-editor/code-editor.module.mu.js"
+import MarkdownViewerModule from "./modules/markdown-viewer/markdown-viewer.module.mu.js"
 
 // Shared icon dictionary — one Geometry per capability, merged into the app's
 // Resources (via `merge` below) so each module's `Icon = @<Key>` resolves.
@@ -143,6 +144,7 @@ import FileWatchService from "./services/file-watch/file-watch-service.js"
 import EditorReloadService from "./services/file-watch/editor-reload-service.js"
 import ProjectRescanService from "./services/file-watch/project-rescan-service.js"
 import CodeEditorResources from "./modules/code-editor/code-editor.resources.mu.js"
+import MarkdownViewerResources from "./modules/markdown-viewer/markdown-viewer.resources.mu.js"
 
 // Wiki: an "Open Wiki" action on concept surfaces that opens the concept's
 // declared markdown page (resolved from its open project) in a Monaco tab.
@@ -295,6 +297,7 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         AgentChatModule
         ProblemsModule
         CodeEditorModule
+        MarkdownViewerModule
     }
 
     resources: {
@@ -349,6 +352,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // Code editor (DataTemplate[CodeDocument] declares a CodeEditor — a
         // DomHost subclass hosting Monaco, self-bound to the document's Content).
         merge CodeEditorResources
+
+        // Rendered Markdown viewer (DataTemplate[MarkdownDocument] — a RichTextBlock
+        // over the parsed FlowDocument). Opens .md/.markdown files read-only.
+        merge MarkdownViewerResources
 
         // Shared "Open Wiki" context menu (@OpenWikiMenu), attached by the four
         // concept surfaces when their row's $HasWiki is true.
