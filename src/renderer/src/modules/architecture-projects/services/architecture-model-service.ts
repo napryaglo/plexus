@@ -39,7 +39,7 @@ export class ArchitectureModelService extends ServiceBase
         if (cached !== undefined) return cached
 
         const resolver = this.Provider.getRequired(WorkspaceBaseResolver.Key)
-        const { bases } = await resolver.ResolveForStorage(op.Storage)
+        const { bases, originOf } = await resolver.ResolveForStorage(op.Storage)
         const sources = await collectTodlSources(op.Storage)
         const namespace = deriveNamespace(sources, op.Project.Name)
         // Published bases are OWN-ONLY documents: each carries only its own
@@ -52,7 +52,7 @@ export class ArchitectureModelService extends ServiceBase
         const merged = checkAgainst(bases, []).model
         const draft = ModelDraft.fromSources([merged], sources, { namespace })
 
-        const model = new ArchModel(draft, op.Storage, namespace, merged)
+        const model = new ArchModel(draft, op.Storage, namespace, merged, originOf ?? new Map())
         this.models.set(key, model)
         return model
     }

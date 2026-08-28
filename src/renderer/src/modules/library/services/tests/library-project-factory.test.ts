@@ -105,6 +105,22 @@ test('publish copies the resources/ folder into the bundle', async () => {
   expect(await libs.Exists('microsoft/0.1.0/resources/azure.svg')).toBe(true)
 })
 
+test('publish bundles the wiki/ pages alongside the package', async () => {
+  const storage = new FakeStorage('fake://Acme')
+  const f = factory()
+  await f.createProject(storage, 'microsoft', { metaModel: { id: 'ea', version: '5' } })
+  await storage.WriteText('microsoft.todl', LIB)
+  await storage.WriteText('wiki/service.md', '# Service\n\nThe service page.')
+  const { provider, meta, libs } = publishEnv()
+  await seedMeta(meta)
+
+  const result = await f.publish(await f.openProject(storage), storage, provider)
+  expect(result.ok).toBe(true)
+  // A consumer resolves `annotate wiki { path = "wiki/service.md" }` against
+  // <id>/<version>/ in the backend — the page ships there.
+  expect(await libs.Exists('microsoft/0.1.0/wiki/service.md')).toBe(true)
+})
+
 test('publish is blocked when the bound meta-model is not published', async () => {
   const storage = new FakeStorage('fake://Acme')
   const f = factory()

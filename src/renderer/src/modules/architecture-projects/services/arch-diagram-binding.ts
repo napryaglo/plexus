@@ -1,6 +1,6 @@
 import { Connector, ConnectorEndpoint, DiagramDocument, DialogService, Figure, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
 import { ContentContainerFigure } from '@pragmatic-lab/mural/framework/diagram/content-container-figure.js'
-import type { Entity } from '@pragmatic-lab/todl'
+import type { Entity, Repository } from '@pragmatic-lab/todl'
 import { showContainmentRejected } from './containment-modal.js'
 import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolver.js'
 import type { ArchModel } from './arch-model.js'
@@ -40,6 +40,13 @@ export class ArchDiagramBinding
     private scope: string[] = []                                       // selected viewpoints ([] = all)
     private scenarios: string[] = []                                   // scenarios whose steps are shown
     private _writingBack = false                                       // true while the binding drives reparents (projection / snap-back) — the NodeReparented observer ignores those echoes
+    // HasWiki cache. A concept's wiki-ness depends only on concept DECLARATIONS in
+    // the loaded model, never on instances, so an instance edit (a scenario drop)
+    // can't change it. Resolved synchronously off the repository and cached per
+    // concept; the cache clears only when the repository object is rebuilt (a base
+    // reload). This replaces the old per-node, per-rescan async recompile.
+    private wikiRepo: Repository | undefined
+    private readonly wikiByConcept = new Map<string, boolean>()
     // On mount (or view swap) re-wire the view listeners AND rescan, so the
     // containment projection — which needs realized Figures — runs once the view
     // exists (attach's first rescan may precede the mount).
@@ -56,6 +63,23 @@ export class ArchDiagramBinding
         // Modal host for the illegal-drag-in rejection (shared with the drop path).
         private readonly dialogs?: DialogService,
     ) {}
+
+    // Does `concept` declare a wiki page? A cheap `repo.resolve('X@wiki')` off the
+    // loaded model, cached per concept. The cache is dropped when the repository is
+    // rebuilt (base reload) so a just-published wiki reflects after a refresh, but
+    // instance-only churn (scenario drops, moves) reuses it and does zero work.
+    private conceptHasWiki(concept: string): boolean
+    {
+        if (this.wiki === undefined || concept.length === 0) return false
+        const repo = this.model.repository()
+        if (repo !== this.wikiRepo) { this.wikiRepo = repo; this.wikiByConcept.clear() }
+        let present = this.wikiByConcept.get(concept)
+        if (present === undefined) {
+            present = this.wiki.hasWikiIn(repo, concept)
+            this.wikiByConcept.set(concept, present)
+        }
+        return present
+    }
 
     public attach(): void
     {
@@ -267,13 +291,7 @@ export class ArchDiagramBinding
                 // A container concept realizes as a ContentContainerFigure (mural
                 // reads IsContainer duck-typed); its `in` refs project as nesting.
                 node.IsContainer = isContainerConcept(this.model.repository(), entity.concept)
-                if (this.wiki !== undefined) {
-                    const concept = entity.concept
-                    void this.wiki.hasWiki(concept).then((h) => {
-                        // Guard against a stale rebind: only apply if the node still shows this concept.
-                        if (node.Concept === concept) node.HasWiki = h
-                    })
-                }
+                node.HasWiki = this.conceptHasWiki(entity.concept)
             } else if (node instanceof Figure) {
                 // Back-compat for any freeform Figure with a matching entity id.
                 const id = node.Id

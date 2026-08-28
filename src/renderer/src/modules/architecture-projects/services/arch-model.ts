@@ -1,6 +1,7 @@
 import { ModelDraft } from '@pragmatic-lab/todl'
 import type { Repository, Entity, SourceFile } from '@pragmatic-lab/todl'
 import type { IStorage } from '../../../services/storage/storage.js'
+import { type WikiOrigin, openProjectOrigin } from '../../../services/projects/wiki-origin.js'
 
 // One viewpoint's projection over the model: the concepts it frames and the
 // entities visible through it (an entity is a member when its concept is framed
@@ -25,7 +26,22 @@ export class ArchModel
         // against. Required for restore() to recompose from captured .todl text;
         // optional so existing 3-arg constructions (tests) still compile.
         private readonly baseModel?: Repository,
+        // Provenance of each base node (nodeId → where its declaring artifact
+        // lives), so a concept's wiki page resolves against the right storage.
+        private readonly wikiOriginByNode: ReadonlyMap<string, WikiOrigin> = new Map(),
     ) {}
+
+    // Where the artifact declaring `concept` lives — its published package, or an
+    // open source project. Drives wiki-page location. A resolvable-but-untagged
+    // concept was declared by this project's own source (→ its project root).
+    public wikiOriginOf(concept: string): WikiOrigin | undefined
+    {
+        const direct = this.wikiOriginByNode.get(concept)
+        if (direct !== undefined) return direct
+        const node = this.repository().resolve(concept)
+        if (node === undefined) return undefined
+        return this.wikiOriginByNode.get(node.id) ?? openProjectOrigin(this.storage)
+    }
 
     public entities(): Entity[]
     {

@@ -1,7 +1,8 @@
 import { test, expect } from 'vitest'
 import { ServiceProvider, ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { ModelDraft } from '@pragmatic-lab/todl'
 import { ProjectExplorerService } from '../../../modules/project-explorer/services/project-explorer-service.js'
-import { WikiLocator } from '../wiki-locator.js'
+import { WikiLocator, wikiPathOf } from '../wiki-locator.js'
 
 // A fake OpenProject: its Storage yields one .todl source (its own model text).
 // collectTodlSources walks with storage.List(dir) → [{Name, IsDirectory}] and
@@ -38,4 +39,26 @@ test('returns undefined for a concept without a wiki annotation', async () => {
     const bare = `namespace mm { concept widget {} }`
     const loc = locatorWith(fakeProject('/mm', 'mm', bare))
     expect(await loc.resolveWiki('widget')).toBeUndefined()
+})
+
+// ── wikiPathOf: the cheap, loaded-model resolution (no source recompile) ──
+
+function repoFrom(todl: string, namespace: string) {
+    return ModelDraft.fromSources([], [{ uri: 'm.todl', text: todl }], { namespace }).model
+}
+
+test('wikiPathOf reads the declared path off a loaded repo', () => {
+    const repo = repoFrom(MM, 'mm')
+    expect(wikiPathOf(repo, 'service')).toBe('wiki/service.md')
+})
+
+test('wikiPathOf is undefined for a concept with no wiki annotation', () => {
+    const repo = repoFrom(`namespace mm { concept widget {} }`, 'mm')
+    expect(wikiPathOf(repo, 'widget')).toBeUndefined()
+})
+
+test('wikiPathOf is undefined for an unknown concept or empty id', () => {
+    const repo = repoFrom(MM, 'mm')
+    expect(wikiPathOf(repo, 'nope')).toBeUndefined()
+    expect(wikiPathOf(repo, '')).toBeUndefined()
 })

@@ -1,8 +1,20 @@
 import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ModelDraft, parse, type SourceFile } from '@pragmatic-lab/todl'
+import { ModelDraft, parse, type Repository, type SourceFile } from '@pragmatic-lab/todl'
 
 import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'
 import { collectTodlSources } from '../todl/todl-sources.js'
+
+// The wiki page `path` a concept declares via `annotate wiki { path }`, read
+// straight off a LOADED model — a pure, cheap `repo.resolve('X@wiki')` exactly like
+// materializeOf. This is the intended way to consult the annotation; the legacy
+// resolveWiki below re-compiles source per call (expensive) and is being retired.
+// Undefined when the concept declares no wiki (or an empty path).
+export function wikiPathOf(repo: Repository, concept: string): string | undefined
+{
+    if (concept.length === 0) return undefined
+    const v = repo.resolve(`${concept}@wiki`)?.attrs.get('path')
+    return typeof v === 'string' && v.length > 0 ? v : undefined
+}
 
 // Resolves a concept to the wiki page declared with it, by probing OPEN
 // projects' own source. Only the project that DECLARES the concept

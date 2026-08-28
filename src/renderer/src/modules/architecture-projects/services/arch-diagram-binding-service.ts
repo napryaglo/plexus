@@ -7,7 +7,9 @@ import type { OpenProject } from '../../../services/projects/open-project.js'
 import { ArchitectureModelService } from './architecture-model-service.js'
 import { ArchDiagramBinding } from './arch-diagram-binding.js'
 import { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
-import { WikiService } from '../../../services/wiki/wiki-service.js'
+import { WikiService, type WikiTarget } from '../../../services/wiki/wiki-service.js'
+import { wikiPathOf } from '../../../services/wiki/wiki-locator.js'
+import { locateWikiFile } from '../../../services/projects/wiki-origin.js'
 import type { ArchModel } from './arch-model.js'
 import { loadViewpoints, writeViewpoints } from './arch-diagram-viewpoints-store.js'
 import { readScenarios, writeScenarios } from './arch-diagram-scenarios-store.js'
@@ -35,6 +37,29 @@ export class ArchDiagramBindingService extends ServiceBase
         registerArchNodeSerializer()
         const host = this.Provider.get(ContentHostService.Key) as DocumentsContentHostService | undefined
         host?.OpenDocuments.Subscribe(() => { void this.sync(host) })
+        // Teach the wiki service to resolve a concept's page through the active
+        // architecture model — off the loaded repo (cheap) and by provenance (the
+        // declaring package's backend, or an open project's live source).
+        this.Provider.get(WikiService.Key)?.RegisterResolver((concept) => this.resolveWikiTarget(concept))
+    }
+
+    // Resolve a concept's wiki page via the active diagram's ArchModel: the path
+    // off the loaded repo, the storage by the concept's provenance. Undefined when
+    // there is no active arch model or the concept declares no reachable page (→
+    // the wiki service falls back to its legacy open-project probe).
+    private resolveWikiTarget(concept: string): WikiTarget | undefined
+    {
+        const host = this.Provider.get(ContentHostService.Key) as DocumentsContentHostService | undefined
+        const doc = host?.ActiveDocument
+        if (doc === undefined) return undefined
+        const model = this.modelForDocument(doc)
+        if (model === undefined) return undefined
+        const path = wikiPathOf(model.repository(), concept)
+        if (path === undefined) return undefined
+        const origin = model.wikiOriginOf(concept)
+        if (origin === undefined) return undefined
+        const loc = locateWikiFile(this.Provider, origin, path)
+        return { id: `${loc.storage.Root}::${loc.path}`, storage: loc.storage, path: loc.path }
     }
 
     private async sync(host: DocumentsContentHostService): Promise<void>

@@ -180,8 +180,11 @@ export class LibraryProjectFactory extends TodlProjectFactory
         await new BlobPackageStore(new StoragePackageSink(dest)).persist(pkg)
         await dest.WriteText(`${base}/library.json`, JSON.stringify(bundle, null, 2))
 
+        // `wiki` ships the concept wiki pages (`annotate wiki { path }`) alongside
+        // the package so a consumer resolves them against the package dir — the
+        // page path is relative to the package root, same as under the project root.
         let copied = 0
-        for (const folder of ['visuals', 'assets', 'docs', 'samples', 'thumbnails', 'resources'])
+        for (const folder of ['visuals', 'assets', 'docs', 'samples', 'thumbnails', 'resources', 'wiki'])
             copied += await this.copyResourceFolder(storage, dest, folder, base)
 
         // Keep the project's presentation dictionary current with what was published

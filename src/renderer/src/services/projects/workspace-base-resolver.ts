@@ -9,6 +9,12 @@ import { TodlLanguageClient } from '../todl/todl-language-client.js'
 import type { OpenProject } from './open-project.js'
 import type { BaseRef } from './base-binding.js'
 import { PROJECT_MANIFEST_FILENAME, ProducerKind, isProducer } from './project-factory.js'
+import { type WikiOrigin, openProjectOrigin, packageOrigin } from './wiki-origin.js'
+
+// The provenance of every base node — where its declaring artifact lives — keyed
+// by node id, so the wiki opener can resolve a concept's page against the right
+// storage (open project root vs published package dir).
+type OriginMap = Map<string, WikiOrigin>
 
 // The normalized manifest fields the resolver reads (modelVersion/libVersion
 // unified to `version`).
@@ -54,8 +60,9 @@ export class WorkspaceBaseResolver extends ServiceBase
         explorer?.OpenProjects.Subscribe(() => { this.snapshot = undefined; void this.onOpenSetChanged() })
     }
 
-    // Resolve a consumer's declared bases, preferring open producers.
-    public async ResolveForStorage(consumerStorage: IStorage): Promise<{ bases: TodlDocument[]; problems: string[] }>
+    // Resolve a consumer's declared bases, preferring open producers. `originOf`
+    // tags each resolved base node with where its declaring artifact lives.
+    public async ResolveForStorage(consumerStorage: IStorage): Promise<{ bases: TodlDocument[]; problems: string[]; originOf: OriginMap }>
     {
         return this.resolveBindingsOf(consumerStorage, new Set<IStorage>([consumerStorage]), new Set<string>())
     }
@@ -140,21 +147,22 @@ export class WorkspaceBaseResolver extends ServiceBase
 
     private async resolveBindingsOf(
         storage: IStorage, visited: Set<IStorage>, seenPub: Set<string>,
-    ): Promise<{ bases: TodlDocument[]; problems: string[] }>
+    ): Promise<{ bases: TodlDocument[]; problems: string[]; originOf: OriginMap }>
     {
         const manifest = await this.readManifest(storage)
         const bases: TodlDocument[] = []
         const problems: string[] = []
+        const originOf: OriginMap = new Map()
         if (manifest?.metaModel !== undefined)
-            await this.resolveOne(manifest.metaModel, ProducerKind.MetaModel, storage, visited, bases, problems, seenPub)
+            await this.resolveOne(manifest.metaModel, ProducerKind.MetaModel, storage, visited, bases, problems, originOf, seenPub)
         for (const lib of manifest?.libraries ?? [])
-            await this.resolveOne(lib, ProducerKind.Library, storage, visited, bases, problems, seenPub)
-        return { bases, problems }
+            await this.resolveOne(lib, ProducerKind.Library, storage, visited, bases, problems, originOf, seenPub)
+        return { bases, problems, originOf }
     }
 
     private async resolveOne(
         ref: BaseRef, kind: ProducerKind, consumerStorage: IStorage,
-        visited: Set<IStorage>, bases: TodlDocument[], problems: string[], seenPub: Set<string>,
+        visited: Set<IStorage>, bases: TodlDocument[], problems: string[], originOf: OriginMap, seenPub: Set<string>,
     ): Promise<void>
     {
         const producer = await this.findOpenProducer(kind, ref.id)
@@ -176,6 +184,8 @@ export class WorkspaceBaseResolver extends ServiceBase
             if (pv !== undefined && pv !== ref.version)
                 problems.push(`using local "${ref.id}" (open project) — binding requests @${ref.version}, project is @${pv}`)
             bases.push(compiled.doc)
+            // Open producer → its concepts' pages are live source under its root.
+            tagOrigin(originOf, compiled.doc, openProjectOrigin(producer.Storage))
             return
         }
         if (producer !== undefined && visited.has(producer.Storage))
@@ -183,7 +193,7 @@ export class WorkspaceBaseResolver extends ServiceBase
         // Published fallback — read the own-only doc and walk its recorded base
         // dependencies transitively (own-only packages record the bases they were
         // compiled against; the closure is reassembled by resolving those).
-        await this.resolvePublishedTransitive(ref, kind, bases, problems, seenPub)
+        await this.resolvePublishedTransitive(ref, kind, bases, problems, originOf, seenPub)
     }
 
     // Read a published package's own-only model.json and recurse into its recorded
@@ -191,7 +201,7 @@ export class WorkspaceBaseResolver extends ServiceBase
     // from the published registry (pinned versions); mergeBases dedups any node
     // overlap with a base already resolved local-first at the top level.
     private async resolvePublishedTransitive(
-        ref: BaseRef, kind: ProducerKind, bases: TodlDocument[], problems: string[], seenPub: Set<string>,
+        ref: BaseRef, kind: ProducerKind, bases: TodlDocument[], problems: string[], originOf: OriginMap, seenPub: Set<string>,
     ): Promise<void>
     {
         const key = `${kind}:${ref.id}@${ref.version}`
@@ -203,10 +213,12 @@ export class WorkspaceBaseResolver extends ServiceBase
         try {
             const doc = JSON.parse(await backend.ReadText(`${ref.id}/${ref.version}/model.json`)) as PackageDocument
             bases.push({ nodes: doc.nodes, edges: doc.edges })
+            // Published package → its concepts' pages ship at <backend>/<id>/<ver>/.
+            tagOrigin(originOf, doc, packageOrigin(kind, ref.id, ref.version ?? ''))
             for (const dep of doc.dependencies ?? [])
             {
                 const depKind = dep.kind === PackageKind.Library ? ProducerKind.Library : ProducerKind.MetaModel
-                await this.resolvePublishedTransitive({ id: dep.id, version: dep.version }, depKind, bases, problems, seenPub)
+                await this.resolvePublishedTransitive({ id: dep.id, version: dep.version }, depKind, bases, problems, originOf, seenPub)
             }
         } catch {
             problems.push(`${kind} "${ref.id}@${ref.version}" is not published`)
@@ -269,6 +281,14 @@ export class WorkspaceBaseResolver extends ServiceBase
         this.previousProducerKeys = now
         if (changedIds.length > 0) await this.RefreshDependentsOfIds(changedIds)
     }
+}
+
+// Tag every node of a resolved base with its origin. First-writer-wins so a node
+// reached first via a direct open-producer binding keeps that (live-source)
+// origin over a later published-diamond reach.
+function tagOrigin(originOf: OriginMap, doc: TodlDocument, origin: WikiOrigin): void
+{
+    for (const n of doc.nodes) if (!originOf.has(n.id)) originOf.set(n.id, origin)
 }
 
 export default WorkspaceBaseResolver

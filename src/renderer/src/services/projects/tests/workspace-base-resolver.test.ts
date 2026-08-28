@@ -9,6 +9,7 @@ import { META_MODELS_BACKEND_ID } from '../../../modules/meta-model/services/met
 import { LIBRARIES_BACKEND_ID } from '../../../modules/library/services/libraries-backend.js'
 import { ProjectExplorerService } from '../../../modules/project-explorer/services/project-explorer-service.js'
 import { TodlLanguageClient } from '../../todl/todl-language-client.js'
+import { WikiOriginKind } from '../wiki-origin.js'
 import { PROJECT_MANIFEST_FILENAME, ProducerKind, type IProjectFactory, type IProducerProjectFactory } from '../project-factory.js'
 import { Project, ProjectNode } from '../project.js'
 import { OpenProject } from '../open-project.js'
@@ -69,10 +70,12 @@ test('prefers an open producer\'s live document over the published artifact', as
     await consumer.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify({ type: 'architecture', metaModel: { id: 'ea', version: '0.1.0' } }))
 
     const resolver = new WorkspaceBaseResolver(provider)
-    const { bases, problems } = await resolver.ResolveForStorage(consumer)
+    const { bases, problems, originOf } = await resolver.ResolveForStorage(consumer)
     expect(hasNode(bases, 'LiveConcept')).toBe(true)
     expect(hasNode(bases, 'PublishedConcept')).toBe(false)
     expect(problems).toEqual([])
+    // Provenance: a live open producer's concepts are open-source.
+    expect(originOf.get('LiveConcept')?.kind).toBe(WikiOriginKind.OpenProject)
 })
 
 test('falls back to the published artifact when the producer is not open', async () => {
@@ -82,8 +85,12 @@ test('falls back to the published artifact when the producer is not open', async
     await consumer.WriteText(PROJECT_MANIFEST_FILENAME, JSON.stringify({ type: 'architecture', metaModel: { id: 'ea', version: '0.1.0' } }))
 
     const resolver = new WorkspaceBaseResolver(provider)
-    const { bases } = await resolver.ResolveForStorage(consumer)
+    const { bases, originOf } = await resolver.ResolveForStorage(consumer)
     expect(hasNode(bases, 'PublishedConcept')).toBe(true)
+    // Provenance: a published concept is tagged with its package coordinates.
+    expect(originOf.get('PublishedConcept')).toEqual({
+        kind: WikiOriginKind.Package, backend: ProducerKind.MetaModel, id: 'ea', version: '0.1.0',
+    })
 })
 
 test('an id match on a different version uses local and notes it in problems', async () => {

@@ -140,7 +140,7 @@ export class ArchModelToolboxContributor extends ServiceBase
         for (const item of modelItems) page.Items.Add(item)
         // Generic drawing tools (container, text, callout) live on the framework's
         // "Callouts, Text & Containers" page (ensureToolboxDefaults), not here.
-        this.markWiki(modelItems)
+        this.markWiki(modelItems, model.repository())
 
         // A "Scenarios" page lists the in-scope scenarios; dropping one
         // materializes its whole flow. Removed when there are none in scope.
@@ -149,23 +149,23 @@ export class ArchModelToolboxContributor extends ServiceBase
             const spage = repo.EnsurePage(SCENARIO_PAGE_ID, scenarioPageTitle(model))
             spage.Items.Clear()
             for (const item of scenarioItems) spage.Items.Add(item)
-            this.markWiki(scenarioItems)
+            this.markWiki(scenarioItems, model.repository())
         } else {
             repo.RemovePage(SCENARIO_PAGE_ID)
         }
     }
 
-    // Asynchronously flag which tiles have an openable wiki page (→ their
-    // "Open Wiki" menu item shows). A stale-item guard keeps a late resolve from
-    // writing onto a tile whose concept changed under a concurrent refresh.
-    private markWiki(items: readonly ArchToolboxItem[]): void
+    // Flag which tiles have an openable wiki page (→ their "Open Wiki" menu item
+    // shows). A synchronous `repo.resolve('X@wiki')` off the loaded model — no
+    // filesystem, no source recompile — so rebuilding the toolbox on a model change
+    // (a scenario drop) costs a map lookup per tile, not a full model recompile.
+    private markWiki(items: readonly ArchToolboxItem[], repo: Repository): void
     {
         const wiki = this.Provider.get(WikiService.Key)
         if (wiki === undefined) return
         for (const it of items) {
-            const concept = it.Concept
-            if (concept.length === 0) continue
-            void wiki.hasWiki(concept).then((h) => { if (it.Concept === concept) it.HasWiki = h })
+            if (it.Concept.length === 0) continue
+            it.HasWiki = wiki.hasWikiIn(repo, it.Concept)
         }
     }
 
