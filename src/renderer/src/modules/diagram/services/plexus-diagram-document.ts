@@ -1,9 +1,9 @@
 import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, type CommandDefinition, type DiagramStorage, type Diagram } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument, DialogService, type CommandDefinition, type DiagramStorage, type Diagram } from '@pragmatic-lab/mural/framework'
 import { DiagramCommandExtensionKey } from './diagram-command-extension.js'
 import { FileDiagramStorage } from '../persistence/file-diagram-storage.js'
 import { attachMediaDrop, attachMediaPaste, type MediaDropDeps } from '../media/media-drop-handler.js'
-import { LargeFileChoice } from '../media/media-storage.js'
+import { makeLargeFilePrompt } from '../media/prompt-large-file.js'
 
 // The `.diagram` document used across Plexus: a DiagramDocument that additionally
 // routes app-contributed toolbar commands. When the shell dispatches a command
@@ -47,8 +47,7 @@ export class PlexusDiagramDocument extends DiagramDocument
         if (!(store instanceof FileDiagramStorage)) return undefined
         return {
             storage: store.ProjectStorage,
-            // Default until the large-file modal is wired (Task 9): embed the copy.
-            promptLargeFile: async () => LargeFileChoice.Embed,
+            promptLargeFile: makeLargeFilePrompt(this.provider.get(DialogService.Key)),
             newId: () => `media-${crypto.randomUUID()}`,
         }
     }
