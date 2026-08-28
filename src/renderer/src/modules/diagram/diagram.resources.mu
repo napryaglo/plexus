@@ -314,6 +314,26 @@ resources DiagramResources {
               Command = $ActiveView.DistributeVerticalCommand,
               Icon    = Shape [ Geometry = @distributeVertical, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
         MenuSeparator
+        // Z-order — reorder the selected shape(s) within the figures layer. Each
+        // self-disables with no figure selected (the Diagram command's CanExecute).
+        // Also on Ctrl+] / Ctrl+[ (+Shift for front / back).
+        MenuItem
+            [ Header  = "Bring to Front",
+              Command = $ActiveView.BringToFrontCommand,
+              Icon    = Shape [ Geometry = @bringToFront, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuItem
+            [ Header  = "Bring Forward",
+              Command = $ActiveView.BringForwardCommand,
+              Icon    = Shape [ Geometry = @bringForward, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuItem
+            [ Header  = "Send Backward",
+              Command = $ActiveView.SendBackwardCommand,
+              Icon    = Shape [ Geometry = @sendBackward, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuItem
+            [ Header  = "Send to Back",
+              Command = $ActiveView.SendToBackCommand,
+              Icon    = Shape [ Geometry = @sendToBack, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuSeparator
         MenuItem
             [ Header           = "Format Shape",
               Command          = $service(PanelDockService).AddPanelCommand,
