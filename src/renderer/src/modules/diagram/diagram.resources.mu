@@ -14,6 +14,7 @@ import LayoutPipelineService from "./layout/layout-pipeline-service.js"
 import DropCandidateChooserService from "../architecture-projects/services/drop-candidate-chooser-service.js"
 import ArchNodeVM from "../architecture-projects/services/arch-node-vm.js"
 import MediaNodeVM from "./media/media-node-vm.js"
+import MediaOpenBehavior from "./media/media-open-behavior.js"
 import ArchTitleEditBehavior from "../architecture-projects/behaviors/arch-title-edit-behavior.js"
 import ZoomPercent from "./services/diagram-zoom-percent.js"
 
@@ -492,6 +493,7 @@ resources DiagramResources {
     // invisible). Node geometry rides the document visuals like every other node.
     DataTemplate [DataType = MediaNodeVM] {
         Grid x:name="PART_MediaRoot" {
+            .Behaviors: { MediaOpenBehavior }
             Image x:name="PART_Image"
                 [ Source     = $Bitmap,
                   Stretch    = Uniform,

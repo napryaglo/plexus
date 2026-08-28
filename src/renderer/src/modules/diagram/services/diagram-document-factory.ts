@@ -5,6 +5,10 @@ import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../ser
 import type { IStorage } from '../../../services/storage/storage.js'
 import { FileDiagramStorage } from '../persistence/file-diagram-storage.js'
 import { PlexusDiagramDocument } from './plexus-diagram-document.js'
+// Side-effect import: registers the `media` node serializer at module load so a
+// diagram containing media nodes restores them (mirrors the arch serializer).
+import '../media/media-node-serializer.js'
+import { reloadMediaBitmaps } from '../media/media-drop-handler.js'
 
 // The `.diagram` editor: a diagram file is a DiagramDocument persisted through
 // mural's native Save()/Load() over a FileDiagramStorage (the full scene
@@ -24,6 +28,9 @@ export class DiagramDocumentFactory extends ServiceBase implements IDocumentFact
         const store = new FileDiagramStorage(path, storage, text)
         const doc = new PlexusDiagramDocument(store, this.Provider)
         doc.Load()
+        // Restore image bitmaps for any media nodes the load rebuilt (deserialize
+        // recreates the VM but not its resolved BitmapImage).
+        await reloadMediaBitmaps(doc, storage)
         doc.Title = basename(path)
         return doc
     }
