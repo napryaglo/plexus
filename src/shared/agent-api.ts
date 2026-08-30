@@ -225,6 +225,11 @@ export type AgentEvent =
 // wrapped SessionStartedEvent additionally carries the CLI's id in `Event.SessionId`.
 export interface TaggedAgentEvent { SessionId: string; Event: AgentEvent }
 
+// A project's declared .claude/ capabilities, discovered by the provider.
+export enum AgentSkillKind { Agent = 'agent', Skill = 'skill' }
+export interface CatalogItem { kind: AgentSkillKind; name: string; description: string }
+export interface ProjectCatalog { agents: CatalogItem[]; skills: CatalogItem[] }
+
 // The low-level bridge exposed on window.api.agent. camelCase verbs mark the raw
 // IPC surface; the renderer's AgentService is the PascalCase wrapper. onEvent
 // subscribes to the push channel and returns an unsubscribe function.
