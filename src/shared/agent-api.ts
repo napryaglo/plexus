@@ -28,6 +28,10 @@ export enum AgentChannel
     ListApprovalRules = 'agent:list-approval-rules',
     // renderer→main: drop one persistent approval rule for a project.
     RevokeApprovalRule = 'agent:revoke-approval-rule',
+    // renderer→main: dispose one session's subprocess.
+    CloseSession = 'agent:close-session',
+    // renderer→main query: does the active provider support resuming AI context?
+    IsResumable = 'agent:is-resumable',
 }
 
 export enum AgentEventKind
@@ -216,16 +220,27 @@ export type AgentEvent =
     | TurnCompleteEvent
     | AgentErrorEvent
 
+// A pushed agent event tagged with the Plexus conversation it belongs to. NB:
+// `SessionId` here is Plexus's own conversation id (see AgentSessionManager); a
+// wrapped SessionStartedEvent additionally carries the CLI's id in `Event.SessionId`.
+export interface TaggedAgentEvent { SessionId: string; Event: AgentEvent }
+
 // The low-level bridge exposed on window.api.agent. camelCase verbs mark the raw
 // IPC surface; the renderer's AgentService is the PascalCase wrapper. onEvent
 // subscribes to the push channel and returns an unsubscribe function.
 export interface IAgentApi
 {
-    startSession(workingDirectory: string, addDirs: readonly string[]): Promise<void>;
+    // sessionId addresses one conversation; resumeToken (optional) resumes a stored
+    // one's AI context on the first new turn.
+    startSession(sessionId: string, workingDirectory: string, addDirs: readonly string[], resumeToken?: string): Promise<void>;
+    // Dispose one conversation's subprocess.
+    closeSession(sessionId: string): Promise<void>;
     // The renderer supplies the working directory + extra dirs each turn; a turn
-    // lazily starts (or re-targets) the session (see AgentSession).
-    sendTurn(workingDirectory: string, addDirs: readonly string[], text: string): Promise<void>;
-    abort(): Promise<void>;
+    // lazily starts (or re-targets) the addressed session (see AgentSession).
+    sendTurn(sessionId: string, workingDirectory: string, addDirs: readonly string[], text: string): Promise<void>;
+    abort(sessionId: string): Promise<void>;
+    // Whether the active provider can resume AI context (gates persistence).
+    isResumable(): Promise<boolean>;
     // Reply to a pending AskUserQuestion card; unblocks the agent's tool call.
     answerQuestion(answer: QuestionAnswer): Promise<void>;
     // The renderer's summary for a pending refresh_project tool call.
@@ -240,5 +255,5 @@ export interface IAgentApi
     listApprovalRules(projectKey: string): Promise<ApprovalRule[]>;
     // Drop one persistent approval rule for a project.
     revokeApprovalRule(projectKey: string, rule: ApprovalRule): Promise<void>;
-    onEvent(handler: (event: AgentEvent) => void): () => void;
+    onEvent(handler: (msg: TaggedAgentEvent) => void): () => void;
 }
