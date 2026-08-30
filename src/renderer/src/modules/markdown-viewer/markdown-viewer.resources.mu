@@ -8,7 +8,9 @@ import MarkdownDocument from "./markdown-document.js"
 
 resources MarkdownViewerResources {
     DataTemplate [DataType = MarkdownDocument] {
-        ScrollViewer {
+        // Vertical scroll only — the document wraps to the viewport width instead of
+        // scrolling sideways.
+        ScrollViewer [ HorizontalScrollEnabled = false ] {
             Border [ Padding = (20) ] {
                 RichTextBlock [ Document = $Document, Foreground = @OnSurface ]
             }
