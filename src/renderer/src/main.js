@@ -199,8 +199,11 @@ try {
     if (chats !== undefined) {
         await chats.RestoreSession()
         chats.NewConversation()
-        // Dev-only hook for the e2e smoke: reach the manager from the page.
+        // Dev-only hooks for the e2e smoke: reach the manager from the page, and
+        // launch a synthetic agent/skill run (no real .claude fixture needed).
         globalThis.__chats = chats
+        globalThis.__runAgent = () => chats.RunAgentSkill(
+            { kind: 'skill', name: 'demo-skill', description: '' }, '/tmp/x', 'Demo')
     }
     // Dev-only: a Card Gallery tab to preview the agent card templates without
     // driving the agent. Never seeded in packaged builds.
