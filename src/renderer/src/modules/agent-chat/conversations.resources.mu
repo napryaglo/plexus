@@ -11,6 +11,7 @@
 import ChatSessionsService from "./services/chat-sessions-service.js"
 import ChatSession from "./services/chat-session.js"
 import StoredConversationRow from "./services/stored-conversation-row.js"
+import ApprovalRulesVM from "./services/approval-rules.js"
 import EditingToLabelVisibility from "../../services/projects/project-node-icon.js"
 
 resources ConversationsResources {
@@ -68,6 +69,16 @@ resources ConversationsResources {
                         TextBox [ Text = $SearchText, Variant = Plain, VerticalAlignment = Center,
                                   SelectionBrush = @TextSelectionBrush ]
                     }
+                }
+            }
+
+            // Workspace-shared approved tools — one button that pops the list (the
+            // persistent tool-approval rules for the agent cwd) in a modal dialog.
+            Button [ DockPanel.Dock = Top, Variant = Text, Command = $OpenApprovedToolsCommand,
+                     HorizontalAlignment = Left, Margin = (0,0,0,8) ] {
+                StackPanel [ Orientation = Horizontal, VerticalAlignment = Center ] {
+                    Shape [ Geometry = @Shield, Fill = @OnSurfaceVariant, Width = 16, Height = 16, VerticalAlignment = Center, Margin = (0,0,6,0) ]
+                    TextBlock [ Text = "Approved tools", Style = @BodyMedium, Foreground = @OnSurfaceVariant, VerticalAlignment = Center ]
                 }
             }
 
@@ -134,6 +145,20 @@ resources ConversationsResources {
                     }
                 }
             }
+        }
+    }
+
+    // The "Approved tools" dialog body (DialogService supplies the window chrome +
+    // title). The list of persistent tool-approval rules ($Rules, each rendered by
+    // the app-global DataTemplate[ApprovalRuleRow] with its Revoke), or an empty
+    // state when the workspace has granted none yet. Revoking a row refreshes in
+    // place. Scrim-click dismisses (DismissOnScrimClick).
+    DataTemplate [ DataType = ApprovalRulesVM ] {
+        StackPanel [ Orientation = Vertical, HorizontalAlignment = Stretch ] {
+            ItemsControl [ ItemsSource = $Rules, ItemsPanel = @VerticalStackPanel, Visibility = $HasRules << ToVisibility ]
+            TextBlock [ Text = "No tools approved yet. When you allow a tool during a chat, it appears here.",
+                        Style = @BodyMedium, Foreground = @OnSurfaceVariant, TextWrapping = Wrap,
+                        Visibility = $HasRules << EditingToLabelVisibility ]
         }
     }
 }

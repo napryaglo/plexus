@@ -28,6 +28,8 @@ resources PlexusIcons {
     include "icons/conversations.svg"            as Conversations
     include "icons/search.svg"                   as Search
     include "icons/edit.svg"                     as Edit
+    // Approved-tools (persistent tool-approval rules) dialog affordance.
+    include "icons/shield.svg"                   as Shield
 
     // Project Explorer command-bar glyphs (Open / New / New File / Save / Publish).
     include "icons/folder.svg"                   as Folder

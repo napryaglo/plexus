@@ -54,3 +54,9 @@ test('the session manager filters by search and renames a conversation inline', 
     expect(r.visibleAfter).toBeGreaterThanOrEqual(2)
     expect(appErrors(L.errors), appErrors(L.errors).join('\n')).toEqual([])
 })
+
+test('the Approved tools button opens its dialog without error', async () => {
+    await L.win.evaluate(() => { globalThis.__chats.OpenApprovedToolsCommand.Execute(undefined) })
+    await L.win.waitForTimeout(300)   // let the refresh + dialog render settle
+    expect(appErrors(L.errors), appErrors(L.errors).join('\n')).toEqual([])
+})

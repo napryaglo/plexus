@@ -31,13 +31,9 @@ resources AgentChatResources {
                     on KeyDown { InvokeCommand [ Command = $SubmitCommand ] }
                 }
             }
-            // Approved tools — the current project's persistent approval rules, each
-            // with a Revoke. Pinned to the top, shown only when the project has rules.
-            StackPanel [ DockPanel.Dock = Top, Orientation = Vertical,
-                         Visibility = $Approvals.HasRules << ToVisibility, Margin = (0,0,0,8) ] {
-                TextBlock [ Style = @LabelSmall, Text = "APPROVED TOOLS", Foreground = @OnSurfaceVariant, Margin = (0,0,0,4), TextWrapping = Wrap ]
-                ItemsControl [ ItemsSource = $Approvals.Rules, ItemsPanel = @VerticalStackPanel ]
-            }
+            // (The workspace-shared "Approved tools" list moved out of the per-chat
+            // panel to a single button in the Conversations panel — it's one list
+            // scoped to the agent cwd, so it no longer belongs inside every chat.)
             // Input row pinned to the bottom. Disabled ($CanInput = false) while a
             // question card is awaiting an answer — the user must resolve it first.
             DockPanel [ DockPanel.Dock = Bottom, LastChildFill = true, Margin = (0,8,0,0) ] {

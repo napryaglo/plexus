@@ -7,7 +7,7 @@ import {
     MetaData, MuralBase, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
-import { PanelDockService } from '@pragmatic-lab/mural/framework'
+import { DialogService, PanelDockService } from '@pragmatic-lab/mural/framework'
 import {
     AgentEventKind, AgentSkillKind,
     type AgentEvent, type CatalogItem, type CreateProjectRequest, type IAgentApi,
@@ -48,6 +48,11 @@ export class ChatSessionsService extends ServiceBase
         ChatSessionsService, 'ActiveChat', undefined, MetaData.None)
     public static readonly NewConversationCommandKey = MuralBase.RegisterProperty<ICommand>(
         ChatSessionsService, 'NewConversationCommand', undefined as unknown as ICommand, MetaData.None)
+    // Opens the shared workspace approved-tools list (the persistent approval rules)
+    // in a modal dialog — one list scoped to the agent cwd, so it lives here at the
+    // panel level rather than duplicated inside every conversation.
+    public static readonly OpenApprovedToolsCommandKey = MuralBase.RegisterProperty<ICommand>(
+        ChatSessionsService, 'OpenApprovedToolsCommand', undefined as unknown as ICommand, MetaData.None)
     // The search box (two-way) and the filtered views the nav panel actually binds.
     // VisibleOpen/VisibleStored are rebuilt from Open/Stored whenever the query or
     // either master list changes — the master collections stay unfiltered.
@@ -83,6 +88,7 @@ export class ChatSessionsService extends ServiceBase
         this.set_property_value(ChatSessionsService.VisibleOpenKey, new ObservableCollection<ChatSession>())
         this.set_property_value(ChatSessionsService.VisibleStoredKey, new ObservableCollection<StoredConversationRow>())
         this.set_property_value(ChatSessionsService.NewConversationCommandKey, new RelayCommand(() => { this.NewConversation() }))
+        this.set_property_value(ChatSessionsService.OpenApprovedToolsCommandKey, new RelayCommand(() => { void this.openApprovedTools() }))
 
         // Keep the filtered views in step with the query and either master list.
         this.Open.Subscribe(() => this.rebuildVisible())
@@ -116,6 +122,7 @@ export class ChatSessionsService extends ServiceBase
     public get VisibleStored(): ObservableCollection<StoredConversationRow> { return this.get_property_value(ChatSessionsService.VisibleStoredKey) }
     public get ActiveChat(): ChatSession | undefined { return this.get_property_value(ChatSessionsService.ActiveChatKey) }
     public get NewConversationCommand(): ICommand { return this.get_property_value(ChatSessionsService.NewConversationCommandKey) }
+    public get OpenApprovedToolsCommand(): ICommand { return this.get_property_value(ChatSessionsService.OpenApprovedToolsCommandKey) }
     public get SearchText(): string { return this.get_property_value(ChatSessionsService.SearchTextKey) }
     public set SearchText(value: string) { this.set_property_value(ChatSessionsService.SearchTextKey, value) }
     public get SearchEmpty(): boolean { return this.get_property_value(ChatSessionsService.SearchEmptyKey) }
@@ -138,6 +145,16 @@ export class ChatSessionsService extends ServiceBase
 
     // Mint a brand-new empty conversation, start its backend session, and show it.
     public NewConversation(): ChatSession { return this.newSession(`Chat ${this.Open.Count + 1}`) }
+
+    // Show the shared approved-tools list (persistent approval rules for the current
+    // agent cwd) in a modal dialog. Refresh first so it reflects the latest grants;
+    // scrim-click dismisses. Revoke on a row refreshes the list in place.
+    private async openApprovedTools(): Promise<void>
+    {
+        await this.approvals.Refresh()
+        const dialogs = this.Provider.get(DialogService.Key)
+        await dialogs?.Show({ Title: 'Approved tools', Content: this.approvals, Width: 420, DismissOnScrimClick: true })
+    }
 
     // Create a titled conversation, start its backend session, add it as a tab, and
     // make it active.

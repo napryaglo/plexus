@@ -1,6 +1,6 @@
 import { test, expect, beforeEach, afterEach } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { PanelDockService } from '@pragmatic-lab/mural/framework'
+import { DialogService, PanelDockService } from '@pragmatic-lab/mural/framework'
 import { AgentEventKind, AgentSkillKind, type CatalogItem, type IAgentApi, type TaggedAgentEvent } from '../../../../../../shared/agent-api.js'
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
 import { OpenProjectsStore } from '../../../../services/projects/open-projects-store.js'
@@ -61,8 +61,12 @@ function makeService(store = fakeStore(['/A']), stored: Array<{ Id: string; Titl
     provider.registerInstance(BackgroundWorkService.Key, {
         submit: (t: { title: string; open?: () => void }) => { submitted.push({ title: t.title, open: t.open }); return { handle: {}, done: Promise.resolve() } },
     } as unknown as BackgroundWorkService)
+    const dialogs: Array<{ Title?: string; Content: unknown }> = []
+    provider.registerInstance(DialogService.Key, {
+        Show: (o: { Title?: string; Content: unknown }) => { dialogs.push(o); return Promise.resolve(undefined) }, Close: () => {},
+    } as unknown as DialogService)
     const svc = new ChatSessionsService(provider)
-    return { svc, provider, upserts, removes, submitted, dock: provider.getRequired(PanelDockService.Key) }
+    return { svc, provider, upserts, removes, submitted, dialogs, dock: provider.getRequired(PanelDockService.Key) }
 }
 
 test('NewConversation starts a session and adds a dock tab', () => {
@@ -166,6 +170,15 @@ test('Rename retitles a live conversation and persists the new title', async () 
     await svc.Rename(chat.Id, 'Renamed chat')
     expect(chat.Title).toBe('Renamed chat')
     expect(upserts.some((u) => u.Id === chat.Id && u.Title === 'Renamed chat')).toBe(true)
+})
+
+test('OpenApprovedToolsCommand shows the shared approved-tools list in a dialog', async () => {
+    const { svc, dialogs } = makeService()
+    svc.OpenApprovedToolsCommand.Execute(undefined)
+    await Promise.resolve(); await Promise.resolve()   // let the refresh + Show settle
+    expect(dialogs).toHaveLength(1)
+    expect(dialogs[0].Title).toBe('Approved tools')
+    expect(dialogs[0].Content).toBeDefined()
 })
 
 test('RunAgentSkill opens a titled conversation and submits a background task', () => {
