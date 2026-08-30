@@ -44,9 +44,12 @@ resources ConversationsResources {
 
     DataTemplate [ DataType = ChatSessionsService ] {
         DockPanel [ LastChildFill = true, Margin = (8,8,8,8) ] {
-            // New session — pinned to the top.
-            PanelButton [ DockPanel.Dock = Top, Command = $NewConversationCommand, HorizontalAlignment = Stretch, Margin = (0,0,0,8) ] {
-                TextBlock [ Text = "＋ New session", Style = @LabelLarge, Foreground = @OnSurface, TextWrapping = Wrap ]
+            // New session — pinned to the top. A full-width Tonal button (sizes its
+            // height to the label; PanelButton is a fixed-size IconButton that clipped
+            // the text).
+            Button [ DockPanel.Dock = Top, Variant = Tonal, Command = $NewConversationCommand,
+                     HorizontalAlignment = Stretch, Margin = (0,0,0,8) ] {
+                TextBlock [ Text = "＋ New session", Style = @LabelLarge, TextWrapping = Wrap, HorizontalAlignment = Center ]
             }
 
             // Search box — a magnifier + a TextBox two-waying $SearchText, with a
@@ -56,7 +59,10 @@ resources ConversationsResources {
                 DockPanel [ LastChildFill = true ] {
                     Shape [ DockPanel.Dock = Left, Geometry = @Search, Fill = @OnSurfaceVariant,
                             Width = 16, Height = 16, VerticalAlignment = Center, Margin = (0,0,6,0) ]
+                    // Auto row: hug the field height. Without it the Grid falls back to a
+                    // single Star row and greedily fills the pane's remaining height.
                     Grid {
+                        RowDefinitions { RowDefinition [ Height = GridLength.Auto ] }
                         TextBlock [ Text = "Search sessions…", Style = @BodyMedium, Foreground = @OnSurfaceVariant,
                                     VerticalAlignment = Center, Visibility = $SearchEmpty << ToVisibility ]
                         TextBox [ Text = $SearchText, Variant = Plain, VerticalAlignment = Center,
@@ -92,6 +98,7 @@ resources ConversationsResources {
             }
             Button [ Template = @ConversationRowButton, Command = $RevealCommand, HorizontalAlignment = Stretch ] {
                 Grid {
+                    RowDefinitions { RowDefinition [ Height = GridLength.Auto ] }
                     TextBlock [ Text = $Title, Style = @BodyMedium, Foreground = @OnSurface, VerticalAlignment = Center,
                                 TextWrapping = Wrap, Visibility = $IsEditing << EditingToLabelVisibility ]
                     Border [ Style = @RenameKeyStyle, Visibility = $IsEditing << ToVisibility ] {
@@ -118,6 +125,7 @@ resources ConversationsResources {
             }
             Button [ Template = @ConversationRowButton, Command = $OpenCommand, HorizontalAlignment = Stretch ] {
                 Grid {
+                    RowDefinitions { RowDefinition [ Height = GridLength.Auto ] }
                     TextBlock [ Text = $Title, Style = @BodyMedium, Foreground = @OnSurface, VerticalAlignment = Center,
                                 TextWrapping = Wrap, Visibility = $IsEditing << EditingToLabelVisibility ]
                     Border [ Style = @RenameKeyStyle, Visibility = $IsEditing << ToVisibility ] {
