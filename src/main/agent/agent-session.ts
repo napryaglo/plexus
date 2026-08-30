@@ -5,22 +5,36 @@
 // every provider event to the sink the IPC layer supplies.
 import type { AiProviderSession } from './ai-provider.js'
 import type { AiProviderService } from './ai-provider-service.js'
-import type { AgentEvent } from '../../shared/agent-api.js'
+import { AgentEventKind, type AgentEvent } from '../../shared/agent-api.js'
 
 export class AgentSession
 {
     private current: AiProviderSession | null = null
     private target: { cwd: string; addDirs: readonly string[] } | null = null
+    private resumeToken: string | undefined = undefined
 
     constructor(
         private readonly providers: AiProviderService,
+        private readonly sessionId: string,
         private readonly emit: (event: AgentEvent) => void,
     ) {}
 
-    public start(workingDirectory: string, addDirs: readonly string[]): void
+    // The captured CLI session id, usable to resume this conversation later
+    // (undefined until the first SessionStarted event arrives).
+    public get ResumeToken(): string | undefined { return this.resumeToken }
+
+    public start(workingDirectory: string, addDirs: readonly string[], resumeToken?: string): void
     {
         this.current?.dispose()
-        this.current = this.providers.active().start(workingDirectory, addDirs, this.emit)
+        if (resumeToken !== undefined) this.resumeToken = resumeToken
+        this.current = this.providers.active().start(
+            this.sessionId, workingDirectory, addDirs,
+            (event) => {
+                if (event.Kind === AgentEventKind.SessionStarted) this.resumeToken = event.SessionId
+                this.emit(event)
+            },
+            this.resumeToken,
+        )
         this.target = { cwd: workingDirectory, addDirs: [...addDirs] }
     }
 

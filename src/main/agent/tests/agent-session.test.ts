@@ -7,11 +7,16 @@ import { AgentEventKind, type AgentEvent } from '../../../shared/agent-api.js'
 // A provider that records each started session so the test can drive events and
 // observe routing.
 function recordingProvider() {
-    const started: Array<{ cwd: string; addDirs: string[]; onEvent: (e: AgentEvent) => void; sent: string[]; disposed: boolean; aborted: boolean }> = []
+    const started: Array<{
+        sessionId: string; cwd: string; addDirs: string[]; resumeToken: string | undefined
+        onEvent: (e: AgentEvent) => void; sent: string[]; disposed: boolean; aborted: boolean
+    }> = []
     const provider: IAiProvider = {
         Id: 'rec',
-        start: (cwd, addDirs, onEvent): AiProviderSession => {
-            const rec = { cwd, addDirs: [...addDirs], onEvent, sent: [] as string[], disposed: false, aborted: false }
+        Resumable: true,
+        start: (sessionId, cwd, addDirs, onEvent, resumeToken): AiProviderSession => {
+            const rec = { sessionId, cwd, addDirs: [...addDirs], resumeToken, onEvent,
+                          sent: [] as string[], disposed: false, aborted: false }
             started.push(rec)
             return {
                 send: (t) => rec.sent.push(t),
@@ -29,7 +34,7 @@ function serviceWith(provider: IAiProvider): AiProviderService {
 
 test('send lazily starts a session at the cwd and forwards the turn', () => {
     const { provider, started } = recordingProvider()
-    const session = new AgentSession(serviceWith(provider), () => {})
+    const session = new AgentSession(serviceWith(provider), 'sess-1', () => {})
     session.send('/proj', [], 'hello')
     expect(started).toHaveLength(1)
     expect(started[0].cwd).toBe('/proj')
@@ -39,7 +44,7 @@ test('send lazily starts a session at the cwd and forwards the turn', () => {
 test('provider events are relayed to the emit sink', () => {
     const { provider, started } = recordingProvider()
     const emitted: AgentEvent[] = []
-    const session = new AgentSession(serviceWith(provider), (e) => emitted.push(e))
+    const session = new AgentSession(serviceWith(provider), 'sess-1', (e) => emitted.push(e))
     session.send('/proj', [], 'hi')
     started[0].onEvent({ Kind: AgentEventKind.TurnComplete })
     expect(emitted).toEqual([{ Kind: AgentEventKind.TurnComplete }])
@@ -47,7 +52,7 @@ test('provider events are relayed to the emit sink', () => {
 
 test('an explicit start disposes the previous session', () => {
     const { provider, started } = recordingProvider()
-    const session = new AgentSession(serviceWith(provider), () => {})
+    const session = new AgentSession(serviceWith(provider), 'sess-1', () => {})
     session.start('/a', [])
     session.start('/b', [])
     expect(started[0].disposed).toBe(true)
@@ -56,7 +61,7 @@ test('an explicit start disposes the previous session', () => {
 
 test('abort forwards to the current session', () => {
     const { provider, started } = recordingProvider()
-    const session = new AgentSession(serviceWith(provider), () => {})
+    const session = new AgentSession(serviceWith(provider), 'sess-1', () => {})
     session.start('/a', [])
     session.abort()
     expect(started[0].aborted).toBe(true)
@@ -64,7 +69,7 @@ test('abort forwards to the current session', () => {
 
 test('send reuses the session when the (cwd, addDirs) target is unchanged', () => {
     const { provider, started } = recordingProvider()
-    const session = new AgentSession(serviceWith(provider), () => {})
+    const session = new AgentSession(serviceWith(provider), 'sess-1', () => {})
     session.send('/proj', ['/lib'], 'one')
     session.send('/proj', ['/lib'], 'two')
     expect(started).toHaveLength(1)
@@ -73,7 +78,7 @@ test('send reuses the session when the (cwd, addDirs) target is unchanged', () =
 
 test('send restarts the session when the cwd changes', () => {
     const { provider, started } = recordingProvider()
-    const session = new AgentSession(serviceWith(provider), () => {})
+    const session = new AgentSession(serviceWith(provider), 'sess-1', () => {})
     session.send('/a', [], 'one')
     session.send('/b', [], 'two')
     expect(started).toHaveLength(2)
@@ -83,9 +88,30 @@ test('send restarts the session when the cwd changes', () => {
 
 test('send restarts the session when the addDirs set changes', () => {
     const { provider, started } = recordingProvider()
-    const session = new AgentSession(serviceWith(provider), () => {})
+    const session = new AgentSession(serviceWith(provider), 'sess-1', () => {})
     session.send('/proj', ['/lib-a'], 'one')
     session.send('/proj', ['/lib-a', '/lib-b'], 'two')
     expect(started).toHaveLength(2)
     expect(started[1].addDirs).toEqual(['/lib-a', '/lib-b'])
+})
+
+test('the session id is forwarded to the provider', () => {
+    const { provider, started } = recordingProvider()
+    new AgentSession(serviceWith(provider), 'sess-9', () => {}).start('/proj', [])
+    expect(started[0].sessionId).toBe('sess-9')
+})
+
+test('ResumeToken captures the CLI session id from SessionStarted', () => {
+    const { provider, started } = recordingProvider()
+    const session = new AgentSession(serviceWith(provider), 'sess-9', () => {})
+    session.start('/proj', [])
+    expect(session.ResumeToken).toBeUndefined()
+    started[0].onEvent({ Kind: AgentEventKind.SessionStarted, SessionId: 'cli-777' })
+    expect(session.ResumeToken).toBe('cli-777')
+})
+
+test('an explicit resume token is forwarded to the provider on start', () => {
+    const { provider, started } = recordingProvider()
+    new AgentSession(serviceWith(provider), 'sess-9', () => {}).start('/proj', [], 'cli-abc')
+    expect(started[0].resumeToken).toBe('cli-abc')
 })
