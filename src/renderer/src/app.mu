@@ -84,6 +84,14 @@ import OpenProjectsStore from "./services/projects/open-projects-store.js"
 // mirrors document.title. Replaces title-bar.ts's old imperative HTML-band sync.
 import TitleService from "./window/title-service.js"
 
+// Background work: a pluggable-executor manager that runs background operations
+// and surfaces each as a live entry in the status bar (progress, cancel, output
+// document). Root-registered so any service can submit; its status-bar dock is
+// contributed by BackgroundWorkModule and rendered by BackgroundWorkResources.
+import BackgroundWorkService from "./modules/background-work/services/background-work-service.js"
+import BackgroundWorkModule from "./modules/background-work/background-work.module.mu.js"
+import BackgroundWorkResources from "./modules/background-work/background-work.resources.mu.js"
+
 // The mural-painted app title bar (EditorShell.HeaderContent = @PlexusTitleBar):
 // a 32dp strip with the rail-coloured logo box + brand mark on the left and the
 // bound title text. Merged below; set on the shell root at the bottom.
@@ -192,6 +200,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // bindable Title DP; the mural header binds $service(TitleService).Title.
         // Eagerly resolved in main.js so document.title tracks from boot.
         TitleService
+        // Background-work manager — root-registered so any service can submit work;
+        // its status-bar dock binds $service(BackgroundWorkService). Eagerly
+        // resolved in main.js.
+        BackgroundWorkService
         // Storage backends, keyed by id; the Project Explorer resolves this to
         // build a project's rooted IStorage. Root singleton so every consumer
         // shares the same registration set.
@@ -312,6 +324,7 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         ProblemsModule
         CodeEditorModule
         MarkdownViewerModule
+        BackgroundWorkModule
     }
 
     resources: {
@@ -328,6 +341,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // The mural-painted app title bar (@PlexusTitleBar), set as the shell's
         // HeaderContent below.
         merge PlexusTitleBar
+
+        // Background-work status-bar dock (@BackgroundWorkDock) + task row + output
+        // document templates.
+        merge BackgroundWorkResources
 
         // Each service's view resources live with the service, merged app-global
         // here (see ./services/<service>/*.resources.mu).

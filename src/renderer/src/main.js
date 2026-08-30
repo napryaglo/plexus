@@ -22,6 +22,7 @@ import { attachZoomShortcuts } from './modules/diagram/behaviors/zoom-shortcuts.
 import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'
 import { attachTitleBar } from './window/title-bar.js'
 import { TitleService } from './window/title-service.js'
+import { BackgroundWorkService } from './modules/background-work/services/background-work-service.js'
 import { ProjectExplorerService } from './modules/project-explorer/services/project-explorer-service.js'
 import { WorkspaceRefreshService } from './services/workspace/workspace-refresh-service.js'
 import { FileWatchService } from './services/file-watch/file-watch-service.js'
@@ -82,6 +83,21 @@ try {
     // are live and document.title tracks from boot — even before the header view
     // first binds $service(TitleService).Title.
     app.Services.get(TitleService.Key)
+    // Background-work manager: construct now so the status-bar dock's binding
+    // resolves the same instance any submitter uses.
+    const bg = app.Services.get(BackgroundWorkService.Key)
+    // Dev-only demo hook for the e2e smoke: a 3-step fake task with progress + output.
+    if (bg !== undefined) {
+        globalThis.__bgDemo = () => bg.run('Demo task', async (ctx) => {
+            for (let i = 1; i <= 3; i++) {
+                ctx.throwIfCancelled()
+                ctx.log(`step ${i}/3`)
+                ctx.report(i / 3, `step ${i}/3`)
+                await new Promise((r) => setTimeout(r, 150))
+            }
+            return 'done'
+        })
+    }
     // Construct the workspace-refresh service now so it subscribes to agent
     // events before any turn runs (it isn't tied to a visible panel).
     app.Services.get(WorkspaceRefreshService.Key)
