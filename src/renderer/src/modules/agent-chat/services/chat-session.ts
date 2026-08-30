@@ -23,6 +23,11 @@ export interface ChatSessionCallbacks
     answerQuestion(sessionId: string, answer: QuestionAnswer): void
     answerToolApproval(sessionId: string, answer: ToolApprovalAnswer): void
     createProject(sessionId: string, req: CreateProjectRequest, reducer: TranscriptReducer): void
+    // Persist a title change (and keep the store in sync); close the whole session;
+    // focus this conversation's tab from the nav list.
+    rename(sessionId: string, title: string): void
+    close(sessionId: string): void
+    reveal(sessionId: string): void
 }
 
 export class ChatSession extends MuralBase implements IDockPanel
@@ -42,6 +47,18 @@ export class ChatSession extends MuralBase implements IDockPanel
         ChatSession, 'SubmitCommand', undefined as unknown as ICommand, MetaData.None)
     public static readonly ApprovalsKey = MuralBase.RegisterProperty<ApprovalRulesVM>(
         ChatSession, 'Approvals', undefined as unknown as ApprovalRulesVM, MetaData.None)
+    // Inline-rename state for the nav-panel row (IsEditing swaps a TextBox in for
+    // the title, EditTitle two-ways the draft — same shape as StoredConversationRow).
+    public static readonly IsEditingKey = MuralBase.RegisterProperty<boolean>(ChatSession, 'IsEditing', false, MetaData.None)
+    public static readonly EditTitleKey = MuralBase.RegisterProperty<string>(ChatSession, 'EditTitle', '', MetaData.None)
+    public static readonly BeginRenameCommandKey = MuralBase.RegisterProperty<ICommand>(
+        ChatSession, 'BeginRenameCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly RenameKeyCommandKey = MuralBase.RegisterProperty<ICommand>(
+        ChatSession, 'RenameKeyCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly CloseCommandKey = MuralBase.RegisterProperty<ICommand>(
+        ChatSession, 'CloseCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly RevealCommandKey = MuralBase.RegisterProperty<ICommand>(
+        ChatSession, 'RevealCommand', undefined as unknown as ICommand, MetaData.None)
 
     private readonly reducer = new TranscriptReducer()
     private readonly sessionId: string
@@ -61,6 +78,10 @@ export class ChatSession extends MuralBase implements IDockPanel
         this.set_property_value(ChatSession.SubmitCommandKey, new RelayCommand((arg) => {
             if ((arg as { Key?: unknown } | undefined)?.Key === Key.Return) this.send()
         }))
+        this.set_property_value(ChatSession.CloseCommandKey, new RelayCommand(() => this.callbacks.close(this.sessionId)))
+        this.set_property_value(ChatSession.RevealCommandKey, new RelayCommand(() => this.callbacks.reveal(this.sessionId)))
+        this.set_property_value(ChatSession.BeginRenameCommandKey, new RelayCommand(() => this.beginRename()))
+        this.set_property_value(ChatSession.RenameKeyCommandKey, new RelayCommand((arg) => this.onRenameKey(arg)))
 
         this.reducer.onAnswerSubmitted = (answer) => this.callbacks.answerQuestion(this.sessionId, answer)
         this.reducer.onToolApprovalSubmitted = (answer) => this.callbacks.answerToolApproval(this.sessionId, answer)
@@ -79,8 +100,42 @@ export class ChatSession extends MuralBase implements IDockPanel
     public get SubmitCommand(): ICommand { return this.get_property_value(ChatSession.SubmitCommandKey) }
     public get Approvals(): ApprovalRulesVM { return this.get_property_value(ChatSession.ApprovalsKey) }
     public get Reducer(): TranscriptReducer { return this.reducer }
+    public get IsEditing(): boolean { return this.get_property_value(ChatSession.IsEditingKey) }
+    public get EditTitle(): string { return this.get_property_value(ChatSession.EditTitleKey) }
+    public set EditTitle(value: string) { this.set_property_value(ChatSession.EditTitleKey, value) }
+    public get CloseCommand(): ICommand { return this.get_property_value(ChatSession.CloseCommandKey) }
+    public get RevealCommand(): ICommand { return this.get_property_value(ChatSession.RevealCommandKey) }
+    public get BeginRenameCommand(): ICommand { return this.get_property_value(ChatSession.BeginRenameCommandKey) }
+    public get RenameKeyCommand(): ICommand { return this.get_property_value(ChatSession.RenameKeyCommandKey) }
 
     public setStatus(text: string): void { this.set_property_value(ChatSession.StatusKey, text) }
+
+    // Set the tab title directly — used when a Stored row renames a conversation
+    // that is currently open, so the live tab reflects the new name.
+    public setTitle(title: string): void { this.set_property_value(ChatSession.TitleKey, title) }
+
+    private beginRename(): void
+    {
+        this.set_property_value(ChatSession.EditTitleKey, this.Title)
+        this.set_property_value(ChatSession.IsEditingKey, true)
+    }
+
+    // Return commits, Escape cancels — mirrors StoredConversationRow / SubmitCommand.
+    private onRenameKey(arg: unknown): void
+    {
+        const key = (arg as { Key?: unknown } | undefined)?.Key
+        if (key === Key.Return) this.commitRename()
+        else if (key === Key.Escape) this.set_property_value(ChatSession.IsEditingKey, false)
+    }
+
+    private commitRename(): void
+    {
+        this.set_property_value(ChatSession.IsEditingKey, false)
+        const next = this.EditTitle.trim()
+        if (next === '' || next === this.Title) return
+        this.setTitle(next)
+        this.callbacks.rename(this.sessionId, next)
+    }
 
     // Fold one already-routed agent event into this conversation. create_project is
     // delegated (its form needs the environment); everything else goes to the reducer.

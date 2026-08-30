@@ -34,3 +34,23 @@ test('two conversations open as independent tabs with independent transcripts', 
     expect(result.bCount).toBe(0)
     expect(appErrors(L.errors), appErrors(L.errors).join('\n')).toEqual([])
 })
+
+test('the session manager filters by search and renames a conversation inline', async () => {
+    const r = await L.win.evaluate(() => {
+        const chats = globalThis.__chats
+        const a = chats.NewConversation(); a.setTitle('ZZ Billing review')
+        chats.NewConversation().setTitle('ZZ Layout pass')
+        chats.SearchText = 'billing'
+        const filtered = chats.VisibleOpen.ToArray().map((c: { Title: string }) => c.Title)
+        chats.SearchText = ''
+        // Inline rename via the row commands ('Return' is the value of Key.Return).
+        a.BeginRenameCommand.Execute(undefined)
+        a.EditTitle = 'ZZ Renamed'
+        a.RenameKeyCommand.Execute({ Key: 'Return' })
+        return { filtered, renamed: a.Title, visibleAfter: chats.VisibleOpen.Count }
+    })
+    expect(r.filtered).toEqual(['ZZ Billing review'])
+    expect(r.renamed).toBe('ZZ Renamed')
+    expect(r.visibleAfter).toBeGreaterThanOrEqual(2)
+    expect(appErrors(L.errors), appErrors(L.errors).join('\n')).toEqual([])
+})

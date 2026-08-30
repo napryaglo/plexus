@@ -23,7 +23,7 @@ import { ApprovalRulesVM, type ApprovalRulesPort } from './approval-rules.js'
 import { ChatSession, type ChatSessionCallbacks } from './chat-session.js'
 import type { TranscriptReducer } from './transcript.js'
 import { ChatStore } from './chat-store.js'
-import { StoredConversationRow } from './stored-conversation-row.js'
+import { StoredConversationRow, type ConversationRowCallbacks } from './stored-conversation-row.js'
 import { serializeTranscript, rehydrateTranscript } from './transcript-serializer.js'
 
 // The first-turn text that invokes a catalog item. Skill → its slash command;
@@ -48,6 +48,18 @@ export class ChatSessionsService extends ServiceBase
         ChatSessionsService, 'ActiveChat', undefined, MetaData.None)
     public static readonly NewConversationCommandKey = MuralBase.RegisterProperty<ICommand>(
         ChatSessionsService, 'NewConversationCommand', undefined as unknown as ICommand, MetaData.None)
+    // The search box (two-way) and the filtered views the nav panel actually binds.
+    // VisibleOpen/VisibleStored are rebuilt from Open/Stored whenever the query or
+    // either master list changes — the master collections stay unfiltered.
+    public static readonly SearchTextKey = MuralBase.RegisterProperty<string>(
+        ChatSessionsService, 'SearchText', '', MetaData.None)
+    public static readonly VisibleOpenKey = MuralBase.RegisterProperty<ObservableCollection<ChatSession>>(
+        ChatSessionsService, 'VisibleOpen', undefined as unknown as ObservableCollection<ChatSession>, MetaData.None)
+    public static readonly VisibleStoredKey = MuralBase.RegisterProperty<ObservableCollection<StoredConversationRow>>(
+        ChatSessionsService, 'VisibleStored', undefined as unknown as ObservableCollection<StoredConversationRow>, MetaData.None)
+    // True while the search box is empty — drives the "Search sessions…" placeholder.
+    public static readonly SearchEmptyKey = MuralBase.RegisterProperty<boolean>(
+        ChatSessionsService, 'SearchEmpty', true, MetaData.None)
 
     private readonly agent: IAgentApi
     private readonly store: OpenProjectsStore
@@ -68,7 +80,17 @@ export class ChatSessionsService extends ServiceBase
 
         this.set_property_value(ChatSessionsService.OpenKey, new ObservableCollection<ChatSession>())
         this.set_property_value(ChatSessionsService.StoredKey, new ObservableCollection<StoredConversationRow>())
+        this.set_property_value(ChatSessionsService.VisibleOpenKey, new ObservableCollection<ChatSession>())
+        this.set_property_value(ChatSessionsService.VisibleStoredKey, new ObservableCollection<StoredConversationRow>())
         this.set_property_value(ChatSessionsService.NewConversationCommandKey, new RelayCommand(() => { this.NewConversation() }))
+
+        // Keep the filtered views in step with the query and either master list.
+        this.Open.Subscribe(() => this.rebuildVisible())
+        this.Stored.Subscribe(() => this.rebuildVisible())
+        this.AddPropertyChangedListener(ChatSessionsService.SearchTextKey, () => {
+            this.set_property_value(ChatSessionsService.SearchEmptyKey, this.SearchText.trim() === '')
+            this.rebuildVisible()
+        })
 
         // Shared persistent-approvals VM keyed to the current agent cwd — all
         // conversations target the same workspace, so they share one rules view.
@@ -90,8 +112,13 @@ export class ChatSessionsService extends ServiceBase
 
     public get Open(): ObservableCollection<ChatSession> { return this.get_property_value(ChatSessionsService.OpenKey) }
     public get Stored(): ObservableCollection<StoredConversationRow> { return this.get_property_value(ChatSessionsService.StoredKey) }
+    public get VisibleOpen(): ObservableCollection<ChatSession> { return this.get_property_value(ChatSessionsService.VisibleOpenKey) }
+    public get VisibleStored(): ObservableCollection<StoredConversationRow> { return this.get_property_value(ChatSessionsService.VisibleStoredKey) }
     public get ActiveChat(): ChatSession | undefined { return this.get_property_value(ChatSessionsService.ActiveChatKey) }
     public get NewConversationCommand(): ICommand { return this.get_property_value(ChatSessionsService.NewConversationCommandKey) }
+    public get SearchText(): string { return this.get_property_value(ChatSessionsService.SearchTextKey) }
+    public set SearchText(value: string) { this.set_property_value(ChatSessionsService.SearchTextKey, value) }
+    public get SearchEmpty(): boolean { return this.get_property_value(ChatSessionsService.SearchEmptyKey) }
 
     private get dock(): PanelDockService { return this.Provider.getRequired(PanelDockService.Key) }
     private get chatStore(): ChatStore { return this.Provider.getRequired(ChatStore.Key) }
@@ -103,6 +130,9 @@ export class ChatSessionsService extends ServiceBase
             answerQuestion: (_id, answer) => { void this.agent.answerQuestion(answer) },
             answerToolApproval: (_id, answer) => { void this.agent.answerToolApproval(answer) },
             createProject: (id, req, reducer) => { void this.handleCreateProject(id, req, reducer) },
+            rename: (id, title) => { void this.Rename(id, title) },
+            close: (id) => { const c = this.Open.ToArray().find((x) => x.Id === id); if (c !== undefined) this.Close(c) },
+            reveal: (id) => { void this.Reveal(id) },
         }
     }
 
@@ -186,28 +216,88 @@ export class ChatSessionsService extends ServiceBase
     public async RestoreSession(): Promise<void>
     {
         for (const rec of await this.chatStore.List())
-            this.Stored.Add(new StoredConversationRow(rec, (id) => { void this.Reveal(id) }))
+            this.Stored.Add(new StoredConversationRow(rec, this.rowCallbacks()))
+    }
+
+    // Row actions for the Stored list: reveal, rename (persist), delete.
+    private rowCallbacks(): ConversationRowCallbacks
+    {
+        return {
+            open: (id) => { void this.Reveal(id) },
+            rename: (id, title) => { void this.Rename(id, title) },
+            delete: (id) => { void this.DeleteConversation(id) },
+        }
+    }
+
+    // Retitle a conversation everywhere it appears: the live tab (if open), its
+    // Stored row (if listed), and the persisted record. Persists from whichever
+    // source carries the resume token + transcript — the live session or the stored
+    // record — so it never depends on re-reading the store. A no-op for unknown ids.
+    public async Rename(id: string, title: string): Promise<void>
+    {
+        const live = this.Open.ToArray().find((c) => c.Id === id)
+        if (live !== undefined && live.Title !== title) live.setTitle(title)
+        const row = this.Stored.ToArray().find((r) => r.Record.Id === id)
+        if (row !== undefined) row.Record.Title = title
+
+        const token = this.tokens.get(id)
+        if (live !== undefined && token !== undefined) await this.persist(live, token)
+        else if (row !== undefined) await this.chatStore.Upsert({ ...row.Record, Title: title, UpdatedAt: now() })
+        this.rebuildVisible()
+    }
+
+    // Delete a conversation: close it if live, drop its Stored row, and remove the
+    // persisted record. Permanent — the CLI session (if any) is also closed.
+    public async DeleteConversation(id: string): Promise<void>
+    {
+        const live = this.Open.ToArray().find((c) => c.Id === id)
+        if (live !== undefined) this.Close(live)
+        const row = this.Stored.ToArray().find((r) => r.Record.Id === id)
+        if (row !== undefined) this.Stored.Remove(row)
+        await this.chatStore.Remove(id)
+    }
+
+    // Rebuild the filtered views: case-insensitive title match against SearchText,
+    // refreshing each stored row's relative-time label against the current clock.
+    private rebuildVisible(): void
+    {
+        const q = this.SearchText.trim().toLowerCase()
+        const clock = now()
+        const openHits = this.Open.ToArray().filter((c) => q === '' || c.Title.toLowerCase().includes(q))
+        const rows = this.Stored.ToArray()
+        for (const r of rows) r.RefreshTime(clock)
+        const storedHits = rows.filter((r) => q === '' || r.Title.toLowerCase().includes(q))
+        replaceAll(this.VisibleOpen, openHits)
+        replaceAll(this.VisibleStored, storedHits)
     }
 
     private route(sessionId: string, event: AgentEvent): void
     {
         const chat = this.Open.ToArray().find((c) => c.Id === sessionId)
         if (chat === undefined) return
-        if (event.Kind === AgentEventKind.SessionStarted) void this.persist(chat, event.SessionId)
+        if (event.Kind === AgentEventKind.SessionStarted) { this.tokens.set(sessionId, event.SessionId); void this.persist(chat, event.SessionId) }
         if (event.Kind === AgentEventKind.TurnComplete)
         {
+            // Bump the persisted record's UpdatedAt (and transcript) so "last
+            // activity" time-ago stays fresh across turns.
+            const token = this.tokens.get(sessionId)
+            if (token !== undefined) void this.persist(chat, token)
             const done = this.pendingRuns.get(sessionId)
             if (done !== undefined) { this.pendingRuns.delete(sessionId); done() }
         }
         chat.apply(event)
     }
 
+    // CLI resume tokens by sessionId, captured on SessionStarted — lets a later
+    // TurnComplete re-persist without waiting for another SessionStarted.
+    private readonly tokens = new Map<string, string>()
+
     // Persist only when the provider can resume AND we have a token (per spec §6.4).
     private async persist(chat: ChatSession, resumeToken: string): Promise<void>
     {
         if (!this.resumable || resumeToken === '') return
         await this.chatStore.Upsert({
-            Id: chat.Id, Title: chat.Title, ResumeToken: resumeToken,
+            Id: chat.Id, Title: chat.Title, ResumeToken: resumeToken, UpdatedAt: now(),
             Transcript: serializeTranscript(chat.Transcript.ToArray()),
         })
     }
@@ -254,6 +344,18 @@ export class ChatSessionsService extends ServiceBase
         card.Form = await explorer.NewProjectFormFor(close, req.prefill)
         reducer.addPendingCard(req.id, card)
     }
+}
+
+// Wall-clock now (epoch ms). Isolated so the Date.now() call has one home — this
+// is renderer code, where the no-Date.now rule (main-process only) does not apply.
+function now(): number { return Date.now() }
+
+// Replace a collection's contents in place (the panel binds these instances, so
+// swapping the reference would drop the binding — clear + re-add instead).
+function replaceAll<T>(target: ObservableCollection<T>, items: readonly T[]): void
+{
+    target.Clear()
+    for (const item of items) target.Add(item)
 }
 
 export default ChatSessionsService

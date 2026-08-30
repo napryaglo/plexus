@@ -14,6 +14,10 @@ export interface StoredConversation
     Title: string
     Transcript: SerializedMessage[]
     ResumeToken: string
+    // Epoch ms of the last activity (set on every Upsert). Drives the "12h / 2d"
+    // relative-time label in the Conversations list. Records written before this
+    // field existed parse as 0 (normalised on read) → no time label.
+    UpdatedAt: number
 }
 
 export class ChatStore extends ServiceBase
@@ -38,7 +42,7 @@ export class ChatStore extends ServiceBase
         try {
             if (!(await this.fs.Exists(this.filePath))) { this.records = []; return this.records }
             const parsed = JSON.parse(await this.fs.ReadText(this.filePath))
-            this.records = Array.isArray(parsed) ? (parsed as StoredConversation[]) : []
+            this.records = Array.isArray(parsed) ? (parsed as StoredConversation[]).map(normalize) : []
         } catch { this.records = [] }
         return this.records
     }
@@ -64,6 +68,13 @@ export class ChatStore extends ServiceBase
     {
         return this.fs.WriteText(this.filePath, JSON.stringify(list, null, 2))
     }
+}
+
+// Back-fill UpdatedAt on records written before the field existed, so time-ago
+// gets a number (0 → no label) rather than undefined.
+function normalize(rec: StoredConversation): StoredConversation
+{
+    return typeof rec.UpdatedAt === 'number' ? rec : { ...rec, UpdatedAt: 0 }
 }
 
 // Join with the directory's own separator (no node:path in the renderer). Copied

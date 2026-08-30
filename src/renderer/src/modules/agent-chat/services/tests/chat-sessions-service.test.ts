@@ -45,23 +45,24 @@ let bridge: ReturnType<typeof fakeAgent>
 beforeEach(() => { bridge = fakeAgent(); (globalThis as unknown as { api: unknown }).api = { agent: bridge.api } })
 afterEach(() => { delete (globalThis as unknown as { api?: unknown }).api })
 
-function makeService(store = fakeStore(['/A'])) {
+function makeService(store = fakeStore(['/A']), stored: Array<{ Id: string; Title: string }> = []) {
     const provider = new ServiceProvider()
     provider.registerInstance(OpenProjectsStore.Key, store as unknown as OpenProjectsStore)
     provider.registerInstance(EnvironmentService.Key, { CurrentDirectory: '/fallback' } as EnvironmentService)
     provider.registerInstance(PanelDockService.Key, new PanelDockService(provider))
-    const upserts: string[] = []
+    const upserts: Array<{ Id: string; Title: string }> = []
+    const removes: string[] = []
     provider.registerInstance(ChatStore.Key, {
-        List: () => Promise.resolve([]),
-        Upsert: (r: { Id: string }) => { upserts.push(r.Id); return Promise.resolve() },
-        Remove: () => Promise.resolve(),
+        List: () => Promise.resolve(stored.map((r) => ({ ...r, ResumeToken: 't', UpdatedAt: 0, Transcript: [] }))),
+        Upsert: (r: { Id: string; Title: string }) => { upserts.push({ Id: r.Id, Title: r.Title }); return Promise.resolve() },
+        Remove: (id: string) => { removes.push(id); return Promise.resolve() },
     } as unknown as ChatStore)
     const submitted: Array<{ title: string; open?: () => void }> = []
     provider.registerInstance(BackgroundWorkService.Key, {
         submit: (t: { title: string; open?: () => void }) => { submitted.push({ title: t.title, open: t.open }); return { handle: {}, done: Promise.resolve() } },
     } as unknown as BackgroundWorkService)
     const svc = new ChatSessionsService(provider)
-    return { svc, provider, upserts, submitted, dock: provider.getRequired(PanelDockService.Key) }
+    return { svc, provider, upserts, removes, submitted, dock: provider.getRequired(PanelDockService.Key) }
 }
 
 test('NewConversation starts a session and adds a dock tab', () => {
@@ -95,7 +96,7 @@ test('a resumable SessionStarted upserts the conversation into the store', async
     await Promise.resolve()   // let the isResumable() probe settle
     bridge.emit({ SessionId: chat.Id, Event: { Kind: AgentEventKind.SessionStarted, SessionId: 'cli-1' } })
     await Promise.resolve()
-    expect(upserts).toContain(chat.Id)
+    expect(upserts.map((u) => u.Id)).toContain(chat.Id)
 })
 
 test('Close removes the tab and closes the backend session', () => {
@@ -110,6 +111,61 @@ test('seedInvocation builds a slash command for a skill and a subagent instructi
     expect(seedInvocation({ kind: AgentSkillKind.Skill, name: 'security-review', description: '' })).toBe('/security-review')
     expect(seedInvocation({ kind: AgentSkillKind.Agent, name: 'reviewer', description: '' }))
         .toBe('Use the "reviewer" subagent for this task.')
+})
+
+test('the visible lists mirror the open conversations until a search narrows them', () => {
+    const { svc } = makeService()
+    const a = svc.NewConversation()   // "Chat 1"
+    const b = svc.NewConversation()   // "Chat 2"
+    expect(svc.VisibleOpen.ToArray()).toEqual([a, b])
+    svc.SearchText = '2'
+    expect(svc.VisibleOpen.ToArray()).toEqual([b])
+    svc.SearchText = ''
+    expect(svc.VisibleOpen.ToArray()).toEqual([a, b])
+})
+
+test('search matches conversation titles case-insensitively', () => {
+    const { svc } = makeService()
+    const a = svc.NewConversation()
+    a.setTitle('Billing review')
+    svc.NewConversation().setTitle('Layout pass')
+    // Re-run the filter after the out-of-band title change.
+    svc.SearchText = 'BILL'
+    expect(svc.VisibleOpen.ToArray().map((c) => c.Title)).toEqual(['Billing review'])
+})
+
+test('RestoreSession loads stored rows into the (visible) Stored list', async () => {
+    const { svc } = makeService(fakeStore(['/A']), [{ Id: 'r1', Title: 'Past chat' }])
+    await svc.RestoreSession()
+    expect(svc.VisibleStored.ToArray().map((r) => r.Title)).toEqual(['Past chat'])
+})
+
+test('DeleteConversation removes a stored row and deletes it from the store', async () => {
+    const { svc, removes } = makeService(fakeStore(['/A']), [{ Id: 'r1', Title: 'Past chat' }])
+    await svc.RestoreSession()
+    await svc.DeleteConversation('r1')
+    expect(svc.Stored.ToArray()).toHaveLength(0)
+    expect(svc.VisibleStored.ToArray()).toHaveLength(0)
+    expect(removes).toEqual(['r1'])
+})
+
+test('DeleteConversation closes a live conversation too', () => {
+    const { svc, dock } = makeService()
+    const chat = svc.NewConversation()
+    void svc.DeleteConversation(chat.Id)
+    expect(svc.Open.ToArray()).not.toContain(chat)
+    expect(dock.Panels.ToArray()).not.toContain(chat)
+})
+
+test('Rename retitles a live conversation and persists the new title', async () => {
+    const { svc, upserts } = makeService()
+    const chat = svc.NewConversation()
+    await Promise.resolve()
+    bridge.emit({ SessionId: chat.Id, Event: { Kind: AgentEventKind.SessionStarted, SessionId: 'cli-1' } })
+    await Promise.resolve()
+    await svc.Rename(chat.Id, 'Renamed chat')
+    expect(chat.Title).toBe('Renamed chat')
+    expect(upserts.some((u) => u.Id === chat.Id && u.Title === 'Renamed chat')).toBe(true)
 })
 
 test('RunAgentSkill opens a titled conversation and submits a background task', () => {

@@ -21,7 +21,7 @@ function providerWith(fs: unknown): ServiceProvider {
     return provider
 }
 
-const rec: StoredConversation = { Id: 's1', Title: 'Chat 1', ResumeToken: 'cli-1', Transcript: [{ Role: TranscriptRole.User, Text: 'hi' }] }
+const rec: StoredConversation = { Id: 's1', Title: 'Chat 1', ResumeToken: 'cli-1', UpdatedAt: 1234, Transcript: [{ Role: TranscriptRole.User, Text: 'hi' }] }
 
 test('upsert then list round-trips a record', async () => {
     const store = new ChatStore(providerWith(fakeFs()))
@@ -43,4 +43,18 @@ test('remove drops a record', async () => {
     await store.Upsert(rec)
     await store.Remove('s1')
     expect(await store.List()).toEqual([])
+})
+
+test('upsert round-trips the UpdatedAt timestamp', async () => {
+    const store = new ChatStore(providerWith(fakeFs()))
+    await store.Upsert({ ...rec, UpdatedAt: 99_999 })
+    expect((await store.List())[0].UpdatedAt).toBe(99_999)
+})
+
+test('a record persisted before UpdatedAt existed back-fills to 0 on read', async () => {
+    const fs = fakeFs()
+    // A legacy file whose record has no UpdatedAt field.
+    await fs.WriteText('/data/conversations.json', JSON.stringify([{ Id: 's1', Title: 'Old', ResumeToken: 't', Transcript: [] }]))
+    const store = new ChatStore(providerWith(fs))
+    expect((await store.List())[0].UpdatedAt).toBe(0)
 })
