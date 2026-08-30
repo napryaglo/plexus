@@ -6,7 +6,7 @@ import {
     AgentEventKind, ASK_TOOL_NAME, REFRESH_TOOL_NAME, CREATE_PROJECT_TOOL_NAME, GET_PROBLEMS_TOOL_NAME,
     ProblemSeverity, ToolApprovalDecision,
     type AgentEvent, type QuestionRequest, type RefreshProjectResult, type CreateProjectResult,
-    type GetProblemsResult,
+    type GetProblemsResult, type TaggedAgentEvent,
 } from '../../../shared/agent-api.js'
 import { RuleStore } from '../tool-approval-rules.js'
 
@@ -65,9 +65,9 @@ describe('PlexusMcpServer — get_problems', () => {
     test('requestProblems emits a GetProblems event and resolves with the posted list', async () => {
         const server = new PlexusMcpServer()
         const events: AgentEvent[] = []
-        server.setSink((e) => events.push(e))
+        server.setSink((t) => events.push(t.Event))
 
-        const pending = server.requestProblems('/proj/a/file.todl', ProblemSeverity.Error)
+        const pending = server.requestProblems('', '/proj/a/file.todl', ProblemSeverity.Error)
         expect(events.length).toBe(1)
         const evt = events[0]!
         expect(evt.Kind).toBe(AgentEventKind.GetProblems)
@@ -85,7 +85,7 @@ describe('PlexusMcpServer — get_problems', () => {
 
     test('requestProblems with no sink resolves immediately with an error', async () => {
         const server = new PlexusMcpServer()
-        const result = await server.requestProblems()
+        const result = await server.requestProblems('')
         expect(result.problems.length).toBe(0)
         expect((result.error ?? '').length).toBeGreaterThan(0)
     })
@@ -93,7 +93,7 @@ describe('PlexusMcpServer — get_problems', () => {
     test('requestProblems times out with an error when the renderer never replies', async () => {
         const server = new PlexusMcpServer(20)
         server.setSink(() => { /* never resolves */ })
-        const result = await server.requestProblems()
+        const result = await server.requestProblems('')
         expect((result.error ?? '').toLowerCase()).toContain('timed out')
     })
 })
@@ -102,9 +102,9 @@ describe('PlexusMcpServer — create_project', () => {
     test('requestCreateProject emits a CreateProject event and resolves with the posted result', async () => {
         const server = new PlexusMcpServer()
         const events: AgentEvent[] = []
-        server.setSink((e) => events.push(e))
+        server.setSink((t) => events.push(t.Event))
 
-        const pending = server.requestCreateProject({ name: 'Acme', type: 'diagram' })
+        const pending = server.requestCreateProject('', { name: 'Acme', type: 'diagram' })
         expect(events.length).toBe(1)
         const evt = events[0]!
         expect(evt.Kind).toBe(AgentEventKind.CreateProject)
@@ -118,7 +118,7 @@ describe('PlexusMcpServer — create_project', () => {
 
     test('requestCreateProject with no sink resolves immediately with an error', async () => {
         const server = new PlexusMcpServer()
-        const result = await server.requestCreateProject()
+        const result = await server.requestCreateProject('')
         expect(result.created).toBe(false)
         expect((result.error ?? '').length).toBeGreaterThan(0)
     })
@@ -129,7 +129,8 @@ describe('PlexusMcpServer — ask_user_question', () => {
         const { server, client } = await connect()
 
         let captured: QuestionRequest | undefined
-        server.setSink((event: AgentEvent) => {
+        server.setSink((t) => {
+            const event = t.Event
             if (event.Kind !== AgentEventKind.Question) return
             captured = event.Request
             server.resolveAnswer({ id: event.Request.id, answers: { [event.Request.questions[0]!.question]: ['A'] } })
@@ -153,9 +154,9 @@ describe('PlexusMcpServer — approve_tool', () => {
     test('requestApproval on a list MISS emits a ToolApproval event and blocks until answered', async () => {
         const events: AgentEvent[] = []
         const server = new PlexusMcpServer()
-        server.setSink((e) => events.push(e))
+        server.setSink((t) => events.push(t.Event))
         server.setRuleStore(memStore(), '/proj')
-        const p = server.requestApproval('Bash', { command: 'python foo.py' })
+        const p = server.requestApproval('', 'Bash', { command: 'python foo.py' })
         const evt = events.find((e) => e.Kind === AgentEventKind.ToolApproval)
         expect(evt).toBeDefined()
         const id = (evt as { Request: { id: string; prefix?: string } }).Request.id
@@ -169,9 +170,9 @@ describe('PlexusMcpServer — approve_tool', () => {
         const store = memStore()
         store.add('/proj', { tool: 'Bash', prefix: 'python' })
         const server = new PlexusMcpServer()
-        server.setSink((e) => events.push(e))
+        server.setSink((t) => events.push(t.Event))
         server.setRuleStore(store, '/proj')
-        const result = await server.requestApproval('Bash', { command: 'python bar.py' })
+        const result = await server.requestApproval('', 'Bash', { command: 'python bar.py' })
         expect(result).toEqual({ behavior: 'allow', updatedInput: { command: 'python bar.py' } })
         expect(events.some((e) => e.Kind === AgentEventKind.ToolApproval)).toBe(false)
     })
@@ -181,7 +182,7 @@ describe('PlexusMcpServer — approve_tool', () => {
         const server = new PlexusMcpServer()
         server.setSink(() => {})
         server.setRuleStore(store, '/proj')
-        const p = server.requestApproval('Bash', { command: 'python a.py' })
+        const p = server.requestApproval('', 'Bash', { command: 'python a.py' })
         server.resolveApproval({ id: server.LastApprovalId, decision: ToolApprovalDecision.AllowAlways })
         await p
         expect(store.list('/proj')).toEqual([{ tool: 'Bash', prefix: 'python' }])
@@ -191,7 +192,7 @@ describe('PlexusMcpServer — approve_tool', () => {
         const server = new PlexusMcpServer()
         server.setSink(() => {})
         server.setRuleStore(memStore(), '/proj')
-        const p = server.requestApproval('Bash', { command: 'rm -rf /' })
+        const p = server.requestApproval('', 'Bash', { command: 'rm -rf /' })
         server.resolveApproval({ id: server.LastApprovalId, decision: ToolApprovalDecision.Deny })
         expect(await p).toEqual({ behavior: 'deny', message: 'Denied by the user in Plexus.' })
     })
@@ -201,9 +202,9 @@ describe('PlexusMcpServer — refresh_project', () => {
     test('requestRefresh emits a RefreshProject event and resolves with the posted result', async () => {
         const server = new PlexusMcpServer()
         const events: AgentEvent[] = []
-        server.setSink((e) => events.push(e))
+        server.setSink((t) => events.push(t.Event))
 
-        const pending = server.requestRefresh('/proj/a/file.todl')
+        const pending = server.requestRefresh('', '/proj/a/file.todl')
         expect(events.length).toBe(1)
         const evt = events[0]!
         expect(evt.Kind).toBe(AgentEventKind.RefreshProject)
@@ -220,7 +221,7 @@ describe('PlexusMcpServer — refresh_project', () => {
 
     test('requestRefresh with no sink resolves immediately with an error', async () => {
         const server = new PlexusMcpServer()
-        const result = await server.requestRefresh()
+        const result = await server.requestRefresh('')
         expect(result.projects.length).toBe(0)
         expect((result.error ?? '').length).toBeGreaterThan(0)
     })
@@ -228,7 +229,7 @@ describe('PlexusMcpServer — refresh_project', () => {
     test('requestRefresh times out with an error when the renderer never replies', async () => {
         const server = new PlexusMcpServer(20) // 20ms timeout
         server.setSink(() => { /* never resolves */ })
-        const result = await server.requestRefresh()
+        const result = await server.requestRefresh('')
         expect((result.error ?? '').toLowerCase()).toContain('timed out')
     })
 
@@ -236,4 +237,17 @@ describe('PlexusMcpServer — refresh_project', () => {
     // ask_user_question's (same handle/transport/buildServer), which the
     // 'tool surface' + ask tests exercise over a real MCP client; here we cover
     // refresh's own logic (event emission, resolve, timeout) as unit tests.
+
+    test('requestRefresh tags its emitted event with the calling session', async () => {
+        const server = new PlexusMcpServer()
+        const tagged: TaggedAgentEvent[] = []
+        server.setSink((t) => tagged.push(t))
+        const p = server.requestRefresh('sess-77', '/proj')
+        expect(tagged).toHaveLength(1)
+        expect(tagged[0]!.SessionId).toBe('sess-77')
+        expect(tagged[0]!.Event.Kind).toBe(AgentEventKind.RefreshProject)
+        const reqId = (tagged[0]!.Event as { Request: { id: string } }).Request.id
+        server.resolveRefresh({ id: reqId, projects: [] })
+        await p
+    })
 })

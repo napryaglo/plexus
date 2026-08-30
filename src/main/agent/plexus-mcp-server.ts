@@ -44,6 +44,7 @@ import {
     type Question,
     type QuestionAnswer,
     type RefreshProjectResult,
+    type TaggedAgentEvent,
     type ToolApprovalAnswer,
 } from '../../shared/agent-api.js'
 import { ruleFor, matches, type RuleStore } from './tool-approval-rules.js'
@@ -65,7 +66,7 @@ export class PlexusMcpServer
 {
     private httpServer: http.Server | undefined
     private url = ''
-    private sink: ((event: AgentEvent) => void) | undefined
+    private sink: ((tagged: TaggedAgentEvent) => void) | undefined
     // Pending tool calls awaiting a UI reply, keyed by the id we minted. Kept in
     // two typed maps — answer resolvers vs refresh resolvers — but the id space is
     // shared (`q…` vs `r…` prefixes keep them distinct).
@@ -102,7 +103,10 @@ export class PlexusMcpServer
 
     // Wire the event push so tool calls can surface UI. Set by the agent IPC layer
     // to the same sink that feeds AgentChannel.Event.
-    public setSink(sink: (event: AgentEvent) => void): void { this.sink = sink }
+    public setSink(sink: (tagged: TaggedAgentEvent) => void): void { this.sink = sink }
+
+    // Push one tool-driven event tagged with the conversation that triggered it.
+    private emit(sessionId: string, event: AgentEvent): void { this.sink?.({ SessionId: sessionId, Event: event }) }
 
     // Deliver the user's answer to a blocked ask_user_question call; no-op if stale.
     public resolveAnswer(answer: QuestionAnswer): void
@@ -133,7 +137,7 @@ export class PlexusMcpServer
     // persistent rule HIT allows immediately (no card). A MISS emits a ToolApproval
     // event and blocks until the user answers or a safety timer (< the CLI's 30s
     // MCP_TIMEOUT) auto-allows once. AllowAlways persists a rule (session + store).
-    public requestApproval(toolName: string, input: unknown): Promise<Verdict>
+    public requestApproval(sessionId: string, toolName: string, input: unknown): Promise<Verdict>
     {
         // Allow-list check (session first, then persistent) — no card on a hit.
         if (this.sessionRules.some((r) => matches(r, toolName, input))
@@ -143,12 +147,11 @@ export class PlexusMcpServer
         }
         const id = `a${(this.seq += 1)}`
         this.LastApprovalId = id
-        const sink = this.sink
         const rule = ruleFor(toolName, input)
         const command = typeof (input as { command?: unknown })?.command === 'string'
             ? (input as { command: string }).command : undefined
         // No sink (probe/headless) → auto allow-once so the tool round-trip completes.
-        if (sink === undefined) return Promise.resolve({ behavior: 'allow', updatedInput: input })
+        if (this.sink === undefined) return Promise.resolve({ behavior: 'allow', updatedInput: input })
         return new Promise<Verdict>((resolve) =>
         {
             // Safety net: if the renderer never answers (window closed), allow-once
@@ -169,7 +172,7 @@ export class PlexusMcpServer
                 }
                 resolve({ behavior: 'allow', updatedInput: input })
             })
-            sink({ Kind: AgentEventKind.ToolApproval, Request: { id, toolName, command, prefix: rule.prefix } })
+            this.emit(sessionId, { Kind: AgentEventKind.ToolApproval, Request: { id, toolName, command, prefix: rule.prefix } })
         })
     }
 
@@ -184,11 +187,10 @@ export class PlexusMcpServer
 
     // Emit a RefreshProject request and await the renderer's result. No sink (probe
     // / headless test) → resolve with an error so the round-trip still completes.
-    public requestRefresh(path?: string): Promise<RefreshProjectResult>
+    public requestRefresh(sessionId: string, path?: string): Promise<RefreshProjectResult>
     {
         const id = `r${(this.seq += 1)}`
-        const sink = this.sink
-        if (sink === undefined)
+        if (this.sink === undefined)
         {
             return Promise.resolve({ id, projects: [], error: 'No Plexus window is available to refresh.' })
         }
@@ -203,7 +205,7 @@ export class PlexusMcpServer
             }, this.timeoutMs)
             // Register BEFORE emitting so a fast reply can't race pending.set.
             this.pendingRefresh.set(id, (result) => { clearTimeout(timer); resolve(result) })
-            sink({ Kind: AgentEventKind.RefreshProject, Request: { id, path } })
+            this.emit(sessionId, { Kind: AgentEventKind.RefreshProject, Request: { id, path } })
         })
     }
 
@@ -219,16 +221,15 @@ export class PlexusMcpServer
     // Emit a CreateProject request and await the renderer's outcome. No timeout —
     // a human fills the form. No sink (probe/headless) → resolve with an error so
     // the round-trip still completes.
-    public requestCreateProject(prefill?: CreateProjectPrefill): Promise<CreateProjectResult>
+    public requestCreateProject(sessionId: string, prefill?: CreateProjectPrefill): Promise<CreateProjectResult>
     {
         const id = `c${(this.seq += 1)}`
-        const sink = this.sink
-        if (sink === undefined)
+        if (this.sink === undefined)
             return Promise.resolve({ id, created: false, error: 'No Plexus window is available to create a project.' })
         return new Promise((resolve) =>
         {
             this.pendingCreate.set(id, resolve)
-            sink({ Kind: AgentEventKind.CreateProject, Request: { id, prefill } })
+            this.emit(sessionId, { Kind: AgentEventKind.CreateProject, Request: { id, prefill } })
         })
     }
 
@@ -244,13 +245,12 @@ export class PlexusMcpServer
     // Emit a GetProblems request and await the renderer's list. Guarded by the
     // same timeout as refresh (reading diagnostics is fast). No sink (probe /
     // headless) → resolve with an error so the round-trip still completes.
-    public requestProblems(path?: string, severity?: ProblemSeverity): Promise<GetProblemsResult>
+    public requestProblems(sessionId: string, path?: string, severity?: ProblemSeverity): Promise<GetProblemsResult>
     {
         const id = `p${(this.seq += 1)}`
-        const sink = this.sink
         const empty = (error: string): GetProblemsResult =>
             ({ id, problems: [], errorCount: 0, warningCount: 0, total: 0, truncated: false, error })
-        if (sink === undefined)
+        if (this.sink === undefined)
         {
             return Promise.resolve(empty('No Plexus window is available to read problems.'))
         }
@@ -265,7 +265,7 @@ export class PlexusMcpServer
             }, this.timeoutMs)
             // Register BEFORE emitting so a fast reply can't race pending.set.
             this.pendingProblems.set(id, (result) => { clearTimeout(timer); resolve(result) })
-            sink({ Kind: AgentEventKind.GetProblems, Request: { id, path, severity } })
+            this.emit(sessionId, { Kind: AgentEventKind.GetProblems, Request: { id, path, severity } })
         })
     }
 
@@ -293,7 +293,7 @@ export class PlexusMcpServer
 
     // A fresh McpServer per session, registering BOTH tools against this instance's
     // handlers (all sessions share the same pending maps + sink).
-    private buildServer(): McpServer
+    private buildServer(sessionId: string): McpServer
     {
         const server = new McpServer({ name: MCP_SERVER_KEY, version: '0.1.0' })
 
@@ -309,7 +309,7 @@ export class PlexusMcpServer
             },
             async ({ questions }) =>
             {
-                const answers = await this.ask(questions as Question[])
+                const answers = await this.ask(sessionId, questions as Question[])
                 return { content: [{ type: 'text' as const, text: JSON.stringify(answers) }] }
             },
         )
@@ -329,7 +329,7 @@ export class PlexusMcpServer
             },
             async ({ path }) =>
             {
-                const result = await this.requestRefresh(path)
+                const result = await this.requestRefresh(sessionId, path)
                 return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
             },
         )
@@ -354,7 +354,7 @@ export class PlexusMcpServer
             },
             async ({ name, type, location, metaModel, libraries }) =>
             {
-                const result = await this.requestCreateProject({ name, type, location, metaModel, libraries })
+                const result = await this.requestCreateProject(sessionId, { name, type, location, metaModel, libraries })
                 return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
             },
         )
@@ -375,7 +375,7 @@ export class PlexusMcpServer
             },
             async ({ path, severity }) =>
             {
-                const result = await this.requestProblems(path, severity)
+                const result = await this.requestProblems(sessionId, path, severity)
                 return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
             },
         )
@@ -401,7 +401,7 @@ export class PlexusMcpServer
                 const a = args as Record<string, unknown>
                 const toolName = (a.tool_name ?? a.toolName ?? 'unknown') as string
                 const input = (a.input ?? a.tool_input ?? {})
-                const verdict = await this.requestApproval(toolName, input)
+                const verdict = await this.requestApproval(sessionId, toolName, input)
                 return { content: [{ type: 'text' as const, text: JSON.stringify(verdict) }] }
             },
         )
@@ -412,17 +412,16 @@ export class PlexusMcpServer
     // Emit a Question and await the answer. With no sink wired (spike / probe /
     // headless test) there is no UI to answer, so resolve to an empty answer so the
     // tool round-trip still completes rather than hanging.
-    private ask(questions: Question[]): Promise<QuestionAnswer['answers']>
+    private ask(sessionId: string, questions: Question[]): Promise<QuestionAnswer['answers']>
     {
         const id = `q${(this.seq += 1)}`
-        const sink = this.sink
-        if (sink === undefined) return Promise.resolve({})
+        if (this.sink === undefined) return Promise.resolve({})
         // Register the resolver BEFORE emitting, so an answer that arrives
         // synchronously (or very fast) can't race ahead of pending.set.
         return new Promise((resolve) =>
         {
             this.pendingAnswers.set(id, resolve)
-            sink({ Kind: AgentEventKind.Question, Request: { id, questions } })
+            this.emit(sessionId, { Kind: AgentEventKind.Question, Request: { id, questions } })
         })
     }
 
@@ -430,10 +429,13 @@ export class PlexusMcpServer
     // requests reuse it by the mcp-session-id header. Standard SDK boilerplate.
     private async handle(req: http.IncomingMessage, res: http.ServerResponse): Promise<void>
     {
-        const sessionId = req.headers['mcp-session-id'] as string | undefined
+        const mcpSessionId = req.headers['mcp-session-id'] as string | undefined
+        // Plexus's own conversation id, threaded through the config URL by the
+        // provider (?session=…) so tool events are attributed to the right chat.
+        const plexusSession = new URL(req.url ?? '/', 'http://localhost').searchParams.get('session') ?? ''
         const body = req.method === 'POST' ? await readJsonBody(req) : undefined
 
-        let transport = sessionId !== undefined ? this.transports.get(sessionId) : undefined
+        let transport = mcpSessionId !== undefined ? this.transports.get(mcpSessionId) : undefined
         if (transport === undefined && req.method === 'POST' && isInitializeRequest(body))
         {
             const created = new StreamableHTTPServerTransport({
@@ -441,7 +443,7 @@ export class PlexusMcpServer
                 onsessioninitialized: (sid) => { this.transports.set(sid, created) },
             })
             created.onclose = () => { if (created.sessionId !== undefined) this.transports.delete(created.sessionId) }
-            await this.buildServer().connect(created)
+            await this.buildServer(plexusSession).connect(created)
             transport = created
         }
         if (transport === undefined)
