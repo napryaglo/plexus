@@ -32,6 +32,8 @@ export enum AgentChannel
     CloseSession = 'agent:close-session',
     // renderer→main query: does the active provider support resuming AI context?
     IsResumable = 'agent:is-resumable',
+    // renderer→main query: a project's declared .claude/ agents + skills.
+    ListAgentsAndSkills = 'agent:list-agents-and-skills',
 }
 
 export enum AgentEventKind
@@ -246,6 +248,8 @@ export interface IAgentApi
     abort(sessionId: string): Promise<void>;
     // Whether the active provider can resume AI context (gates persistence).
     isResumable(): Promise<boolean>;
+    // Discover a project's declared .claude/ agents + skills.
+    listAgentsAndSkills(projectDir: string): Promise<ProjectCatalog>;
     // Reply to a pending AskUserQuestion card; unblocks the agent's tool call.
     answerQuestion(answer: QuestionAnswer): Promise<void>;
     // The renderer's summary for a pending refresh_project tool call.

@@ -4,12 +4,21 @@
 // Constraints). stdout is line-buffered through StreamJsonParser; each user turn
 // is written to stdin as a stream-json user message.
 import { spawn as nodeSpawn } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
+import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { StreamJsonParser } from './stream-json-parser.js'
-import { AgentEventKind, type AgentEvent } from '../../shared/agent-api.js'
+import { scanClaudeCatalog, type CatalogIo } from './claude-catalog.js'
+import { AgentEventKind, type AgentEvent, type ProjectCatalog } from '../../shared/agent-api.js'
 import type { AiProviderSession, ChildLike, IAiProvider, McpHttpServerConfig, McpOptions, SpawnFn } from './ai-provider.js'
+
+// Default catalog IO: a thin node:fs wrapper (the provider scans the real project).
+const defaultCatalogIo: CatalogIo = {
+    exists: (p) => Promise.resolve(existsSync(p)),
+    readDir: (p) => readdir(p),
+    readFile: (p) => readFile(p, 'utf8'),
+}
 
 const CLI_ARGS = [
     '-p',
@@ -40,7 +49,15 @@ export class ClaudeCliProvider implements IAiProvider
         // Optional extra MCP tools (the ask-user-question server). When present,
         // the CLI is pointed at them via --mcp-config and they're allow-listed.
         private readonly mcp: McpOptions | undefined = undefined,
+        // Catalog IO seam (injectable for tests); defaults to node:fs.
+        private readonly catalogIo: CatalogIo = defaultCatalogIo,
     ) {}
+
+    // Discover the project's .claude/ agents + skills.
+    public listAgentsAndSkills(projectDir: string): Promise<ProjectCatalog>
+    {
+        return scanClaudeCatalog(projectDir, this.catalogIo)
+    }
 
     public start(
         sessionId: string,

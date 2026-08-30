@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import {
     AgentChannel, APPROVE_TOOL_QUALIFIED, ASK_TOOL_QUALIFIED, CREATE_PROJECT_TOOL_QUALIFIED, GET_PROBLEMS_TOOL_QUALIFIED,
     MCP_SERVER_KEY, REFRESH_TOOL_QUALIFIED,
-    type ApprovalRule, type CreateProjectResult, type GetProblemsResult, type QuestionAnswer,
+    type ApprovalRule, type CreateProjectResult, type GetProblemsResult, type ProjectCatalog, type QuestionAnswer,
     type RefreshProjectResult, type TaggedAgentEvent, type ToolApprovalAnswer,
 } from '../shared/agent-api.js'
 import { AiProviderService } from './agent/ai-provider-service.js'
@@ -92,6 +92,8 @@ export async function registerAgentHandlers(): Promise<void>
         manager.close(sessionId)
     })
     ipcMain.handle(AgentChannel.IsResumable, (): boolean => providers.active().Resumable)
+    ipcMain.handle(AgentChannel.ListAgentsAndSkills, (_e, projectDir: string): Promise<ProjectCatalog> =>
+        providers.active().listAgentsAndSkills(projectDir))
     // The user's answer to a pending card → unblock the ask_user_question call.
     ipcMain.handle(AgentChannel.AnswerQuestion, (_e, answer: QuestionAnswer): void => {
         mcpServer.resolveAnswer(answer)

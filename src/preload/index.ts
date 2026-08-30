@@ -12,7 +12,7 @@ import {
 } from '../shared/file-system-api.js'
 import { EnvironmentChannel, type EnvironmentInfo } from '../shared/environment-api.js'
 import { SettingsChannel, type ISettingsBridge } from '../shared/settings-api.js'
-import { AgentChannel, type ApprovalRule, type IAgentApi, type TaggedAgentEvent } from '../shared/agent-api.js'
+import { AgentChannel, type ApprovalRule, type IAgentApi, type ProjectCatalog, type TaggedAgentEvent } from '../shared/agent-api.js'
 import { TodlLspChannel, type ITodlLspApi } from '../shared/todl-lsp-api.js'
 import { FileWatchChannel, type FileChangeEvent, type IFileWatchApi } from '../shared/file-watch-api.js'
 import { WindowChannel, type IWindowApi, type OverlayColors } from '../shared/window-api.js'
@@ -85,6 +85,8 @@ const agent: IAgentApi = {
     ipcRenderer.invoke(AgentChannel.SendTurn, sessionId, workingDirectory, addDirs, text),
   abort: (sessionId: string): Promise<void> => ipcRenderer.invoke(AgentChannel.Abort, sessionId),
   isResumable: (): Promise<boolean> => ipcRenderer.invoke(AgentChannel.IsResumable),
+  listAgentsAndSkills: (projectDir: string): Promise<ProjectCatalog> =>
+    ipcRenderer.invoke(AgentChannel.ListAgentsAndSkills, projectDir),
   answerQuestion: (answer): Promise<void> => ipcRenderer.invoke(AgentChannel.AnswerQuestion, answer),
   refreshProjectResult: (result): Promise<void> => ipcRenderer.invoke(AgentChannel.RefreshProjectResult, result),
   createProjectResult: (result): Promise<void> => ipcRenderer.invoke(AgentChannel.CreateProjectResult, result),

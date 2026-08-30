@@ -14,6 +14,7 @@ function recordingProvider() {
     const provider: IAiProvider = {
         Id: 'rec',
         Resumable: true,
+        listAgentsAndSkills: () => Promise.resolve({ agents: [], skills: [] }),
         start: (sessionId, cwd, addDirs, onEvent, resumeToken): AiProviderSession => {
             const rec = { sessionId, cwd, addDirs: [...addDirs], resumeToken, onEvent,
                           sent: [] as string[], disposed: false, aborted: false }

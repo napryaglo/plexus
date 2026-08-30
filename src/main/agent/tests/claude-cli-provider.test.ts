@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ClaudeCliProvider } from '../claude-cli-provider.js'
 import type { ChildLike, SpawnFn } from '../ai-provider.js'
-import { AgentEventKind, type AgentEvent } from '../../../shared/agent-api.js'
+import { AgentEventKind, AgentSkillKind, type AgentEvent } from '../../../shared/agent-api.js'
+import type { CatalogIo } from '../claude-catalog.js'
 
 // A fake child that lets the test drive stdout/error and observe stdin/kill.
 function fakeChild() {
@@ -45,6 +46,18 @@ function captureSpawn() {
 
 test('the provider declares itself resumable', () => {
     expect(new ClaudeCliProvider().Resumable).toBe(true)
+})
+
+test('listAgentsAndSkills scans the project .claude via the injected IO', async () => {
+    const io: CatalogIo = {
+        exists: (p) => Promise.resolve(p === '/p/.claude/agents' || p === '/p/.claude/agents/reviewer.md'),
+        readDir: (p) => Promise.resolve(p === '/p/.claude/agents' ? ['reviewer.md'] : []),
+        readFile: () => Promise.resolve('---\nname: reviewer\ndescription: d\n---\n'),
+    }
+    const provider = new ClaudeCliProvider('claude', undefined, undefined, io)
+    const catalog = await provider.listAgentsAndSkills('/p')
+    expect(catalog.agents).toEqual([{ kind: AgentSkillKind.Agent, name: 'reviewer', description: 'd' }])
+    expect(catalog.skills).toEqual([])
 })
 
 test('start passes --resume <token> when a resume token is supplied', () => {
