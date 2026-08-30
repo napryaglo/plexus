@@ -7,6 +7,13 @@ import { registerEnvironmentHandlers } from './environment.js'
 import { registerSettingsHandlers } from './settings.js'
 import { registerAgentHandlers } from './agent.js'
 import { registerTodlServerHandlers } from './todl/register.js'
+import { registerWindowHandlers } from './window.js'
+import { TITLE_BAR_HEIGHT } from '../shared/window-api.js'
+
+// Initial WCO colours (Windows/Linux). The app boots on MaterialDark, so seed
+// the native caption strip to that scheme's title-bar surface + glyph ink; the
+// renderer's theme hook re-tints on the first paint and every scheme swap.
+const INITIAL_OVERLAY = { color: '#1c1b1f', symbolColor: '#cac4d0' }
 
 // Dev only: disable the renderer's HTTP cache. mural is served LIVE by Vite as
 // a pre-bundle-excluded dep (see electron.vite.config.ts), but Chromium caches
@@ -29,6 +36,14 @@ function createWindow(): void {
     height: 800,
     show: false,
     autoHideMenuBar: true,
+    // Custom title bar (VSCode-style): hide the OS title bar, but keep the
+    // native min/max/close buttons as a Window Controls Overlay on Windows/Linux
+    // (macOS ignores the overlay and floats its traffic lights top-left). The
+    // renderer draws its own draggable title strip of TITLE_BAR_HEIGHT under it.
+    titleBarStyle: 'hidden',
+    ...(process.platform === 'darwin'
+      ? {}
+      : { titleBarOverlay: { ...INITIAL_OVERLAY, height: TITLE_BAR_HEIGHT } }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -75,6 +90,9 @@ app.whenReady().then(async () => {
   // to the renderer. Registered before the window so the ToServer channel is
   // listening when the renderer builds its connection on load.
   registerTodlServerHandlers()
+  // Window chrome: re-tint the native caption buttons (WCO) when the renderer's
+  // theme changes.
+  registerWindowHandlers()
 
   createWindow()
 

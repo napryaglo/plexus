@@ -59,14 +59,34 @@ resources DockTabsResources {
     }
 
     // Horizontal text-rail chrome — the destinations row over a 1dp bottom rule
-    // (the strip divider). No Header / Footer slots (the dock has none). Items
-    // render left-aligned via the horizontal panel above.
+    // (the strip divider). A VSCode-style header button bar is pinned rightmost:
+    // an overflow menu (…) for future per-panel actions + a close (✕) that closes
+    // the ACTIVE inspector (ClosePanelCommand with the SelectedPanel's Id — the
+    // dock only renders while HasPanels, so a panel is always selected). No
+    // Header / Footer slots (the dock has none).
     Template x:key="DockRailTemplate" [ TargetType = NavigationRail ] {
         Border x:name="PART_Border" [ Fill = @Surface ] {
-            DockPanel {
+            DockPanel [ LastChildFill = true ] {
                 Line [ DockPanel.Dock = Bottom,
                        Orientation    = Horizontal,
                        Stroke         = (@OutlineVariant, 1) ]
+                StackPanel x:name="PART_HeaderBar"
+                    [ DockPanel.Dock  = Right,
+                      Orientation       = Horizontal,
+                      VerticalAlignment = Center,
+                      Margin            = (8,0,8,0) ] {
+                    MenuButton x:name="PART_Overflow"
+                        [ TriggerTemplate = @CompactHeaderMenuButton,
+                          Icon            = Shape [ Geometry = @MoreHoriz, Fill = @OnSurfaceVariant, Width = 12, Height = 12 ] ]
+                    IconButton x:name="PART_Close"
+                        [ Template          = @CompactHeaderIconButton,
+                          Command           = $service(PanelDockService).ClosePanelCommand,
+                          CommandParameter  = $service(PanelDockService).SelectedPanel.Id,
+                          VerticalAlignment = Center,
+                          Margin            = (4,0,0,0) ] {
+                        Shape [ Geometry = @IconClose, Fill = @OnSurfaceVariant, Width = 12, Height = 12 ]
+                    }
+                }
                 ItemsPresenter x:name="PART_ItemsPresenter"
             }
         }

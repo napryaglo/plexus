@@ -157,8 +157,18 @@ export function registerFileSystemHandlers(): void {
   ipcMain.handle(
     FileSystemChannel.ListDirectory,
     async (_e, path: string): Promise<FileEntry[]> => {
-      const entries = await readdir(path, { withFileTypes: true })
-      return entries.map((d) => ({ Name: d.name, IsDirectory: d.isDirectory() }))
+      try {
+        const entries = await readdir(path, { withFileTypes: true })
+        return entries.map((d) => ({ Name: d.name, IsDirectory: d.isDirectory() }))
+      } catch (err) {
+        // A missing directory lists as empty — the convention every caller
+        // already assumes (e.g. the layout-preset stores read `.plexus/…` before
+        // it's ever created). Swallowing ENOENT here also silences the
+        // `ipcMain.handle` error Electron logs on a rejected handler. Any other
+        // failure (EACCES, ENOTDIR, …) still propagates to the renderer.
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return []
+        throw err
+      }
     },
   )
 

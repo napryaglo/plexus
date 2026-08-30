@@ -20,6 +20,7 @@ import { attachAutoOpenInspector } from './modules/diagram/behaviors/auto-open-i
 import { attachSaveShortcuts } from './services/documents/save-shortcuts.js'
 import { attachZoomShortcuts } from './modules/diagram/behaviors/zoom-shortcuts.js'
 import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'
+import { attachTitleBar } from './window/title-bar.js'
 import { ProjectExplorerService } from './modules/project-explorer/services/project-explorer-service.js'
 import { WorkspaceRefreshService } from './services/workspace/workspace-refresh-service.js'
 import { FileWatchService } from './services/file-watch/file-watch-service.js'
@@ -72,6 +73,11 @@ try {
     // bound shell control) before opening the first document, so the toolbar
     // service surfaces it on the document-open rebuild.
     registerThemeSchemePicker(app)
+    // Custom title bar: sync the HTML title strip's text (active document /
+    // project) and re-tint the native caption buttons (WCO) + the band to the
+    // active scheme. Placed after initialize so the content host + explorer
+    // resolve and the theme is registered.
+    attachTitleBar(app)
     // Construct the workspace-refresh service now so it subscribes to agent
     // events before any turn runs (it isn't tied to a visible panel).
     app.Services.get(WorkspaceRefreshService.Key)

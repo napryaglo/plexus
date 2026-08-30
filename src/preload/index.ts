@@ -15,6 +15,7 @@ import { SettingsChannel, type ISettingsBridge } from '../shared/settings-api.js
 import { AgentChannel, type AgentEvent, type ApprovalRule, type IAgentApi } from '../shared/agent-api.js'
 import { TodlLspChannel, type ITodlLspApi } from '../shared/todl-lsp-api.js'
 import { FileWatchChannel, type FileChangeEvent, type IFileWatchApi } from '../shared/file-watch-api.js'
+import { WindowChannel, type IWindowApi, type OverlayColors } from '../shared/window-api.js'
 
 // Preload — the ONLY place renderer and main meet, across the context bridge.
 // Exposes Plexus's native surface as a small typed `api`. The renderer wraps
@@ -128,7 +129,13 @@ const fileWatch: IFileWatchApi = {
   },
 }
 
-const api = { fs, environment, settings, agent, todlLsp, fileWatch }
+// Window-chrome bridge — the renderer's theme hook pushes fresh WCO colours on
+// every scheme change; fire-and-forget (main re-tints or no-ops per platform).
+const titlebar: IWindowApi = {
+  setOverlay: (colors: OverlayColors): void => ipcRenderer.send(WindowChannel.SetOverlay, colors),
+}
+
+const api = { fs, environment, settings, agent, todlLsp, fileWatch, titlebar }
 
 if (process.contextIsolated) {
   try {
