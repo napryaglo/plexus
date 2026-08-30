@@ -61,7 +61,9 @@ resources BackgroundWorkResources {
                 DockPanel [ LastChildFill = true ] {
                     // Header: title + Clear-completed.
                     DockPanel [ DockPanel.Dock = Top, LastChildFill = true, Margin = (8,6,8,6) ] {
-                        PanelButton [ DockPanel.Dock = Right, Command = $ClearCompletedCommand, VerticalAlignment = Center ] {
+                        // A normal Text button (sizes to its label; PanelButton is a
+                        // fixed-size IconButton that clipped "Clear completed").
+                        Button [ DockPanel.Dock = Right, Variant = Text, Command = $ClearCompletedCommand, VerticalAlignment = Center ] {
                             TextBlock [ Text = "Clear completed", Style = @LabelMedium, Foreground = @OnSurfaceVariant ]
                         }
                         TextBlock [ Text = "Background Tasks", Style = @LabelLarge, Foreground = @OnSurface, VerticalAlignment = Center ]
