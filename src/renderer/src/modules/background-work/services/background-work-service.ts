@@ -2,9 +2,11 @@ import {
     MuralBase, MetaData, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
+import { ContentHostService, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
 import { TaskExecutorRegistry, TaskKind, type BackgroundTask, type ITaskContext, type ITaskExecutor } from './task-executor.js'
 import { TaskHandle, TaskStatus } from './task-handle.js'
 import { InlineExecutor, type InlineJob } from './inline-executor.js'
+import { TaskOutputDocument } from './task-output-document.js'
 
 export interface SubmitResult<R> { handle: TaskHandle; done: Promise<R> }
 
@@ -34,6 +36,7 @@ export class BackgroundWorkService extends ServiceBase {
     private readonly registry = new TaskExecutorRegistry()
     private readonly queues = new Map<string, QueuedItem[]>()   // per-kind FIFO of waiting tasks
     private readonly running = new Map<string, number>()        // per-kind in-flight count
+    private readonly outputDocs = new WeakMap<TaskHandle, TaskOutputDocument>()
     private seq = 0
 
     constructor(provider: IServiceProvider)
@@ -59,6 +62,7 @@ export class BackgroundWorkService extends ServiceBase {
     public submit<P, R>(task: BackgroundTask<P>): SubmitResult<R>
     {
         const handle = new TaskHandle({ id: `task-${++this.seq}`, title: task.title, kind: String(task.kind) })
+        handle.OpenOutputCommand = new RelayCommand(() => this.openOutput(handle))
         this.Tasks.Add(handle)
         const kind = String(task.kind)
         const q = this.queues.get(kind) ?? []
@@ -108,6 +112,16 @@ export class BackgroundWorkService extends ServiceBase {
                 this.pump(kind)
                 this.updateCounts()
             })
+    }
+
+    // Open (or re-activate) the task's live output log as a document tab. The doc
+    // is cached per handle so re-opening focuses the existing tab.
+    private openOutput(handle: TaskHandle): void
+    {
+        let doc = this.outputDocs.get(handle)
+        if (doc === undefined) { doc = new TaskOutputDocument(handle); this.outputDocs.set(handle, doc) }
+        const host = this.Provider.get(ContentHostService.Key) as DocumentsContentHostService | undefined
+        host?.Open(doc)
     }
 
     private clearCompleted(): void

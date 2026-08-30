@@ -116,4 +116,20 @@ describe('BackgroundWorkService', () => {
         s.ClearCompletedCommand.Execute(undefined)
         expect(s.Tasks.Count).toBe(1)       // only the still-running B remains
     })
+
+    it('sets OpenOutputCommand which opens a task-output document on the content host', async () => {
+        const provider = new ServiceProvider()
+        const opened: Array<{ Id: string }> = []
+        // Register a fake DocumentsContentHostService under ContentHostService.Key.
+        const { ContentHostService } = await import('@pragmatic-lab/mural/framework')
+        provider.register(ContentHostService.Key, () => ({ Open: (d: { Id: string }) => opened.push(d) }) as never)
+        const s = new BackgroundWorkService(provider)
+        const { handle } = s.run('inline', async () => 1)
+        handle.OpenOutputCommand?.Execute(undefined)
+        expect(opened.length).toBe(1)
+        expect(opened[0].Id).toBe(`task-output:${handle.Id}`)
+        // Re-open returns the SAME document instance (dedupe by identity + Id).
+        handle.OpenOutputCommand?.Execute(undefined)
+        expect(opened[1]).toBe(opened[0])
+    })
 })
