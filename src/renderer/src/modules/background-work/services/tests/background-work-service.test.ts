@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { BackgroundWorkService } from '../background-work-service.js'
 import { TaskStatus } from '../task-handle.js'
-import { type ITaskContext, type ITaskExecutor } from '../task-executor.js'
+import { TaskKind, type ITaskContext, type ITaskExecutor } from '../task-executor.js'
 
 function svc(): BackgroundWorkService { return new BackgroundWorkService(new ServiceProvider()) }
 
@@ -21,6 +21,14 @@ const tick = () => new Promise((r) => setTimeout(r, 0))
 describe('BackgroundWorkService', () => {
     it('summarises an empty queue', () => {
         expect(svc().SummaryText).toBe('No background tasks')
+    })
+
+    it('submit with an open override wires OpenOutputCommand to it', () => {
+        const s = svc()
+        let opened = 0
+        const { handle } = s.submit({ kind: TaskKind.Inline, title: 'run', payload: async () => 'ok', open: () => { opened++ } })
+        handle.OpenOutputCommand.Execute(undefined)
+        expect(opened).toBe(1)
     })
 
     it('runs up to capacity and queues the rest', async () => {

@@ -14,6 +14,10 @@ export interface BackgroundTask<P = unknown> {
     kind:    TaskKind | string
     title:   string
     payload: P
+    // Optional custom "open" target for the task's status-bar row. When present the
+    // manager wires OpenOutputCommand to it instead of opening the default output
+    // document (e.g. an agent-run task opens its conversation).
+    open?:   () => void
 }
 
 // The executor's only channel back to the task while it runs.

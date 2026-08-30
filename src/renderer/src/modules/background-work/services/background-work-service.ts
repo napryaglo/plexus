@@ -62,7 +62,9 @@ export class BackgroundWorkService extends ServiceBase {
     public submit<P, R>(task: BackgroundTask<P>): SubmitResult<R>
     {
         const handle = new TaskHandle({ id: `task-${++this.seq}`, title: task.title, kind: String(task.kind) })
-        handle.OpenOutputCommand = new RelayCommand(() => this.openOutput(handle))
+        handle.OpenOutputCommand = task.open !== undefined
+            ? new RelayCommand(task.open)
+            : new RelayCommand(() => this.openOutput(handle))
         this.Tasks.Add(handle)
         const kind = String(task.kind)
         const q = this.queues.get(kind) ?? []
