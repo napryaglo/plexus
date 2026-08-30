@@ -1,0 +1,12 @@
+Plexus
+Copyright 2026 Yevhen Napriahlo
+
+This product is licensed under the Apache License, Version 2.0 (see the
+LICENSE file).
+
+This product bundles third-party software under permissive licenses that are
+compatible with the Apache License 2.0. Their copyright notices and license
+texts are reproduced in THIRD-PARTY-NOTICES.md:
+
+  - highlight.js — Copyright (c) 2006, Ivan Sagalaev — BSD 3-Clause License
+  - monaco-editor — Copyright (c) 2016 - present Microsoft Corporation — MIT License
