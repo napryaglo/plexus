@@ -21,6 +21,7 @@ import { attachSaveShortcuts } from './services/documents/save-shortcuts.js'
 import { attachZoomShortcuts } from './modules/diagram/behaviors/zoom-shortcuts.js'
 import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'
 import { attachTitleBar } from './window/title-bar.js'
+import { TitleService } from './window/title-service.js'
 import { ProjectExplorerService } from './modules/project-explorer/services/project-explorer-service.js'
 import { WorkspaceRefreshService } from './services/workspace/workspace-refresh-service.js'
 import { FileWatchService } from './services/file-watch/file-watch-service.js'
@@ -73,11 +74,14 @@ try {
     // bound shell control) before opening the first document, so the toolbar
     // service surfaces it on the document-open rebuild.
     registerThemeSchemePicker(app)
-    // Custom title bar: sync the HTML title strip's text (active document /
-    // project) and re-tint the native caption buttons (WCO) + the band to the
-    // active scheme. Placed after initialize so the content host + explorer
-    // resolve and the theme is registered.
+    // Custom frame: re-tint the native caption buttons (Window Controls Overlay)
+    // to the mural header's surface on every scheme change (+ tag <body> on mac).
+    // The title strip itself is painted by mural (Header region → @PlexusTitleBar).
     attachTitleBar(app)
+    // Title feed: construct now so its ActiveDocument / OpenProjects subscriptions
+    // are live and document.title tracks from boot — even before the header view
+    // first binds $service(TitleService).Title.
+    app.Services.get(TitleService.Key)
     // Construct the workspace-refresh service now so it subscribes to agent
     // events before any turn runs (it isn't tied to a visible panel).
     app.Services.get(WorkspaceRefreshService.Key)

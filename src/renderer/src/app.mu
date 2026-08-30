@@ -79,6 +79,16 @@ import RecentProjectsService from "./services/projects/recent-projects-service.j
 // userData, so the workspace restores on launch (ProjectExplorer.RestoreSession).
 import OpenProjectsStore from "./services/projects/open-projects-store.js"
 
+// Window title service: computes the app title (active document → open project →
+// "Plexus") as a bindable Title DP, which the mural-painted header binds. Also
+// mirrors document.title. Replaces title-bar.ts's old imperative HTML-band sync.
+import TitleService from "./window/title-service.js"
+
+// The mural-painted app title bar (EditorShell.HeaderContent = @PlexusTitleBar):
+// a 32dp strip with the rail-coloured logo box + brand mark on the left and the
+// bound title text. Merged below; set on the shell root at the bottom.
+import PlexusTitleBar from "./window/title-bar.resources.mu.js"
+
 // Capability content services + their side-pane templates.
 import PanelsResources from "./services/panels/panels.resources.mu.js"
 
@@ -178,6 +188,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         ViewportService
         // System clipboard seam for the Problems popup's copy-all + per-row copy.
         ClipboardService
+        // Window title feed (active document → open project → "Plexus") as a
+        // bindable Title DP; the mural header binds $service(TitleService).Title.
+        // Eagerly resolved in main.js so document.title tracks from boot.
+        TitleService
         // Storage backends, keyed by id; the Project Explorer resolves this to
         // build a project's rooted IStorage. Root singleton so every consumer
         // shares the same registration set.
@@ -311,6 +325,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
             StackPanel [ Orientation = Vertical ]
         }
 
+        // The mural-painted app title bar (@PlexusTitleBar), set as the shell's
+        // HeaderContent below.
+        merge PlexusTitleBar
+
         // Each service's view resources live with the service, merged app-global
         // here (see ./services/<service>/*.resources.mu).
         merge PanelsResources
@@ -370,9 +388,10 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // Shadows the framework's DataTemplate[PanelDockService] from Application.Resources.
         merge DockTabsResources
 
-        // The app root — the framework's default EditorShell. All regions are
-        // data-driven (services + the active document), so the app declares no
-        // shell chrome.
-        EditorShell x:root { }
+        // The app root — the framework's default EditorShell. Regions are
+        // data-driven (services + the active document); the one piece of app
+        // chrome is the title bar, painted by mural into the Header region via
+        // HeaderContent (the OS frame is hidden; see window/title-bar.resources.mu).
+        EditorShell x:root [ HeaderContent = @PlexusTitleBar ] { }
     }
 }
