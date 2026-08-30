@@ -27,7 +27,7 @@ describe('BackgroundWorkService', () => {
         const s = svc()
         let opened = 0
         const { handle } = s.submit({ kind: TaskKind.Inline, title: 'run', payload: async () => 'ok', open: () => { opened++ } })
-        handle.OpenOutputCommand.Execute(undefined)
+        handle.OpenOutputCommand!.Execute(undefined)
         expect(opened).toBe(1)
     })
 

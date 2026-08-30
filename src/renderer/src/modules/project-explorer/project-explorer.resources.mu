@@ -24,6 +24,7 @@ import TreeSelectionBehavior from "../../services/projects/tree-selection-behavi
 import TreeDragDropBehavior from "../../services/projects/tree-drag-drop-behavior.js"
 import ProjectTreeTemplateBehavior from "../../services/projects/project-tree-template-behavior.js"
 import NewItemChoice from "../../services/projects/new-item-choice.js"
+import AgentSkillChoice from "../../modules/agent-chat/services/agent-skill-choice.js"
 
 resources ProjectExplorerResources {
 
@@ -31,6 +32,12 @@ resources ProjectExplorerResources {
     // NewItemChoice. MenuItem is an ItemsControl, so the parent "Add New" item's
     // ItemsSource generates one of these per available project format.
     DataTemplate x:key="NewItemChoiceTemplate" [ DataType = NewItemChoice ] {
+        MenuItem [ Header = $Label, Command = $Command ]
+    }
+
+    // One row in the "Run Agent / Skill" submenu — same shape as the Add New row,
+    // one per the project's declared .claude/ agents + skills.
+    DataTemplate x:key="AgentSkillChoiceTemplate" [ DataType = AgentSkillChoice ] {
         MenuItem [ Header = $Label, Command = $Command ]
     }
 
@@ -72,6 +79,14 @@ resources ProjectExplorerResources {
         MenuItem [ Header = "Add Library Reference…", Command = $AddLibraryReferenceCommand ]
         MenuItem [ Header = "Refresh Bases", Command = $RefreshBasesCommand ]
         MenuItem [ Header = "Update Agent Meta-data", Command = $UpdateAgentMetadataCommand ]
+        // Run one of the project's declared .claude/ agents or skills in the
+        // background (opens as a conversation). Shown only when the catalog is
+        // non-empty; its rows are generated from AgentSkillChoices.
+        MenuItem
+            [ Header = "Run Agent / Skill",
+              Visibility = $HasAgentSkills << ToVisibility,
+              ItemsControl.ItemsSource  = $AgentSkillChoices,
+              ItemsControl.ItemTemplate = @AgentSkillChoiceTemplate ]
         MenuSeparator
         MenuItem [ Header = "Close Project", Command = $CloseCommand ]
     }

@@ -50,6 +50,9 @@ import {
 import { isRelocatable, isRelocatableAcrossStorage, type IDocumentFactory } from '../../../services/documents/document-factory.js'
 import { NewFileParticipantKey } from '../../../services/documents/new-file-participant.js'
 import { NodeCommandContributorKey } from '../../../services/documents/node-command-contributor.js'
+import { ProjectAgentCatalog } from '../../agent-chat/services/project-agent-catalog.js'
+import { ChatSessionsService } from '../../agent-chat/services/chat-sessions-service.js'
+import { AgentSkillChoice, buildAgentSkillChoices } from '../../agent-chat/services/agent-skill-choice.js'
 import { copyTree } from '../../../services/storage/copy-tree.js'
 import type { FileFilter } from '../../../../../shared/file-system-api.js'
 import { ProjectNode } from '../../../services/projects/project.js'
@@ -463,6 +466,22 @@ export class ProjectExplorerService extends ServiceBase
             if (a.source === op) void this.moveNodes(op, a.nodes, a.destPath)
             else void this.moveNodesAcross(a.source, a.nodes, op, a.destPath)
         })
+        void this.wireAgentSkillChoices(op)
+    }
+
+    // Fetch the project's .claude catalog and populate its "Run Agent / Skill"
+    // submenu, each choice launching a background run via ChatSessionsService.
+    private async wireAgentSkillChoices(op: OpenProject): Promise<void>
+    {
+        const catalog = this.Provider.get(ProjectAgentCatalog.Key)
+        const chats = this.Provider.get(ChatSessionsService.Key)
+        if (catalog === undefined || chats === undefined) return
+        const found = await catalog.CatalogFor(op.Folder)
+        const choices = buildAgentSkillChoices(found, (item) => { chats.RunAgentSkill(item, op.Folder, op.Name) })
+        const collection = new ObservableCollection<AgentSkillChoice>()
+        for (const c of choices) collection.Add(c)
+        op.AgentSkillChoices = collection
+        op.HasAgentSkills = choices.length > 0
     }
 
     // Create a new file of the project's primary format inside `parentFolder`

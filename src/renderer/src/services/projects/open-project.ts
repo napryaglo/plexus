@@ -4,6 +4,7 @@ import type { IProjectFactory } from './project-factory.js'
 import type { IStorage } from '../storage/storage.js'
 import { ProjectNode, type Project } from './project.js'
 import { NewItemChoice } from './new-item-choice.js'
+import type { AgentSkillChoice } from '../../modules/agent-chat/services/agent-skill-choice.js'
 
 // One open project in the explorer — the VM the tree renders as a collapsible
 // root. It bundles the project's model (Name + file tree) with the factory and
@@ -80,6 +81,13 @@ export class OpenProject extends MuralBase
     // glyph and the tree's Visibility both bind to it.
     static readonly IsExpandedKey = MuralBase.RegisterProperty<boolean>(
         OpenProject, 'IsExpanded', true, MetaData.None)
+    // The "Run Agent / Skill" submenu choices — one per the project's declared
+    // .claude/ agents + skills, populated async by ProjectExplorerService. Empty
+    // (and HasAgentSkills=false) for a project with no .claude catalog.
+    static readonly AgentSkillChoicesKey = MuralBase.RegisterProperty<ObservableCollection<AgentSkillChoice>>(
+        OpenProject, 'AgentSkillChoices', undefined as unknown as ObservableCollection<AgentSkillChoice>, MetaData.None)
+    static readonly HasAgentSkillsKey = MuralBase.RegisterProperty<boolean>(
+        OpenProject, 'HasAgentSkills', false, MetaData.None)
 
     private project: Project
     private readonly factory: IProjectFactory
@@ -182,6 +190,11 @@ export class OpenProject extends MuralBase
 
     public get IsExpanded(): boolean { return this.get_property_value(OpenProject.IsExpandedKey) }
     public set IsExpanded(v: boolean) { this.set_property_value(OpenProject.IsExpandedKey, v) }
+
+    public get AgentSkillChoices(): ObservableCollection<AgentSkillChoice> { return this.get_property_value(OpenProject.AgentSkillChoicesKey) }
+    public set AgentSkillChoices(v: ObservableCollection<AgentSkillChoice>) { this.set_property_value(OpenProject.AgentSkillChoicesKey, v) }
+    public get HasAgentSkills(): boolean { return this.get_property_value(OpenProject.HasAgentSkillsKey) }
+    public set HasAgentSkills(v: boolean) { this.set_property_value(OpenProject.HasAgentSkillsKey, v) }
 
     // The backing project model, factory, and storage (read-only to the explorer).
     public get Project(): Project { return this.project }

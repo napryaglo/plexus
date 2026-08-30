@@ -18,6 +18,7 @@ function fakeAgent() {
         sendTurn: (id, _c, _d, text) => { turns.push({ sessionId: id, text }); return Promise.resolve() },
         abort: () => Promise.resolve(),
         isResumable: () => Promise.resolve(true),
+        listAgentsAndSkills: () => Promise.resolve({ agents: [], skills: [] }),
         answerQuestion: () => Promise.resolve(),
         refreshProjectResult: () => Promise.resolve(),
         createProjectResult: () => Promise.resolve(),

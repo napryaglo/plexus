@@ -15,6 +15,7 @@ import { HtmlTarget } from '@pragmatic-lab/mural/visual-engine'
 import { ThemeManager, Density } from '@pragmatic-lab/mural/runtime'
 import { ContentHostService, PanelDockService } from '@pragmatic-lab/mural/framework'
 import { ChatSessionsService } from './modules/agent-chat/services/chat-sessions-service.js'
+import { ProjectAgentCatalog } from './modules/agent-chat/services/project-agent-catalog.js'
 import { TemplateGalleryService } from './modules/agent-chat/services/template-gallery-service.js'
 import { attachAutoOpenInspector } from './modules/diagram/behaviors/auto-open-inspector-behavior.js'
 import { attachSaveShortcuts } from './services/documents/save-shortcuts.js'
@@ -192,6 +193,9 @@ try {
     // watches the document's ActiveView, published when the canvas mounts).
     const dock = app.Services.get(PanelDockService.Key)
     const chats = app.Services.get(ChatSessionsService.Key)
+    // Construct the .claude catalog cache now so the explorer's async submenu
+    // populate resolves the same instance (it's otherwise lazy).
+    app.Services.get(ProjectAgentCatalog.Key)
     if (chats !== undefined) {
         await chats.RestoreSession()
         chats.NewConversation()
