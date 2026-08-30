@@ -204,6 +204,9 @@ try {
         globalThis.__chats = chats
         globalThis.__runAgent = () => chats.RunAgentSkill(
             { kind: 'skill', name: 'demo-skill', description: '' }, '/tmp/x', 'Demo')
+        // Flush all open conversations to disk. The main process awaits this from the
+        // window 'close' handler (executeJavaScript) so nothing is lost on app quit.
+        globalThis.__flushChats = () => chats.FlushAll()
     }
     // Dev-only: a Card Gallery tab to preview the agent card templates without
     // driving the agent. Never seeded in packaged builds.

@@ -52,6 +52,24 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => mainWindow.show())
 
+  // Flush open conversations to disk before the window closes. The first close is
+  // deferred: we ask the renderer to persist everything (its FlushAll writes back
+  // through the file-system IPC while the event loop is still running), then close
+  // for real. Guarded by a flag (so the re-issued close proceeds) and a timeout (so
+  // a hung/absent renderer never blocks quit).
+  let flushed = false
+  mainWindow.on('close', (event) => {
+    if (flushed || mainWindow.webContents.isDestroyed()) return
+    event.preventDefault()
+    flushed = true
+    const proceed = (): void => { if (!mainWindow.isDestroyed()) mainWindow.close() }
+    const flush = mainWindow.webContents
+      .executeJavaScript('window.__flushChats ? window.__flushChats() : null')
+      .catch(() => undefined)
+    const timeout = new Promise((resolve) => setTimeout(resolve, 2000))
+    void Promise.race([flush, timeout]).then(proceed, proceed)
+  })
+
   // Open target=_blank / external links in the OS browser, never in-app.
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)

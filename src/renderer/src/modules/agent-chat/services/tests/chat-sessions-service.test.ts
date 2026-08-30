@@ -111,6 +111,44 @@ test('Close removes the tab and closes the backend session', () => {
     expect(svc.Open.ToArray()).not.toContain(chat)
 })
 
+test('Close flushes the conversation to the store first', async () => {
+    const { svc, upserts } = makeService()
+    const chat = svc.NewConversation()
+    await Promise.resolve()   // let the isResumable() probe settle
+    bridge.emit({ SessionId: chat.Id, Event: { Kind: AgentEventKind.SessionStarted, SessionId: 'cli-1' } })
+    await Promise.resolve()
+    const before = upserts.length
+    svc.Close(chat)
+    await Promise.resolve()
+    expect(upserts.length).toBeGreaterThan(before)
+    expect(upserts.some((u) => u.Id === chat.Id)).toBe(true)
+})
+
+test('FlushAll persists every open conversation', async () => {
+    const { svc, upserts } = makeService()
+    const a = svc.NewConversation()
+    const b = svc.NewConversation()
+    await Promise.resolve()
+    bridge.emit({ SessionId: a.Id, Event: { Kind: AgentEventKind.SessionStarted, SessionId: 'cli-a' } })
+    bridge.emit({ SessionId: b.Id, Event: { Kind: AgentEventKind.SessionStarted, SessionId: 'cli-b' } })
+    await Promise.resolve()
+    upserts.length = 0
+    await svc.FlushAll()
+    expect(upserts.map((u) => u.Id).sort()).toEqual([a.Id, b.Id].sort())
+})
+
+test('a resumed conversation seeds its token, so a later turn is persisted', async () => {
+    const { svc, upserts } = makeService(fakeStore(['/A']), [{ Id: 'r1', Title: 'Past chat' }])
+    await Promise.resolve()
+    const chat = await svc.OpenStored('r1')
+    expect(chat).toBeDefined()
+    upserts.length = 0
+    // No SessionStarted re-emitted for a resume — the seeded token must carry it.
+    bridge.emit({ SessionId: 'r1', Event: { Kind: AgentEventKind.TurnComplete } })
+    await Promise.resolve()
+    expect(upserts.some((u) => u.Id === 'r1')).toBe(true)
+})
+
 test('seedInvocation builds a slash command for a skill and a subagent instruction for an agent', () => {
     expect(seedInvocation({ kind: AgentSkillKind.Skill, name: 'security-review', description: '' })).toBe('/security-review')
     expect(seedInvocation({ kind: AgentSkillKind.Agent, name: 'reviewer', description: '' }))

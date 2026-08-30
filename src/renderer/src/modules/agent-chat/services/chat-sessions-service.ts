@@ -210,15 +210,36 @@ export class ChatSessionsService extends ServiceBase
         this.dock.Add(chat)
         this.dock.SelectedPanel = chat
         this.set_property_value(ChatSessionsService.ActiveChatKey, chat)
+        // Seed the resume token now: a resumed CLI session may not re-emit
+        // SessionStarted, so without this a later TurnComplete (and close/quit flush)
+        // would find no token and skip persisting the resumed conversation's new turns.
+        if (rec.ResumeToken !== '') this.tokens.set(rec.Id, rec.ResumeToken)
         void this.agent.startSession(rec.Id, this.currentCwd(), this.addDirs(), rec.ResumeToken)
         return chat
     }
 
     public Close(chat: ChatSession): void
     {
+        // Flush the latest transcript before dropping the tab (serialize is
+        // synchronous, so the snapshot is captured even as we remove the chat).
+        void this.persistIfPossible(chat)
         this.dock.Remove(chat)
         this.Open.Remove(chat)
         void this.agent.closeSession(chat.Id)
+    }
+
+    // Persist every open conversation — called on application close so nothing typed
+    // or received since the last turn is lost. Resolves once all writes settle.
+    public async FlushAll(): Promise<void>
+    {
+        await Promise.all(this.Open.ToArray().map((c) => this.persistIfPossible(c)))
+    }
+
+    // Persist a chat if we hold its resume token (and the provider can resume).
+    private persistIfPossible(chat: ChatSession): Promise<void>
+    {
+        const token = this.tokens.get(chat.Id)
+        return token === undefined ? Promise.resolve() : this.persist(chat, token)
     }
 
     public async Reveal(sessionId: string): Promise<void>
