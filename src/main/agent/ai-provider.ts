@@ -15,7 +15,19 @@ export interface AiProviderSession
 export interface IAiProvider
 {
     readonly Id: string;
-    start(workingDirectory: string, addDirs: readonly string[], onEvent: (event: AgentEvent) => void): AiProviderSession;
+    // Can this provider restore an earlier conversation's AI context? Gates whether
+    // the renderer persists a conversation for later resume.
+    readonly Resumable: boolean;
+    // sessionId = Plexus's stable id for this conversation (threaded into the MCP
+    // config URL so tool calls are attributable). resumeToken = a prior CLI session
+    // id to resume, when reopening a stored conversation.
+    start(
+        sessionId: string,
+        workingDirectory: string,
+        addDirs: readonly string[],
+        onEvent: (event: AgentEvent) => void,
+        resumeToken?: string,
+    ): AiProviderSession;
 }
 
 // An extra MCP server the provider mounts into the backend (today: the in-process

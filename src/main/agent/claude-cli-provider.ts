@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { StreamJsonParser } from './stream-json-parser.js'
 import { AgentEventKind, type AgentEvent } from '../../shared/agent-api.js'
-import type { AiProviderSession, ChildLike, IAiProvider, McpOptions, SpawnFn } from './ai-provider.js'
+import type { AiProviderSession, ChildLike, IAiProvider, McpHttpServerConfig, McpOptions, SpawnFn } from './ai-provider.js'
 
 const CLI_ARGS = [
     '-p',
@@ -30,6 +30,9 @@ const defaultSpawn: SpawnFn = (command, args, options) =>
 export class ClaudeCliProvider implements IAiProvider
 {
     public readonly Id = 'claude-cli'
+    // The claude CLI can restore an earlier conversation via --resume, so Plexus
+    // may persist a conversation and reopen it later. Gates ChatStore persistence.
+    public readonly Resumable = true
 
     constructor(
         private readonly binaryPath: string = 'claude',
@@ -39,9 +42,16 @@ export class ClaudeCliProvider implements IAiProvider
         private readonly mcp: McpOptions | undefined = undefined,
     ) {}
 
-    public start(workingDirectory: string, addDirs: readonly string[], onEvent: (event: AgentEvent) => void): AiProviderSession
+    public start(
+        sessionId: string,
+        workingDirectory: string,
+        addDirs: readonly string[],
+        onEvent: (event: AgentEvent) => void,
+        resumeToken?: string,
+    ): AiProviderSession
     {
-        const args = [...CLI_ARGS, ...addDirs.flatMap((d) => ['--add-dir', d]), ...this.mcpArgs()]
+        const resume = resumeToken !== undefined ? ['--resume', resumeToken] : []
+        const args = [...CLI_ARGS, ...resume, ...addDirs.flatMap((d) => ['--add-dir', d]), ...this.mcpArgs(sessionId)]
         const child = this.spawnFn(this.binaryPath, args, { cwd: workingDirectory })
         const parser = new StreamJsonParser()
         let buffer = ''
@@ -77,13 +87,19 @@ export class ClaudeCliProvider implements IAiProvider
     // `claude.cmd` shim needs it), which mangles an inline-JSON arg. The file is
     // named by the server port so concurrent Plexus instances don't collide. Not
     // strict — the user's own MCP servers still load alongside ours.
-    private mcpArgs(): string[]
+    private mcpArgs(sessionId: string): string[]
     {
         if (this.mcp === undefined) return []
         const first = Object.values(this.mcp.servers)[0]
         const port = first !== undefined ? new URL(first.url).port : '0'
-        const configPath = join(tmpdir(), `plexus-mcp-${port}.json`)
-        writeFileSync(configPath, JSON.stringify({ mcpServers: this.mcp.servers }))
+        // Tag each server URL with the session so the MCP server can attribute tool
+        // calls (question/approval/create-project) back to this conversation.
+        const servers: Record<string, McpHttpServerConfig> = {}
+        for (const [key, cfg] of Object.entries(this.mcp.servers))
+            servers[key] = { type: 'http', url: `${cfg.url}?session=${encodeURIComponent(sessionId)}` }
+        // Named by port + session so concurrent sessions don't clobber the config file.
+        const configPath = join(tmpdir(), `plexus-mcp-${port}-${sessionId}.json`)
+        writeFileSync(configPath, JSON.stringify({ mcpServers: servers }))
         const allow = this.mcp.allowedTools.length > 0 ? ['--allowedTools', ...this.mcp.allowedTools] : []
         const disallow = this.mcp.disallowedTools !== undefined && this.mcp.disallowedTools.length > 0
             ? ['--disallowedTools', ...this.mcp.disallowedTools] : []

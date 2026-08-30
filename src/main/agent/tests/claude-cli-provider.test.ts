@@ -30,10 +30,52 @@ function fakeChild() {
 const helloFixture = readFileSync(join(__dirname, 'fixtures', 'hello.stream.jsonl'), 'utf8')
 const initLine = helloFixture.split('\n').find((l) => l.includes('"subtype":"init"')) as string
 
+// A spawn that records (command, args, cwd) and returns an inert child.
+function captureSpawn() {
+    const calls: Array<{ command: string; args: string[]; cwd: string }> = []
+    const spawn: SpawnFn = (command, args, options) => {
+        calls.push({ command, args: [...args], cwd: options.cwd })
+        return {
+            stdout: { on: () => {} }, stderr: { on: () => {} },
+            stdin: { write: () => {} }, on: () => {}, kill: () => {},
+        } as ChildLike
+    }
+    return { spawn, calls }
+}
+
+test('the provider declares itself resumable', () => {
+    expect(new ClaudeCliProvider().Resumable).toBe(true)
+})
+
+test('start passes --resume <token> when a resume token is supplied', () => {
+    const { spawn, calls } = captureSpawn()
+    new ClaudeCliProvider('claude', spawn).start('s1', '/proj', [], () => {}, 'cli-abc')
+    const args = calls[0].args
+    const i = args.indexOf('--resume')
+    expect(i).toBeGreaterThanOrEqual(0)
+    expect(args[i + 1]).toBe('cli-abc')
+})
+
+test('start omits --resume when no token is supplied', () => {
+    const { spawn, calls } = captureSpawn()
+    new ClaudeCliProvider('claude', spawn).start('s1', '/proj', [], () => {})
+    expect(calls[0].args).not.toContain('--resume')
+})
+
+test('the MCP config URL carries the session id so tool calls are attributable', () => {
+    const { spawn, calls } = captureSpawn()
+    const mcp = { servers: { plexus: { type: 'http' as const, url: 'http://127.0.0.1:9/mcp' } }, allowedTools: [] }
+    new ClaudeCliProvider('claude', spawn, mcp).start('sess-42', '/proj', [], () => {})
+    const args = calls[0].args
+    const cfgPath = args[args.indexOf('--mcp-config') + 1]
+    const written = JSON.parse(readFileSync(cfgPath, 'utf8'))
+    expect(written.mcpServers.plexus.url).toBe('http://127.0.0.1:9/mcp?session=sess-42')
+})
+
 test('spawns claude (non-bare) with the streaming flags at the given cwd', () => {
     let captured: { command: string; args: string[]; options: { cwd: string } } | undefined
     const spawn: SpawnFn = (command, args, options) => { captured = { command, args, options }; return fakeChild().child }
-    new ClaudeCliProvider('claude', spawn).start('/proj', [], () => {})
+    new ClaudeCliProvider('claude', spawn).start('s1', '/proj', [], () => {})
     expect(captured?.command).toBe('claude')
     expect(captured?.args).toEqual([
         '-p', '--output-format', 'stream-json', '--input-format', 'stream-json',
@@ -46,7 +88,7 @@ test('spawns claude (non-bare) with the streaming flags at the given cwd', () =>
 test('appends --add-dir for each extra directory, spawning at the cwd', () => {
     let captured: { args: string[]; options: { cwd: string } } | undefined
     const spawn: SpawnFn = (_command, args, options) => { captured = { args, options }; return fakeChild().child }
-    new ClaudeCliProvider('claude', spawn).start('/proj', ['/lib-a', '/lib-b'], () => {})
+    new ClaudeCliProvider('claude', spawn).start('s1', '/proj', ['/lib-a', '/lib-b'], () => {})
     expect(captured?.options.cwd).toBe('/proj')
     expect(captured?.args).toEqual([
         '-p', '--output-format', 'stream-json', '--input-format', 'stream-json',
@@ -62,21 +104,22 @@ test('adds --mcp-config (a temp file) + --allowedTools when MCP options are give
         servers: { plexus: { type: 'http', url: 'http://127.0.0.1:12345/mcp' } },
         allowedTools: ['mcp__plexus__ask_user_question'],
         disallowedTools: ['AskUserQuestion'],
-    }).start('/proj', [], () => {})
+    }).start('s1', '/proj', [], () => {})
 
     const args = captured!.args
     const i = args.indexOf('--mcp-config')
     expect(i).toBeGreaterThan(-1)
-    // Config is a FILE path (inline JSON is mangled by the Windows shell), named by port.
-    expect(args[i + 1]).toContain('plexus-mcp-12345.json')
+    // Config is a FILE path (inline JSON is mangled by the Windows shell), named by
+    // port + session (so concurrent sessions don't clobber each other's config).
+    expect(args[i + 1]).toContain('plexus-mcp-12345-s1.json')
     expect(args).toContain('--allowedTools')
     expect(args).toContain('mcp__plexus__ask_user_question')
     // The built-in AskUserQuestion is disabled so the model uses our MCP tool.
     expect(args).toContain('--disallowedTools')
     expect(args).toContain('AskUserQuestion')
-    // The file really holds our server config.
+    // The file really holds our server config, its URL tagged with the session.
     const cfg = JSON.parse(readFileSync(args[i + 1]!, 'utf8'))
-    expect(cfg.mcpServers.plexus.url).toBe('http://127.0.0.1:12345/mcp')
+    expect(cfg.mcpServers.plexus.url).toBe('http://127.0.0.1:12345/mcp?session=s1')
 })
 
 test('writes the server config, allow-lists every tool, and appends the system prompt when given', () => {
@@ -88,7 +131,7 @@ test('writes the server config, allow-lists every tool, and appends the system p
         },
         allowedTools: ['mcp__plexus__ask_user_question', 'mcp__plexus__refresh_project', 'mcp__plexus__create_project'],
         appendSystemPrompt: 'CALL REFRESH ONLY AFTER FILE CHANGES',
-    }).start('/proj', [], () => {})
+    }).start('s1', '/proj', [], () => {})
 
     const args = captured!.args
     const i = args.indexOf('--mcp-config')
@@ -108,7 +151,7 @@ test('writes the server config, allow-lists every tool, and appends the system p
 test('forwards parsed events from a real stdout line', () => {
     const f = fakeChild()
     const events: AgentEvent[] = []
-    new ClaudeCliProvider('claude', () => f.child).start('/proj', [], (e) => events.push(e))
+    new ClaudeCliProvider('claude', () => f.child).start('s1', '/proj', [], (e) => events.push(e))
     // The init line carries session_id → SessionStarted.
     f.emitStdout(initLine + '\n')
     expect(events[0].Kind).toBe(AgentEventKind.SessionStarted)
@@ -117,7 +160,7 @@ test('forwards parsed events from a real stdout line', () => {
 test('buffers a stdout chunk split mid-line until the newline arrives', () => {
     const f = fakeChild()
     const events: AgentEvent[] = []
-    new ClaudeCliProvider('claude', () => f.child).start('/proj', [], (e) => events.push(e))
+    new ClaudeCliProvider('claude', () => f.child).start('s1', '/proj', [], (e) => events.push(e))
     // Split the init line (carries session_id → SessionStarted) mid-way.
     const cut = Math.floor(initLine.length / 2)
     f.emitStdout(initLine.slice(0, cut))
@@ -128,7 +171,7 @@ test('buffers a stdout chunk split mid-line until the newline arrives', () => {
 
 test('send writes a stream-json user message to stdin', () => {
     const f = fakeChild()
-    const session = new ClaudeCliProvider('claude', () => f.child).start('/proj', [], () => {})
+    const session = new ClaudeCliProvider('claude', () => f.child).start('s1', '/proj', [], () => {})
     session.send('hi there')
     expect(f.writes).toEqual([
         JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: 'hi there' }] } }) + '\n',
@@ -137,7 +180,7 @@ test('send writes a stream-json user message to stdin', () => {
 
 test('abort kills the child', () => {
     const f = fakeChild()
-    const session = new ClaudeCliProvider('claude', () => f.child).start('/proj', [], () => {})
+    const session = new ClaudeCliProvider('claude', () => f.child).start('s1', '/proj', [], () => {})
     session.abort()
     expect(f.killed).toBe(true)
 })
@@ -145,7 +188,7 @@ test('abort kills the child', () => {
 test('emits an Error event when the child errors (e.g. claude not found)', () => {
     const f = fakeChild()
     const events: AgentEvent[] = []
-    new ClaudeCliProvider('claude', () => f.child).start('/proj', [], (e) => events.push(e))
+    new ClaudeCliProvider('claude', () => f.child).start('s1', '/proj', [], (e) => events.push(e))
     f.emitError(new Error('spawn claude ENOENT'))
     expect(events.some((e) => e.Kind === AgentEventKind.Error)).toBe(true)
 })
