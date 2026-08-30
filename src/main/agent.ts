@@ -9,12 +9,12 @@ import { join } from 'node:path'
 import {
     AgentChannel, APPROVE_TOOL_QUALIFIED, ASK_TOOL_QUALIFIED, CREATE_PROJECT_TOOL_QUALIFIED, GET_PROBLEMS_TOOL_QUALIFIED,
     MCP_SERVER_KEY, REFRESH_TOOL_QUALIFIED,
-    type AgentEvent, type ApprovalRule, type CreateProjectResult, type GetProblemsResult, type QuestionAnswer,
-    type RefreshProjectResult, type ToolApprovalAnswer,
+    type ApprovalRule, type CreateProjectResult, type GetProblemsResult, type QuestionAnswer,
+    type RefreshProjectResult, type TaggedAgentEvent, type ToolApprovalAnswer,
 } from '../shared/agent-api.js'
 import { AiProviderService } from './agent/ai-provider-service.js'
 import { ClaudeCliProvider } from './agent/claude-cli-provider.js'
-import { AgentSession } from './agent/agent-session.js'
+import { AgentSessionManager } from './agent/agent-session-manager.js'
 import { PlexusMcpServer } from './agent/plexus-mcp-server.js'
 import { RuleStore } from './agent/tool-approval-rules.js'
 
@@ -28,12 +28,12 @@ const REFRESH_INSTRUCTION =
     + 'turns that changed nothing on disk — answering a question, reading or explaining code, '
     + 'running read-only commands, or pure discussion.'
 
-// Push an agent event to the renderer (the focused window, falling back to the
-// first — a single window today, but this stays correct if more open).
-function emitToRenderer(event: AgentEvent): void
+// Push a session-tagged agent event to the renderer (the focused window, falling
+// back to the first — a single window today, but this stays correct if more open).
+function emitToRenderer(tagged: TaggedAgentEvent): void
 {
     const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
-    win?.webContents.send(AgentChannel.Event, event)
+    win?.webContents.send(AgentChannel.Event, tagged)
 }
 
 export async function registerAgentHandlers(): Promise<void>
@@ -70,19 +70,28 @@ export async function registerAgentHandlers(): Promise<void>
         appendSystemPrompt: REFRESH_INSTRUCTION,
         permissionPromptTool: APPROVE_TOOL_QUALIFIED,
     }))
-    const session = new AgentSession(providers, emitToRenderer)
+    const manager = new AgentSessionManager(providers, emitToRenderer)
 
-    ipcMain.handle(AgentChannel.StartSession, (_e, workingDirectory: string, addDirs: readonly string[]): void => {
-        mcpServer.setRuleStore(store, workingDirectory)
-        session.start(workingDirectory, addDirs)
+    // setRuleStore is process-global: approval-rule scope tracks the most recent
+    // start/turn's cwd. All conversations share the same workspace dirs today, so
+    // this is correct in practice; revisit if per-session cwds ever diverge.
+    ipcMain.handle(AgentChannel.StartSession,
+        (_e, sessionId: string, workingDirectory: string, addDirs: readonly string[], resumeToken?: string): void => {
+            mcpServer.setRuleStore(store, workingDirectory)
+            manager.create(sessionId).start(workingDirectory, addDirs, resumeToken)
+        })
+    ipcMain.handle(AgentChannel.SendTurn,
+        (_e, sessionId: string, workingDirectory: string, addDirs: readonly string[], text: string): void => {
+            mcpServer.setRuleStore(store, workingDirectory)
+            manager.create(sessionId).send(workingDirectory, addDirs, text)
+        })
+    ipcMain.handle(AgentChannel.Abort, (_e, sessionId: string): void => {
+        manager.get(sessionId)?.abort()
     })
-    ipcMain.handle(AgentChannel.SendTurn, (_e, workingDirectory: string, addDirs: readonly string[], text: string): void => {
-        mcpServer.setRuleStore(store, workingDirectory)
-        session.send(workingDirectory, addDirs, text)
+    ipcMain.handle(AgentChannel.CloseSession, (_e, sessionId: string): void => {
+        manager.close(sessionId)
     })
-    ipcMain.handle(AgentChannel.Abort, (): void => {
-        session.abort()
-    })
+    ipcMain.handle(AgentChannel.IsResumable, (): boolean => providers.active().Resumable)
     // The user's answer to a pending card → unblock the ask_user_question call.
     ipcMain.handle(AgentChannel.AnswerQuestion, (_e, answer: QuestionAnswer): void => {
         mcpServer.resolveAnswer(answer)

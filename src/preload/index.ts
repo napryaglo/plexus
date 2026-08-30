@@ -12,7 +12,7 @@ import {
 } from '../shared/file-system-api.js'
 import { EnvironmentChannel, type EnvironmentInfo } from '../shared/environment-api.js'
 import { SettingsChannel, type ISettingsBridge } from '../shared/settings-api.js'
-import { AgentChannel, type AgentEvent, type ApprovalRule, type IAgentApi } from '../shared/agent-api.js'
+import { AgentChannel, type ApprovalRule, type IAgentApi, type TaggedAgentEvent } from '../shared/agent-api.js'
 import { TodlLspChannel, type ITodlLspApi } from '../shared/todl-lsp-api.js'
 import { FileWatchChannel, type FileChangeEvent, type IFileWatchApi } from '../shared/file-watch-api.js'
 import { WindowChannel, type IWindowApi, type OverlayColors } from '../shared/window-api.js'
@@ -78,11 +78,13 @@ const settings: ISettingsBridge = {
 // sendTurn forwards the working directory + extra dirs + text (matching the
 // SendTurn handler).
 const agent: IAgentApi = {
-  startSession: (workingDirectory: string, addDirs: readonly string[]): Promise<void> =>
-    ipcRenderer.invoke(AgentChannel.StartSession, workingDirectory, addDirs),
-  sendTurn: (workingDirectory: string, addDirs: readonly string[], text: string): Promise<void> =>
-    ipcRenderer.invoke(AgentChannel.SendTurn, workingDirectory, addDirs, text),
-  abort: (): Promise<void> => ipcRenderer.invoke(AgentChannel.Abort),
+  startSession: (sessionId: string, workingDirectory: string, addDirs: readonly string[], resumeToken?: string): Promise<void> =>
+    ipcRenderer.invoke(AgentChannel.StartSession, sessionId, workingDirectory, addDirs, resumeToken),
+  closeSession: (sessionId: string): Promise<void> => ipcRenderer.invoke(AgentChannel.CloseSession, sessionId),
+  sendTurn: (sessionId: string, workingDirectory: string, addDirs: readonly string[], text: string): Promise<void> =>
+    ipcRenderer.invoke(AgentChannel.SendTurn, sessionId, workingDirectory, addDirs, text),
+  abort: (sessionId: string): Promise<void> => ipcRenderer.invoke(AgentChannel.Abort, sessionId),
+  isResumable: (): Promise<boolean> => ipcRenderer.invoke(AgentChannel.IsResumable),
   answerQuestion: (answer): Promise<void> => ipcRenderer.invoke(AgentChannel.AnswerQuestion, answer),
   refreshProjectResult: (result): Promise<void> => ipcRenderer.invoke(AgentChannel.RefreshProjectResult, result),
   createProjectResult: (result): Promise<void> => ipcRenderer.invoke(AgentChannel.CreateProjectResult, result),
@@ -90,8 +92,8 @@ const agent: IAgentApi = {
   answerToolApproval: (answer): Promise<void> => ipcRenderer.invoke(AgentChannel.AnswerToolApproval, answer),
   listApprovalRules: (projectKey): Promise<ApprovalRule[]> => ipcRenderer.invoke(AgentChannel.ListApprovalRules, projectKey),
   revokeApprovalRule: (projectKey, rule): Promise<void> => ipcRenderer.invoke(AgentChannel.RevokeApprovalRule, projectKey, rule),
-  onEvent: (handler: (event: AgentEvent) => void): (() => void) => {
-    const listener = (_e: unknown, event: AgentEvent): void => handler(event)
+  onEvent: (handler: (msg: TaggedAgentEvent) => void): (() => void) => {
+    const listener = (_e: unknown, msg: TaggedAgentEvent): void => handler(msg)
     ipcRenderer.on(AgentChannel.Event, listener)
     return () => {
       ipcRenderer.removeListener(AgentChannel.Event, listener)

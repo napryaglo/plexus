@@ -3,7 +3,7 @@ import { AiProviderService } from '../ai-provider-service.js'
 import type { AiProviderSession, IAiProvider } from '../ai-provider.js'
 
 function fakeProvider(id: string): IAiProvider {
-    return { Id: id, start: (): AiProviderSession => ({ send: () => {}, abort: () => {}, dispose: () => {} }) }
+    return { Id: id, Resumable: true, start: (): AiProviderSession => ({ send: () => {}, abort: () => {}, dispose: () => {} }) }
 }
 
 test('the first registered provider becomes active by default', () => {
