@@ -9,9 +9,11 @@ import {
 } from '@pragmatic-lab/mural/runtime'
 import { PanelDockService } from '@pragmatic-lab/mural/framework'
 import {
-    AgentEventKind,
-    type AgentEvent, type CreateProjectRequest, type IAgentApi,
+    AgentEventKind, AgentSkillKind,
+    type AgentEvent, type CatalogItem, type CreateProjectRequest, type IAgentApi,
 } from '../../../../../shared/agent-api.js'
+import { BackgroundWorkService } from '../../background-work/services/background-work-service.js'
+import { TaskKind } from '../../background-work/services/task-executor.js'
 import { EnvironmentService } from '../../../services/environment/environment-service.js'
 import { OpenProjectsStore } from '../../../services/projects/open-projects-store.js'
 import { ProjectExplorerService } from '../../project-explorer/services/project-explorer-service.js'
@@ -23,6 +25,16 @@ import type { TranscriptReducer } from './transcript.js'
 import { ChatStore } from './chat-store.js'
 import { StoredConversationRow } from './stored-conversation-row.js'
 import { serializeTranscript, rehydrateTranscript } from './transcript-serializer.js'
+
+// The first-turn text that invokes a catalog item. Skill → its slash command;
+// agent → a natural-language instruction to use that subagent. (The exact CLI form
+// for a named subagent is an open detail; this seam is trivial to adjust.)
+export function seedInvocation(item: CatalogItem): string
+{
+    return item.kind === AgentSkillKind.Skill
+        ? `/${item.name}`
+        : `Use the "${item.name}" subagent for this task.`
+}
 
 export class ChatSessionsService extends ServiceBase
 {
@@ -95,10 +107,13 @@ export class ChatSessionsService extends ServiceBase
     }
 
     // Mint a brand-new empty conversation, start its backend session, and show it.
-    public NewConversation(): ChatSession
+    public NewConversation(): ChatSession { return this.newSession(`Chat ${this.Open.Count + 1}`) }
+
+    // Create a titled conversation, start its backend session, add it as a tab, and
+    // make it active.
+    private newSession(title: string): ChatSession
     {
         const sessionId = crypto.randomUUID()
-        const title = `Chat ${this.Open.Count + 1}`
         const chat = new ChatSession(sessionId, title, this.callbacks(), this.approvals)
         chat.setStatus(this.statusText())
         this.Open.Add(chat)
@@ -106,6 +121,30 @@ export class ChatSessionsService extends ServiceBase
         this.dock.SelectedPanel = chat
         this.set_property_value(ChatSessionsService.ActiveChatKey, chat)
         void this.agent.startSession(sessionId, this.currentCwd(), this.addDirs())
+        return chat
+    }
+
+    // sessionId → resolver, fired when a seeded run's turn completes (see route()).
+    private readonly pendingRuns = new Map<string, () => void>()
+
+    // Launch a project's declared agent/skill as a seeded conversation tracked by a
+    // Background Work task; clicking the task reveals the conversation.
+    public RunAgentSkill(item: CatalogItem, _projectDir: string, projectName: string): ChatSession
+    {
+        const chat = this.newSession(`${item.name} · ${projectName}`)
+        const seed = seedInvocation(item)
+        // Optimistic echo + send through the shared bridge (same path as a user turn).
+        chat.Reducer.beginUserTurn(seed)
+        void this.agent.sendTurn(chat.Id, this.currentCwd(), this.addDirs(), seed)
+
+        const turnDone = new Promise<void>((resolve) => this.pendingRuns.set(chat.Id, resolve))
+        const bg = this.Provider.get(BackgroundWorkService.Key)
+        bg?.submit({
+            kind: TaskKind.Inline,
+            title: `${item.name} · ${projectName}`,
+            payload: async (ctx: { log(l: string): void }) => { ctx.log(`Running ${item.name}…`); await turnDone; return 'done' },
+            open: () => { void this.Reveal(chat.Id) },
+        })
         return chat
     }
 
@@ -155,6 +194,11 @@ export class ChatSessionsService extends ServiceBase
         const chat = this.Open.ToArray().find((c) => c.Id === sessionId)
         if (chat === undefined) return
         if (event.Kind === AgentEventKind.SessionStarted) void this.persist(chat, event.SessionId)
+        if (event.Kind === AgentEventKind.TurnComplete)
+        {
+            const done = this.pendingRuns.get(sessionId)
+            if (done !== undefined) { this.pendingRuns.delete(sessionId); done() }
+        }
         chat.apply(event)
     }
 

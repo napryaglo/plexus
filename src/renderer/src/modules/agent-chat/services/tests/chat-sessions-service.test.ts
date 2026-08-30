@@ -1,11 +1,12 @@
 import { test, expect, beforeEach, afterEach } from 'vitest'
 import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
 import { PanelDockService } from '@pragmatic-lab/mural/framework'
-import { AgentEventKind, type IAgentApi, type TaggedAgentEvent } from '../../../../../../shared/agent-api.js'
+import { AgentEventKind, AgentSkillKind, type CatalogItem, type IAgentApi, type TaggedAgentEvent } from '../../../../../../shared/agent-api.js'
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
 import { OpenProjectsStore } from '../../../../services/projects/open-projects-store.js'
+import { BackgroundWorkService } from '../../../background-work/services/background-work-service.js'
 import { ChatStore } from '../chat-store.js'
-import { ChatSessionsService } from '../chat-sessions-service.js'
+import { ChatSessionsService, seedInvocation } from '../chat-sessions-service.js'
 
 function fakeAgent() {
     const turns: Array<{ sessionId: string; text: string }> = []
@@ -54,8 +55,12 @@ function makeService(store = fakeStore(['/A'])) {
         Upsert: (r: { Id: string }) => { upserts.push(r.Id); return Promise.resolve() },
         Remove: () => Promise.resolve(),
     } as unknown as ChatStore)
+    const submitted: Array<{ title: string; open?: () => void }> = []
+    provider.registerInstance(BackgroundWorkService.Key, {
+        submit: (t: { title: string; open?: () => void }) => { submitted.push({ title: t.title, open: t.open }); return { handle: {}, done: Promise.resolve() } },
+    } as unknown as BackgroundWorkService)
     const svc = new ChatSessionsService(provider)
-    return { svc, provider, upserts, dock: provider.getRequired(PanelDockService.Key) }
+    return { svc, provider, upserts, submitted, dock: provider.getRequired(PanelDockService.Key) }
 }
 
 test('NewConversation starts a session and adds a dock tab', () => {
@@ -98,4 +103,22 @@ test('Close removes the tab and closes the backend session', () => {
     svc.Close(chat)
     expect(dock.Panels.ToArray()).not.toContain(chat)
     expect(svc.Open.ToArray()).not.toContain(chat)
+})
+
+test('seedInvocation builds a slash command for a skill and a subagent instruction for an agent', () => {
+    expect(seedInvocation({ kind: AgentSkillKind.Skill, name: 'security-review', description: '' })).toBe('/security-review')
+    expect(seedInvocation({ kind: AgentSkillKind.Agent, name: 'reviewer', description: '' }))
+        .toBe('Use the "reviewer" subagent for this task.')
+})
+
+test('RunAgentSkill opens a titled conversation and submits a background task', () => {
+    const { svc, submitted } = makeService()
+    const item: CatalogItem = { kind: AgentSkillKind.Skill, name: 'security-review', description: '' }
+    const chat = svc.RunAgentSkill(item, '/A', 'Billing')
+    expect(chat.Title).toBe('security-review · Billing')
+    expect(bridge.started).toContain(chat.Id)
+    expect(bridge.turns).toEqual([{ sessionId: chat.Id, text: '/security-review' }])   // seeded turn
+    expect(submitted).toHaveLength(1)
+    expect(submitted[0].title).toBe('security-review · Billing')
+    expect(typeof submitted[0].open).toBe('function')
 })
