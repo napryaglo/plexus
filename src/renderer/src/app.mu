@@ -124,8 +124,14 @@ import MetaModelResources from "./modules/meta-model/meta-model.resources.mu.js"
 // Libraries capability panel (DataTemplate[LibrariesPanelService] + rows).
 import LibraryResources from "./modules/library/library.resources.mu.js"
 
-// Agent chat panel (DataTemplate[AgentService] + transcript item templates).
+// Agent chat panel (DataTemplate[ChatSession] + transcript item templates).
 import AgentChatResources from "./modules/agent-chat/agent-chat.resources.mu.js"
+
+// Conversations nav panel (DataTemplate[ChatSessionsService] + row templates). The
+// manager/persistence services are registered by AgentChatModule's .services block
+// (root-scoped, like the other module services), so main.js + the panel share one
+// instance; only the view resources are merged here.
+import ConversationsResources from "./modules/agent-chat/conversations.resources.mu.js"
 
 // Problems dock (DataTemplate[ProblemsService] + ProblemsRow rows).
 import ProblemsResources from "./modules/problems/problems.resources.mu.js"
@@ -369,8 +375,11 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // Libraries capability panel (DataTemplate[LibrariesPanelService] + rows).
         merge LibraryResources
 
-        // Agent chat panel (DataTemplate[AgentService] + transcript item templates).
+        // Agent chat panel (DataTemplate[ChatSession] + transcript item templates).
         merge AgentChatResources
+
+        // Conversations nav panel (DataTemplate[ChatSessionsService] + row templates).
+        merge ConversationsResources
 
         // Problems dock (StatusBar DataTemplate[ProblemsService] + ProblemsRow rows).
         merge ProblemsResources

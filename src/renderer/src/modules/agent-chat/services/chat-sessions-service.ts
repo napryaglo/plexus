@@ -20,7 +20,8 @@ import { NewProjectCard } from './new-project-card.js'
 import { ApprovalRulesVM, type ApprovalRulesPort } from './approval-rules.js'
 import { ChatSession, type ChatSessionCallbacks } from './chat-session.js'
 import type { TranscriptReducer } from './transcript.js'
-import { ChatStore, type StoredConversation } from './chat-store.js'
+import { ChatStore } from './chat-store.js'
+import { StoredConversationRow } from './stored-conversation-row.js'
 import { serializeTranscript, rehydrateTranscript } from './transcript-serializer.js'
 
 export class ChatSessionsService extends ServiceBase
@@ -29,8 +30,8 @@ export class ChatSessionsService extends ServiceBase
 
     public static readonly OpenKey = MuralBase.RegisterProperty<ObservableCollection<ChatSession>>(
         ChatSessionsService, 'Open', undefined as unknown as ObservableCollection<ChatSession>, MetaData.None)
-    public static readonly StoredKey = MuralBase.RegisterProperty<ObservableCollection<StoredConversation>>(
-        ChatSessionsService, 'Stored', undefined as unknown as ObservableCollection<StoredConversation>, MetaData.None)
+    public static readonly StoredKey = MuralBase.RegisterProperty<ObservableCollection<StoredConversationRow>>(
+        ChatSessionsService, 'Stored', undefined as unknown as ObservableCollection<StoredConversationRow>, MetaData.None)
     public static readonly ActiveChatKey = MuralBase.RegisterProperty<ChatSession | undefined>(
         ChatSessionsService, 'ActiveChat', undefined, MetaData.None)
     public static readonly NewConversationCommandKey = MuralBase.RegisterProperty<ICommand>(
@@ -54,7 +55,7 @@ export class ChatSessionsService extends ServiceBase
         this.fallbackCwd = provider.get(EnvironmentService.Key)?.CurrentDirectory ?? ''
 
         this.set_property_value(ChatSessionsService.OpenKey, new ObservableCollection<ChatSession>())
-        this.set_property_value(ChatSessionsService.StoredKey, new ObservableCollection<StoredConversation>())
+        this.set_property_value(ChatSessionsService.StoredKey, new ObservableCollection<StoredConversationRow>())
         this.set_property_value(ChatSessionsService.NewConversationCommandKey, new RelayCommand(() => { this.NewConversation() }))
 
         // Shared persistent-approvals VM keyed to the current agent cwd — all
@@ -76,7 +77,7 @@ export class ChatSessionsService extends ServiceBase
     }
 
     public get Open(): ObservableCollection<ChatSession> { return this.get_property_value(ChatSessionsService.OpenKey) }
-    public get Stored(): ObservableCollection<StoredConversation> { return this.get_property_value(ChatSessionsService.StoredKey) }
+    public get Stored(): ObservableCollection<StoredConversationRow> { return this.get_property_value(ChatSessionsService.StoredKey) }
     public get ActiveChat(): ChatSession | undefined { return this.get_property_value(ChatSessionsService.ActiveChatKey) }
     public get NewConversationCommand(): ICommand { return this.get_property_value(ChatSessionsService.NewConversationCommandKey) }
 
@@ -145,7 +146,8 @@ export class ChatSessionsService extends ServiceBase
     // auto-spawned as live subprocesses — the user opens one to resume it.
     public async RestoreSession(): Promise<void>
     {
-        for (const rec of await this.chatStore.List()) this.Stored.Add(rec)
+        for (const rec of await this.chatStore.List())
+            this.Stored.Add(new StoredConversationRow(rec, (id) => { void this.Reveal(id) }))
     }
 
     private route(sessionId: string, event: AgentEvent): void

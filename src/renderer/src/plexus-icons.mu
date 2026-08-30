@@ -23,6 +23,9 @@ resources PlexusIcons {
     include "icons/agent.svg"                    as Agent
     include "icons/arrow-upward.svg"             as ArrowUpward
 
+    // Conversations capability nav glyph (parallel agent chats panel).
+    include "icons/conversations.svg"            as Conversations
+
     // Project Explorer command-bar glyphs (Open / New / New File / Save / Publish).
     include "icons/folder.svg"                   as Folder
     include "icons/new-folder.svg"               as NewFolder

@@ -2,15 +2,20 @@
 // content is the AgentService, rendered by DataTemplate[DataType = AgentService]
 // (agent-chat.resources.mu) in the shell's left panel.
 
-import AgentService from "./services/agent-service.js"
+import ChatSessionsService from "./services/chat-sessions-service.js"
+import ChatStore from "./services/chat-store.js"
 import TemplateGalleryService from "./services/template-gallery-service.js"
 
 module AgentChatModule [ Name = "Agent" ] {
     .services: {
-        AgentService
+        // Manager of the parallel agent conversations (dock tabs + nav panel).
+        ChatSessionsService
+        // Persistence for resumable conversations (userData/conversations.json).
+        ChatStore
         // Dev-only card gallery (a dock tab main.js seeds when IsDevelopment).
         TemplateGalleryService
     }
-    // Agent chat lives in the right panel dock (added at startup in main.js as
-    // the Chat tab), not the left activity rail — so no Capability contribution.
+    // Left-rail capability: the Conversations panel (New / Open / Stored),
+    // rendered by DataTemplate[ChatSessionsService] in conversations.resources.mu.
+    Capability [ Name = "Conversations", Icon = @Conversations, ServiceKey = ChatSessionsService ]
 }
