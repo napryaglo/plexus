@@ -4,7 +4,7 @@
 // render each transcript Model by DataType. Merged app-global by app.mu.
 // Render-through-templates rule: all chat chrome lives here, none in TS.
 
-import AgentService from "./services/agent-service.js"
+import ChatSession from "./services/chat-session.js"
 import UserMessage from "./services/transcript.js"
 import AssistantMessage from "./services/transcript.js"
 import ToolActivity from "./services/transcript.js"
@@ -17,7 +17,7 @@ import ApprovalRuleRow from "./services/approval-rules.js"
 import TemplateGalleryService from "./services/template-gallery-service.js"
 
 resources AgentChatResources {
-    DataTemplate [ DataType = AgentService ] {
+    DataTemplate [ DataType = ChatSession ] {
         DockPanel [ LastChildFill = true, Margin = (12,12,12,12) ] {
             resources: {
                 // Enter-to-send. The single-line TextBox leaves Return unhandled,

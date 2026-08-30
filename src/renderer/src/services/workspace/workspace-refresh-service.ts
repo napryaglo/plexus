@@ -32,7 +32,10 @@ export class WorkspaceRefreshService extends ServiceBase
             )
         }
         this.agent = bridge.agent
-        this.unsubscribe = this.agent.onEvent((event) => {
+        // refresh_project / get_problems are workspace-scoped (they act on the open
+        // projects, not one conversation), so we ignore the event's SessionId and
+        // just unwrap it. The tool call is correlated back by its own request id.
+        this.unsubscribe = this.agent.onEvent(({ Event: event }) => {
             if (event.Kind === AgentEventKind.RefreshProject) void this.handle(event.Request)
             else if (event.Kind === AgentEventKind.GetProblems) this.handleProblems(event.Request)
         })

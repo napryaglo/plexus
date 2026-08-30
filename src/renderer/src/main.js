@@ -14,7 +14,7 @@ import { app } from './app.mu.js'
 import { HtmlTarget } from '@pragmatic-lab/mural/visual-engine'
 import { ThemeManager, Density } from '@pragmatic-lab/mural/runtime'
 import { ContentHostService, PanelDockService } from '@pragmatic-lab/mural/framework'
-import { AgentService } from './modules/agent-chat/services/agent-service.js'
+import { ChatSessionsService } from './modules/agent-chat/services/chat-sessions-service.js'
 import { TemplateGalleryService } from './modules/agent-chat/services/template-gallery-service.js'
 import { attachAutoOpenInspector } from './modules/diagram/behaviors/auto-open-inspector-behavior.js'
 import { attachSaveShortcuts } from './services/documents/save-shortcuts.js'
@@ -185,12 +185,19 @@ try {
     const explorer = app.Services.get(ProjectExplorerService.Key)
     if (explorer !== undefined) void explorer.RestoreSession()
 
-    // Right panel dock: seed the always-present Chat tab, and auto-open the
-    // Format Shape inspector as a tab the first time a shape is selected (the
-    // behavior watches the document's ActiveView, published when the canvas mounts).
+    // Right panel dock: restore stored conversations into the Conversations panel,
+    // then open one starter conversation as the initial Chat tab. Constructing the
+    // manager also wires its single agent-event listener. Also auto-open the Format
+    // Shape inspector as a tab the first time a shape is selected (the behavior
+    // watches the document's ActiveView, published when the canvas mounts).
     const dock = app.Services.get(PanelDockService.Key)
-    const agent = app.Services.get(AgentService.Key)
-    if (dock !== undefined && agent !== undefined) dock.Add(agent)
+    const chats = app.Services.get(ChatSessionsService.Key)
+    if (chats !== undefined) {
+        await chats.RestoreSession()
+        chats.NewConversation()
+        // Dev-only hook for the e2e smoke: reach the manager from the page.
+        globalThis.__chats = chats
+    }
     // Dev-only: a Card Gallery tab to preview the agent card templates without
     // driving the agent. Never seeded in packaged builds.
     // DISABLED — registration turned off by request; re-enable by uncommenting.

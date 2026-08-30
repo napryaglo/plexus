@@ -4,7 +4,7 @@ import { WorkspaceRefreshService } from '../workspace-refresh-service.js'
 import { ProjectExplorerService } from '../../../modules/project-explorer/services/project-explorer-service.js'
 import { DiagnosticsService } from '../../diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity } from '../../diagnostics/diagnostic.js'
-import { AgentEventKind, type AgentEvent, type GetProblemsResult, type RefreshProjectResult } from '../../../../../shared/agent-api.js'
+import { AgentEventKind, type AgentEvent, type GetProblemsResult, type RefreshProjectResult, type TaggedAgentEvent } from '../../../../../shared/agent-api.js'
 
 // Minimal fakes. onEvent captures the handler so the test can push events; the
 // bridge records the results the service sends back. A fake ProjectExplorerService
@@ -18,14 +18,14 @@ function harness(): {
     push: (e: AgentEvent) => void
 }
 {
-    let handler: ((e: AgentEvent) => void) | undefined
+    let handler: ((m: TaggedAgentEvent) => void) | undefined
     const results: RefreshProjectResult[] = []
     const problems: GetProblemsResult[] = []
     const refreshedWith: string[][] = []
 
     ;(globalThis as unknown as { api: unknown }).api = {
         agent: {
-            onEvent: (h: (e: AgentEvent) => void) => { handler = h; return () => { handler = undefined } },
+            onEvent: (h: (m: TaggedAgentEvent) => void) => { handler = h; return () => { handler = undefined } },
             refreshProjectResult: (r: RefreshProjectResult) => { results.push(r); return Promise.resolve() },
             getProblemsResult: (r: GetProblemsResult) => { problems.push(r); return Promise.resolve() },
         },
@@ -46,7 +46,7 @@ function harness(): {
         { owner: 'todl', projectId: '/p/a', projectName: 'A', uri: 'x.todl', message: 'boom', severity: DiagnosticSeverity.Error, span: null },
     ])
 
-    return { provider, results, problems, diagnostics, refreshedWith, push: (e) => handler?.(e) }
+    return { provider, results, problems, diagnostics, refreshedWith, push: (e) => handler?.({ SessionId: '', Event: e }) }
 }
 
 // Let the async event handler settle (it awaits RefreshProjects).
