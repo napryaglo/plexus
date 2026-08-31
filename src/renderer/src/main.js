@@ -198,7 +198,9 @@ try {
     app.Services.get(ProjectAgentCatalog.Key)
     if (chats !== undefined) {
         await chats.RestoreSession()
-        chats.NewConversation()
+        // The single docked "Agent Chat" (restored in place if it has history). Other
+        // sessions open as editor document tabs.
+        await chats.EnsurePrimary()
         // Dev-only hooks for the e2e smoke: reach the manager from the page, and
         // launch a synthetic agent/skill run (no real .claude fixture needed).
         globalThis.__chats = chats

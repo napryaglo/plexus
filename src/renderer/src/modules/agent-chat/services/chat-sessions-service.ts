@@ -7,7 +7,10 @@ import {
     MetaData, MuralBase, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
 } from '@pragmatic-lab/mural/runtime'
-import { DialogService, PanelDockService } from '@pragmatic-lab/mural/framework'
+import {
+    ContentHostService, DialogService, PanelDockService,
+    type DocumentsContentHostService,
+} from '@pragmatic-lab/mural/framework'
 import {
     AgentEventKind, AgentSkillKind,
     type AgentEvent, type CatalogItem, type CreateProjectRequest, type IAgentApi,
@@ -35,6 +38,12 @@ export function seedInvocation(item: CatalogItem): string
         ? `/${item.name}`
         : `Use the "${item.name}" subagent for this task.`
 }
+
+// The dedicated primary conversation: always docked in the right panel under a
+// fixed title, never renamed or closed. A stable id so it persists/restores in
+// place and is excluded from the listed (document-tab) sessions.
+const PRIMARY_ID = 'agent-chat-primary'
+const PRIMARY_TITLE = 'Agent Chat'
 
 export class ChatSessionsService extends ServiceBase
 {
@@ -72,6 +81,9 @@ export class ChatSessionsService extends ServiceBase
     private readonly approvals: ApprovalRulesVM
     private workingDirs: readonly string[] = []
     private resumable = false
+    // The docked "Agent Chat" (see PRIMARY_ID). All other sessions are document tabs
+    // tracked in Open.
+    private primary: ChatSession | undefined
 
     constructor(provider: IServiceProvider)
     {
@@ -114,6 +126,17 @@ export class ChatSessionsService extends ServiceBase
         // One router for the whole app: fan tagged events to the matching session.
         this.agent.onEvent((msg) => this.route(msg.SessionId, msg.Event))
         void this.agent.isResumable().then((r) => { this.resumable = r })
+
+        // A document tab closed from its own ✕ removes it from the content host; sync
+        // our session state (persist + close the backend) when that happens.
+        const host = this.Provider.get(ContentHostService.Key) as DocumentsContentHostService | undefined
+        host?.OpenDocuments.Subscribe((change) => {
+            if (change.kind !== 'removed') return
+            for (const doc of change.items) {
+                const chat = this.Open.ToArray().find((c) => c.Id === (doc as { Id: string }).Id)
+                if (chat !== undefined) this.cleanupSession(chat)
+            }
+        })
     }
 
     public get Open(): ObservableCollection<ChatSession> { return this.get_property_value(ChatSessionsService.OpenKey) }
@@ -128,7 +151,14 @@ export class ChatSessionsService extends ServiceBase
     public get SearchEmpty(): boolean { return this.get_property_value(ChatSessionsService.SearchEmptyKey) }
 
     private get dock(): PanelDockService { return this.Provider.getRequired(PanelDockService.Key) }
+    private get contentHost(): DocumentsContentHostService { return this.Provider.getRequired(ContentHostService.Key) as DocumentsContentHostService }
     private get chatStore(): ChatStore { return this.Provider.getRequired(ChatStore.Key) }
+
+    // Every live conversation: the docked primary (if created) plus the document tabs.
+    private liveSessions(): ChatSession[]
+    {
+        return this.primary !== undefined ? [this.primary, ...this.Open.ToArray()] : this.Open.ToArray()
+    }
 
     private callbacks(): ChatSessionCallbacks
     {
@@ -143,8 +173,36 @@ export class ChatSessionsService extends ServiceBase
         }
     }
 
-    // Mint a brand-new empty conversation, start its backend session, and show it.
+    // Mint a brand-new empty conversation (a document tab), start its backend
+    // session, and show it.
     public NewConversation(): ChatSession { return this.newSession(`Chat ${this.Open.Count + 1}`) }
+
+    // Create (once) the docked primary "Agent Chat": restored from its stored record
+    // if present, else fresh. Fixed id + title; never listed, renamed, or closed. If
+    // the dock ✕ ever removes it, re-dock it so it stays permanent.
+    public async EnsurePrimary(): Promise<ChatSession>
+    {
+        if (this.primary !== undefined) return this.primary
+        const rec = (await this.chatStore.List()).find((r) => r.Id === PRIMARY_ID)
+        const chat = new ChatSession(PRIMARY_ID, PRIMARY_TITLE, this.callbacks(), this.approvals)
+        chat.setStatus(this.statusText())
+        if (rec !== undefined)
+        {
+            for (const item of rehydrateTranscript(rec.Transcript)) chat.Transcript.Add(item)
+            if (rec.ResumeToken !== '') this.tokens.set(PRIMARY_ID, rec.ResumeToken)
+        }
+        this.primary = chat
+        this.dock.Add(chat)
+        this.dock.SelectedPanel = chat
+        this.set_property_value(ChatSessionsService.ActiveChatKey, chat)
+        this.dock.Panels.Subscribe((change) => {
+            if (change.kind === 'removed' && change.items.some((p) => p === chat))
+                void Promise.resolve().then(() => { if (this.primary === chat) this.dock.Add(chat) })
+        })
+        const resume = rec !== undefined && rec.ResumeToken !== '' ? rec.ResumeToken : undefined
+        void this.agent.startSession(PRIMARY_ID, this.currentCwd(), this.addDirs(), resume)
+        return chat
+    }
 
     // Show the shared approved-tools list (persistent approval rules for the current
     // agent cwd) in a modal dialog. Refresh first so it reflects the latest grants;
@@ -156,16 +214,15 @@ export class ChatSessionsService extends ServiceBase
         await dialogs?.Show({ Title: 'Approved tools', Content: this.approvals, Width: 420, DismissOnScrimClick: true })
     }
 
-    // Create a titled conversation, start its backend session, add it as a tab, and
-    // make it active.
+    // Create a titled conversation, start its backend session, open it as a document
+    // tab, and make it active.
     private newSession(title: string): ChatSession
     {
         const sessionId = crypto.randomUUID()
         const chat = new ChatSession(sessionId, title, this.callbacks(), this.approvals)
         chat.setStatus(this.statusText())
         this.Open.Add(chat)
-        this.dock.Add(chat)
-        this.dock.SelectedPanel = chat
+        this.contentHost.Open(chat)
         this.set_property_value(ChatSessionsService.ActiveChatKey, chat)
         void this.agent.startSession(sessionId, this.currentCwd(), this.addDirs())
         return chat
@@ -195,20 +252,19 @@ export class ChatSessionsService extends ServiceBase
         return chat
     }
 
-    // Rehydrate a stored conversation into a live tab (resuming its AI context on the
-    // first new turn). Activates it if already open.
+    // Rehydrate a stored conversation into a document tab (resuming its AI context on
+    // the first new turn). Activates it if already open.
     public async OpenStored(id: string): Promise<ChatSession | undefined>
     {
         const existing = this.Open.ToArray().find((c) => c.Id === id)
-        if (existing !== undefined) { this.dock.SelectedPanel = existing; return existing }
+        if (existing !== undefined) { this.contentHost.ActivateById(id); return existing }
         const rec = (await this.chatStore.List()).find((r) => r.Id === id)
         if (rec === undefined) return undefined
         const chat = new ChatSession(rec.Id, rec.Title, this.callbacks(), this.approvals)
         chat.setStatus(this.statusText())
         for (const item of rehydrateTranscript(rec.Transcript)) chat.Transcript.Add(item)
         this.Open.Add(chat)
-        this.dock.Add(chat)
-        this.dock.SelectedPanel = chat
+        this.contentHost.Open(chat)
         this.set_property_value(ChatSessionsService.ActiveChatKey, chat)
         // Seed the resume token now: a resumed CLI session may not re-emit
         // SessionStarted, so without this a later TurnComplete (and close/quit flush)
@@ -218,21 +274,31 @@ export class ChatSessionsService extends ServiceBase
         return chat
     }
 
+    // Close a document-tab conversation: flush + drop it from the content host. The
+    // primary "Agent Chat" is permanent and never closes here.
     public Close(chat: ChatSession): void
     {
-        // Flush the latest transcript before dropping the tab (serialize is
-        // synchronous, so the snapshot is captured even as we remove the chat).
-        void this.persistIfPossible(chat)
-        this.dock.Remove(chat)
+        if (this.primary !== undefined && chat.Id === this.primary.Id) return
+        this.cleanupSession(chat)
+        this.contentHost.CloseById(chat.Id)
+    }
+
+    // Detach a document session from our state: flush its transcript, drop it from
+    // Open, and close the backend. Idempotent (guarded on Open membership) so it runs
+    // exactly once whether triggered by Close() or by the tab's own ✕.
+    private cleanupSession(chat: ChatSession): void
+    {
+        if (!this.Open.ToArray().includes(chat)) return
+        void this.persistIfPossible(chat)   // serialize is synchronous — snapshot captured now
         this.Open.Remove(chat)
         void this.agent.closeSession(chat.Id)
     }
 
-    // Persist every open conversation — called on application close so nothing typed
-    // or received since the last turn is lost. Resolves once all writes settle.
+    // Persist every live conversation (primary + document tabs) — called on
+    // application close so nothing typed or received since the last turn is lost.
     public async FlushAll(): Promise<void>
     {
-        await Promise.all(this.Open.ToArray().map((c) => this.persistIfPossible(c)))
+        await Promise.all(this.liveSessions().map((c) => this.persistIfPossible(c)))
     }
 
     // Persist a chat if we hold its resume token (and the provider can resume).
@@ -244,17 +310,20 @@ export class ChatSessionsService extends ServiceBase
 
     public async Reveal(sessionId: string): Promise<void>
     {
+        if (this.primary !== undefined && sessionId === this.primary.Id) { this.dock.SelectedPanel = this.primary; return }
         const open = this.Open.ToArray().find((c) => c.Id === sessionId)
-        if (open !== undefined) { this.dock.SelectedPanel = open; return }
+        if (open !== undefined) { this.contentHost.ActivateById(sessionId); return }
         await this.OpenStored(sessionId)
     }
 
-    // Load stored (restorable) conversations into the nav panel's Stored list. Not
+    // Load stored (restorable) conversations into the nav panel's Stored list — all
+    // except the primary, which is restored into the dock by EnsurePrimary. Not
     // auto-spawned as live subprocesses — the user opens one to resume it.
     public async RestoreSession(): Promise<void>
     {
         for (const rec of await this.chatStore.List())
-            this.Stored.Add(new StoredConversationRow(rec, this.rowCallbacks()))
+            if (rec.Id !== PRIMARY_ID)
+                this.Stored.Add(new StoredConversationRow(rec, this.rowCallbacks()))
     }
 
     // Row actions for the Stored list: reveal, rename (persist), delete.
@@ -311,7 +380,7 @@ export class ChatSessionsService extends ServiceBase
 
     private route(sessionId: string, event: AgentEvent): void
     {
-        const chat = this.Open.ToArray().find((c) => c.Id === sessionId)
+        const chat = this.liveSessions().find((c) => c.Id === sessionId)
         if (chat === undefined) return
         if (event.Kind === AgentEventKind.SessionStarted) { this.tokens.set(sessionId, event.SessionId); void this.persist(chat, event.SessionId) }
         if (event.Kind === AgentEventKind.TurnComplete)
@@ -344,7 +413,7 @@ export class ChatSessionsService extends ServiceBase
     {
         this.workingDirs = [...dirs]
         const status = this.statusText()
-        for (const chat of this.Open.ToArray()) chat.setStatus(status)
+        for (const chat of this.liveSessions()) chat.setStatus(status)
         void this.approvals.Refresh()
     }
 

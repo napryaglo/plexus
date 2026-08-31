@@ -1,6 +1,6 @@
 import { test, expect, beforeEach, afterEach } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DialogService, PanelDockService } from '@pragmatic-lab/mural/framework'
+import { ObservableCollection, ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ContentHostService, DialogService, PanelDockService, type IDocument } from '@pragmatic-lab/mural/framework'
 import { AgentEventKind, AgentSkillKind, type CatalogItem, type IAgentApi, type TaggedAgentEvent } from '../../../../../../shared/agent-api.js'
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
 import { OpenProjectsStore } from '../../../../services/projects/open-projects-store.js'
@@ -65,16 +65,47 @@ function makeService(store = fakeStore(['/A']), stored: Array<{ Id: string; Titl
     provider.registerInstance(DialogService.Key, {
         Show: (o: { Title?: string; Content: unknown }) => { dialogs.push(o); return Promise.resolve(undefined) }, Close: () => {},
     } as unknown as DialogService)
+    // Fake content host: OpenDocuments is a real ObservableCollection so the service's
+    // tab-close subscription fires; Open/CloseById/ActivateById mirror the framework.
+    const openDocs = new ObservableCollection<IDocument>()
+    const activated: string[] = []
+    provider.registerInstance(ContentHostService.Key, {
+        OpenDocuments: openDocs,
+        Open: (d: IDocument) => { openDocs.Add(d) },
+        CloseById: (id: string) => { const d = openDocs.ToArray().find((x) => x.Id === id); if (d !== undefined) openDocs.Remove(d) },
+        ActivateById: (id: string) => { activated.push(id) },
+    } as unknown as ContentHostService)
     const svc = new ChatSessionsService(provider)
-    return { svc, provider, upserts, removes, submitted, dialogs, dock: provider.getRequired(PanelDockService.Key) }
+    return { svc, provider, upserts, removes, submitted, dialogs, openDocs, activated, dock: provider.getRequired(PanelDockService.Key) }
 }
 
-test('NewConversation starts a session and adds a dock tab', () => {
-    const { svc, dock } = makeService()
+test('NewConversation starts a session and opens a document tab', () => {
+    const { svc, openDocs, dock } = makeService()
     const chat = svc.NewConversation()
     expect(bridge.started).toContain(chat.Id)
-    expect(dock.Panels.ToArray()).toContain(chat)
+    expect(openDocs.ToArray()).toContain(chat)   // a document tab, not a dock panel
+    expect(dock.Panels.ToArray()).not.toContain(chat)
     expect(svc.Open.ToArray()).toContain(chat)
+})
+
+test('EnsurePrimary docks a fixed "Agent Chat" that is not listed as a document', async () => {
+    const { svc, openDocs, dock } = makeService()
+    const primary = await svc.EnsurePrimary()
+    expect(primary.Title).toBe('Agent Chat')
+    expect(dock.Panels.ToArray()).toContain(primary)
+    expect(openDocs.ToArray()).not.toContain(primary)
+    expect(svc.Open.ToArray()).not.toContain(primary)
+    // Idempotent — a second call returns the same instance, no duplicate dock tab.
+    expect(await svc.EnsurePrimary()).toBe(primary)
+    expect(dock.Panels.ToArray().filter((p) => p === primary)).toHaveLength(1)
+})
+
+test('the docked primary is re-added if something removes it (never closable)', async () => {
+    const { svc, dock } = makeService()
+    const primary = await svc.EnsurePrimary()
+    dock.Remove(primary)
+    await Promise.resolve()
+    expect(dock.Panels.ToArray()).toContain(primary)
 })
 
 test('events route to the matching session only', () => {
@@ -103,12 +134,28 @@ test('a resumable SessionStarted upserts the conversation into the store', async
     expect(upserts.map((u) => u.Id)).toContain(chat.Id)
 })
 
-test('Close removes the tab and closes the backend session', () => {
-    const { svc, dock } = makeService()
+test('Close removes the document tab and closes the backend session', () => {
+    const { svc, openDocs } = makeService()
     const chat = svc.NewConversation()
     svc.Close(chat)
-    expect(dock.Panels.ToArray()).not.toContain(chat)
+    expect(openDocs.ToArray()).not.toContain(chat)
     expect(svc.Open.ToArray()).not.toContain(chat)
+})
+
+test('closing a document tab via its own ✕ cleans up the session', () => {
+    const { svc, openDocs } = makeService()
+    const chat = svc.NewConversation()
+    // Simulate the tab's own close button: the content host drops the document.
+    const doc = openDocs.ToArray().find((d) => d.Id === chat.Id)!
+    openDocs.Remove(doc)
+    expect(svc.Open.ToArray()).not.toContain(chat)   // service synced its state
+})
+
+test('the primary chat is never closed by Close()', async () => {
+    const { svc, dock } = makeService()
+    const primary = await svc.EnsurePrimary()
+    svc.Close(primary)
+    expect(dock.Panels.ToArray()).toContain(primary)
 })
 
 test('Close flushes the conversation to the store first', async () => {
@@ -192,11 +239,11 @@ test('DeleteConversation removes a stored row and deletes it from the store', as
 })
 
 test('DeleteConversation closes a live conversation too', () => {
-    const { svc, dock } = makeService()
+    const { svc, openDocs } = makeService()
     const chat = svc.NewConversation()
     void svc.DeleteConversation(chat.Id)
     expect(svc.Open.ToArray()).not.toContain(chat)
-    expect(dock.Panels.ToArray()).not.toContain(chat)
+    expect(openDocs.ToArray()).not.toContain(chat)
 })
 
 test('Rename retitles a live conversation and persists the new title', async () => {

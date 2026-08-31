@@ -7,7 +7,7 @@ import {
     Key, MetaData, MuralBase, ObservableCollection, RelayCommand,
     type ICommand,
 } from '@pragmatic-lab/mural/runtime'
-import type { IDockPanel } from '@pragmatic-lab/mural/framework'
+import type { IDockPanel, IDocument } from '@pragmatic-lab/mural/framework'
 import {
     AgentEventKind,
     type AgentEvent, type CreateProjectRequest, type QuestionAnswer, type ToolApprovalAnswer,
@@ -30,7 +30,10 @@ export interface ChatSessionCallbacks
     reveal(sessionId: string): void
 }
 
-export class ChatSession extends MuralBase implements IDockPanel
+// A conversation is both an IDockPanel (the primary "Agent Chat" lives in the
+// right dock) and an IDocument (every other session opens as an editor tab) — the
+// same DataTemplate[ChatSession] renders it in either host.
+export class ChatSession extends MuralBase implements IDockPanel, IDocument
 {
     public static readonly IdKey = MuralBase.RegisterProperty<string>(ChatSession, 'Id', '', MetaData.None)
     public static readonly TitleKey = MuralBase.RegisterProperty<string>(ChatSession, 'Title', 'Chat', MetaData.None)
@@ -107,6 +110,12 @@ export class ChatSession extends MuralBase implements IDockPanel
     public get RevealCommand(): ICommand { return this.get_property_value(ChatSession.RevealCommandKey) }
     public get BeginRenameCommand(): ICommand { return this.get_property_value(ChatSession.BeginRenameCommandKey) }
     public get RenameKeyCommand(): ICommand { return this.get_property_value(ChatSession.RenameKeyCommandKey) }
+
+    // IDocument surface — conversations auto-persist (ChatSessionsService flushes on
+    // turn-complete / close / quit), so the editor tab never shows a dirty dot and
+    // Save is a no-op.
+    public get IsDirty(): boolean { return false }
+    public Save(): void { /* conversations persist themselves; nothing to flush here */ }
 
     public setStatus(text: string): void { this.set_property_value(ChatSession.StatusKey, text) }
 

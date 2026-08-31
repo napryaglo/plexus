@@ -18,17 +18,24 @@ test('boots without app errors', async () => {
     expect(errs, errs.join('\n')).toEqual([])
 })
 
-test('two conversations open as independent tabs with independent transcripts', async () => {
-    const result = await L.win.evaluate(() => {
+test('the docked Agent Chat is fixed; extra sessions open as document tabs', async () => {
+    const result = await L.win.evaluate(async () => {
         const chats = globalThis.__chats
-        const a = chats.Open.ToArray()[0]        // the starter conversation
-        const b = chats.NewConversation()        // a second, parallel one
+        const primary = await chats.EnsurePrimary()   // the docked "Agent Chat" (from boot)
+        const a = chats.NewConversation()             // a document tab
+        const b = chats.NewConversation()             // another document tab
         // Route an assistant-text event to A only (the literal is the value of
         // AgentEventKind.AssistantText — test data crossing the evaluate boundary).
         a.apply({ Kind: 'assistant-text', Text: 'hello A' })
-        return { a: a.Id, b: b.Id, aCount: a.Transcript.Count, bCount: b.Transcript.Count, open: chats.Open.Count }
+        return {
+            primaryTitle: primary.Title,
+            primaryListed: chats.Open.ToArray().some((c: { Id: string }) => c.Id === primary.Id),
+            a: a.Id, b: b.Id, aCount: a.Transcript.Count, bCount: b.Transcript.Count, openDocs: chats.Open.Count,
+        }
     })
-    expect(result.open).toBe(2)
+    expect(result.primaryTitle).toBe('Agent Chat')   // fixed name
+    expect(result.primaryListed).toBe(false)          // the dock chat is not a document
+    expect(result.openDocs).toBe(2)                   // only the two document tabs are listed
     expect(result.a).not.toBe(result.b)
     expect(result.aCount).toBe(1)
     expect(result.bCount).toBe(0)
