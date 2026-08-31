@@ -59,14 +59,16 @@ resources AgentChatResources {
                         // running turn) while a turn is in flight — one shows, the
                         // other collapses out of layout.
                         PanelButton [ DockPanel.Dock = Right, Command = $SendCommand, IsEnabled = $CanInput,
+                                      Template = @ComposerIconButton, VerticalAlignment = Center,
                                       Visibility = $IsIdle << ToVisibility, Margin = (6,0,0,0) ] {
                             Shape [ Geometry = @ArrowUpward, Fill = @OnSurfaceVariant, Width = 16, Height = 16 ]
                         }
-                        PanelButton [ DockPanel.Dock = Right, Command = $StopCommand,
-                                      Visibility = $IsBusy << ToVisibility, Margin = (6,0,0,0) ] {
+                        PanelButton [ DockPanel.Dock = Right, Command = $StopCommand, Template = @ComposerIconButton,
+                                      VerticalAlignment = Center, Visibility = $IsBusy << ToVisibility, Margin = (6,0,0,0) ] {
                             Shape [ Geometry = @Stop, Fill = @OnSurfaceVariant, Width = 16, Height = 16 ]
                         }
-                        PanelButton [ DockPanel.Dock = Left, Command = $AddContextCommand, Margin = (0,6,0,0) ] {
+                        PanelButton [ DockPanel.Dock = Left, Command = $AddContextCommand, Template = @ComposerIconButton,
+                                      VerticalAlignment = Center, Margin = (0,6,0,0) ] {
                             Shape [ Geometry = @NewFolder, Fill = @OnSurfaceVariant, Width = 16, Height = 16 ]
                         }
                         ComboBox [ DockPanel.Dock = Left, ItemsSource = $Models, SelectedItem = $SelectedModel, MaxWidth = 160 ]
@@ -109,6 +111,20 @@ resources AgentChatResources {
                             VerticalAlignment = Center, Margin = (4,0,0,0) ]
             }
         }
+    }
+
+    // Compact icon-button chrome for the composer footer. The shell PanelButton
+    // default template hardcodes a 40×40 border; here the chrome hugs its content
+    // (the 16px icon) so send/stop read as small glyph buttons, not big circles.
+    // Keeps the PART_Border / PART_StateLayer contract + hover/press state layers.
+    Template x:key="ComposerIconButton" [ TargetType = PanelButton ] {
+        Border x:name="PART_Border" [ Fill = #00000000, CornerRadius = @ShapeSmall ] {
+            Border x:name="PART_StateLayer" [ Fill = #00000000, CornerRadius = @ShapeSmall ] {
+                ContentPresenter [ HorizontalAlignment = Center, VerticalAlignment = Center ]
+            }
+        }
+        when ( IsMouseOver ) { PART_StateLayer.Fill = @OnSurfaceVariantHoverLayer; }
+        when ( IsPressed ) { PART_StateLayer.Fill = @OnSurfaceVariantPressLayer; }
     }
 
     // ── Template Gallery (dev-only) ─────────────────────────────────────────────
