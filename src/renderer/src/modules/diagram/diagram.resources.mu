@@ -538,7 +538,7 @@ resources DiagramResources {
     // ScrollViewer leaves the scrolled content at origin, so the clip aligns.
     DataTemplate [DataType = ToolboxService] {
         Border [ Padding = (8) ] {
-            ScrollViewer [ IsAutoHideScrollBars = false, HorizontalScrollEnabled = false ] {
+            ScrollViewer [ IsAutoHideScrollBars = true, HorizontalScrollEnabled = false ] {
                 ItemsControl [ ItemsSource = $Pages, ItemTemplate = @ToolboxAccordionItem, ItemsPanel = @VerticalStackPanel ]
             }
         }
