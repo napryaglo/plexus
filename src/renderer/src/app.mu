@@ -348,9 +348,20 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // the right dock, and the document area — one work-surface tone across
         // the shell (the title bar + activity rail stay @Surface as the chrome
         // tone). StatusBar.Fill is a themeable DP (mural defaults it to
-        // @Surface); this implicit Style re-tints the shell's PART_StatusHost.
+        // @Surface); the framework template binds it ($$Fill), so re-tinting is
+        // just a Fill setter.
+        //
+        // Template + ItemsPanel are re-declared (pointing back at the framework
+        // defaults) DELIBERATELY: an app-level IMPLICIT Style shadows the theme
+        // Style in Application.Resources, so mural's Seal() finds THIS style (not
+        // the theme one) when it resolves the implicit BasedOn — the self-ref
+        // guard then skips the splice and the Template would be lost (the bar
+        // vanishes). Naming the framework Template/Panel keys here makes the
+        // style self-contained instead of relying on that splice.
         Style [ TargetType = StatusBar ] {
-            Fill = @SurfaceContainer;
+            Template   = @DefaultStatusBar;
+            ItemsPanel = @DefaultStatusBarPanel;
+            Fill       = @SurfaceContainer;
         }
 
         // The mural-painted app title bar (@PlexusTitleBar), set as the shell's
