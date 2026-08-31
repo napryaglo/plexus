@@ -183,6 +183,7 @@ import WikiResources from "./services/wiki/wiki.resources.mu.js"
 import ElectronSettingsStore from "./services/settings/settings-store.js"
 import PlexusSettingsContribution from "./services/settings/settings-contribution.js"
 import SettingsResources from "./services/settings/settings.resources.mu.js"
+import SavePromptResources from "./services/dialogs/save-prompt.resources.mu.js"
 // Framework tokens registered at the app ROOT below (see `.services:`).
 import SettingsStoreKey from "@pragmatic-lab/mural/framework"
 import ApplicationSettings from "@pragmatic-lab/mural/framework"
@@ -378,6 +379,7 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // here (see ./services/<service>/*.resources.mu).
         merge PanelsResources
         merge SettingsResources
+        merge SavePromptResources
 
         // Diagram editor: icons + canvas/toolbar-tile/shapes templates. The shell
         // chrome (command toolbar, document tabs, Format-Shape inspector) is now
