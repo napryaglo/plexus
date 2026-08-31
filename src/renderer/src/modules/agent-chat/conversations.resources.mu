@@ -111,7 +111,7 @@ resources ConversationsResources {
                 Grid {
                     RowDefinitions { RowDefinition [ Height = GridLength.Auto ] }
                     TextBlock [ Text = $Title, Style = @BodyMedium, Foreground = @OnSurface, VerticalAlignment = Center,
-                                TextWrapping = Wrap, Visibility = $IsEditing << EditingToLabelVisibility ]
+                                TextWrapping = NoWrap, TextTrimming = CharacterEllipsis, Visibility = $IsEditing << EditingToLabelVisibility ]
                     Border [ Style = @RenameKeyStyle, Visibility = $IsEditing << ToVisibility ] {
                         .Behaviors: { FocusOnVisibleBehavior }
                         TextBox [ Text = $EditTitle, Variant = Plain, VerticalAlignment = Center, SelectionBrush = @TextSelectionBrush ]
@@ -138,7 +138,7 @@ resources ConversationsResources {
                 Grid {
                     RowDefinitions { RowDefinition [ Height = GridLength.Auto ] }
                     TextBlock [ Text = $Title, Style = @BodyMedium, Foreground = @OnSurface, VerticalAlignment = Center,
-                                TextWrapping = Wrap, Visibility = $IsEditing << EditingToLabelVisibility ]
+                                TextWrapping = NoWrap, TextTrimming = CharacterEllipsis, Visibility = $IsEditing << EditingToLabelVisibility ]
                     Border [ Style = @RenameKeyStyle, Visibility = $IsEditing << ToVisibility ] {
                         .Behaviors: { FocusOnVisibleBehavior }
                         TextBox [ Text = $EditTitle, Variant = Plain, VerticalAlignment = Center, SelectionBrush = @TextSelectionBrush ]
