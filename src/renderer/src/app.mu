@@ -90,6 +90,7 @@ import TitleService from "./window/title-service.js"
 // contributed by BackgroundWorkModule and rendered by BackgroundWorkResources.
 import BackgroundWorkService from "./modules/background-work/services/background-work-service.js"
 import BackgroundWorkModule from "./modules/background-work/background-work.module.mu.js"
+import SaveModule from "./modules/save/save.module.mu.js"
 import BackgroundWorkResources from "./modules/background-work/background-work.resources.mu.js"
 
 // The mural-painted app title bar (EditorShell.HeaderContent = @PlexusTitleBar):
@@ -332,6 +333,7 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         CodeEditorModule
         MarkdownViewerModule
         BackgroundWorkModule
+        SaveModule
     }
 
     resources: {

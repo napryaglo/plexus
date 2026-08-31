@@ -35,6 +35,8 @@ import { ArchModelToolboxContributor } from './modules/architecture-projects/ser
 import { DiagramCameraService } from './modules/diagram/services/diagram-camera-service.js'
 import { DiagramGuidesService } from './modules/diagram/services/diagram-guides-service.js'
 import { DiagramCanvasService } from './modules/diagram/services/diagram-canvas-service.js'
+import { AutosaveService } from './services/autosave/autosave-service.js'
+import { DocumentCloseGuard } from './services/documents/document-close-guard.js'
 import { ArchNewDiagramParticipant } from './modules/architecture-projects/services/arch-new-diagram-participant.js'
 import { NewFileParticipantKey } from './services/documents/new-file-participant.js'
 import { ArchEditViewpointsCommand } from './modules/architecture-projects/services/arch-edit-viewpoints-command.js'
@@ -128,6 +130,15 @@ try {
     // Generic to every .diagram, like the camera service above.
     app.Services.register(DiagramGuidesService.Key, (p) => new DiagramGuidesService(p))
     app.Services.get(DiagramGuidesService.Key)
+    // Document close guard: prompts Save / Don't Save / Cancel before a dirty
+    // document tab closes. Registered so the tab template's ✕ ($service) and the
+    // project-explorer/quit paths reach the same instance.
+    app.Services.register(DocumentCloseGuard.Key, (p) => new DocumentCloseGuard(p))
+    app.Services.get(DocumentCloseGuard.Key)
+    // Autosave: periodically save every dirty document (interval + on/off from the
+    // "Documents" settings). Eagerly constructed so its timer starts from boot.
+    app.Services.register(AutosaveService.Key, (p) => new AutosaveService(p))
+    app.Services.get(AutosaveService.Key)
     // Diagram canvas background: drive each diagram's PaginatedCanvas from the
     // "Diagram" settings — page size (page width/height) and the "Show grid"
     // pattern (grid size + colour). Generic to every .diagram; construct now so
