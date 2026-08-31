@@ -71,15 +71,16 @@ resources AgentChatResources {
                                       VerticalAlignment = Center, Margin = (0,6,0,0) ] {
                             Shape [ Geometry = @NewFolder, Fill = @OnSurfaceVariant, Width = 16, Height = 16 ]
                         }
-                        ComboBox [ DockPanel.Dock = Left, ItemsSource = $Models, SelectedItem = $SelectedModel, MaxWidth = 160 ]
+                        ComboBox [ DockPanel.Dock = Right, ItemsSource = $Models, SelectedItem = $SelectedModel, MaxWidth = 100 ]
                     }
                     // The input fills the middle; grows with content up to a cap, then
-                    // scrolls (auto-hide scrollbars are app-wide).
-                    ScrollViewer [ HorizontalScrollEnabled = false, MaxHeight = 160 ] {
-                        TextBox [ Text = $Draft, IsEnabled = $CanInput, AcceptsReturn = true,
-                                  SubmitsOnEnter = true, TextWrapping = Wrap,
-                                  Placeholder = "Ask Claude anything…", PlaceholderBrush = @OnSurfaceVariant ]
-                    }
+                    // scrolls (auto-hide scrollbars are app-wide). The TextBox owns its
+                    // own inner ScrollViewer + caret-into-view, so we cap its height
+                    // directly rather than wrap it — a second ScrollViewer would give
+                    // the inner one an unbounded viewport and defeat caret-follow.
+                    TextBox [ Text = $Draft, IsEnabled = $CanInput, AcceptsReturn = true,
+                              SubmitsOnEnter = true, TextWrapping = Wrap, MaxHeight = 320,
+                              Placeholder = "Ask AI anything…", PlaceholderBrush = @OnSurfaceVariant ]
                 }
             }
             // Scrolling transcript fills the rest. AutoScrollToEnd keeps the
@@ -119,7 +120,7 @@ resources AgentChatResources {
     // Keeps the PART_Border / PART_StateLayer contract + hover/press state layers.
     Template x:key="ComposerIconButton" [ TargetType = PanelButton ] {
         Border x:name="PART_Border" [ Fill = #00000000, CornerRadius = @ShapeSmall ] {
-            Border x:name="PART_StateLayer" [ Fill = #00000000, CornerRadius = @ShapeSmall ] {
+            Border x:name="PART_StateLayer" [ Fill = #00000000, CornerRadius = @ShapeSmall, Padding = (4,4,4,4) ] {
                 ContentPresenter [ HorizontalAlignment = Center, VerticalAlignment = Center ]
             }
         }
