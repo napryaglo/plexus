@@ -13,7 +13,7 @@ import './fonts.css'
 import { app } from './app.mu.js'
 import { HtmlTarget } from '@pragmatic-lab/mural/visual-engine'
 import { ThemeManager, Density, RelayCommand } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, PanelDockService, DialogService } from '@pragmatic-lab/mural/framework'
+import { ContentHostService, PanelDockService, DialogService, ApplicationSettings } from '@pragmatic-lab/mural/framework'
 import { confirmCloseDocs } from './services/documents/confirm-close-docs.js'
 import { ChatSessionsService } from './modules/agent-chat/services/chat-sessions-service.js'
 import { ProjectAgentCatalog } from './modules/agent-chat/services/project-agent-catalog.js'
@@ -206,6 +206,10 @@ try {
     // the user chose Save All / Discard All) and false to cancel the quit.
     globalThis.__confirmCloseDocs = () =>
         host !== undefined ? confirmCloseDocs(host, app.Services.get(DialogService.Key)) : true
+
+    // Dev/e2e: read a live setting value by key (used by the save-ux e2e to assert
+    // the autosave settings registered with their defaults).
+    globalThis.__getSetting = (k) => app.Services.get(ApplicationSettings.Key)?.Get(k)
 
     // Restore the previous session's open projects into the explorer (skips
     // folders whose project manifest is gone). Fire-and-forget after mount.
