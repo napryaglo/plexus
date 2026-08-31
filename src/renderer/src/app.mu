@@ -372,6 +372,22 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
             Template     = @DefaultShellSideContentPane;
             Fill         = @SurfaceContainer;
             CornerRadius = @ShapeSmall;
+            // 2dp inset so the pane floats off the window/splitter edges (matches
+            // the document area + right dock).
+            Margin       = (2);
+        }
+
+        // Resize splitters between the panels: paint the resting divider with the
+        // window chrome tone (@Surface) so it's visually invisible in the gap the
+        // panel margins open up, while hover/drag still tint it to @Primary and
+        // thicken (imperative chrome in splitter.ts). RestBrush is mural 0.43.0.
+        // Self-contained (re-declares Template + PreviewBrush) so the app-level
+        // implicit Style doesn't trip mural's Seal() self-reference guard and drop
+        // the framework Template — same pattern as the ShellSideContentPane style.
+        Style [ TargetType = Splitter ] {
+            Template     = @DefaultSplitter;
+            PreviewBrush = @Primary;
+            RestBrush    = @Surface;
         }
 
         // The mural-painted app title bar (@PlexusTitleBar), set as the shell's
