@@ -122,7 +122,7 @@ resources DocumentTabsResources {
     // spill under the actions), and the action area (module command buttons + the
     // ⋯ overflow dropdown) pins to column 1. The content presenter is unchanged.
     Template x:key="ExtendedTabControlTemplate" [ TargetType = ExtendedTabControl ] {
-        Border x:name="PART_Border" [ Fill = @Surface ] {
+        Border x:name="PART_Border" [ Fill = @SurfaceContainer ] {
             DockPanel [ LastChildFill = true ] {
                 Line x:name="PART_HeaderRule"
                      [ DockPanel.Dock = Bottom,
@@ -163,8 +163,8 @@ resources DocumentTabsResources {
                     }
                 }
                 // 3dp uniform inset so the active document's content doesn't butt
-                // against the tab strip / pane edges. The @Surface pane fill shows
-                // through the gap as a thin frame around the content.
+                // against the tab strip / pane edges. The @SurfaceContainer pane
+                // fill shows through the gap as a thin frame around the content.
                 Border [ Padding = (3) ] {
                     // FocusContentOnActivate: when the active document's view is
                     // slotted here (activation / tab switch), move keyboard focus to

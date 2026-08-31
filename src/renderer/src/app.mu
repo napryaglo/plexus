@@ -344,6 +344,15 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
             StackPanel [ Orientation = Vertical ]
         }
 
+        // Paint the status bar @SurfaceContainer so it matches the side pane,
+        // the right dock, and the document area — one work-surface tone across
+        // the shell (the title bar + activity rail stay @Surface as the chrome
+        // tone). StatusBar.Fill is a themeable DP (mural defaults it to
+        // @Surface); this implicit Style re-tints the shell's PART_StatusHost.
+        Style [ TargetType = StatusBar ] {
+            Fill = @SurfaceContainer;
+        }
+
         // The mural-painted app title bar (@PlexusTitleBar), set as the shell's
         // HeaderContent below.
         merge PlexusTitleBar

@@ -65,7 +65,7 @@ resources DockTabsResources {
     // dock only renders while HasPanels, so a panel is always selected). No
     // Header / Footer slots (the dock has none).
     Template x:key="DockRailTemplate" [ TargetType = NavigationRail ] {
-        Border x:name="PART_Border" [ Fill = @Surface ] {
+        Border x:name="PART_Border" [ Fill = @SurfaceContainer ] {
             DockPanel [ LastChildFill = true ] {
                 Line [ DockPanel.Dock = Bottom,
                        Orientation    = Horizontal,
@@ -117,9 +117,15 @@ resources DockTabsResources {
                   ItemContainerStyle = @DockRailItem,
                   ItemsSource        = $Panels,
                   SelectedItem       = $SelectedPanel ]
-            ContentPresenter
-                [ Content           = $service(PanelDockService).SelectedPanel,
-                  ReuseContentViews = true ]
+            // Body painted @SurfaceContainer so the whole right dock (rail +
+            // panel body) reads as one surface, matching the left side pane and
+            // the document area. The ContentPresenter itself is transparent, so
+            // the fill lives on this wrapping Border.
+            Border [ Fill = @SurfaceContainer ] {
+                ContentPresenter
+                    [ Content           = $service(PanelDockService).SelectedPanel,
+                      ReuseContentViews = true ]
+            }
         }
     }
 }
