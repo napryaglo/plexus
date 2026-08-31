@@ -2,11 +2,13 @@ import { test, expect } from 'vitest'
 import { Key } from '@pragmatic-lab/mural/runtime'
 import { AgentEventKind, type AgentEvent } from '../../../../../../shared/agent-api.js'
 import { ChatSession, type ChatSessionCallbacks } from '../chat-session.js'
+import { AgentModel } from '../agent-model.js'
 
 function fakeCallbacks() {
     const calls = {
         sent: [] as Array<{ id: string; text: string }>, created: [] as string[],
         renamed: [] as Array<{ id: string; title: string }>, closed: [] as string[], revealed: [] as string[],
+        addContext: [] as string[],
     }
     const cb: ChatSessionCallbacks = {
         send: (id, text) => calls.sent.push({ id, text }),
@@ -16,6 +18,7 @@ function fakeCallbacks() {
         rename: (id, title) => calls.renamed.push({ id, title }),
         close: (id) => calls.closed.push(id),
         reveal: (id) => calls.revealed.push(id),
+        addContext: (id) => calls.addContext.push(id),
     }
     return { cb, calls }
 }
@@ -103,4 +106,54 @@ test('a create-project event is delegated to the callback with the reducer', () 
     const s = new ChatSession('sess-1', 'Chat 1', cb)
     s.apply({ Kind: AgentEventKind.CreateProject, Request: { id: 'c1' } } as AgentEvent)
     expect(calls.created).toEqual(['sess-1'])
+})
+
+test('the model list is seeded and defaults to Default (empty alias)', () => {
+    const { cb } = fakeCallbacks()
+    const s = new ChatSession('sess-1', 'Chat 1', cb)
+    expect(s.Models.Count).toBeGreaterThan(1)
+    expect(s.SelectedModel.Value).toBe(AgentModel.Default)
+    expect(s.Model()).toBe('')
+})
+
+test('Model() reflects the selected picker option', () => {
+    const { cb } = fakeCallbacks()
+    const s = new ChatSession('sess-1', 'Chat 1', cb)
+    const opus = s.Models.ToArray().find((m) => m.Value === AgentModel.Opus)!
+    s.SelectedModel = opus
+    expect(s.Model()).toBe('opus')
+})
+
+test('adding a file context stores its parent dir and toggles HasContext', () => {
+    const { cb } = fakeCallbacks()
+    const s = new ChatSession('sess-1', 'Chat 1', cb)
+    expect(s.HasContext).toBe(false)
+    s.addContextItem('C:/proj/src/main.ts', false)
+    expect(s.HasContext).toBe(true)
+    expect(s.ContextItems.ToArray().map((c) => c.Dir)).toEqual(['C:/proj/src'])
+})
+
+test('a context item is deduped by Dir', () => {
+    const { cb } = fakeCallbacks()
+    const s = new ChatSession('sess-1', 'Chat 1', cb)
+    s.addContextItem('C:/proj/src/main.ts', false)
+    s.addContextItem('C:/proj/src/other.ts', false)   // same parent dir → deduped
+    expect(s.ContextItems.Count).toBe(1)
+})
+
+test('removing a context item via its chip clears HasContext', () => {
+    const { cb } = fakeCallbacks()
+    const s = new ChatSession('sess-1', 'Chat 1', cb)
+    s.addContextItem('C:/proj', true)
+    const chip = s.ContextItems.ToArray()[0]
+    chip.RemoveCommand.Execute(undefined)
+    expect(s.ContextItems.Count).toBe(0)
+    expect(s.HasContext).toBe(false)
+})
+
+test('AddContextCommand delegates to the manager callback', () => {
+    const { cb, calls } = fakeCallbacks()
+    const s = new ChatSession('sess-1', 'Chat 1', cb)
+    s.AddContextCommand.Execute(undefined)
+    expect(calls.addContext).toEqual(['sess-1'])
 })

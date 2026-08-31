@@ -14,6 +14,8 @@ import {
 } from '../../../../../shared/agent-api.js'
 import { TranscriptReducer } from './transcript.js'
 import type { ApprovalRulesVM } from './approval-rules.js'
+import { DEFAULT_MODELS, type ModelOption } from './agent-model.js'
+import { ContextItemVM } from './context-item.js'
 
 // The per-conversation actions ChatSession needs, injected by ChatSessionsService
 // so the VM stays free of the window bridge + the environment services.
@@ -28,6 +30,9 @@ export interface ChatSessionCallbacks
     rename(sessionId: string, title: string): void
     close(sessionId: string): void
     reveal(sessionId: string): void
+    // Prompt the user to pick file(s)/folder(s) and add them to this
+    // conversation's context (folders / a file's parent dir become --add-dir).
+    addContext(sessionId: string): void
 }
 
 // A conversation is both an IDockPanel (the primary "Agent Chat" lives in the
@@ -62,6 +67,19 @@ export class ChatSession extends MuralBase implements IDockPanel, IDocument
         ChatSession, 'CloseCommand', undefined as unknown as ICommand, MetaData.None)
     public static readonly RevealCommandKey = MuralBase.RegisterProperty<ICommand>(
         ChatSession, 'RevealCommand', undefined as unknown as ICommand, MetaData.None)
+    // ── Composer: model picker + added context ──────────────────────────────
+    // Models feeds the ComboBox; SelectedModel two-ways the pick (default =
+    // Models[0] = Default). ContextItems are the added file/folder chips;
+    // HasContext toggles their strip; AddContextCommand opens the picker.
+    public static readonly ModelsKey = MuralBase.RegisterProperty<ObservableCollection<ModelOption>>(
+        ChatSession, 'Models', undefined as unknown as ObservableCollection<ModelOption>, MetaData.None)
+    public static readonly SelectedModelKey = MuralBase.RegisterProperty<ModelOption>(
+        ChatSession, 'SelectedModel', undefined as unknown as ModelOption, MetaData.None)
+    public static readonly ContextItemsKey = MuralBase.RegisterProperty<ObservableCollection<ContextItemVM>>(
+        ChatSession, 'ContextItems', undefined as unknown as ObservableCollection<ContextItemVM>, MetaData.None)
+    public static readonly HasContextKey = MuralBase.RegisterProperty<boolean>(ChatSession, 'HasContext', false, MetaData.None)
+    public static readonly AddContextCommandKey = MuralBase.RegisterProperty<ICommand>(
+        ChatSession, 'AddContextCommand', undefined as unknown as ICommand, MetaData.None)
 
     private readonly reducer = new TranscriptReducer()
     private readonly sessionId: string
@@ -85,6 +103,12 @@ export class ChatSession extends MuralBase implements IDockPanel, IDocument
         this.set_property_value(ChatSession.RevealCommandKey, new RelayCommand(() => this.callbacks.reveal(this.sessionId)))
         this.set_property_value(ChatSession.BeginRenameCommandKey, new RelayCommand(() => this.beginRename()))
         this.set_property_value(ChatSession.RenameKeyCommandKey, new RelayCommand((arg) => this.onRenameKey(arg)))
+
+        // Composer: seed the model list (default selected) + an empty context set.
+        this.set_property_value(ChatSession.ModelsKey, new ObservableCollection<ModelOption>([...DEFAULT_MODELS]))
+        this.set_property_value(ChatSession.SelectedModelKey, DEFAULT_MODELS[0])
+        this.set_property_value(ChatSession.ContextItemsKey, new ObservableCollection<ContextItemVM>())
+        this.set_property_value(ChatSession.AddContextCommandKey, new RelayCommand(() => this.callbacks.addContext(this.sessionId)))
 
         this.reducer.onAnswerSubmitted = (answer) => this.callbacks.answerQuestion(this.sessionId, answer)
         this.reducer.onToolApprovalSubmitted = (answer) => this.callbacks.answerToolApproval(this.sessionId, answer)
@@ -110,6 +134,37 @@ export class ChatSession extends MuralBase implements IDockPanel, IDocument
     public get RevealCommand(): ICommand { return this.get_property_value(ChatSession.RevealCommandKey) }
     public get BeginRenameCommand(): ICommand { return this.get_property_value(ChatSession.BeginRenameCommandKey) }
     public get RenameKeyCommand(): ICommand { return this.get_property_value(ChatSession.RenameKeyCommandKey) }
+    public get Models(): ObservableCollection<ModelOption> { return this.get_property_value(ChatSession.ModelsKey) }
+    public get SelectedModel(): ModelOption { return this.get_property_value(ChatSession.SelectedModelKey) }
+    public set SelectedModel(value: ModelOption) { this.set_property_value(ChatSession.SelectedModelKey, value) }
+    public get ContextItems(): ObservableCollection<ContextItemVM> { return this.get_property_value(ChatSession.ContextItemsKey) }
+    public get HasContext(): boolean { return this.get_property_value(ChatSession.HasContextKey) }
+    public get AddContextCommand(): ICommand { return this.get_property_value(ChatSession.AddContextCommandKey) }
+
+    // The alias sent to the CLI as --model ('' = Default, flag omitted).
+    public Model(): string { return this.SelectedModel?.Value ?? '' }
+
+    // Add a picked file/folder to this conversation's context, deduped by the
+    // directory that will become --add-dir. Its chip ✕ removes it. Called by
+    // ChatSessionsService after the OS picker resolves.
+    public addContextItem(path: string, isFolder: boolean): void
+    {
+        const vm = ContextItemVM.fromPath(path, isFolder, (v) => this.removeContextItem(v))
+        if (this.ContextItems.ToArray().some((c) => c.Dir === vm.Dir)) return
+        this.ContextItems.Add(vm)
+        this.refreshHasContext()
+    }
+
+    private removeContextItem(vm: ContextItemVM): void
+    {
+        this.ContextItems.Remove(vm)
+        this.refreshHasContext()
+    }
+
+    private refreshHasContext(): void
+    {
+        this.set_property_value(ChatSession.HasContextKey, this.ContextItems.Count > 0)
+    }
 
     // IDocument surface — conversations auto-persist (ChatSessionsService flushes on
     // turn-complete / close / quit), so the editor tab never shows a dirty dot and

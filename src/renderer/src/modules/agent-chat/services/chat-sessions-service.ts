@@ -170,8 +170,14 @@ export class ChatSessionsService extends ServiceBase
             rename: (id, title) => { void this.Rename(id, title) },
             close: (id) => { const c = this.Open.ToArray().find((x) => x.Id === id); if (c !== undefined) this.Close(c) },
             reveal: (id) => { void this.Reveal(id) },
+            addContext: (id) => { void this.addContext(id) },
         }
     }
+
+    // Prompt for file(s)/folder(s) and add them to the session's context.
+    // Implemented in a later task (picker + chip wiring); the stub keeps the
+    // callback contract satisfied.
+    private async addContext(_sessionId: string): Promise<void> { /* wired in Task 7 */ }
 
     // Mint a brand-new empty conversation (a document tab), start its backend
     // session, and show it.
