@@ -76,14 +76,14 @@ export async function registerAgentHandlers(): Promise<void>
     // start/turn's cwd. All conversations share the same workspace dirs today, so
     // this is correct in practice; revisit if per-session cwds ever diverge.
     ipcMain.handle(AgentChannel.StartSession,
-        (_e, sessionId: string, workingDirectory: string, addDirs: readonly string[], resumeToken?: string): void => {
+        (_e, sessionId: string, workingDirectory: string, addDirs: readonly string[], resumeToken?: string, model?: string): void => {
             mcpServer.setRuleStore(store, workingDirectory)
-            manager.create(sessionId).start(workingDirectory, addDirs, resumeToken)
+            manager.create(sessionId).start(workingDirectory, addDirs, resumeToken, model)
         })
     ipcMain.handle(AgentChannel.SendTurn,
-        (_e, sessionId: string, workingDirectory: string, addDirs: readonly string[], text: string): void => {
+        (_e, sessionId: string, workingDirectory: string, addDirs: readonly string[], text: string, model?: string): void => {
             mcpServer.setRuleStore(store, workingDirectory)
-            manager.create(sessionId).send(workingDirectory, addDirs, text)
+            manager.create(sessionId).send(workingDirectory, addDirs, text, model)
         })
     ipcMain.handle(AgentChannel.Abort, (_e, sessionId: string): void => {
         manager.get(sessionId)?.abort()

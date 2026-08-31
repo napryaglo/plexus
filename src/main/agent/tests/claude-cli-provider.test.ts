@@ -75,6 +75,23 @@ test('start omits --resume when no token is supplied', () => {
     expect(calls[0].args).not.toContain('--resume')
 })
 
+test('start passes --model <alias> when a model is supplied', () => {
+    const { spawn, calls } = captureSpawn()
+    new ClaudeCliProvider('claude', spawn).start('s1', '/proj', [], () => {}, undefined, 'opus')
+    const args = calls[0].args
+    const i = args.indexOf('--model')
+    expect(i).toBeGreaterThanOrEqual(0)
+    expect(args[i + 1]).toBe('opus')
+})
+
+test('start omits --model when the model is empty/unset', () => {
+    const { spawn, calls } = captureSpawn()
+    new ClaudeCliProvider('claude', spawn).start('s1', '/proj', [], () => {}, undefined, '')
+    expect(calls[0].args).not.toContain('--model')
+    new ClaudeCliProvider('claude', spawn).start('s2', '/proj', [], () => {})
+    expect(calls[1].args).not.toContain('--model')
+})
+
 test('the MCP config URL carries the session id so tool calls are attributable', () => {
     const { spawn, calls } = captureSpawn()
     const mcp = { servers: { plexus: { type: 'http' as const, url: 'http://127.0.0.1:9/mcp' } }, allowedTools: [] }

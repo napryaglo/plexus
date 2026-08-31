@@ -75,14 +75,14 @@ const settings: ISettingsBridge = {
 
 // Agent runtime bridge. Commands are ipcRenderer.invoke round-trips; onEvent
 // subscribes to the pushed AgentChannel.Event stream and returns an unsubscribe.
-// sendTurn forwards the working directory + extra dirs + text (matching the
-// SendTurn handler).
+// sendTurn forwards the working directory + extra dirs + text + model (matching
+// the SendTurn handler).
 const agent: IAgentApi = {
-  startSession: (sessionId: string, workingDirectory: string, addDirs: readonly string[], resumeToken?: string): Promise<void> =>
-    ipcRenderer.invoke(AgentChannel.StartSession, sessionId, workingDirectory, addDirs, resumeToken),
+  startSession: (sessionId: string, workingDirectory: string, addDirs: readonly string[], resumeToken?: string, model?: string): Promise<void> =>
+    ipcRenderer.invoke(AgentChannel.StartSession, sessionId, workingDirectory, addDirs, resumeToken, model),
   closeSession: (sessionId: string): Promise<void> => ipcRenderer.invoke(AgentChannel.CloseSession, sessionId),
-  sendTurn: (sessionId: string, workingDirectory: string, addDirs: readonly string[], text: string): Promise<void> =>
-    ipcRenderer.invoke(AgentChannel.SendTurn, sessionId, workingDirectory, addDirs, text),
+  sendTurn: (sessionId: string, workingDirectory: string, addDirs: readonly string[], text: string, model?: string): Promise<void> =>
+    ipcRenderer.invoke(AgentChannel.SendTurn, sessionId, workingDirectory, addDirs, text, model),
   abort: (sessionId: string): Promise<void> => ipcRenderer.invoke(AgentChannel.Abort, sessionId),
   isResumable: (): Promise<boolean> => ipcRenderer.invoke(AgentChannel.IsResumable),
   listAgentsAndSkills: (projectDir: string): Promise<ProjectCatalog> =>

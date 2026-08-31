@@ -8,15 +8,15 @@ import { AgentEventKind, type AgentEvent } from '../../../shared/agent-api.js'
 // observe routing.
 function recordingProvider() {
     const started: Array<{
-        sessionId: string; cwd: string; addDirs: string[]; resumeToken: string | undefined
+        sessionId: string; cwd: string; addDirs: string[]; resumeToken: string | undefined; model: string | undefined
         onEvent: (e: AgentEvent) => void; sent: string[]; disposed: boolean; aborted: boolean
     }> = []
     const provider: IAiProvider = {
         Id: 'rec',
         Resumable: true,
         listAgentsAndSkills: () => Promise.resolve({ agents: [], skills: [] }),
-        start: (sessionId, cwd, addDirs, onEvent, resumeToken): AiProviderSession => {
-            const rec = { sessionId, cwd, addDirs: [...addDirs], resumeToken, onEvent,
+        start: (sessionId, cwd, addDirs, onEvent, resumeToken, model): AiProviderSession => {
+            const rec = { sessionId, cwd, addDirs: [...addDirs], resumeToken, model, onEvent,
                           sent: [] as string[], disposed: false, aborted: false }
             started.push(rec)
             return {
@@ -94,6 +94,27 @@ test('send restarts the session when the addDirs set changes', () => {
     session.send('/proj', ['/lib-a', '/lib-b'], 'two')
     expect(started).toHaveLength(2)
     expect(started[1].addDirs).toEqual(['/lib-a', '/lib-b'])
+})
+
+test('send restarts the session when the model changes, keeping the resume token', () => {
+    const { provider, started } = recordingProvider()
+    const session = new AgentSession(serviceWith(provider), 'sess-1', () => {})
+    session.send('/proj', [], 'one', '')                                          // default model
+    started[0].onEvent({ Kind: AgentEventKind.SessionStarted, SessionId: 'cli-1' })
+    session.send('/proj', [], 'two', 'opus')                                      // switch model
+    expect(started).toHaveLength(2)
+    expect(started[0].disposed).toBe(true)
+    expect(started[1].model).toBe('opus')
+    expect(started[1].resumeToken).toBe('cli-1')                                  // resumes the same conversation
+})
+
+test('send reuses the session when the model is unchanged', () => {
+    const { provider, started } = recordingProvider()
+    const session = new AgentSession(serviceWith(provider), 'sess-1', () => {})
+    session.send('/proj', [], 'one', 'opus')
+    session.send('/proj', [], 'two', 'opus')
+    expect(started).toHaveLength(1)
+    expect(started[0].sent).toEqual(['one', 'two'])
 })
 
 test('the session id is forwarded to the provider', () => {

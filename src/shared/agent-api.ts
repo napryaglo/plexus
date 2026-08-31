@@ -238,13 +238,14 @@ export interface ProjectCatalog { agents: CatalogItem[]; skills: CatalogItem[] }
 export interface IAgentApi
 {
     // sessionId addresses one conversation; resumeToken (optional) resumes a stored
-    // one's AI context on the first new turn.
-    startSession(sessionId: string, workingDirectory: string, addDirs: readonly string[], resumeToken?: string): Promise<void>;
+    // one's AI context on the first new turn. model (optional, '' = default) is the
+    // --model alias — a change re-targets the session (respawn with --resume).
+    startSession(sessionId: string, workingDirectory: string, addDirs: readonly string[], resumeToken?: string, model?: string): Promise<void>;
     // Dispose one conversation's subprocess.
     closeSession(sessionId: string): Promise<void>;
-    // The renderer supplies the working directory + extra dirs each turn; a turn
-    // lazily starts (or re-targets) the addressed session (see AgentSession).
-    sendTurn(sessionId: string, workingDirectory: string, addDirs: readonly string[], text: string): Promise<void>;
+    // The renderer supplies the working directory + extra dirs + model each turn; a
+    // turn lazily starts (or re-targets) the addressed session (see AgentSession).
+    sendTurn(sessionId: string, workingDirectory: string, addDirs: readonly string[], text: string, model?: string): Promise<void>;
     abort(sessionId: string): Promise<void>;
     // Whether the active provider can resume AI context (gates persistence).
     isResumable(): Promise<boolean>;

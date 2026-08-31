@@ -10,7 +10,7 @@ import { AgentEventKind, type AgentEvent } from '../../shared/agent-api.js'
 export class AgentSession
 {
     private current: AiProviderSession | null = null
-    private target: { cwd: string; addDirs: readonly string[] } | null = null
+    private target: { cwd: string; addDirs: readonly string[]; model: string } | null = null
     private resumeToken: string | undefined = undefined
 
     constructor(
@@ -23,7 +23,7 @@ export class AgentSession
     // (undefined until the first SessionStarted event arrives).
     public get ResumeToken(): string | undefined { return this.resumeToken }
 
-    public start(workingDirectory: string, addDirs: readonly string[], resumeToken?: string): void
+    public start(workingDirectory: string, addDirs: readonly string[], resumeToken?: string, model: string = ''): void
     {
         this.current?.dispose()
         if (resumeToken !== undefined) this.resumeToken = resumeToken
@@ -34,13 +34,14 @@ export class AgentSession
                 this.emit(event)
             },
             this.resumeToken,
+            model,
         )
-        this.target = { cwd: workingDirectory, addDirs: [...addDirs] }
+        this.target = { cwd: workingDirectory, addDirs: [...addDirs], model }
     }
 
-    public send(workingDirectory: string, addDirs: readonly string[], text: string): void
+    public send(workingDirectory: string, addDirs: readonly string[], text: string, model: string = ''): void
     {
-        if (this.current === null || !this.sameTarget(workingDirectory, addDirs)) this.start(workingDirectory, addDirs)
+        if (this.current === null || !this.sameTarget(workingDirectory, addDirs, model)) this.start(workingDirectory, addDirs, undefined, model)
         this.current!.send(text)
     }
 
@@ -56,12 +57,13 @@ export class AgentSession
         this.target = null
     }
 
-    // True when the running session already targets exactly (cwd, addDirs) — same
-    // cwd and the same extra directories in the same order.
-    private sameTarget(cwd: string, addDirs: readonly string[]): boolean
+    // True when the running session already targets exactly (cwd, addDirs, model)
+    // — same cwd, the same extra directories in order, and the same model. A
+    // difference in any dimension respawns (with --resume, preserving history).
+    private sameTarget(cwd: string, addDirs: readonly string[], model: string): boolean
     {
         const t = this.target
-        return t !== null && t.cwd === cwd
+        return t !== null && t.cwd === cwd && t.model === model
             && t.addDirs.length === addDirs.length
             && t.addDirs.every((d, i) => d === addDirs[i])
     }

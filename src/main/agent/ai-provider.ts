@@ -20,13 +20,15 @@ export interface IAiProvider
     readonly Resumable: boolean;
     // sessionId = Plexus's stable id for this conversation (threaded into the MCP
     // config URL so tool calls are attributable). resumeToken = a prior CLI session
-    // id to resume, when reopening a stored conversation.
+    // id to resume, when reopening a stored conversation. model = the --model alias
+    // ('' = omit the flag; the backend picks the subscription default).
     start(
         sessionId: string,
         workingDirectory: string,
         addDirs: readonly string[],
         onEvent: (event: AgentEvent) => void,
         resumeToken?: string,
+        model?: string,
     ): AiProviderSession;
     // Discover the project's declared .claude/ agents + skills (provider-owned so a
     // different provider can discover differently).

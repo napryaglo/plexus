@@ -65,10 +65,13 @@ export class ClaudeCliProvider implements IAiProvider
         addDirs: readonly string[],
         onEvent: (event: AgentEvent) => void,
         resumeToken?: string,
+        model?: string,
     ): AiProviderSession
     {
         const resume = resumeToken !== undefined ? ['--resume', resumeToken] : []
-        const args = [...CLI_ARGS, ...resume, ...addDirs.flatMap((d) => ['--add-dir', d]), ...this.mcpArgs(sessionId)]
+        // '' (Default) omits --model so the CLI uses the subscription default.
+        const modelArgs = model !== undefined && model !== '' ? ['--model', model] : []
+        const args = [...CLI_ARGS, ...resume, ...modelArgs, ...addDirs.flatMap((d) => ['--add-dir', d]), ...this.mcpArgs(sessionId)]
         const child = this.spawnFn(this.binaryPath, args, { cwd: workingDirectory })
         const parser = new StreamJsonParser()
         let buffer = ''
