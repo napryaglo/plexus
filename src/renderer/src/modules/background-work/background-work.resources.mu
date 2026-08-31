@@ -84,7 +84,7 @@ resources BackgroundWorkResources {
     DataTemplate [ DataType = TaskHandle ] {
         DockPanel [ LastChildFill = true, Margin = (4,4,4,4) ] {
             PanelButton [ DockPanel.Dock = Right, Command = $CancelCommand, VerticalAlignment = Top, Margin = (6,0,0,0) ] {
-                TextBlock [ Text = "✕", Foreground = @OnSurfaceVariant ]
+                Shape [ Geometry = @Close, Fill = @OnSurfaceVariant, Width = 12, Height = 12 ]
             }
             StackPanel [ Orientation = Vertical ] {
                 Button [ Template = @TabMenuRowButton, Command = $OpenOutputCommand, HorizontalAlignment = Stretch, MinWidth = 320 ] {
