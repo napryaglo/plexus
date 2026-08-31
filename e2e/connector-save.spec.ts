@@ -284,6 +284,69 @@ test.describe.serial('connector dirty + save', () => {
     })
 })
 
+// Snapshot / restore every .todl under the arch project (to simulate an external
+// edit that deletes a connector — the user's Bug 2).
+function snapshotTodl(copyRoot: string): Map<string, string> {
+    const archDir = path.join(copyRoot, 'architecures/test_architecture')
+    const snap = new Map<string, string>()
+    for (const f of walkTodl(archDir)) snap.set(f, fs.readFileSync(f, 'utf8'))
+    return snap
+}
+function restoreTodl(snap: Map<string, string>): void {
+    for (const [f, text] of snap) fs.writeFileSync(f, text)
+}
+
+// Bug 2: deleting a connector from the .todl must be reflected in the open diagram
+// (the cached ArchModel must not project stale connectors after an external edit).
+test.describe.serial('external .todl edit refreshes the diagram (Bug 2)', () => {
+    let l: Launched
+    let restoreSession: () => void
+    let copyRoot: string
+
+    test.beforeAll(async () => {
+        copyRoot = makeCopy()
+        restoreSession = seedSession(PROJECT_RELS.map((rel) => path.join(copyRoot, rel)))
+        l = await launchPlexus()
+        await l.win.waitForTimeout(12_000)
+        const navs = await rectsForCtor(l.win, 'NavigationItem')
+        if (navs[1]) await clickCenter(l.win, navs[1])
+        await l.win.waitForTimeout(1500)
+        await closeAllDocs(l)
+        await openDiagramFile(l, 'diagram-2.diagram')
+    })
+
+    test.afterAll(async () => {
+        restoreSession?.()
+        await l?.app.close()
+        if (copyRoot) fs.rmSync(copyRoot, { recursive: true, force: true })
+    })
+
+    test('deleting the connector from .todl removes it from the live diagram', async () => {
+        expect(await hasNode(l, A)).toBe(true)
+        // Snapshot the .todl BEFORE drawing (this state has no A→B connector).
+        const preDraw = snapshotTodl(copyRoot)
+
+        await draw(l, A, B)
+        await l.win.waitForTimeout(1500)
+        expect(await labelBetween(l, A, B), 'connector projected after draw').toBe('calls')
+        expect(connectorRecorded(copyRoot, A, B), 'connector on disk after draw').toBe(true)
+
+        // Externally delete the connector: restore the pre-draw .todl on disk.
+        restoreTodl(preDraw)
+        expect(connectorRecorded(copyRoot, A, B), 'connector removed from disk').toBe(false)
+
+        // The file-watch must refresh the cached model → the diagram drops the
+        // now-deleted connector. Poll up to ~10s for the live re-projection.
+        let label: string | undefined = 'calls'
+        for (let i = 0; i < 20; i++) {
+            label = await labelBetween(l, A, B)
+            if (label === undefined) break
+            await l.win.waitForTimeout(500)
+        }
+        expect(label, 'connector removed from the live diagram after external .todl delete').toBeUndefined()
+    })
+})
+
 // Reproduction of the reported bug: opening the SAME diagram file a second time
 // must not create a duplicate document, and must not lose the connector on disk.
 test.describe.serial('duplicate-document repro', () => {

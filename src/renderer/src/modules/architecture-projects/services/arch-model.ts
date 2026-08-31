@@ -77,6 +77,20 @@ export class ArchModel
         this.draft = ModelDraft.fromSources(bases, sources, { namespace: this.namespace })
     }
 
+    // Rebuild the own-instance draft from the CURRENT on-disk sources, recomposed
+    // against the unchanged base model, then fire onChanged so live consumers (the
+    // arch diagram bindings) rescan + re-project. Called when the project's .todl
+    // files change externally (or via the in-app TODL editor) so open diagrams
+    // reflect the edit instead of projecting a stale cached model. Unlike restore()
+    // (silent, undo-driven), this DOES fire onChanged — it is the authoritative
+    // "the source of truth on disk moved" refresh.
+    public reloadFromDisk(sources: SourceFile[]): void
+    {
+        const bases = this.baseModel !== undefined ? [this.baseModel] : []
+        this.draft = ModelDraft.fromSources(bases, sources, { namespace: this.namespace })
+        this.fire()
+    }
+
     public viewpoints(): Viewpoint[]
     {
         const repo = this.draft.model
