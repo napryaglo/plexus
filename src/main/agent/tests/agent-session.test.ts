@@ -117,6 +117,18 @@ test('send reuses the session when the model is unchanged', () => {
     expect(started[0].sent).toEqual(['one', 'two'])
 })
 
+test('abort disposes the running session so the next turn respawns, resuming', () => {
+    const { provider, started } = recordingProvider()
+    const session = new AgentSession(serviceWith(provider), 'sess-1', () => {})
+    session.send('/proj', [], 'one', '')
+    started[0].onEvent({ Kind: AgentEventKind.SessionStarted, SessionId: 'cli-1' })
+    session.abort()
+    expect(started[0].aborted).toBe(true)
+    session.send('/proj', [], 'two', '')             // a fresh subprocess, not the dead one
+    expect(started).toHaveLength(2)
+    expect(started[1].resumeToken).toBe('cli-1')     // resumes the same conversation
+})
+
 test('the session id is forwarded to the provider', () => {
     const { provider, started } = recordingProvider()
     new AgentSession(serviceWith(provider), 'sess-9', () => {}).start('/proj', [])

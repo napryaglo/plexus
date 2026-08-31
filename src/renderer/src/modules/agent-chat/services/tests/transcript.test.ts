@@ -141,3 +141,34 @@ test('addPendingCard adds the card, blocks input, and resets the assistant bubbl
     expect(r.HasPendingQuestion).toBe(false)
     expect(pendingChanges).toBe(2)
 })
+
+test('a user turn marks the reducer busy; TurnComplete clears it', () => {
+    const r = new TranscriptReducer()
+    const changes: boolean[] = []
+    r.onBusyChange = () => changes.push(r.IsBusy)
+    expect(r.IsBusy).toBe(false)
+    r.beginUserTurn('go')
+    expect(r.IsBusy).toBe(true)
+    r.apply({ Kind: AgentEventKind.TurnComplete })
+    expect(r.IsBusy).toBe(false)
+    expect(changes).toEqual([true, false])
+})
+
+test('an Error event clears the busy flag', () => {
+    const r = new TranscriptReducer()
+    r.beginUserTurn('go')
+    r.apply({ Kind: AgentEventKind.Error, Message: 'boom' })
+    expect(r.IsBusy).toBe(false)
+})
+
+test('endTurn clears busy once (used when the user stops a run)', () => {
+    const r = new TranscriptReducer()
+    r.beginUserTurn('go')
+    let fired = 0
+    r.onBusyChange = () => { fired += 1 }
+    r.endTurn()
+    expect(r.IsBusy).toBe(false)
+    expect(fired).toBe(1)
+    r.endTurn()               // idempotent — already idle, no second fire
+    expect(fired).toBe(1)
+})

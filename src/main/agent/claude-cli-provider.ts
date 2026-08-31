@@ -97,9 +97,25 @@ export class ClaudeCliProvider implements IAiProvider
                 const message = { type: 'user', message: { role: 'user', content: [{ type: 'text', text }] } }
                 child.stdin.write(JSON.stringify(message) + '\n')
             },
-            abort:   () => child.kill(),
-            dispose: () => child.kill(),
+            abort:   () => this.terminate(child),
+            dispose: () => this.terminate(child),
         }
+    }
+
+    // Terminate the spawned turn. On Windows the child is `cmd.exe /c claude.cmd`
+    // (shell:true is required for the .cmd shim); a plain kill() would stop the
+    // shell but orphan the `node`/`claude` grandchildren, so the agent keeps
+    // running. taskkill /T /F tears down the whole tree. Elsewhere, kill() is
+    // enough. Falls back to kill() if the pid is unavailable or taskkill throws.
+    private terminate(child: ChildLike): void
+    {
+        const pid = child.pid
+        if (process.platform === 'win32' && pid !== undefined)
+        {
+            try { nodeSpawn('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore' }); return }
+            catch { /* fall through to kill() */ }
+        }
+        child.kill()
     }
 
     // Build the --mcp-config / --allowedTools args. The config is written to a temp

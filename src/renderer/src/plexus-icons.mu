@@ -22,6 +22,8 @@ resources PlexusIcons {
     // Agent capability nav glyph + the send affordance for its input.
     include "icons/agent.svg"                    as Agent
     include "icons/arrow-upward.svg"             as ArrowUpward
+    // Stop/interrupt — the composer's send button becomes this while a turn runs.
+    include "icons/stop.svg"                     as Stop
 
     // Conversations capability nav glyph (parallel agent chats panel) + the
     // per-row Search / Rename affordances in the conversation manager.

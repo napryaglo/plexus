@@ -175,6 +175,7 @@ export class ChatSessionsService extends ServiceBase
             close: (id) => { const c = this.Open.ToArray().find((x) => x.Id === id); if (c !== undefined) this.Close(c) },
             reveal: (id) => { void this.Reveal(id) },
             addContext: (id) => { void this.addContext(id) },
+            stop: (id) => { void this.agent.abort(id) },
         }
     }
 

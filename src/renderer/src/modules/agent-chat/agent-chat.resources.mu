@@ -57,8 +57,16 @@ resources AgentChatResources {
                             Shape [ Geometry = @NewFolder, Fill = @OnSurfaceVariant, Width = 16, Height = 16 ]
                         }
                         ComboBox [ DockPanel.Dock = Left, ItemsSource = $Models, SelectedItem = $SelectedModel ]
-                        PanelButton [ DockPanel.Dock = Right, Command = $SendCommand, IsEnabled = $CanInput, Margin = (8,0,0,0) ] {
+                        // Send when idle; the same slot becomes Stop (interrupt the
+                        // running turn) while a turn is in flight — one shows, the
+                        // other collapses out of layout.
+                        PanelButton [ DockPanel.Dock = Right, Command = $SendCommand, IsEnabled = $CanInput,
+                                      Visibility = $IsIdle << ToVisibility, Margin = (8,0,0,0) ] {
                             Shape [ Geometry = @ArrowUpward, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                        }
+                        PanelButton [ DockPanel.Dock = Right, Command = $StopCommand,
+                                      Visibility = $IsBusy << ToVisibility, Margin = (8,0,0,0) ] {
+                            Shape [ Geometry = @Stop, Fill = @OnSurfaceVariant, Width = 18, Height = 18 ]
                         }
                         TextBlock [ Style = @BodySmall, Foreground = @OnSurfaceVariant, VerticalAlignment = Center,
                                     Margin = (10,0,0,0), Text = "↵ send   ⇧↵ newline" ]

@@ -62,6 +62,9 @@ export interface McpOptions
 // ClaudeCliProvider is unit-testable without a real process.
 export interface ChildLike
 {
+    // The OS process id, used to tree-kill the shell + its grandchildren on
+    // Windows (undefined before spawn / in fakes → callers fall back to kill()).
+    pid?: number;
     stdout: { on(event: 'data', listener: (chunk: Buffer | string) => void): void };
     stderr: { on(event: 'data', listener: (chunk: Buffer | string) => void): void };
     stdin:  { write(data: string): void };

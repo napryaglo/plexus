@@ -45,9 +45,15 @@ export class AgentSession
         this.current!.send(text)
     }
 
+    // Interrupt the running turn: terminate the current provider session and drop
+    // it (along with its target) so the next send() respawns. The captured
+    // resumeToken is retained, so that respawn resumes this conversation via
+    // --resume rather than starting a blank one.
     public abort(): void
     {
         this.current?.abort()
+        this.current = null
+        this.target = null
     }
 
     public dispose(): void

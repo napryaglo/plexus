@@ -33,6 +33,9 @@ export interface ChatSessionCallbacks
     // Prompt the user to pick file(s)/folder(s) and add them to this
     // conversation's context (folders / a file's parent dir become --add-dir).
     addContext(sessionId: string): void
+    // Interrupt the running turn (terminates the CLI turn; the next message
+    // resumes the same conversation).
+    stop(sessionId: string): void
 }
 
 // A conversation is both an IDockPanel (the primary "Agent Chat" lives in the
@@ -49,10 +52,16 @@ export class ChatSession extends MuralBase implements IDockPanel, IDocument
     // False while the agent is blocked on a pending card — the input row binds
     // IsEnabled = $CanInput so a turn can't be sent mid-question.
     public static readonly CanInputKey = MuralBase.RegisterProperty<boolean>(ChatSession, 'CanInput', true, MetaData.None)
+    // True while a turn is in flight; IsIdle is its inverse. The composer shows
+    // the stop button when IsBusy and the send button when IsIdle.
+    public static readonly IsBusyKey = MuralBase.RegisterProperty<boolean>(ChatSession, 'IsBusy', false, MetaData.None)
+    public static readonly IsIdleKey = MuralBase.RegisterProperty<boolean>(ChatSession, 'IsIdle', true, MetaData.None)
     public static readonly SendCommandKey = MuralBase.RegisterProperty<ICommand>(
         ChatSession, 'SendCommand', undefined as unknown as ICommand, MetaData.None)
     public static readonly SubmitCommandKey = MuralBase.RegisterProperty<ICommand>(
         ChatSession, 'SubmitCommand', undefined as unknown as ICommand, MetaData.None)
+    public static readonly StopCommandKey = MuralBase.RegisterProperty<ICommand>(
+        ChatSession, 'StopCommand', undefined as unknown as ICommand, MetaData.None)
     public static readonly ApprovalsKey = MuralBase.RegisterProperty<ApprovalRulesVM>(
         ChatSession, 'Approvals', undefined as unknown as ApprovalRulesVM, MetaData.None)
     // Inline-rename state for the nav-panel row (IsEditing swaps a TextBox in for
@@ -110,10 +119,21 @@ export class ChatSession extends MuralBase implements IDockPanel, IDocument
         this.set_property_value(ChatSession.ContextItemsKey, new ObservableCollection<ContextItemVM>())
         this.set_property_value(ChatSession.AddContextCommandKey, new RelayCommand(() => this.callbacks.addContext(this.sessionId)))
 
+        this.set_property_value(ChatSession.StopCommandKey, new RelayCommand(() => this.stop()))
+
         this.reducer.onAnswerSubmitted = (answer) => this.callbacks.answerQuestion(this.sessionId, answer)
         this.reducer.onToolApprovalSubmitted = (answer) => this.callbacks.answerToolApproval(this.sessionId, answer)
         this.reducer.onPendingChange = () =>
             this.set_property_value(ChatSession.CanInputKey, !this.reducer.HasPendingQuestion)
+        this.reducer.onBusyChange = () => this.applyBusy()
+    }
+
+    // Mirror the reducer's busy flag onto the IsBusy / IsIdle DPs the composer binds.
+    private applyBusy(): void
+    {
+        const busy = this.reducer.IsBusy
+        this.set_property_value(ChatSession.IsBusyKey, busy)
+        this.set_property_value(ChatSession.IsIdleKey, !busy)
     }
 
     public get Id(): string { return this.get_property_value(ChatSession.IdKey) }
@@ -125,6 +145,9 @@ export class ChatSession extends MuralBase implements IDockPanel, IDocument
     public get CanInput(): boolean { return this.get_property_value(ChatSession.CanInputKey) }
     public get SendCommand(): ICommand { return this.get_property_value(ChatSession.SendCommandKey) }
     public get SubmitCommand(): ICommand { return this.get_property_value(ChatSession.SubmitCommandKey) }
+    public get StopCommand(): ICommand { return this.get_property_value(ChatSession.StopCommandKey) }
+    public get IsBusy(): boolean { return this.get_property_value(ChatSession.IsBusyKey) }
+    public get IsIdle(): boolean { return this.get_property_value(ChatSession.IsIdleKey) }
     public get Approvals(): ApprovalRulesVM { return this.get_property_value(ChatSession.ApprovalsKey) }
     public get Reducer(): TranscriptReducer { return this.reducer }
     public get IsEditing(): boolean { return this.get_property_value(ChatSession.IsEditingKey) }
@@ -214,9 +237,19 @@ export class ChatSession extends MuralBase implements IDockPanel, IDocument
         const text = this.Draft.trim()
         if (text === '') return
         if (!this.CanInput) return
-        this.reducer.beginUserTurn(text)   // optimistic echo
+        if (this.IsBusy) return            // a turn is already running — stop it first
+        this.reducer.beginUserTurn(text)   // optimistic echo (also flips IsBusy)
         this.callbacks.send(this.sessionId, text)
         this.set_property_value(ChatSession.DraftKey, '')
+    }
+
+    // Interrupt the running turn. A killed CLI turn emits no TurnComplete, so we
+    // force the reducer idle here; the next message resumes the conversation.
+    private stop(): void
+    {
+        if (!this.IsBusy) return
+        this.reducer.endTurn()
+        this.callbacks.stop(this.sessionId)
     }
 }
 

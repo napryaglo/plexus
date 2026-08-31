@@ -68,3 +68,19 @@ test('the composer renders a SubmitsOnEnter multiline TextBox with a placeholder
     expect(r.combo).toBe(true)
     expect(appErrors(L.errors), appErrors(L.errors).join('\n')).toEqual([])
 })
+
+test('a running turn flips the composer to busy; StopCommand interrupts back to idle', async () => {
+    const r = await L.win.evaluate(async () => {
+        const primary = await globalThis.__chats.EnsurePrimary()
+        const before = { busy: primary.IsBusy, idle: primary.IsIdle }
+        primary.Reducer.beginUserTurn('do a thing')   // a turn starts running
+        const during = { busy: primary.IsBusy, idle: primary.IsIdle }
+        primary.StopCommand.Execute(undefined)         // interrupt it
+        const after = { busy: primary.IsBusy, idle: primary.IsIdle }
+        return { before, during, after }
+    })
+    expect(r.before).toEqual({ busy: false, idle: true })
+    expect(r.during).toEqual({ busy: true, idle: false })
+    expect(r.after).toEqual({ busy: false, idle: true })
+    expect(appErrors(L.errors), appErrors(L.errors).join('\n')).toEqual([])
+})

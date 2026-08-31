@@ -8,7 +8,7 @@ function fakeCallbacks() {
     const calls = {
         sent: [] as Array<{ id: string; text: string }>, created: [] as string[],
         renamed: [] as Array<{ id: string; title: string }>, closed: [] as string[], revealed: [] as string[],
-        addContext: [] as string[],
+        addContext: [] as string[], stopped: [] as string[],
     }
     const cb: ChatSessionCallbacks = {
         send: (id, text) => calls.sent.push({ id, text }),
@@ -19,6 +19,7 @@ function fakeCallbacks() {
         close: (id) => calls.closed.push(id),
         reveal: (id) => calls.revealed.push(id),
         addContext: (id) => calls.addContext.push(id),
+        stop: (id) => calls.stopped.push(id),
     }
     return { cb, calls }
 }
@@ -156,4 +157,40 @@ test('AddContextCommand delegates to the manager callback', () => {
     const s = new ChatSession('sess-1', 'Chat 1', cb)
     s.AddContextCommand.Execute(undefined)
     expect(calls.addContext).toEqual(['sess-1'])
+})
+
+test('IsBusy / IsIdle mirror the turn lifecycle', () => {
+    const { cb } = fakeCallbacks()
+    const s = new ChatSession('sess-1', 'Chat 1', cb)
+    expect(s.IsBusy).toBe(false)
+    expect(s.IsIdle).toBe(true)
+    s.Draft = 'go'
+    s.SendCommand.Execute(undefined)            // send → busy
+    expect(s.IsBusy).toBe(true)
+    expect(s.IsIdle).toBe(false)
+    s.apply({ Kind: AgentEventKind.TurnComplete })
+    expect(s.IsBusy).toBe(false)
+    expect(s.IsIdle).toBe(true)
+})
+
+test('send is ignored while a turn is already running', () => {
+    const { cb, calls } = fakeCallbacks()
+    const s = new ChatSession('sess-1', 'Chat 1', cb)
+    s.Draft = 'one'
+    s.SendCommand.Execute(undefined)            // busy now
+    s.Draft = 'two'
+    s.SendCommand.Execute(undefined)            // ignored while busy
+    expect(calls.sent).toEqual([{ id: 'sess-1', text: 'one' }])
+})
+
+test('StopCommand aborts the run and returns to idle', () => {
+    const { cb, calls } = fakeCallbacks()
+    const s = new ChatSession('sess-1', 'Chat 1', cb)
+    s.Draft = 'go'
+    s.SendCommand.Execute(undefined)
+    expect(s.IsBusy).toBe(true)
+    s.StopCommand.Execute(undefined)
+    expect(calls.stopped).toEqual(['sess-1'])
+    expect(s.IsBusy).toBe(false)
+    expect(s.IsIdle).toBe(true)
 })

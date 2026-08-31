@@ -150,14 +150,35 @@ export class TranscriptReducer
     public onPendingChange: (() => void) | undefined
     // Set by AgentService: forward a submitted tool-approval verdict to the bridge.
     public onToolApprovalSubmitted: ((answer: ToolApprovalAnswer) => void) | undefined
+    // Fired whenever IsBusy flips — the composer swaps its send/stop button on it.
+    public onBusyChange: (() => void) | undefined
+
+    // True while a turn is in flight: from the user turn until TurnComplete /
+    // Error (or an explicit endTurn when the user stops the run).
+    private busy = false
 
     // True while any card is still awaiting an answer (the turn is blocked).
     public get HasPendingQuestion(): boolean { return this.pendingQuestions.size > 0 }
+
+    // True while a turn is running (drives the composer's send↔stop swap).
+    public get IsBusy(): boolean { return this.busy }
+
+    private setBusy(value: boolean): void
+    {
+        if (this.busy === value) return
+        this.busy = value
+        this.onBusyChange?.()
+    }
+
+    // Force the turn to idle — used when the user stops a run (a killed process
+    // emits no TurnComplete, so the reducer would otherwise stay busy).
+    public endTurn(): void { this.setBusy(false) }
 
     public beginUserTurn(text: string): void
     {
         this.currentAssistant = null
         this.Transcript.Add(new UserMessage(text))
+        this.setBusy(true)
     }
 
     // Add a card built outside the reducer (e.g. the create_project card, whose
@@ -261,19 +282,26 @@ export class TranscriptReducer
                 break
 
             case AgentEventKind.SessionStarted:
-            case AgentEventKind.TurnComplete:
-                // No transcript item; TurnComplete closes the current bubble so the
-                // next turn's text starts fresh.
+                // No transcript item; keeps the current bubble open.
                 this.currentAssistant = null
+                break
+
+            case AgentEventKind.TurnComplete:
+                // No transcript item; closes the current bubble so the next turn's
+                // text starts fresh, and marks the turn idle.
+                this.currentAssistant = null
+                this.setBusy(false)
                 break
 
             case AgentEventKind.Error:
             {
-                // Surface the error inline as its own assistant bubble.
+                // Surface the error inline as its own assistant bubble; the turn is
+                // over, so drop out of the busy state.
                 this.currentAssistant = null
                 const bubble = new AssistantMessage()
                 bubble.appendText(`⚠ ${event.Message}`)
                 this.Transcript.Add(bubble)
+                this.setBusy(false)
                 break
             }
         }
