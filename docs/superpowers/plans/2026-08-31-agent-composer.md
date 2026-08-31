@@ -281,7 +281,7 @@ export const DEFAULT_MODELS: ModelOption[] = [
   - Every `startSession(...)` call (EnsurePrimary, newSession, Reveal-from-stored, RunAgentSkill's send) passes `contextDirsFor(session)` + `session.Model()` (or `''` where no session yet — primary/new default to Default model + no extra context at first start).
   - `addContext(id)` → look up the session; show a two-choice (File / Folder) mini-prompt (reuse an existing chooser/dialog, or call `OpenFile` then, if cancelled, skip — v1 may offer folder-only if a File/Folder chooser is heavy; if so, note it). For each picked path, add a `ContextItemVM` (`Dir` = folder path or `dirname(file)`), dedupe by `Dir`.
   - Add `addContext` to the object returned by `callbacks()`.
-  - **If Task 0 found resume rejects model swaps:** gate `SelectedModel` edits after the first user turn (expose a `ModelLocked` bool the picker's `IsEnabled` binds to; set it once a turn is sent).
+  - ~~Model-lock fallback~~ — NOT needed: Task 0 verified the CLI honors a different `--model` on `--resume`, so the picker stays enabled across turns.
 - [ ] **Step 4: Run — expect PASS.**
 - [ ] **Step 5: Commit.**
 

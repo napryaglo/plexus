@@ -232,16 +232,19 @@ Default model / no extra context). Persisting them is a follow-up.
 
 ## Risks / open items (pinned during Task 0 spike)
 
-1. **`--model` aliases** — verify `opus`/`sonnet`/`haiku` are accepted by the
-   installed CLI; else use full IDs from the enum values (only the enum values
-   change).
-2. **Model-change-on-resume** — confirm the CLI honors a different `--model` on
-   `--resume` without erroring. If it rejects mid-conversation model swaps, scope
-   the model to session start only (picker disabled after the first turn) — a
-   smaller v1.
+1. **`--model` aliases** — ✅ RESOLVED (CLI 2.1.139). `--help`: "Provide an alias
+   for the latest model (e.g. 'sonnet' or 'opus') or a model's full name (e.g.
+   'claude-sonnet-4-6')." So `AgentModel` values `opus`/`sonnet`/`haiku` are valid;
+   no change to the enum.
+2. **Model-change-on-resume** — ✅ RESOLVED. Verified live: turn 1 under
+   `--model sonnet` (session `96e705a0…`), then `--resume <id> --model opus` →
+   `is_error=false`, correct reply, same `session_id`. The CLI **honors a
+   different `--model` on resume**, so the picker stays enabled across turns — no
+   turn-1 lock needed (Task 7's `ModelLocked` fallback is NOT required).
 3. **`MaxHeight` auto-grow** — confirm `ScrollViewer[MaxHeight]` clamps a
-   content-measured `TextBox`; else bound the `TextBox` directly.
-4. **Wrap-panel + `+` icon resource keys** — confirm existing keys or add them.
+   content-measured `TextBox` during Task 8; else bound the `TextBox` directly.
+4. **Wrap-panel + `+` icon resource keys** — confirm existing keys or add them
+   (Task 8 Step 1).
 
 ## Out of scope (follow-ups)
 
