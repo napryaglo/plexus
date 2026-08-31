@@ -53,27 +53,23 @@ resources AgentChatResources {
                     // Footer. The send/stop button is docked FIRST so it reserves the
                     // right edge before the left items claim width — otherwise the
                     // model ComboBox (which stretches) eats the row in a narrow dock
-                    // and pushes the button off the (clipped) edge. The keybind hint
-                    // is the fill child, so it takes the leftover middle and clips out
-                    // gracefully when the composer is too narrow to show it.
-                    DockPanel [ DockPanel.Dock = Bottom, LastChildFill = true, Margin = (0,8,0,0) ] {
+                    // and pushes the button off the (clipped) edge.
+                    DockPanel [ DockPanel.Dock = Bottom, LastChildFill = false, Margin = (0,8,0,0) ] {
                         // Send when idle; the same slot becomes Stop (interrupt the
                         // running turn) while a turn is in flight — one shows, the
                         // other collapses out of layout.
                         PanelButton [ DockPanel.Dock = Right, Command = $SendCommand, IsEnabled = $CanInput,
                                       Visibility = $IsIdle << ToVisibility, Margin = (6,0,0,0) ] {
-                            Shape [ Geometry = @ArrowUpward, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                            Shape [ Geometry = @ArrowUpward, Fill = @OnSurfaceVariant, Width = 16, Height = 16 ]
                         }
                         PanelButton [ DockPanel.Dock = Right, Command = $StopCommand,
                                       Visibility = $IsBusy << ToVisibility, Margin = (6,0,0,0) ] {
-                            Shape [ Geometry = @Stop, Fill = @OnSurfaceVariant, Width = 18, Height = 18 ]
+                            Shape [ Geometry = @Stop, Fill = @OnSurfaceVariant, Width = 16, Height = 16 ]
                         }
                         PanelButton [ DockPanel.Dock = Left, Command = $AddContextCommand, Margin = (0,6,0,0) ] {
                             Shape [ Geometry = @NewFolder, Fill = @OnSurfaceVariant, Width = 16, Height = 16 ]
                         }
                         ComboBox [ DockPanel.Dock = Left, ItemsSource = $Models, SelectedItem = $SelectedModel, MaxWidth = 160 ]
-                        TextBlock [ Style = @BodySmall, Foreground = @OnSurfaceVariant, VerticalAlignment = Center,
-                                    Margin = (10,0,0,0), Text = "↵ send   ⇧↵ newline" ]
                     }
                     // The input fills the middle; grows with content up to a cap, then
                     // scrolls (auto-hide scrollbars are app-wide).
