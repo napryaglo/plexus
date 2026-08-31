@@ -13,7 +13,8 @@ import './fonts.css'
 import { app } from './app.mu.js'
 import { HtmlTarget } from '@pragmatic-lab/mural/visual-engine'
 import { ThemeManager, Density, RelayCommand } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, PanelDockService } from '@pragmatic-lab/mural/framework'
+import { ContentHostService, PanelDockService, DialogService } from '@pragmatic-lab/mural/framework'
+import { confirmCloseDocs } from './services/documents/confirm-close-docs.js'
 import { ChatSessionsService } from './modules/agent-chat/services/chat-sessions-service.js'
 import { ProjectAgentCatalog } from './modules/agent-chat/services/project-agent-catalog.js'
 import { TemplateGalleryService } from './modules/agent-chat/services/template-gallery-service.js'
@@ -199,6 +200,12 @@ try {
 
     // Ctrl +/−/0 → zoom in / out / reset on the active diagram's camera.
     if (host !== undefined) attachZoomShortcuts(host)
+
+    // Save-on-quit: the main process awaits this from the window 'close' handler
+    // (executeJavaScript). Resolves true when it's safe to quit (nothing dirty, or
+    // the user chose Save All / Discard All) and false to cancel the quit.
+    globalThis.__confirmCloseDocs = () =>
+        host !== undefined ? confirmCloseDocs(host, app.Services.get(DialogService.Key)) : true
 
     // Restore the previous session's open projects into the explorer (skips
     // folders whose project manifest is gone). Fire-and-forget after mount.

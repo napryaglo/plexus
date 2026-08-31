@@ -61,13 +61,25 @@ function createWindow(): void {
   mainWindow.on('close', (event) => {
     if (flushed || mainWindow.webContents.isDestroyed()) return
     event.preventDefault()
-    flushed = true
-    const proceed = (): void => { if (!mainWindow.isDestroyed()) mainWindow.close() }
-    const flush = mainWindow.webContents
-      .executeJavaScript('window.__flushChats ? window.__flushChats() : null')
-      .catch(() => undefined)
-    const timeout = new Promise((resolve) => setTimeout(resolve, 2000))
-    void Promise.race([flush, timeout]).then(proceed, proceed)
+    // First ask the renderer to resolve unsaved documents (Save All / Discard All /
+    // Cancel). This is interactive, so it gets NO timeout — the user is at the
+    // keyboard. `flushed` is only set once we've committed to closing, so a Cancel
+    // (ok === false) leaves the window open and a later close re-runs the flow. A
+    // thrown/rejected confirm biases to NOT closing (safer than losing work).
+    const proceed = (): void => { flushed = true; if (!mainWindow.isDestroyed()) mainWindow.close() }
+    const confirm = mainWindow.webContents
+      .executeJavaScript('window.__confirmCloseDocs ? window.__confirmCloseDocs() : true')
+      .catch(() => false)
+    void confirm.then((ok) => {
+      if (ok === false) return
+      // Then flush open conversations to disk, bounded so a hung/absent renderer
+      // never blocks quit, and close for real.
+      const flush = mainWindow.webContents
+        .executeJavaScript('window.__flushChats ? window.__flushChats() : null')
+        .catch(() => undefined)
+      const timeout = new Promise((resolve) => setTimeout(resolve, 2000))
+      void Promise.race([flush, timeout]).then(proceed, proceed)
+    })
   })
 
   // Open target=_blank / external links in the OS browser, never in-app.
