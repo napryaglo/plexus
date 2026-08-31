@@ -390,6 +390,16 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
             RestBrush    = @Surface;
         }
 
+        // VSCode-style scrollbars: hidden until the pointer is over the scroll
+        // region (or it's actively scrolling), then fade in as an overlay (no
+        // layout width). App-wide via an implicit Style; self-contained
+        // (re-declares Template) to avoid mural's Seal() self-reference guard
+        // dropping the framework Template. mural 0.44.0 hover-to-show.
+        Style [ TargetType = ScrollViewer ] {
+            Template             = @DefaultScrollViewer;
+            IsAutoHideScrollBars = true;
+        }
+
         // The mural-painted app title bar (@PlexusTitleBar), set as the shell's
         // HeaderContent below.
         merge PlexusTitleBar
