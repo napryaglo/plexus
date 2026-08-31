@@ -344,38 +344,22 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
             StackPanel [ Orientation = Vertical ]
         }
 
-        // Paint the status bar @SurfaceContainer so it matches the side pane,
-        // the right dock, and the document area — one work-surface tone across
-        // the shell (the title bar + activity rail stay @Surface as the chrome
-        // tone). StatusBar.Fill is a themeable DP (mural defaults it to
-        // @Surface); the framework template binds it ($$Fill), so re-tinting is
-        // just a Fill setter.
-        //
-        // Template + ItemsPanel are re-declared (pointing back at the framework
-        // defaults) DELIBERATELY: an app-level IMPLICIT Style shadows the theme
-        // Style in Application.Resources, so mural's Seal() finds THIS style (not
-        // the theme one) when it resolves the implicit BasedOn — the self-ref
-        // guard then skips the splice and the Template would be lost (the bar
-        // vanishes). Naming the framework Template/Panel keys here makes the
-        // style self-contained instead of relying on that splice.
-        Style [ TargetType = StatusBar ] {
-            Template   = @DefaultStatusBar;
-            ItemsPanel = @DefaultStatusBarPanel;
-            Fill       = @SurfaceContainer;
-        }
+        // The status bar keeps the framework default @Surface chrome tone (with
+        // the title bar + activity rail), so it is NOT restyled here — the side
+        // pane, right dock, and document area are the @SurfaceContainer work
+        // surfaces; the status bar is chrome.
 
         // Round the left side pane's corners (@ShapeSmall) to match the right
         // dock + document area. CornerRadius is a themeable DP on
         // ShellSideContentPane (mural 0.41.4, defaults to square); the framework
         // template binds it and clips the pane content to the rounded bounds.
         //
-        // Template + Fill are re-declared (same reason as the StatusBar style
-        // above): an app-level IMPLICIT Style shadows the theme Style in
-        // Application.Resources, so mural's Seal() resolves the implicit BasedOn
-        // to THIS style, trips the self-reference guard, and inherits no
-        // Template — the pane would vanish. Naming the framework Template
-        // (@DefaultShellSideContentPane) + the @SurfaceContainer Fill here makes
-        // the style self-contained.
+        // Template + Fill are re-declared DELIBERATELY: an app-level IMPLICIT
+        // Style shadows the theme Style in Application.Resources, so mural's
+        // Seal() resolves the implicit BasedOn to THIS style, trips the
+        // self-reference guard, and inherits no Template — the pane would vanish.
+        // Naming the framework Template (@DefaultShellSideContentPane) + the
+        // @SurfaceContainer Fill here makes the style self-contained.
         Style [ TargetType = ShellSideContentPane ] {
             Template     = @DefaultShellSideContentPane;
             Fill         = @SurfaceContainer;
