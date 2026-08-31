@@ -15,6 +15,7 @@ import NewProjectCard from "./services/new-project-card.js"
 import ToolApprovalCard from "./services/approval-card.js"
 import ApprovalRuleRow from "./services/approval-rules.js"
 import TemplateGalleryService from "./services/template-gallery-service.js"
+import ContextItemVM from "./services/context-item.js"
 
 resources AgentChatResources {
     DataTemplate [ DataType = ChatSession ] {
@@ -34,19 +35,70 @@ resources AgentChatResources {
             // (The workspace-shared "Approved tools" list moved out of the per-chat
             // panel to a single button in the Conversations panel — it's one list
             // scoped to the agent cwd, so it no longer belongs inside every chat.)
-            // Input row pinned to the bottom. Disabled ($CanInput = false) while a
-            // question card is awaiting an answer — the user must resolve it first.
-            DockPanel [ DockPanel.Dock = Bottom, LastChildFill = true, Margin = (0,8,0,0) ] {
-                PanelButton [ DockPanel.Dock = Right, Command = $SendCommand, IsEnabled = $CanInput, Margin = (8,0,0,0) ] {
-                    Shape [ Geometry = @ArrowUpward, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+            // VSCode-style composer card pinned to the bottom: a rounded, outlined
+            // container holding (top→bottom) the added-context chips, the multiline
+            // input, and a footer with add-context + model picker on the left and the
+            // send button on the right. Disabled ($CanInput = false) while a question
+            // card awaits an answer. Enter-to-send: the TextBox uses SubmitsOnEnter so
+            // a plain Return bubbles (no newline) to the enclosing DockPanel's
+            // KeyDown → SubmitCommand trigger; Shift+Return inserts a newline.
+            Border [ DockPanel.Dock = Bottom, Margin = (0,8,0,0),
+                     Fill = @SurfaceContainerHigh, Stroke = Pen [ Brush = @OutlineVariant ],
+                     CornerRadius = 12, Padding = (10,8,10,8), ClipToBounds = true ] {
+                DockPanel [ LastChildFill = true ] {
+                    // Added-context chips — only present when the user has added any.
+                    ItemsControl [ DockPanel.Dock = Top, ItemsSource = $ContextItems,
+                                   ItemsPanel = @ComposerChipPanel, ItemTemplate = @ContextChipTemplate,
+                                   Visibility = $HasContext << ToVisibility, Margin = (0,0,0,6) ]
+                    // Footer: add-context (+folder) + model picker on the left, the
+                    // keybind hint, and the send button docked right.
+                    DockPanel [ DockPanel.Dock = Bottom, LastChildFill = false, Margin = (0,8,0,0) ] {
+                        PanelButton [ DockPanel.Dock = Left, Command = $AddContextCommand, Margin = (0,0,6,0) ] {
+                            Shape [ Geometry = @NewFolder, Fill = @OnSurfaceVariant, Width = 16, Height = 16 ]
+                        }
+                        ComboBox [ DockPanel.Dock = Left, ItemsSource = $Models, SelectedItem = $SelectedModel ]
+                        PanelButton [ DockPanel.Dock = Right, Command = $SendCommand, IsEnabled = $CanInput, Margin = (8,0,0,0) ] {
+                            Shape [ Geometry = @ArrowUpward, Fill = @OnSurfaceVariant, Width = 20, Height = 20 ]
+                        }
+                        TextBlock [ Style = @BodySmall, Foreground = @OnSurfaceVariant, VerticalAlignment = Center,
+                                    Margin = (10,0,0,0), Text = "↵ send   ⇧↵ newline" ]
+                    }
+                    // The input fills the middle; grows with content up to a cap, then
+                    // scrolls (auto-hide scrollbars are app-wide).
+                    ScrollViewer [ HorizontalScrollEnabled = false, MaxHeight = 160 ] {
+                        TextBox [ Text = $Draft, IsEnabled = $CanInput, AcceptsReturn = true,
+                                  SubmitsOnEnter = true, TextWrapping = Wrap,
+                                  Placeholder = "Ask Claude anything…", PlaceholderBrush = @OnSurfaceVariant ]
+                    }
                 }
-                TextBox [ Text = $Draft, IsEnabled = $CanInput ]
             }
             // Scrolling transcript fills the rest. AutoScrollToEnd keeps the
             // latest message pinned to the bottom while the user is at the end
             // (sticky — scrolling up to read history is not interrupted).
             ScrollViewer [ HorizontalScrollEnabled = false, AutoScrollToEnd = true ] {
                 ItemsControl [ ItemsSource = $Transcript, ItemsPanel = @VerticalStackPanel ]
+            }
+        }
+    }
+
+    // Composer context chips wrap onto multiple rows as they accumulate.
+    ItemsPanelTemplate x:key="ComposerChipPanel" {
+        WrapPanel
+    }
+
+    // One added-context chip: a folder glyph + the basename + a ✕ that removes it
+    // (RemoveCommand). v1 adds folders, so the folder glyph always fits.
+    DataTemplate x:key="ContextChipTemplate" [ DataType = ContextItemVM ] {
+        Border [ Fill = @SurfaceContainerHigh, Stroke = Pen [ Brush = @OutlineVariant ],
+                 CornerRadius = 4, Padding = (6,2,4,2), Margin = (0,0,4,4) ] {
+            DockPanel [ LastChildFill = true ] {
+                Shape [ DockPanel.Dock = Left, Geometry = @Folder, Fill = @OnSurfaceVariant,
+                        Width = 12, Height = 12, VerticalAlignment = Center, Margin = (0,4,0,0) ]
+                PanelButton [ DockPanel.Dock = Right, Command = $RemoveCommand, Margin = (4,0,0,0) ] {
+                    Shape [ Geometry = @Close, Fill = @OnSurfaceVariant, Width = 10, Height = 10 ]
+                }
+                TextBlock [ Text = $Name, Style = @BodySmall, Foreground = @OnSurface,
+                            VerticalAlignment = Center, Margin = (4,0,0,0) ]
             }
         }
     }
