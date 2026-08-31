@@ -372,9 +372,9 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
             Template     = @DefaultShellSideContentPane;
             Fill         = @SurfaceContainer;
             CornerRadius = @ShapeSmall;
-            // 2dp inset so the pane floats off the window/splitter edges (matches
+            // 1dp inset so the pane floats off the window/splitter edges (matches
             // the document area + right dock).
-            Margin       = (2);
+            Margin       = (1);
         }
 
         // Resize splitters between the panels: paint the resting divider with the

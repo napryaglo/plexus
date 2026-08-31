@@ -114,7 +114,7 @@ resources DockTabsResources {
         // (top corners) and the panel body (bottom corners) clip to the rounded
         // silhouette, matching the left side pane and the document area. Fill is
         // @SurfaceContainer so the whole right dock reads as one surface.
-        Border [ Fill = @SurfaceContainer, CornerRadius = @ShapeSmall, ClipToBounds = true, Margin = (2) ] {
+        Border [ Fill = @SurfaceContainer, CornerRadius = @ShapeSmall, ClipToBounds = true, Margin = (1) ] {
             DockPanel [ LastChildFill = true ] {
                 NavigationRail
                     [ DockPanel.Dock     = Top,

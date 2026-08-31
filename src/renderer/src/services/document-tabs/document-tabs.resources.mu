@@ -197,7 +197,7 @@ resources DocumentTabsResources {
     // @DocumentTabHeaderTemplate (compact title + close ✕).
     DataTemplate [ DataType = DocumentsContentHostService ] {
         ExtendedTabControl
-            [ Visual.Margin             = (2),
+            [ Visual.Margin             = (1),
               ItemsControl.ItemsSource  = $OpenDocuments,
               Selector.SelectedItem     = $ActiveDocument,
               ItemsControl.ItemTemplate = @DocumentTabHeaderTemplate ]
