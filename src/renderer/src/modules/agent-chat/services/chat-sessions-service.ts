@@ -15,6 +15,7 @@ import {
     AgentEventKind, AgentSkillKind,
     type AgentEvent, type CatalogItem, type CreateProjectRequest, type IAgentApi,
 } from '../../../../../shared/agent-api.js'
+import type { IFileSystemApi } from '../../../../../shared/file-system-api.js'
 import { BackgroundWorkService } from '../../background-work/services/background-work-service.js'
 import { TaskKind } from '../../background-work/services/task-executor.js'
 import { EnvironmentService } from '../../../services/environment/environment-service.js'
@@ -163,7 +164,10 @@ export class ChatSessionsService extends ServiceBase
     private callbacks(): ChatSessionCallbacks
     {
         return {
-            send: (id, text) => { void this.agent.sendTurn(id, this.currentCwd(), this.addDirs(), text) },
+            send: (id, text) => {
+                const s = this.sessionById(id)
+                void this.agent.sendTurn(id, this.currentCwd(), this.contextDirsFor(s), text, s?.Model() ?? '')
+            },
             answerQuestion: (_id, answer) => { void this.agent.answerQuestion(answer) },
             answerToolApproval: (_id, answer) => { void this.agent.answerToolApproval(answer) },
             createProject: (id, req, reducer) => { void this.handleCreateProject(id, req, reducer) },
@@ -174,10 +178,37 @@ export class ChatSessionsService extends ServiceBase
         }
     }
 
-    // Prompt for file(s)/folder(s) and add them to the session's context.
-    // Implemented in a later task (picker + chip wiring); the stub keeps the
-    // callback contract satisfied.
-    private async addContext(_sessionId: string): Promise<void> { /* wired in Task 7 */ }
+    // A live conversation by id (docked primary or a document tab).
+    private sessionById(id: string): ChatSession | undefined
+    {
+        return this.liveSessions().find((c) => c.Id === id)
+    }
+
+    // The extra directories a turn should expose to the agent: the shared
+    // open-project dirs plus the session's added-context dirs, deduped (a context
+    // dir that's already an open-project dir contributes once).
+    private contextDirsFor(session: ChatSession | undefined): string[]
+    {
+        const dirs = [...this.addDirs()]
+        for (const item of session?.ContextItems.ToArray() ?? [])
+            if (!dirs.includes(item.Dir)) dirs.push(item.Dir)
+        return dirs
+    }
+
+    // Prompt for a file or folder and add it to the session's context (folders /
+    // a file's parent dir become --add-dir on the next turn's respawn). The chip's
+    // ✕ removes it. Folder picks add the folder; file picks add the file (its
+    // parent dir is what --add-dir receives — see ContextItemVM).
+    private async addContext(sessionId: string): Promise<void>
+    {
+        const session = this.sessionById(sessionId)
+        if (session === undefined) return
+        const fs = (globalThis as unknown as { api?: { fs?: IFileSystemApi } }).api?.fs
+        if (fs === undefined) return
+        // A folder picker (createDirectory disabled by the OS dialog options in main).
+        const folder = await fs.openFolder({ Title: 'Add folder to agent context' })
+        if (folder !== null && folder !== undefined) session.addContextItem(folder, true)
+    }
 
     // Mint a brand-new empty conversation (a document tab), start its backend
     // session, and show it.
@@ -206,7 +237,7 @@ export class ChatSessionsService extends ServiceBase
                 void Promise.resolve().then(() => { if (this.primary === chat) this.dock.Add(chat) })
         })
         const resume = rec !== undefined && rec.ResumeToken !== '' ? rec.ResumeToken : undefined
-        void this.agent.startSession(PRIMARY_ID, this.currentCwd(), this.addDirs(), resume)
+        void this.agent.startSession(PRIMARY_ID, this.currentCwd(), this.contextDirsFor(chat), resume, chat.Model())
         return chat
     }
 
@@ -230,7 +261,7 @@ export class ChatSessionsService extends ServiceBase
         this.Open.Add(chat)
         this.contentHost.Open(chat)
         this.set_property_value(ChatSessionsService.ActiveChatKey, chat)
-        void this.agent.startSession(sessionId, this.currentCwd(), this.addDirs())
+        void this.agent.startSession(sessionId, this.currentCwd(), this.contextDirsFor(chat), undefined, chat.Model())
         return chat
     }
 
@@ -245,7 +276,7 @@ export class ChatSessionsService extends ServiceBase
         const seed = seedInvocation(item)
         // Optimistic echo + send through the shared bridge (same path as a user turn).
         chat.Reducer.beginUserTurn(seed)
-        void this.agent.sendTurn(chat.Id, this.currentCwd(), this.addDirs(), seed)
+        void this.agent.sendTurn(chat.Id, this.currentCwd(), this.contextDirsFor(chat), seed, chat.Model())
 
         const turnDone = new Promise<void>((resolve) => this.pendingRuns.set(chat.Id, resolve))
         const bg = this.Provider.get(BackgroundWorkService.Key)
@@ -276,7 +307,7 @@ export class ChatSessionsService extends ServiceBase
         // SessionStarted, so without this a later TurnComplete (and close/quit flush)
         // would find no token and skip persisting the resumed conversation's new turns.
         if (rec.ResumeToken !== '') this.tokens.set(rec.Id, rec.ResumeToken)
-        void this.agent.startSession(rec.Id, this.currentCwd(), this.addDirs(), rec.ResumeToken)
+        void this.agent.startSession(rec.Id, this.currentCwd(), this.contextDirsFor(chat), rec.ResumeToken, chat.Model())
         return chat
     }
 

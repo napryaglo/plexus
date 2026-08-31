@@ -7,15 +7,21 @@ import { OpenProjectsStore } from '../../../../services/projects/open-projects-s
 import { BackgroundWorkService } from '../../../background-work/services/background-work-service.js'
 import { ChatStore } from '../chat-store.js'
 import { ChatSessionsService, seedInvocation } from '../chat-sessions-service.js'
+import { AgentModel } from '../agent-model.js'
 
 function fakeAgent() {
     const turns: Array<{ sessionId: string; text: string }> = []
+    const sends: Array<{ id: string; dirs: string[]; text: string; model: string }> = []
     const started: string[] = []
     let push: ((m: TaggedAgentEvent) => void) | undefined
     const api: IAgentApi = {
         startSession: (id) => { started.push(id); return Promise.resolve() },
         closeSession: () => Promise.resolve(),
-        sendTurn: (id, _c, _d, text) => { turns.push({ sessionId: id, text }); return Promise.resolve() },
+        sendTurn: (id, _c, dirs, text, model) => {
+            turns.push({ sessionId: id, text })
+            sends.push({ id, dirs: [...dirs], text, model: model ?? '' })
+            return Promise.resolve()
+        },
         abort: () => Promise.resolve(),
         isResumable: () => Promise.resolve(true),
         listAgentsAndSkills: () => Promise.resolve({ agents: [], skills: [] }),
@@ -28,7 +34,7 @@ function fakeAgent() {
         revokeApprovalRule: () => Promise.resolve(),
         onEvent: (h) => { push = h; return () => {} },
     }
-    return { api, turns, started, emit: (m: TaggedAgentEvent) => push?.(m) }
+    return { api, turns, sends, started, emit: (m: TaggedAgentEvent) => push?.(m) }
 }
 
 function fakeStore(initial: string[] = []) {
@@ -123,6 +129,37 @@ test('a turn addresses the session and the shared workspace cwd', () => {
     chat.Draft = 'hi'
     chat.SendCommand.Execute(undefined)
     expect(bridge.turns).toEqual([{ sessionId: chat.Id, text: 'hi' }])
+})
+
+test('a turn forwards the session model and merges its context dirs', () => {
+    const { svc } = makeService(fakeStore(['/A', '/B']))
+    const chat = svc.NewConversation()
+    chat.SelectedModel = chat.Models.ToArray().find((m) => m.Value === AgentModel.Opus)!
+    chat.addContextItem('C:/ctx/notes.md', false)   // parent dir C:/ctx joins the context
+    chat.Draft = 'hi'
+    chat.SendCommand.Execute(undefined)
+    const last = bridge.sends.at(-1)!
+    expect(last.model).toBe('opus')
+    expect(last.dirs).toContain('/B')       // the open-project addDir
+    expect(last.dirs).toContain('C:/ctx')   // the session's context dir
+})
+
+test('context dirs are deduped against the open-project dirs', () => {
+    const { svc } = makeService(fakeStore(['/A', '/B']))
+    const chat = svc.NewConversation()
+    chat.addContextItem('/B', true)          // same dir as an open-project addDir
+    chat.Draft = 'hi'
+    chat.SendCommand.Execute(undefined)
+    const last = bridge.sends.at(-1)!
+    expect(last.dirs.filter((d) => d === '/B')).toHaveLength(1)
+})
+
+test('the default model is forwarded as the empty alias', () => {
+    const { svc } = makeService(fakeStore(['/A']))
+    const chat = svc.NewConversation()
+    chat.Draft = 'hi'
+    chat.SendCommand.Execute(undefined)
+    expect(bridge.sends.at(-1)!.model).toBe('')
 })
 
 test('a resumable SessionStarted upserts the conversation into the store', async () => {
