@@ -12,7 +12,7 @@
 import './fonts.css'
 import { app } from './app.mu.js'
 import { HtmlTarget } from '@pragmatic-lab/mural/visual-engine'
-import { ThemeManager, Density } from '@pragmatic-lab/mural/runtime'
+import { ThemeManager, Density, RelayCommand } from '@pragmatic-lab/mural/runtime'
 import { ContentHostService, PanelDockService } from '@pragmatic-lab/mural/framework'
 import { ChatSessionsService } from './modules/agent-chat/services/chat-sessions-service.js'
 import { ProjectAgentCatalog } from './modules/agent-chat/services/project-agent-catalog.js'
@@ -186,8 +186,16 @@ try {
     // inspector bound to it instead of the diagram the user actually opened.)
     const host = app.Services.get(ContentHostService.Key)
 
-    // Ctrl+S / Ctrl+Shift+S → Save / Save All on the document host.
-    if (host !== undefined) attachSaveShortcuts(host)
+    // Ctrl+S / Ctrl+Shift+S → Save / Save All; Ctrl+W → close the active document
+    // through the close guard (prompts if dirty). CloseActiveCommand bridges "the
+    // active document" to the host's id-keyed CloseDocumentCommand.
+    if (host !== undefined) attachSaveShortcuts({
+        SaveActiveCommand: host.SaveActiveCommand,
+        SaveAllCommand: host.SaveAllCommand,
+        CloseActiveCommand: new RelayCommand(
+            () => { const d = host.ActiveDocument; if (d !== undefined) host.CloseDocumentCommand.Execute(d.Id) },
+            () => host.ActiveDocument !== undefined),
+    })
 
     // Ctrl +/−/0 → zoom in / out / reset on the active diagram's camera.
     if (host !== undefined) attachZoomShortcuts(host)

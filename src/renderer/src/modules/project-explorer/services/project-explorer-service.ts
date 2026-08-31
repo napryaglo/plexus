@@ -82,6 +82,7 @@ import { DiagnosticsService } from '../../../services/diagnostics/diagnostics-se
 import { DiagnosticSeverity } from '../../../services/diagnostics/diagnostic.js'
 import { planNodeMoves } from '../../../services/projects/node-move.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
+import { DocumentCloseGuard } from '../../../services/documents/document-close-guard.js'
 import { AddLibraryReferenceDialogModel } from '../../../services/projects/add-library-reference-dialog-model.js'
 import { RecentProjectsService } from '../../../services/projects/recent-projects-service.js'
 import { CodeDocument } from '../../code-editor/code-document.js'
@@ -1092,8 +1093,19 @@ export class ProjectExplorerService extends ServiceBase
     // from the persisted open set.
     private async closeProject(op: OpenProject): Promise<void>
     {
+        // Close each owned tab through the guard so a dirty document prompts
+        // Save / Don't Save / Cancel; Cancel aborts the whole project close (the
+        // guard performs the actual Close on Save/Don't-Save, so we only forget
+        // the doc's tracking afterwards).
+        const guard = this.Provider.get(DocumentCloseGuard.Key)
         for (const [doc, owner] of [...this.docOwners]) {
-            if (owner === op) { this.host.Close(doc); this.docOwners.delete(doc); this.docPaths.delete(doc) }
+            if (owner !== op) continue
+            if (guard !== undefined) {
+                if (!(await guard.TryCloseDocument(doc))) return   // cancelled — leave the project open
+            } else {
+                this.host.Close(doc)
+            }
+            this.docOwners.delete(doc); this.docPaths.delete(doc)
         }
         // Unregister from the language client and drop this project's diagnostics.
         this.Provider.get(TodlLanguageClient.Key)?.DetachProject(op.Storage)

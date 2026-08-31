@@ -13,11 +13,12 @@ function fakeCommand(execute: () => void) {
 }
 
 function fakeHost() {
-    const calls = { save: 0, saveAll: 0 }
+    const calls = { save: 0, saveAll: 0, close: 0 }
     return {
         calls,
-        SaveActiveCommand: fakeCommand(() => { calls.save++ }),
-        SaveAllCommand:    fakeCommand(() => { calls.saveAll++ }),
+        SaveActiveCommand:  fakeCommand(() => { calls.save++ }),
+        SaveAllCommand:     fakeCommand(() => { calls.saveAll++ }),
+        CloseActiveCommand: fakeCommand(() => { calls.close++ }),
     }
 }
 
@@ -54,6 +55,15 @@ describe('attachSaveShortcuts', () => {
         win.fire({ key: 's', ctrlKey: true, shiftKey: true })
         expect(host.calls.saveAll).toBe(1)
         expect(host.calls.save).toBe(0)
+    })
+
+    test('Ctrl+W closes the active document and prevents default', () => {
+        const host = fakeHost(); const win = fakeWindow()
+        attachSaveShortcuts(host, win as unknown as Window)
+        const prevented = win.fire({ key: 'w', ctrlKey: true })
+        expect(host.calls.close).toBe(1)
+        expect(host.calls.save).toBe(0)
+        expect(prevented).toBe(true)
     })
 
     test('an unrelated chord does nothing and is not prevented', () => {

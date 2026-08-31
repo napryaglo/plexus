@@ -185,6 +185,7 @@ import ElectronSettingsStore from "./services/settings/settings-store.js"
 import PlexusSettingsContribution from "./services/settings/settings-contribution.js"
 import SettingsResources from "./services/settings/settings.resources.mu.js"
 import SavePromptResources from "./services/dialogs/save-prompt.resources.mu.js"
+import PlexusDocumentHost from "./services/documents/plexus-document-host.js"
 // Framework tokens registered at the app ROOT below (see `.services:`).
 import SettingsStoreKey from "@pragmatic-lab/mural/framework"
 import ApplicationSettings from "@pragmatic-lab/mural/framework"
@@ -245,7 +246,11 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // main.js all resolve THIS instance through that key. Root-registered so
         // the root-scoped launcher reaches the same instance the shell uses
         // (otherwise EditorShell registers it shell-scoped, unreachable from root).
-        DocumentsContentHostService -> ContentHostService
+        // PlexusDocumentHost: the framework DocumentsContentHostService with its
+        // user-initiated close commands routed through DocumentCloseGuard (dirty →
+        // Save/Don't-Save/Cancel prompt). Bound to the framework's ContentHostService
+        // key, so the tab strip, settings launcher, and main.js resolve THIS instance.
+        PlexusDocumentHost -> ContentHostService
         // Right-dock region host — the tabbed panel service. Same root-scope
         // reason as the content host: main.js seeds the Chat tab (dock.Add(agent))
         // and routes inspectors here at startup, resolving this instance via

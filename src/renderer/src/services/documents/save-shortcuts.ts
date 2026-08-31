@@ -4,6 +4,10 @@ import type { ICommand } from '@pragmatic-lab/mural/runtime'
 interface SaveCommands {
     readonly SaveActiveCommand: ICommand
     readonly SaveAllCommand: ICommand
+    // Closes the active document THROUGH the close guard (prompts if dirty). Bound
+    // to Ctrl+W. Supplied by the caller (main.js) since the host's own
+    // CloseDocumentCommand is keyed by document id, not "the active one".
+    readonly CloseActiveCommand: ICommand
 }
 
 // Wire Ctrl+S (Save active) / Ctrl+Shift+S (Save All) at the window, CAPTURE
@@ -19,7 +23,16 @@ export function attachSaveShortcuts(
 ): () => void {
     const onKeyDown = (e: KeyboardEvent): void => {
         const mod = e.ctrlKey || e.metaKey
-        if (!mod || e.key.toLowerCase() !== 's') return
+        if (!mod) return
+        const key = e.key.toLowerCase()
+        if (key === 'w') {
+            if (!host.CloseActiveCommand.CanExecute(undefined)) return
+            e.preventDefault()
+            e.stopPropagation()
+            host.CloseActiveCommand.Execute(undefined)
+            return
+        }
+        if (key !== 's') return
         const command = e.shiftKey ? host.SaveAllCommand : host.SaveActiveCommand
         if (!command.CanExecute(undefined)) return
         e.preventDefault()
