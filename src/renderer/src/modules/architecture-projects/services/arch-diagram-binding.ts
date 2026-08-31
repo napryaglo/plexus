@@ -11,6 +11,7 @@ import { desiredEdges, edgeKey, desiredConnectorEntityEdges, connectorEntityIdOf
 import { isContainerConcept, containingContainerOf, containmentMemberOf, containmentMemberFor, membershipFieldFor } from './containment.js'
 import { resolveConnectorActions, type ConnectorAction } from './arch-connector-resolver.js'
 import { canDrawConnectorEntity, mintConnectorEntity, CONNECTOR_DEFAULT_TYPE, CONNECTOR_DRAW_MEMBER } from './connector-entity.js'
+import { readConnectorVisuals, writeConnectorVisual, captureConnectorVisual, applyConnectorVisual } from './arch-diagram-connector-visuals-store.js'
 import { scenarioStepPairs, type FlowEntity } from './scenario-flow.js'
 import type { DropCandidateChooserService } from './drop-candidate-chooser-service.js'
 import type { WikiService } from '../../../services/wiki/wiki-service.js'
@@ -35,6 +36,8 @@ export class ArchDiagramBinding
     private appliedOff: (() => void) | undefined       // unsubscribes the post-undo re-projection
     private readonly bound = new Map<string, Figure | ArchNodeVM>()   // entityId -> node
     private readonly boundEdges = new Map<string, Connector>()         // edgeKey -> projected connector
+    private readonly connectorVisualTeardown = new Map<string, () => void>()   // edgeKey -> unwire route/port capture listeners
+    private _applyingConnectorVisual = false                           // true while restoring a saved visual (mutes the capture echo)
     private readonly titleWired = new WeakSet<ArchNodeVM>()            // nodes whose title-commit is subscribed
     private readonly titleUnsubs: Array<() => void> = []              // title-commit unsubscribes (for dispose)
     private scope: string[] = []                                       // selected viewpoints ([] = all)
@@ -485,6 +488,43 @@ export class ArchDiagramBinding
     // bound arch nodes are the ones we derive from the model. A raw user-drawn
     // connector (added by the standard mutator) is removed here — SP3 turns the
     // draw gesture into a model ref, which then projects back as a real edge.
+    // Restore a projected connector's saved presentation (route waypoints + port
+    // sides) from the diagram metadata, then wire listeners that capture the user's
+    // subsequent route/port edits back into that metadata (keyed by the model edge
+    // key) so they persist across a reopen. The apply runs under a guard so it does
+    // not echo straight back into the capture.
+    private applyAndTrackConnectorVisual(key: string, c: Connector): void
+    {
+        this.connectorVisualTeardown.get(key)?.()   // idempotent re-wire
+        const saved = readConnectorVisuals(this.doc)[key]
+        if (saved !== undefined) {
+            this._applyingConnectorVisual = true
+            try { applyConnectorVisual(c, saved) } finally { this._applyingConnectorVisual = false }
+        }
+        const onVisualEdit = (): void => {
+            if (this._applyingConnectorVisual) return
+            writeConnectorVisual(this.doc, key, captureConnectorVisual(c))
+        }
+        c.AddPropertyChangedListener(Connector.WaypointsKey, onVisualEdit)
+        c.AddPropertyChangedListener(Connector.RoutingModeKey, onVisualEdit)
+        const wireEp = (e: ConnectorEndpoint | undefined): (() => void) => {
+            if (e === undefined) return () => {}
+            e.AddPropertyChangedListener(ConnectorEndpoint.PortSideKey, onVisualEdit)
+            e.AddPropertyChangedListener(ConnectorEndpoint.PortIndexKey, onVisualEdit)
+            return () => {
+                e.RemovePropertyChangedListener(ConnectorEndpoint.PortSideKey, onVisualEdit)
+                e.RemovePropertyChangedListener(ConnectorEndpoint.PortIndexKey, onVisualEdit)
+            }
+        }
+        const offSrc = wireEp(c.Source)
+        const offTgt = wireEp(c.Target)
+        this.connectorVisualTeardown.set(key, () => {
+            c.RemovePropertyChangedListener(Connector.WaypointsKey, onVisualEdit)
+            c.RemovePropertyChangedListener(Connector.RoutingModeKey, onVisualEdit)
+            offSrc(); offTgt()
+        })
+    }
+
     private projectEdges(byId: ReadonlyMap<string, Entity>): void
     {
         const placed = new Map<string, Entity>()
@@ -536,12 +576,17 @@ export class ArchDiagramBinding
                 c.IsDerived = true
                 const label = connEntityEdges.get(key)
                 if (label !== undefined) c.LabelText = label
+                // Restore this edge's saved presentation (pinned route + port sides),
+                // then track future edits so they persist in the diagram metadata.
+                this.applyAndTrackConnectorVisual(key, c)
                 this.boundEdges.set(key, c)
             }
         }
         // Remove projected connectors no longer desired.
         for (const [key, c] of [...this.boundEdges]) {
             if (!desired.has(key)) {
+                this.connectorVisualTeardown.get(key)?.()
+                this.connectorVisualTeardown.delete(key)
                 this.doc.DeleteConnectors([c])
                 this.boundEdges.delete(key)
             }
@@ -621,6 +666,8 @@ export class ArchDiagramBinding
         this.modelLayerOff = undefined
         this.appliedOff?.()
         this.appliedOff = undefined
+        for (const off of this.connectorVisualTeardown.values()) off()
+        this.connectorVisualTeardown.clear()
         for (const un of this.titleUnsubs.splice(0)) un()
     }
 }

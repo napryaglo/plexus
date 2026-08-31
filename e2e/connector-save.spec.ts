@@ -284,6 +284,59 @@ test.describe.serial('connector dirty + save', () => {
     })
 })
 
+// Set a pinned waypoint on the A↔B connector (simulates a user route drag) and
+// return whether it took.
+async function setWaypoint(l: Launched, fromId: string, toId: string, x: number, y: number): Promise<boolean> {
+    return l.win.evaluate(({ fromId, toId, x, y }) => {
+        const S = Symbol.for('mural:visual-backref')
+        let diagram: any
+        for (const el of document.querySelectorAll('*')) { const v = (el as any)[S]; if (v?.constructor?.name === 'Diagram') { diagram = v; break } }
+        const idOf = (ep: any) => ep?.Node?.Id ?? ep?.UnresolvedNodeId
+        const c = (diagram?.Connectors?.ToArray?.() ?? []).find((x: any) => {
+            const s = idOf(x.Source), t = idOf(x.Target)
+            return (s === fromId && t === toId) || (s === toId && t === fromId)
+        })
+        if (!c) return false
+        // RouteWaypoint = { point: Point, userAltered }. Borrow the Point class off
+        // any existing waypoint, else construct via the connector's own module isn't
+        // reachable — so reuse the endpoint FreePoint Point ctor when present.
+        const anyWp = c.Waypoints?.[0]?.point
+        const PointCtor = anyWp?.constructor
+        const pt = PointCtor ? new PointCtor(x, y) : { X: x, Y: y }
+        c.Waypoints = [{ point: pt, userAltered: true }]
+        return true
+    }, { fromId, toId, x, y })
+}
+
+// The pinned waypoints of the A↔B connector as [{x,y,userAltered}], or [].
+async function waypointsOf(l: Launched, fromId: string, toId: string): Promise<Array<{ x: number; y: number; userAltered: boolean }>> {
+    return l.win.evaluate(({ fromId, toId }) => {
+        const S = Symbol.for('mural:visual-backref')
+        let diagram: any
+        for (const el of document.querySelectorAll('*')) { const v = (el as any)[S]; if (v?.constructor?.name === 'Diagram') { diagram = v; break } }
+        const idOf = (ep: any) => ep?.Node?.Id ?? ep?.UnresolvedNodeId
+        const c = (diagram?.Connectors?.ToArray?.() ?? []).find((x: any) => {
+            const s = idOf(x.Source), t = idOf(x.Target)
+            return (s === fromId && t === toId) || (s === toId && t === fromId)
+        })
+        return (c?.Waypoints ?? []).map((w: any) => ({ x: w.point?.X, y: w.point?.Y, userAltered: !!w.userAltered }))
+    }, { fromId, toId })
+}
+
+// Save the active document (persists the .diagram to disk).
+async function saveActiveDoc(l: Launched): Promise<void> {
+    await l.win.evaluate(async () => {
+        const S = Symbol.for('mural:visual-backref')
+        let diagram: any
+        for (const el of document.querySelectorAll('*')) { const v = (el as any)[S]; if (v?.constructor?.name === 'Diagram') { diagram = v; break } }
+        const doc = diagram?.DataContext
+        if (doc?.Save) { const r = doc.Save(); if (r?.then) await r }
+        const store = doc?.Storage
+        if (store?.WhenWritten) await store.WhenWritten()
+    })
+    await l.win.waitForTimeout(500)
+}
+
 // Snapshot / restore every .todl under the arch project (to simulate an external
 // edit that deletes a connector — the user's Bug 2).
 function snapshotTodl(copyRoot: string): Map<string, string> {
@@ -295,6 +348,57 @@ function snapshotTodl(copyRoot: string): Map<string, string> {
 function restoreTodl(snap: Map<string, string>): void {
     for (const [f, text] of snap) fs.writeFileSync(f, text)
 }
+
+// Bug 1: a connector's VISUAL state (route waypoints, routing mode, pinned port
+// sides) must survive a tab close + reopen. Derived connectors were skipped by the
+// .diagram serializer, so a manual route was lost on reopen.
+test.describe.serial('connector route/port visual state persists (Bug 1)', () => {
+    let l: Launched
+    let restoreSession: () => void
+    let copyRoot: string
+
+    test.beforeAll(async () => {
+        copyRoot = makeCopy()
+        restoreSession = seedSession(PROJECT_RELS.map((rel) => path.join(copyRoot, rel)))
+        l = await launchPlexus()
+        await l.win.waitForTimeout(12_000)
+        const navs = await rectsForCtor(l.win, 'NavigationItem')
+        if (navs[1]) await clickCenter(l.win, navs[1])
+        await l.win.waitForTimeout(1500)
+        await closeAllDocs(l)
+        await openDiagramFile(l, 'diagram-2.diagram')
+    })
+
+    test.afterAll(async () => {
+        restoreSession?.()
+        await l?.app.close()
+        if (copyRoot) fs.rmSync(copyRoot, { recursive: true, force: true })
+    })
+
+    test('a pinned route waypoint survives a tab close + reopen', async () => {
+        expect(await hasNode(l, A)).toBe(true)
+        await draw(l, A, B)
+        await l.win.waitForTimeout(1500)
+        expect(await labelBetween(l, A, B)).toBe('calls')
+
+        // Reroute: pin a waypoint, then save the diagram.
+        expect(await setWaypoint(l, A, B, 424, 242), 'waypoint set').toBe(true)
+        await l.win.waitForTimeout(500)
+        const before = await waypointsOf(l, A, B)
+        expect(before, 'waypoint present before reopen').toEqual([{ x: 424, y: 242, userAltered: true }])
+        await saveActiveDoc(l)
+
+        // Close + reopen the tab.
+        await closeAndReopenActive(l, 'diagram-2.diagram')
+        // Wait for the connector to re-project.
+        for (let i = 0; i < 20; i++) { if (await labelBetween(l, A, B) !== undefined) break; await l.win.waitForTimeout(500) }
+        expect(await labelBetween(l, A, B), 'connector re-projected').toBe('calls')
+
+        // The pinned waypoint must be restored.
+        const after = await waypointsOf(l, A, B)
+        expect(after, 'pinned waypoint restored after reopen').toEqual([{ x: 424, y: 242, userAltered: true }])
+    })
+})
 
 // Bug 2: deleting a connector from the .todl must be reflected in the open diagram
 // (the cached ArchModel must not project stale connectors after an external edit).
