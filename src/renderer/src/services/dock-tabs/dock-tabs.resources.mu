@@ -110,21 +110,26 @@ resources DockTabsResources {
     // template's ContentHostService note). ReuseContentViews caches each panel's
     // view so switching back restores it rather than rebuilding.
     DataTemplate [ DataType = PanelDockService ] {
-        DockPanel [ LastChildFill = true ] {
-            NavigationRail
-                [ DockPanel.Dock     = Top,
-                  Style              = @DockRail,
-                  ItemContainerStyle = @DockRailItem,
-                  ItemsSource        = $Panels,
-                  SelectedItem       = $SelectedPanel ]
-            // Body painted @SurfaceContainer so the whole right dock (rail +
-            // panel body) reads as one surface, matching the left side pane and
-            // the document area. The ContentPresenter itself is transparent, so
-            // the fill lives on this wrapping Border.
-            Border [ Fill = @SurfaceContainer ] {
-                ContentPresenter
-                    [ Content           = $service(PanelDockService).SelectedPanel,
-                      ReuseContentViews = true ]
+        // Outer rounded container: @ShapeSmall corners + ClipToBounds so the rail
+        // (top corners) and the panel body (bottom corners) clip to the rounded
+        // silhouette, matching the left side pane and the document area. Fill is
+        // @SurfaceContainer so the whole right dock reads as one surface.
+        Border [ Fill = @SurfaceContainer, CornerRadius = @ShapeSmall, ClipToBounds = true ] {
+            DockPanel [ LastChildFill = true ] {
+                NavigationRail
+                    [ DockPanel.Dock     = Top,
+                      Style              = @DockRail,
+                      ItemContainerStyle = @DockRailItem,
+                      ItemsSource        = $Panels,
+                      SelectedItem       = $SelectedPanel ]
+                // Body painted @SurfaceContainer so the whole right dock (rail +
+                // panel body) reads as one surface. The ContentPresenter itself is
+                // transparent, so the fill lives on this wrapping Border.
+                Border [ Fill = @SurfaceContainer ] {
+                    ContentPresenter
+                        [ Content           = $service(PanelDockService).SelectedPanel,
+                          ReuseContentViews = true ]
+                }
             }
         }
     }

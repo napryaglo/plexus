@@ -364,6 +364,24 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
             Fill       = @SurfaceContainer;
         }
 
+        // Round the left side pane's corners (@ShapeSmall) to match the right
+        // dock + document area. CornerRadius is a themeable DP on
+        // ShellSideContentPane (mural 0.41.4, defaults to square); the framework
+        // template binds it and clips the pane content to the rounded bounds.
+        //
+        // Template + Fill are re-declared (same reason as the StatusBar style
+        // above): an app-level IMPLICIT Style shadows the theme Style in
+        // Application.Resources, so mural's Seal() resolves the implicit BasedOn
+        // to THIS style, trips the self-reference guard, and inherits no
+        // Template — the pane would vanish. Naming the framework Template
+        // (@DefaultShellSideContentPane) + the @SurfaceContainer Fill here makes
+        // the style self-contained.
+        Style [ TargetType = ShellSideContentPane ] {
+            Template     = @DefaultShellSideContentPane;
+            Fill         = @SurfaceContainer;
+            CornerRadius = @ShapeSmall;
+        }
+
         // The mural-painted app title bar (@PlexusTitleBar), set as the shell's
         // HeaderContent below.
         merge PlexusTitleBar
