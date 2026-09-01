@@ -1,6 +1,6 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { DiagramDocument, ContentHostService, Diagram, ScrollViewer } from '@pragmatic-lab/mural/framework'
-import { ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { DiagramDocument, ContentHostService, Diagram, ScrollViewer } from '@pragmatic-tech-ai/mural/framework'
+import { ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
 import { DiagramCameraService } from '../diagram-camera-service.js'
 import { writeCamera, readCamera, type DiagramCameraState } from '../../persistence/diagram-camera-store.js'
 

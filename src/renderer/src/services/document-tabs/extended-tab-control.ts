@@ -1,5 +1,5 @@
-import { MuralBase, Element } from '@pragmatic-lab/mural/runtime'
-import { TabControl } from '@pragmatic-lab/mural/framework'
+import { MuralBase, Element } from '@pragmatic-tech-ai/mural/runtime'
+import { TabControl } from '@pragmatic-tech-ai/mural/framework'
 
 // ExtendedTabControl — a mural TabControl that reserves the top-right corner of
 // the tab strip for an overflow dropdown (a "Close All" primary action + the

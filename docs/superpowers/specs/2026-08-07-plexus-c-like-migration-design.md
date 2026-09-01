@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-07
 **Status:** Approved
-**Depends on:** `@pragmatic-lab/todl@0.19.0` (C-like identifiers; SP1)
+**Depends on:** `@pragmatic-tech-ai/todl@0.19.0` (C-like identifiers; SP1)
 
 ## Problem
 
@@ -89,7 +89,7 @@ teaching kebab, agents author kebab and hit lexer errors. Both files get:
 
 ### 4. Dependency floor
 
-Bump `@pragmatic-lab/todl` from `^0.18.0` to `^0.19.0` in `package.json` and
+Bump `@pragmatic-tech-ai/todl` from `^0.18.0` to `^0.19.0` in `package.json` and
 relock (`npm install`). The build script `scripts/build-todl-server.mjs`
 already tolerates `>=0.3.0` and needs no change.
 
@@ -111,6 +111,6 @@ this migration.
 
 - `freshId` emits valid camelCase C-like ids; a new instance round-trips
   through `emit()`/`load()`.
-- The full Plexus test suite is green under `@pragmatic-lab/todl@0.19.0`.
+- The full Plexus test suite is green under `@pragmatic-tech-ai/todl@0.19.0`.
 - No kebab identifier remains in any TODL source string or scaffold doc.
 - `package.json` pins `^0.19.0` and the lockfile matches.

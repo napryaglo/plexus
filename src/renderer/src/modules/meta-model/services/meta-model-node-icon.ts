@@ -4,7 +4,7 @@
 // MetaModelTreeNode.Children — see meta-model.resources.mu), so the data-driven
 // icon flows through a value converter (`$Kind << MetaModelKindToGeometry`).
 // Distinct from the project explorer's KindToGeometry (different key set).
-import { Application, type ValueConverter } from '@pragmatic-lab/mural/runtime'
+import { Application, type ValueConverter } from '@pragmatic-tech-ai/mural/runtime'
 
 import { MetaModelNodeKind } from './meta-model-tree-node.js'
 

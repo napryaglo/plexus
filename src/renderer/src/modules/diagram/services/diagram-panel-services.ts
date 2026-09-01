@@ -18,7 +18,7 @@ import {
     ServiceKey,
     type IServiceProvider,
     type ServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 import {
     ApplicationSettings,
     ContentHostService,
@@ -29,8 +29,8 @@ import {
     ToolboxPage,
     ToolboxVisualDescriptor,
     type IActivatable,
-} from '@pragmatic-lab/mural/framework'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+} from '@pragmatic-tech-ai/mural/framework'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import { PlexusPanelService } from '../../../services/panels/panel-services.js'
 import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'

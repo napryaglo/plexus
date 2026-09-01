@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { ClipboardService } from '../clipboard-service.js'
 
 test('writeText forwards to the injected writer', async () => {

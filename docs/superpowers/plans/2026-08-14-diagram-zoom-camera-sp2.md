@@ -10,11 +10,11 @@
 
 ## Prerequisite (blocks Task 1 — human release step)
 
-`@pragmatic-lab/mural@0.7.0` (the SP1 result) is committed on mural `main` but **not yet published to the local Verdaccio registry**. Task 1 runs `npm install @pragmatic-lab/mural@^0.7.0`, which fails until 0.7.0 is on Verdaccio. Publishing is the repo's human-run release step (per finishing-a-development-branch); **do not publish from this plan.** Confirm 0.7.0 is published before starting Task 1.
+`@pragmatic-tech-ai/mural@0.7.0` (the SP1 result) is committed on mural `main` but **not yet published to the local Verdaccio registry**. Task 1 runs `npm install @pragmatic-tech-ai/mural@^0.7.0`, which fails until 0.7.0 is on Verdaccio. Publishing is the repo's human-run release step (per finishing-a-development-branch); **do not publish from this plan.** Confirm 0.7.0 is published before starting Task 1.
 
 ## Global Constraints
 
-- **mural version floor:** `@pragmatic-lab/mural` at `^0.7.0` (was `^0.6.24`). The camera API (`CameraEnabled`, `Zoom`/`PanX`/`PanY` DPs, `SetCamera`, `Camera`, `ZoomIn`/`ZoomOut`/`ResetZoom`/`Fit`/`FitToSelection`, and the `*Command` DPs) exists only from 0.7.0.
+- **mural version floor:** `@pragmatic-tech-ai/mural` at `^0.7.0` (was `^0.6.24`). The camera API (`CameraEnabled`, `Zoom`/`PanX`/`PanY` DPs, `SetCamera`, `Camera`, `ZoomIn`/`ZoomOut`/`ResetZoom`/`Fit`/`FitToSelection`, and the `*Command` DPs) exists only from 0.7.0.
 - **Test location:** every test file lives in a `tests/` subfolder next to the code it exercises (e.g. `src/renderer/src/modules/diagram/persistence/tests/…`), never beside the source. Vitest globs `src/**/*.test.ts` either way — this is organizational.
 - **Enums over string-literal unions:** any fixed set of named string values is a real `enum`, never a union type or bare literals.
 - **`.mu`-facing value converters** are exported `ValueConverter` objects in a `.ts` file, imported into the `.mu` by the exported identifier (`import ZoomPercent from "./services/diagram-zoom-percent.js"`) and used as `$Prop << ZoomPercent` — mirroring `KindToGeometry` in `services/projects/project-node-icon.ts`.
@@ -35,14 +35,14 @@
 - `src/renderer/src/modules/diagram/diagram.resources.mu` — **MODIFY.** `CameraEnabled = true` on the `canvas` Diagram; add `zoom_in`/`zoom_out`/`fit_screen` glyphs; add the `@ZoomControlEditor` shell-control template.
 - `src/renderer/src/modules/diagram/diagram.module.mu` — **MODIFY.** Register `@ZoomControlEditor` as a `ShellControlDefinition` (Commands region).
 - `src/renderer/src/main.js` — **MODIFY.** Construct `DiagramCameraService` at boot; wire `attachZoomShortcuts(host)`.
-- `package.json` — **MODIFY.** Bump `@pragmatic-lab/mural` to `^0.7.0`.
+- `package.json` — **MODIFY.** Bump `@pragmatic-tech-ai/mural` to `^0.7.0`.
 
 ---
 
 ### Task 1: Bump mural + enable the camera on the canvas
 
 **Files:**
-- Modify: `package.json` (`@pragmatic-lab/mural`: `^0.6.24` → `^0.7.0`)
+- Modify: `package.json` (`@pragmatic-tech-ai/mural`: `^0.6.24` → `^0.7.0`)
 - Modify: `src/renderer/src/modules/diagram/diagram.resources.mu` (the `canvas` Diagram, ~L87-99)
 
 **Interfaces:**
@@ -51,17 +51,17 @@
 
 - [ ] **Step 1: Confirm the prerequisite**
 
-Verify `@pragmatic-lab/mural@0.7.0` resolves from Verdaccio:
+Verify `@pragmatic-tech-ai/mural@0.7.0` resolves from Verdaccio:
 
 ```bash
-npm view @pragmatic-lab/mural@0.7.0 version
+npm view @pragmatic-tech-ai/mural@0.7.0 version
 ```
 
 Expected: prints `0.7.0`. If it errors (`E404`), STOP — the mural release hasn't been published yet (see Prerequisite above).
 
 - [ ] **Step 2: Bump the dependency + install**
 
-Edit `package.json`: `"@pragmatic-lab/mural": "^0.6.24"` → `"@pragmatic-lab/mural": "^0.7.0"`. Then:
+Edit `package.json`: `"@pragmatic-tech-ai/mural": "^0.6.24"` → `"@pragmatic-tech-ai/mural": "^0.7.0"`. Then:
 
 ```bash
 npm install
@@ -123,7 +123,7 @@ git commit -m "feat(diagram): consume mural 0.7.0 and enable the canvas camera"
 - Test: `src/renderer/src/modules/diagram/persistence/tests/diagram-camera-store.test.ts`
 
 **Interfaces:**
-- Consumes: `DiagramDocument.Metadata` (a `Record<string, unknown>` getter returning a shallow copy; setter replaces — round-trips through `.diagram` save/load). From `@pragmatic-lab/mural/framework`.
+- Consumes: `DiagramDocument.Metadata` (a `Record<string, unknown>` getter returning a shallow copy; setter replaces — round-trips through `.diagram` save/load). From `@pragmatic-tech-ai/mural/framework`.
 - Produces:
   - `interface DiagramCameraState { readonly zoom: number; readonly panX: number; readonly panY: number }`
   - `const DIAGRAM_CAMERA_KEY = 'camera'`
@@ -135,7 +135,7 @@ git commit -m "feat(diagram): consume mural 0.7.0 and enable the canvas camera"
 ```ts
 // src/renderer/src/modules/diagram/persistence/tests/diagram-camera-store.test.ts
 import { test, expect } from 'vitest'
-import { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 import { readCamera, writeCamera } from '../diagram-camera-store.js'
 
 test('writeCamera then readCamera round-trips a camera through document metadata', () => {
@@ -181,7 +181,7 @@ Expected: FAIL — module does not exist.
 
 ```ts
 // src/renderer/src/modules/diagram/persistence/diagram-camera-store.ts
-import type { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import type { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 
 // The diagram camera (zoom + pan) is serialized WITH the diagram, in the
 // document's opaque metadata (DiagramDocument.Metadata) under this namespaced
@@ -238,7 +238,7 @@ git commit -m "feat(diagram): camera-state metadata store"
 - Test: `src/renderer/src/modules/diagram/services/tests/diagram-camera-service.test.ts`
 
 **Interfaces:**
-- Consumes: `ContentHostService.Key` → `DocumentsContentHostService` with `OpenDocuments.Subscribe(fn)` + `OpenDocuments.ToArray()`; `DiagramDocument` (`instanceof`, `.ActiveView: Diagram | undefined`, `.AddPropertyChangedListener(DiagramDocument.ActiveViewKey, fn)` / `Remove…`, `.Save()`, `.Storage`); `Diagram` (`.Camera` getter, `.SetCamera({zoom,panX,panY})`, `.AddPropertyChangedListener(Diagram.ZoomKey|PanXKey|PanYKey, fn)` / `Remove…`); `FileDiagramStorage` (`.WhenWritten()`); `readCamera`/`writeCamera` (Task 2). `ServiceBase`, `ServiceKey`, `IServiceProvider` from `@pragmatic-lab/mural/runtime`.
+- Consumes: `ContentHostService.Key` → `DocumentsContentHostService` with `OpenDocuments.Subscribe(fn)` + `OpenDocuments.ToArray()`; `DiagramDocument` (`instanceof`, `.ActiveView: Diagram | undefined`, `.AddPropertyChangedListener(DiagramDocument.ActiveViewKey, fn)` / `Remove…`, `.Save()`, `.Storage`); `Diagram` (`.Camera` getter, `.SetCamera({zoom,panX,panY})`, `.AddPropertyChangedListener(Diagram.ZoomKey|PanXKey|PanYKey, fn)` / `Remove…`); `FileDiagramStorage` (`.WhenWritten()`); `readCamera`/`writeCamera` (Task 2). `ServiceBase`, `ServiceKey`, `IServiceProvider` from `@pragmatic-tech-ai/mural/runtime`.
 - Produces: `class DiagramCameraService extends ServiceBase` with `static readonly Key`. Self-wiring on construction (subscribes to open documents). No public methods needed beyond construction; a private `_persistDelayMs` field (default 500) is overridable via the constructor's second arg for tests.
 
 - [ ] **Step 1: Write the failing test**
@@ -246,9 +246,9 @@ git commit -m "feat(diagram): camera-state metadata store"
 ```ts
 // src/renderer/src/modules/diagram/services/tests/diagram-camera-service.test.ts
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { DiagramDocument, Diagram } from '@pragmatic-lab/mural/framework'
-import { ObservableCollection } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument, Diagram } from '@pragmatic-tech-ai/mural/framework'
+import { ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService } from '@pragmatic-tech-ai/mural/framework'
 import { DiagramCameraService } from '../diagram-camera-service.js'
 import { writeCamera, readCamera } from '../../persistence/diagram-camera-store.js'
 
@@ -321,11 +321,11 @@ Expected: FAIL — module does not exist.
 
 ```ts
 // src/renderer/src/modules/diagram/services/diagram-camera-service.ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import {
     ContentHostService, Diagram, DiagramDocument,
     type DocumentsContentHostService, type IDocument,
-} from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/framework'
 import { FileDiagramStorage } from '../persistence/file-diagram-storage.js'
 import { readCamera, writeCamera } from '../persistence/diagram-camera-store.js'
 
@@ -470,7 +470,7 @@ git commit -m "feat(diagram): persist camera per diagram via document metadata"
 - Modify: `src/renderer/src/modules/diagram/diagram.module.mu` (`.ShellControls:` entry)
 
 **Interfaces:**
-- Consumes: `Diagram.ZoomInCommand`/`ZoomOutCommand`/`FitCommand` command DPs + `Diagram.Zoom` number DP on the document's published `ActiveView`; `ValueConverter` from `@pragmatic-lab/mural/runtime`.
+- Consumes: `Diagram.ZoomInCommand`/`ZoomOutCommand`/`FitCommand` command DPs + `Diagram.Zoom` number DP on the document's published `ActiveView`; `ValueConverter` from `@pragmatic-tech-ai/mural/runtime`.
 - Produces: `export const ZoomPercent: ValueConverter` (`number → "NNN%"`); a Commands-region shell control `− [NNN%] +  Fit` bound to the live view. No new host code API beyond the converter.
 
 - [ ] **Step 1: Write the failing converter test**
@@ -504,7 +504,7 @@ Expected: FAIL — module does not exist.
 
 ```ts
 // src/renderer/src/modules/diagram/services/diagram-zoom-percent.ts
-import type { ValueConverter } from '@pragmatic-lab/mural/runtime'
+import type { ValueConverter } from '@pragmatic-tech-ai/mural/runtime'
 
 // Formats a camera zoom factor (1 = 100%) as a whole-number percentage for the
 // zoom toolbar readout. Nullish (no live view yet) renders as blank. Used in
@@ -684,7 +684,7 @@ Expected: FAIL — module does not exist.
 
 ```ts
 // src/renderer/src/modules/diagram/behaviors/zoom-shortcuts.ts
-import { Diagram, DiagramDocument, type IDocument } from '@pragmatic-lab/mural/framework'
+import { Diagram, DiagramDocument, type IDocument } from '@pragmatic-tech-ai/mural/framework'
 
 // The bit of the document host the shortcuts read.
 interface ZoomHost { readonly ActiveDocument: IDocument | undefined }
@@ -773,7 +773,7 @@ git commit -m "feat(diagram): Ctrl +/-/0 zoom keyboard shortcuts"
 
 **Type consistency:** `DiagramCameraState {zoom,panX,panY}` is written by `writeCamera`, read by `readCamera`, produced by `view.Camera`, and consumed by `view.SetCamera` (structural match to mural's `Camera`) across Tasks 2/3. `DIAGRAM_CAMERA_KEY = 'camera'` single source. `ActiveViewKey`/`Diagram.ZoomKey|PanXKey|PanYKey` used consistently in Task 3. `attachZoomShortcuts(host, target?)` signature matches its `main.js` call site.
 
-**Ordering note:** Task 1 is the only task gated on the Verdaccio publish. Tasks 2 & 4-converter/2-store are pure host code and could be written before the bump, but their tests import `@pragmatic-lab/mural/framework` types that only need to resolve (not run camera code), so keeping Task 1 first is simplest.
+**Ordering note:** Task 1 is the only task gated on the Verdaccio publish. Tasks 2 & 4-converter/2-store are pure host code and could be written before the bump, but their tests import `@pragmatic-tech-ai/mural/framework` types that only need to resolve (not run camera code), so keeping Task 1 first is simplest.
 
 ## Out of scope (this plan / v1)
 

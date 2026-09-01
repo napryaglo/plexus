@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { RelayCommand } from '@pragmatic-lab/mural/runtime'
+import { RelayCommand } from '@pragmatic-tech-ai/mural/runtime'
 import { NewItemChoice } from '../new-item-choice.js'
 
 test('NewItemChoice exposes its label and runs its command', () => {

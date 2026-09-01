@@ -9,7 +9,7 @@
 import {
     MetaData, MuralBase, ObservableCollection, RelayCommand,
     type ICommand, type PropertyDescriptor,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 import type { Question, QuestionAnswer, QuestionOption, QuestionRequest } from '../../../../../shared/agent-api.js'
 
 export class OptionVM extends MuralBase

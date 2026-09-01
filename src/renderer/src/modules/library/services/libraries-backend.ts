@@ -1,4 +1,4 @@
-import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import type { IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'
 import { LocalFileStorage } from '../../../services/storage/local-file-storage.js'

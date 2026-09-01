@@ -1,5 +1,5 @@
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import type { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 import type { IDiagramCommandExtension } from '../../diagram/services/diagram-command-extension.js'
 import { DiagramViewpointsEditor } from './diagram-viewpoints-editor.js'
 

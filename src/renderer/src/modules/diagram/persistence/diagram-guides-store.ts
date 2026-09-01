@@ -1,5 +1,5 @@
-import type { DiagramDocument } from '@pragmatic-lab/mural/framework'
-import type { PersistentGuide } from '@pragmatic-lab/mural/runtime'
+import type { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
+import type { PersistentGuide } from '@pragmatic-tech-ai/mural/runtime'
 
 // Persistent ruler guides travel with the .diagram file in the document's opaque
 // metadata (DiagramDocument.Metadata) under this namespaced key, exactly like the

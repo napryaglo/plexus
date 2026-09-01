@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Plexus — a diagram editor built on mural, packaged as an Electron desktop app
-(electron-vite). Consumes `@pragmatic-lab/mural` and `@pragmatic-lab/fresco` from
+(electron-vite). Consumes `@pragmatic-tech-ai/mural` and `@pragmatic-tech-ai/fresco` from
 the local registry (Verdaccio); no relative `../src` imports into the framework.
 
 ## Testing

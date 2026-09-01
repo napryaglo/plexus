@@ -56,8 +56,8 @@ interactive per-slot editing.
 
 ## Global Constraints
 
-- Fresco package: `@pragmatic-lab/fresco`; build `tsc` → `dist/`; tests `tsx --test "src/**/*.test.ts"`; ESM `NodeNext`, target `ES2022`.
-- Plexus package: `@pragmatic-lab/plexus`; scoped registry `@pragmatic-lab:registry=http://localhost:4873/` (Verdaccio must be running to install `@pragmatic-lab/fresco`).
+- Fresco package: `@pragmatic-tech-ai/fresco`; build `tsc` → `dist/`; tests `tsx --test "src/**/*.test.ts"`; ESM `NodeNext`, target `ES2022`.
+- Plexus package: `@pragmatic-tech-ai/plexus`; scoped registry `@pragmatic-tech-ai:registry=http://localhost:4873/` (Verdaccio must be running to install `@pragmatic-tech-ai/fresco`).
 - Every visible element in Plexus flows through a `.mu` DataTemplate/Style/Binding — no hardcoded chrome in TS. New `.mu` files must be added to the `compile:mu` script's file list in `package.json`.
 - The `DiagramGraphAdapter` must not import concrete mural classes; it operates on structural interfaces so its tests run without the Electron/mural runtime.
 - Fresco catalog data must be available in a browser/renderer context — no runtime `fs`/yaml read on the Plexus consumer path; ship catalog metadata as a statically-imported JSON module.
@@ -90,7 +90,7 @@ interactive per-slot editing.
 - Create `src/renderer/src/modules/diagram/layout/layout-inspector.resources.mu` — builder UI.
 - Modify `src/renderer/src/modules/diagram/diagram.module.mu` — register `LayoutPipelineService`, wire the "Layout" menu command.
 - Modify `src/renderer/src/app.mu` — merge the layout-inspector resources.
-- Modify `package.json` — add `@pragmatic-lab/fresco` dep, Vitest devDeps, `test` script, add the new `.mu` to `compile:mu`.
+- Modify `package.json` — add `@pragmatic-tech-ai/fresco` dep, Vitest devDeps, `test` script, add the new `.mu` to `compile:mu`.
 - Create `vitest.config.ts`.
 
 ---
@@ -584,12 +584,12 @@ Expected: `dist/` regenerated, no errors.
 - [ ] **Step 3: Publish** (Verdaccio must be running on `http://localhost:4873/`; Fresco's `.npmrc` carries the scoped registry + token)
 
 Run: `cd Fresco && npm publish`
-Expected: `+ @pragmatic-lab/fresco@0.2.0`.
+Expected: `+ @pragmatic-tech-ai/fresco@0.2.0`.
 
 - [ ] **Step 4: Commit the version bump**
 
 ```bash
-cd Fresco && git add package.json && git commit -m "chore: release @pragmatic-lab/fresco 0.2.0
+cd Fresco && git add package.json && git commit -m "chore: release @pragmatic-tech-ai/fresco 0.2.0
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
@@ -658,7 +658,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Test: `Plexus/src/renderer/src/modules/diagram/layout/diagram-graph-adapter.test.ts`
 
 **Interfaces:**
-- Consumes: Fresco `Graph` (`@pragmatic-lab/fresco`).
+- Consumes: Fresco `Graph` (`@pragmatic-tech-ai/fresco`).
 - Produces:
   ```ts
   export interface FigureLike { Id: string | undefined; Left: number; Top: number; }
@@ -708,7 +708,7 @@ Expected: FAIL — module missing.
 - [ ] **Step 3: Implement** `diagram-graph-adapter.ts`:
 
 ```ts
-import { Graph } from '@pragmatic-lab/fresco';
+import { Graph } from '@pragmatic-tech-ai/fresco';
 
 export interface FigureLike { Id: string | undefined; Left: number; Top: number; }
 export interface ConnectorLike { Source?: { Node?: unknown }; Target?: { Node?: unknown }; }
@@ -781,7 +781,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ```ts
 import { computeOutcome } from './diagram-graph-adapter.js';
-import { Graph } from '@pragmatic-lab/fresco';
+import { Graph } from '@pragmatic-tech-ai/fresco';
 
 test('computeOutcome converts center points to top-left using node size', () => {
     const a = { Id: 'a', Left: 0, Top: 0 };
@@ -950,21 +950,21 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Create: `Plexus/src/renderer/src/modules/diagram/layout/layout-presets-store.ts`
 
 **Interfaces:**
-- Consumes: mural `Inspector` (`@pragmatic-lab/mural/framework`), `Diagram`; `ElectronSettingsStore` (`../../../services/settings/settings-store.js`); Fresco `PipelineConfiguration`.
+- Consumes: mural `Inspector` (`@pragmatic-tech-ai/mural/framework`), `Diagram`; `ElectronSettingsStore` (`../../../services/settings/settings-store.js`); Fresco `PipelineConfiguration`.
 - Produces:
   - `class LayoutInspector extends Inspector` with a `View: Diagram | undefined` accessor (models `DiagramInspector`), constructed with id `'layout-inspector'`, title `'Layout'`.
   - `class LayoutPresetsStore { list(): Record<string, PipelineConfiguration>; save(name: string, cfg: PipelineConfiguration): void; delete(name: string): void; }` persisting under settings key `'layout.presets'`.
 
 - [ ] **Step 1: Install Fresco** (Verdaccio running)
 
-Run: `cd Plexus && npm install @pragmatic-lab/fresco@^0.2.0`
+Run: `cd Plexus && npm install @pragmatic-tech-ai/fresco@^0.2.0`
 Expected: added to `dependencies`, resolved from the scoped registry.
 
-- [ ] **Step 2: Implement `layout-inspector.ts`** (mirror `DiagramInspector`; confirm exact `Inspector`/`RegisterProperty` API against `node_modules/@pragmatic-lab/mural/dist/framework/shell/services/inspector.d.ts` and `diagram-inspector.d.ts`):
+- [ ] **Step 2: Implement `layout-inspector.ts`** (mirror `DiagramInspector`; confirm exact `Inspector`/`RegisterProperty` API against `node_modules/@pragmatic-tech-ai/mural/dist/framework/shell/services/inspector.d.ts` and `diagram-inspector.d.ts`):
 
 ```ts
-import { Inspector } from '@pragmatic-lab/mural/framework';
-import type { Diagram } from '@pragmatic-lab/mural/framework';
+import { Inspector } from '@pragmatic-tech-ai/mural/framework';
+import type { Diagram } from '@pragmatic-tech-ai/mural/framework';
 
 export class LayoutInspector extends Inspector
 {
@@ -981,7 +981,7 @@ export class LayoutInspector extends Inspector
 
 ```ts
 import { ElectronSettingsStore } from '../../../services/settings/settings-store.js';
-import type { PipelineConfiguration } from '@pragmatic-lab/fresco';
+import type { PipelineConfiguration } from '@pragmatic-tech-ai/fresco';
 
 const KEY = 'layout.presets';
 
@@ -1043,8 +1043,8 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
   8. if `plan.previewOnly` → hand `outcome.setPositions` to the preview overlay (Task 14); else apply `plan.mutation` via the undoable command path (Step 2).
 
 ```ts
-import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime';
-import { GetPipelineCatalog, BuildPipeline, LoadElementRepository, type PipelineConfiguration, type CatalogSlot } from '@pragmatic-lab/fresco';
+import { ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime';
+import { GetPipelineCatalog, BuildPipeline, LoadElementRepository, type PipelineConfiguration, type CatalogSlot } from '@pragmatic-tech-ai/fresco';
 import { extract, computeOutcome, type FigureLike, type ConnectorLike, type NodeSize } from './diagram-graph-adapter.js';
 import { planForMode, type RunMode } from './run-modes.js';
 import { LayoutPresetsStore } from './layout-presets-store.js';

@@ -1,5 +1,5 @@
-import { DialogService } from '@pragmatic-lab/mural/framework'
-import type { Repository } from '@pragmatic-lab/todl'
+import { DialogService } from '@pragmatic-tech-ai/mural/framework'
+import type { Repository } from '@pragmatic-tech-ai/todl'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
 import { humanize } from './arch-default-label.js'
 import { conceptTypeOf, acceptSet } from './arch-concept-type.js'

@@ -39,7 +39,7 @@ Manual save (Ctrl+S / Ctrl+Shift+S) already exists and is unchanged.
 
 All confirmed by reading the code/framework before design:
 
-- **`IDocument` contract** (`@pragmatic-lab/mural/framework`):
+- **`IDocument` contract** (`@pragmatic-tech-ai/mural/framework`):
   `Id`, `Title`, `IsDirty: boolean`, `Save(): void | Promise<void>`.
 - **`DiagramDocument`** (`dist/framework/diagram/diagram-document.js`) flips
   `IsDirty` via a private `_markDirty()` wired to node / connector / container /

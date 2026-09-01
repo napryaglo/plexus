@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { load } from '@pragmatic-lab/todl'
+import { load } from '@pragmatic-tech-ai/todl'
 import { resolveDropActions, DropActionKind } from '../arch-drop-resolver.js'
 
 const MM = `namespace archmm {

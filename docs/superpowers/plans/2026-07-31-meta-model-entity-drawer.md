@@ -6,7 +6,7 @@
 
 **Architecture:** A new mural `TreeView` double-click hook (`OnActivate`, sibling of `OnExpand`) fires on the data item. The entity `MetaModelTreeNode` carries an `EntityRef` and calls the service's `openEntity`. The service loads the published `presentation.generated.mu` via a runtime `instantiate()` (taught to build `resources {}` dicts) into a `ResourceDictionary`, builds a `MetaModelEntity` (fields resolved from `HasField` edges), resolves + applies `mm:<id>` into `entity.Presentation`, and opens a Modal `SideSheet` bound to service DPs. All drawer chrome is `.mu` template-driven.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural` (runtime/basic/framework/visual-engine/compiler), `@pragmatic-lab/todl` (`TodlDocument`/`JsonNode`/`JsonEdge`), Electron renderer, `node:test`/`tsx` (mural) + `vitest` (Plexus).
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural` (runtime/basic/framework/visual-engine/compiler), `@pragmatic-tech-ai/todl` (`TodlDocument`/`JsonNode`/`JsonEdge`), Electron renderer, `node:test`/`tsx` (mural) + `vitest` (Plexus).
 
 ## Global Constraints
 
@@ -14,7 +14,7 @@
 - **Enums over string-literal unions** (TS): any fixed value set is a real `enum`; no `x === 'literal'` against a bare string, no `type X = 'a'|'b'`.
 - **Tests in `tests/` subfolders** next to the code, in both repos.
 - **Render through templates only:** every visible drawer element flows through a `DataTemplate`/`Style`/`Binding` in `.mu`. The service composes no visuals — it only fills DPs. The one allowed exception is `entity.Presentation` (the *result* of applying the loaded `mm:<id>` template), hosted by a markup `ContentControl`.
-- **No deep mural imports from Plexus:** consume only published package subpaths (`@pragmatic-lab/mural/runtime|basic|framework|visual-engine|compiler`), never `../src`.
+- **No deep mural imports from Plexus:** consume only published package subpaths (`@pragmatic-tech-ai/mural/runtime|basic|framework|visual-engine|compiler`), never `../src`.
 - Commit messages end with: `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 
 ## Proven facts (from feasibility probes)
@@ -40,7 +40,7 @@
 
 **Interfaces:**
 - Consumes: `runPipeline(source, options): CompilerOutput` (already in `compile.ts`); `CompilerOutput.kind`, `.body`, `.imports`, `.resourcesBlocks` (each `{ name, imports, accessors }`).
-- Produces: `instantiate(source, ctx, options)` returns the built `ResourceDictionary` instance when the source is a single-block `resources {}` doc. `IncludeResolver`, `IncludeResolution`, `svgToGeometryJs`, `GeometryResourceJs` reachable from `@pragmatic-lab/mural/compiler`.
+- Produces: `instantiate(source, ctx, options)` returns the built `ResourceDictionary` instance when the source is a single-block `resources {}` doc. `IncludeResolver`, `IncludeResolution`, `svgToGeometryJs`, `GeometryResourceJs` reachable from `@pragmatic-tech-ai/mural/compiler`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -275,7 +275,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - [ ] **Step 4: Publish to Verdaccio**
 
 Run: `npm publish`
-Expected: `+ @pragmatic-lab/mural@0.1.57`.
+Expected: `+ @pragmatic-tech-ai/mural@0.1.57`.
 
 ---
 
@@ -334,7 +334,7 @@ Create `services/meta-model-entity.ts`:
 // symbol the generated presentation references (DataType = MetaModelEntity) AND
 // the DataType the drawer's detail template binds. Presentation holds the applied
 // mm:<id> template (filled by the service; undefined when unavailable).
-import { MetaData, Model, ObservableCollection, type Visual } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, ObservableCollection, type Visual } from '@pragmatic-tech-ai/mural/runtime'
 
 export class MetaModelField extends Model
 {
@@ -412,7 +412,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Test: `services/tests/meta-model-entity-builder.test.ts`
 
 **Interfaces:**
-- Consumes: `MetaModelEntity`, `MetaModelField` (Task 4); `humanize` (from `presentation-generator.js`); `TodlDocument`, `JsonNode`, `JsonEdge` (`@pragmatic-lab/todl`).
+- Consumes: `MetaModelEntity`, `MetaModelField` (Task 4); `humanize` (from `presentation-generator.js`); `TodlDocument`, `JsonNode`, `JsonEdge` (`@pragmatic-tech-ai/todl`).
 - Produces: `buildEntity(doc: TodlDocument, entityId: string): MetaModelEntity`.
 
 - [ ] **Step 1: Write the failing test**
@@ -421,7 +421,7 @@ Create `services/tests/meta-model-entity-builder.test.ts`:
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 import { buildEntity } from '../meta-model-entity-builder.js'
 
 const doc: TodlDocument = {
@@ -471,7 +471,7 @@ Create `services/meta-model-entity-builder.ts`:
 // + resolved fields) from a parsed model.json. Pure; no I/O. Fields are separate
 // Ontology `field` nodes linked to the entity by `HasField` edges — a concept's
 // own attrs are often empty, so the fields carry the substance.
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import { MetaModelEntity, MetaModelField } from './meta-model-entity.js'
 import { humanize } from './presentation-generator.js'
@@ -527,7 +527,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Test: `services/tests/presentation-loader.test.ts`
 
 **Interfaces:**
-- Consumes: `IStorage` (`services/storage/storage.js`); `MetaModelEntity` (Task 4); mural `compiler` (`instantiate`, `DEFAULT_SYMBOLS`, `svgToGeometryJs`, `IncludeResolver`, `IncludeResolution`); mural barrels for ctx; `ResourceDictionary` (`@pragmatic-lab/mural/runtime`).
+- Consumes: `IStorage` (`services/storage/storage.js`); `MetaModelEntity` (Task 4); mural `compiler` (`instantiate`, `DEFAULT_SYMBOLS`, `svgToGeometryJs`, `IncludeResolver`, `IncludeResolution`); mural barrels for ctx; `ResourceDictionary` (`@pragmatic-tech-ai/mural/runtime`).
 - Produces: `loadPresentation(storage: IStorage, base: string): Promise<ResourceDictionary>` where `base = "<modelId>/<version>"`. Throws on read/instantiate failure.
 
 - [ ] **Step 1: Write the failing test**
@@ -536,7 +536,7 @@ Create `services/tests/presentation-loader.test.ts`. A `FakeStorage` serves a mi
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import { DataTemplate } from '@pragmatic-lab/mural/basic'
+import { DataTemplate } from '@pragmatic-tech-ai/mural/basic'
 import type { IStorage, StorageEntry } from '../../../../services/storage/storage.js'
 import { loadPresentation } from '../presentation-loader.js'
 
@@ -603,21 +603,21 @@ Create `services/presentation-loader.ts`. It pre-reads the includes (async) into
 // a live ResourceDictionary. The compiler's include resolver is synchronous, so
 // the SVGs each `include` names are pre-read from storage first, then a sync
 // resolver converts each to a Geometry via svgToGeometryJs.
-import * as MuralRuntime from '@pragmatic-lab/mural/runtime'
-import * as MuralBasic from '@pragmatic-lab/mural/basic'
-import * as MuralFramework from '@pragmatic-lab/mural/framework'
-import * as MuralEngine from '@pragmatic-lab/mural/visual-engine'
-import { ResourceDictionary } from '@pragmatic-lab/mural/runtime'
+import * as MuralRuntime from '@pragmatic-tech-ai/mural/runtime'
+import * as MuralBasic from '@pragmatic-tech-ai/mural/basic'
+import * as MuralFramework from '@pragmatic-tech-ai/mural/framework'
+import * as MuralEngine from '@pragmatic-tech-ai/mural/visual-engine'
+import { ResourceDictionary } from '@pragmatic-tech-ai/mural/runtime'
 import {
     instantiate, DEFAULT_SYMBOLS, svgToGeometryJs,
     type IncludeResolver, type IncludeResolution,
-} from '@pragmatic-lab/mural/compiler'
+} from '@pragmatic-tech-ai/mural/compiler'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import { MetaModelEntity } from './meta-model-entity.js'
 
 const GENERATED = 'presentation/presentation.generated.mu'
-const VISUAL_ENGINE = '@pragmatic-lab/mural/visual-engine'
+const VISUAL_ENGINE = '@pragmatic-tech-ai/mural/visual-engine'
 
 // Every `include "<path>" …` path named in the source.
 function includePaths(source: string): string[]
@@ -902,7 +902,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Test: `services/tests/meta-models-service.test.ts` (append)
 
 **Interfaces:**
-- Consumes: `buildCatalog` (Task 8, now 2-arg); `loadPresentation` (Task 6); `buildEntity` (Task 5); `MetaModelEntity` (Task 4); `EntityRef` (Task 7); `ensureMetaModelsBackend`; `DataTemplate` (`@pragmatic-lab/mural/basic`); `ResourceDictionary` (`@pragmatic-lab/mural/runtime`).
+- Consumes: `buildCatalog` (Task 8, now 2-arg); `loadPresentation` (Task 6); `buildEntity` (Task 5); `MetaModelEntity` (Task 4); `EntityRef` (Task 7); `ensureMetaModelsBackend`; `DataTemplate` (`@pragmatic-tech-ai/mural/basic`); `ResourceDictionary` (`@pragmatic-tech-ai/mural/runtime`).
 - Produces: DPs `DrawerEntity: MetaModelEntity | undefined`, `IsDrawerOpen: boolean`; method `openEntity(ref: EntityRef): Promise<void>`.
 
 - [ ] **Step 1: Write the failing test**
@@ -941,15 +941,15 @@ In `services/meta-models-service.ts`:
 Add imports:
 
 ```ts
-import type { Visual } from '@pragmatic-lab/mural/runtime'
-import { ResourceDictionary } from '@pragmatic-lab/mural/runtime'
-import { DataTemplate } from '@pragmatic-lab/mural/basic'
+import type { Visual } from '@pragmatic-tech-ai/mural/runtime'
+import { ResourceDictionary } from '@pragmatic-tech-ai/mural/runtime'
+import { DataTemplate } from '@pragmatic-tech-ai/mural/basic'
 import { buildCatalog } from './meta-model-tree-builder.js'
 import { loadPresentation } from './presentation-loader.js'
 import { buildEntity } from './meta-model-entity-builder.js'
 import { MetaModelEntity } from './meta-model-entity.js'
 import type { EntityRef } from './meta-model-tree-node.js'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 ```
 
 Add the two DPs (alongside `NodesKey`/`IsEmptyKey`):
@@ -1050,10 +1050,10 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Install mural 0.1.57**
 
-Set `"@pragmatic-lab/mural": "^0.1.57"` in `package.json`, then:
+Set `"@pragmatic-tech-ai/mural": "^0.1.57"` in `package.json`, then:
 
-Run: `npm install @pragmatic-lab/mural@0.1.57 --registry http://localhost:4873/`
-Expected: installs 0.1.57 (verify `grep '"version"' node_modules/@pragmatic-lab/mural/package.json` → `0.1.57`).
+Run: `npm install @pragmatic-tech-ai/mural@0.1.57 --registry http://localhost:4873/`
+Expected: installs 0.1.57 (verify `grep '"version"' node_modules/@pragmatic-tech-ai/mural/package.json` → `0.1.57`).
 
 - [ ] **Step 2: Add the drawer + detail template to the panel markup**
 
@@ -1102,10 +1102,10 @@ Add the detail template as a sibling resource in the `MetaModelResources` block:
 ```
 
 > **Markup-symbol verification (do this before Step 3, adjust as the compiler dictates):**
-> - `IsNullToVisibility` converter: create it — add a `ValueConverter` in a new `services/meta-model-converters.ts` (`convert: (v) => v == null ? Visibility.Visible : Visibility.Collapsed`, importing `Visibility` + `ValueConverter` from `@pragmatic-lab/mural/runtime`) and `import … from "./services/meta-model-converters.js"` in the `.mu`. (The tree already uses the `$Kind << MetaModelKindToGeometry` converter pattern — mirror it.)
+> - `IsNullToVisibility` converter: create it — add a `ValueConverter` in a new `services/meta-model-converters.ts` (`convert: (v) => v == null ? Visibility.Visible : Visibility.Collapsed`, importing `Visibility` + `ValueConverter` from `@pragmatic-tech-ai/mural/runtime`) and `import … from "./services/meta-model-converters.js"` in the `.mu`. (The tree already uses the `$Kind << MetaModelKindToGeometry` converter pattern — mirror it.)
 > - `ContentControl` hosting a bound Visual: if the compiler reports `ContentControl` is not a known markup symbol, use `ContentPresenter [ Content = $Presentation ]` instead (whichever the symbol table accepts — grep `ContentControl`/`ContentPresenter` in `src/compiler/symbol-table.ts`).
 > - `Style` keys (`@TitleMedium`, `@LabelSmall`, `@LabelMedium`, `@BodySmall`): confirm each exists in the app theme (grep the theme `.mu` for the key). The tree already uses `@BodyMedium`/`@OnSurface`/`@OnSurfaceVariant`, so those are safe; substitute the nearest existing key for any the compiler flags as unresolved.
-> - `SideSheet`: confirm it's a markup symbol (it's a mural framework control with a default Style); if the compiler flags it, add it to the `.mu` imports from `@pragmatic-lab/mural/framework`.
+> - `SideSheet`: confirm it's a markup symbol (it's a mural framework control with a default Style); if the compiler flags it, add it to the `.mu` imports from `@pragmatic-tech-ai/mural/framework`.
 
 - [ ] **Step 3: Compile the markup**
 

@@ -1,7 +1,7 @@
 # Meta-Model Annotations — SP2 (Plexus projection + manifest) Design
 
 **Status:** ✅ Finished
-**Target:** Plexus (consumes `@pragmatic-lab/todl` 0.5.0 — already bumped in `7d466a5`)
+**Target:** Plexus (consumes `@pragmatic-tech-ai/todl` 0.5.0 — already bumped in `7d466a5`)
 **Date:** 2026-08-01
 
 ## 0. Context — the three sub-projects

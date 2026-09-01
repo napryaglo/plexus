@@ -1,5 +1,5 @@
-import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 import type { IStorage } from '../storage/storage.js'
 import type { Project } from './project.js'
 import type { BaseBindings } from './base-binding.js'

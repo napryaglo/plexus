@@ -3,8 +3,8 @@ import {
     List, ListItem, ListMarkerStyle, Paragraph, Run, Table, TableCell, TableRow,
     TextAlignment, TextBlock,
     type Block, type Inline,
-} from '@pragmatic-lab/mural/basic'
-import { DynamicResource, MuralBase, PropertyKey, Thickness } from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/basic'
+import { DynamicResource, MuralBase, PropertyKey, Thickness } from '@pragmatic-tech-ai/mural/runtime'
 
 // markdown-document.ts — turns the agent's markdown text into a mural
 // FlowDocument so a RichTextBlock can lay it out with real formatting

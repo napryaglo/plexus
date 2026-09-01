@@ -2,7 +2,7 @@
 // shape needed to re-display a stored conversation — tool cards / question cards are
 // not fully round-tripped in v1; a tool activity is stored as its name so history
 // reads sensibly.
-import type { MuralBase } from '@pragmatic-lab/mural/runtime'
+import type { MuralBase } from '@pragmatic-tech-ai/mural/runtime'
 import { UserMessage, AssistantMessage, ToolActivity, TranscriptRole } from './transcript.js'
 
 export interface SerializedMessage { Role: TranscriptRole; Text: string }

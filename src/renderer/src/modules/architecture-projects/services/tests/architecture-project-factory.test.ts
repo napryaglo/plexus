@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { PROJECT_MANIFEST_FILENAME, isPublishable, isVersioned } from '../../../../services/projects/project-factory.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'

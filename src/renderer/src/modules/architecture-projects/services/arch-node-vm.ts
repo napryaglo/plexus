@@ -1,6 +1,6 @@
-import { MetaData, MuralBase, type PropertyKey } from '@pragmatic-lab/mural/runtime'
-import { DiagramSettings, NodeViewModel, ToolboxVisualDescriptor, type ITextStyleTarget } from '@pragmatic-lab/mural/framework'
-import { Brush, FontFamily, FontStyle, FontWeight, TextAlignment, TextDecorations } from '@pragmatic-lab/mural/visual-engine'
+import { MetaData, MuralBase, type PropertyKey } from '@pragmatic-tech-ai/mural/runtime'
+import { DiagramSettings, NodeViewModel, ToolboxVisualDescriptor, type ITextStyleTarget } from '@pragmatic-tech-ai/mural/framework'
+import { Brush, FontFamily, FontStyle, FontWeight, TextAlignment, TextDecorations } from '@pragmatic-tech-ai/mural/visual-engine'
 
 // Initial box for a freshly-dropped arch tile. The container fits its content
 // once measured (SizeToContent), but a drop needs a starting box before the

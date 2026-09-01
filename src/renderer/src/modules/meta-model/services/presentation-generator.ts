@@ -2,7 +2,7 @@
 // resource dictionary. No I/O, no mural import; deterministic text only. All
 // model/filesystem access lives in the factory that calls this.
 
-import { projectAnnotations, type TodlDocument, type JsonNode } from '@pragmatic-lab/todl'
+import { projectAnnotations, type TodlDocument, type JsonNode } from '@pragmatic-tech-ai/todl'
 
 // The ontology-tier typeOf values presented as first-class entities. `field`
 // (concept attributes) is intentionally excluded.

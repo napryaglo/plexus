@@ -1,4 +1,4 @@
-import { ServiceBase, ServiceKey, ObservableCollection, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, ObservableCollection, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import type { Diagnostic } from './diagnostic.js'
 
 // The single, source-agnostic store for every diagnostic in the app. Producers

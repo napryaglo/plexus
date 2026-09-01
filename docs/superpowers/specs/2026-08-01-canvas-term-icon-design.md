@@ -19,7 +19,7 @@ unused `concept` param is where that would later hook.
 
 ## Feasibility
 
-The runtime SVG→glyph path already exists in `@pragmatic-lab/mural/basic` (a
+The runtime SVG→glyph path already exists in `@pragmatic-tech-ai/mural/basic` (a
 runtime module already spread into `buildCtx()`):
 
 - `parseSvgIcon(svgText: string, opts?): IconDefinition`

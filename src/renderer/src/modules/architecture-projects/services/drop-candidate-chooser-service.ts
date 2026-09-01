@@ -1,7 +1,7 @@
 import {
     MetaData, MuralBase, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 
 // One selectable candidate row. A MuralBase so the .mu template binds $Label / $Command.
 export class ChooserRow extends MuralBase

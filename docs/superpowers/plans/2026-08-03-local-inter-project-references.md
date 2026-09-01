@@ -6,7 +6,7 @@
 
 **Architecture:** A new `WorkspaceBaseResolver` service owns the rule "prefer an open sibling producer's live-compiled document; else read the published artifact." Authoring/validation base-resolution routes through it (`TodlLanguageClient.basesFor`, `ArchDiagramDocumentFactory.openFile`); publish stays strict (published-only). Producer factories gain a `compileToDocument` capability — the same compile pipeline publish uses — that the resolver invokes for open siblings. Reactivity refreshes a producer's transitive dependents on its save (Signal A, via `ProjectExplorerService.RefreshProjects`) and on open/close (Signal B, via the resolver's `OpenProjects` subscription).
 
-**Tech Stack:** Plexus renderer — TypeScript (ESM, strict), mural runtime (`ServiceBase`, `ServiceKey`, `ObservableCollection`), vitest. `@pragmatic-lab/todl` (`check`, `checkAgainst`, `toJSON`, `Severity`, `TodlDocument`). Design doc: `docs/superpowers/specs/2026-08-03-local-inter-project-references-design.md`.
+**Tech Stack:** Plexus renderer — TypeScript (ESM, strict), mural runtime (`ServiceBase`, `ServiceKey`, `ObservableCollection`), vitest. `@pragmatic-tech-ai/todl` (`check`, `checkAgainst`, `toJSON`, `Severity`, `TodlDocument`). Design doc: `docs/superpowers/specs/2026-08-03-local-inter-project-references-design.md`.
 
 ## Global Constraints
 
@@ -16,7 +16,7 @@
 - **Publish stays strict:** `publish()` resolves bases from the published registry only (`resolveBases`), never from open siblings.
 - **Match by `id`, ignore version;** kind must match (`metaModel` → meta-model producer, `libraries` entry → library producer); a project never resolves against itself.
 - **Saved-on-disk only:** compilation reads `collectTodlSources` / `collectTaxonomySources` (last-saved files), not editor buffers.
-- TODL (`@pragmatic-lab/todl`) is unchanged — this is entirely Plexus-side.
+- TODL (`@pragmatic-tech-ai/todl`) is unchanged — this is entirely Plexus-side.
 - Presentation (icons/geometry, library `library.json` bundles) is out of scope; local resolution covers only the base `TodlDocument` (`model.json` equivalent).
 
 ---
@@ -40,7 +40,7 @@ Extract each producer factory's "collect sources → compile → toJSON" core in
 In the imports block at the top of `project-factory.ts`, add:
 
 ```ts
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 ```
 
 Append at end of file:
@@ -80,7 +80,7 @@ export function isProducer(factory: IProjectFactory): factory is IProjectFactory
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { PROJECT_MANIFEST_FILENAME } from '../../../../services/projects/project-factory.js'
@@ -117,11 +117,11 @@ test('compileToDocument reports compile errors as problems', async () => {
 
 Change:
 ```ts
-import { check, toJSON, Severity, type TodlDocument } from '@pragmatic-lab/todl'
+import { check, toJSON, Severity, type TodlDocument } from '@pragmatic-tech-ai/todl'
 ```
 to:
 ```ts
-import { check, checkAgainst, toJSON, Severity, type TodlDocument } from '@pragmatic-lab/todl'
+import { check, checkAgainst, toJSON, Severity, type TodlDocument } from '@pragmatic-tech-ai/todl'
 ```
 
 Add `ProducerKind`, `IProducerProjectFactory` to the `project-factory.js` import list, and add `IProducerProjectFactory` to the `implements` clause:
@@ -174,8 +174,8 @@ to:
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { check, toJSON } from '@pragmatic-lab/todl'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { check, toJSON } from '@pragmatic-tech-ai/todl'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { PROJECT_MANIFEST_FILENAME } from '../../../../services/projects/project-factory.js'
@@ -217,7 +217,7 @@ Note: `collectTaxonomySources` may scope which files it reads (it excludes `samp
 
 - [ ] **Step 8: Run it to confirm it fails** — `npx vitest run src/renderer/src/modules/library/services/tests/library-compile-to-document.test.ts`. Expected: FAIL, `compileToDocument is not a function`.
 
-- [ ] **Step 9: Implement `compileToDocument` on `LibraryProjectFactory`.** In `library-project-factory.ts` add `ProducerKind`, `IProducerProjectFactory`, and `type TodlDocument` to imports (the `@pragmatic-lab/todl` import already has `checkAgainst, toJSON, Severity` — add `type TodlDocument`). Add `IProducerProjectFactory` to `implements`. Add the member above `publish`:
+- [ ] **Step 9: Implement `compileToDocument` on `LibraryProjectFactory`.** In `library-project-factory.ts` add `ProducerKind`, `IProducerProjectFactory`, and `type TodlDocument` to imports (the `@pragmatic-tech-ai/todl` import already has `checkAgainst, toJSON, Severity` — add `type TodlDocument`). Add `IProducerProjectFactory` to `implements`. Add the member above `publish`:
 
 ```ts
     public readonly producerKind = ProducerKind.Library
@@ -285,8 +285,8 @@ The service that resolves a consumer's bases, preferring an open producer's live
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider, ObservableCollection } from '@pragmatic-lab/mural/runtime'
-import { check, toJSON, type TodlDocument } from '@pragmatic-lab/todl'
+import { ServiceProvider, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
+import { check, toJSON, type TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import { StorageProviderRegistry } from '../../storage/storage-provider-registry.js'
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
@@ -440,8 +440,8 @@ test('a local producer with compile errors surfaces problems and still returns i
 - [ ] **Step 3: Implement the resolver** `src/renderer/src/services/projects/workspace-base-resolver.ts`:
 
 ```ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import type { IStorage } from '../storage/storage.js'
 import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'
@@ -705,8 +705,8 @@ Point the two authoring/validation base-resolution sites at `WorkspaceBaseResolv
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { toJSON, check } from '@pragmatic-lab/todl'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { toJSON, check } from '@pragmatic-tech-ai/todl'
 
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
 import { WorkspaceBaseResolver } from '../../projects/workspace-base-resolver.js'
@@ -800,7 +800,7 @@ Signal B (open/close) is already wired in Task 2's constructor. This task wires 
 
 ```ts
 import { test, expect, vi } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { WorkspaceBaseResolver } from '../../../../services/projects/workspace-base-resolver.js'
 import { ProjectExplorerService } from '../project-explorer-service.js'

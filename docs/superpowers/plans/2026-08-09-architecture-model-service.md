@@ -4,17 +4,17 @@
 
 **Goal:** Build one app-scoped `ArchitectureModelService` holding a `Map<project.RootPath, ArchModel>` — one live viewpoint-scoped architecture model per open architecture project, composed from the project's published bases plus all its `.todl` files.
 
-**Architecture:** `ArchModel` wraps a `ModelDraft` (from `@pragmatic-lab/todl`) and exposes viewpoints, entity CRUD, an `onChanged` signal, and `save()` (multi-file round-trip via `toTodlByFile`). `ArchitectureModelService` builds each project's `ArchModel` lazily (`WorkspaceBaseResolver.ResolveForStorage` for bases + `collectTodlSources` for sources + `ModelDraft.fromSources`), caches it by `Project.RootPath`, and drops it when the project closes (subscribing to `ProjectExplorerService.OpenProjects`).
+**Architecture:** `ArchModel` wraps a `ModelDraft` (from `@pragmatic-tech-ai/todl`) and exposes viewpoints, entity CRUD, an `onChanged` signal, and `save()` (multi-file round-trip via `toTodlByFile`). `ArchitectureModelService` builds each project's `ArchModel` lazily (`WorkspaceBaseResolver.ResolveForStorage` for bases + `collectTodlSources` for sources + `ModelDraft.fromSources`), caches it by `Project.RootPath`, and drops it when the project closes (subscribing to `ProjectExplorerService.OpenProjects`).
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/todl@^0.23.0`, `@pragmatic-lab/mural/runtime` (ServiceBase/ServiceKey/ServiceProvider/ObservableCollection), Vitest.
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/todl@^0.23.0`, `@pragmatic-tech-ai/mural/runtime` (ServiceBase/ServiceKey/ServiceProvider/ObservableCollection), Vitest.
 
 ## Global Constraints
 
-- Dependency floor: `@pragmatic-lab/todl@^0.23.0` (already installed). Import `ModelDraft`, `Repository`, `graphFromJSON`, `toJSON`, `load`, `parse`, `type TodlDocument`, `type SourceFile`, `type Entity` from the package root `@pragmatic-lab/todl` — never a `../src`/deep path.
+- Dependency floor: `@pragmatic-tech-ai/todl@^0.23.0` (already installed). Import `ModelDraft`, `Repository`, `graphFromJSON`, `toJSON`, `load`, `parse`, `type TodlDocument`, `type SourceFile`, `type Entity` from the package root `@pragmatic-tech-ai/todl` — never a `../src`/deep path.
 - Use real TypeScript enums, never string-literal unions.
 - Every test file lives in a `tests/` subfolder next to its source (`services/tests/`).
 - Key the model map on `project.RootPath` (stable string), never the mutable `Project` object.
-- No hardcoded chrome / no relative mural `../src` imports — mural comes from `@pragmatic-lab/mural/runtime`.
+- No hardcoded chrome / no relative mural `../src` imports — mural comes from `@pragmatic-tech-ai/mural/runtime`.
 - Storage paths are project-relative POSIX (`/`); `.todl` source `uri`s from `collectTodlSources` double as `toTodlByFile` home keys and as `WriteText` paths.
 - Commit after each task. Commit messages end with a trailing line:
   `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`
@@ -22,7 +22,7 @@
 
 ## Verified external signatures (do not re-derive)
 
-From `@pragmatic-lab/todl` (package root exports):
+From `@pragmatic-tech-ai/todl` (package root exports):
 - `ModelDraft.fromSources(bases: readonly Repository[], sources: readonly { uri: string; text: string }[], opts: { namespace: string }): ModelDraft`
 - `ModelDraft#model: Repository` (getter) · `ownInstances(): Entity[]` · `create(concept: string, id: string, home?: string): Entity` · `setField(id: string, name: string, value: Scalar): void` · `addRef(from: string, member: string, to: string): void` · `removeRef(from: string, member: string, to: string): void` · `remove(id: string): void` · `toTodlByFile(): Map<string, string>`
 - `Repository#viewpoints(): string[]` · `frames(viewpoint: string): string[]` · `viewpointsFraming(concept: string): string[]` (subtype-aware) · `resolve(id: string): Node | undefined`
@@ -32,7 +32,7 @@ From `@pragmatic-lab/todl` (package root exports):
 - `parse(source: string, uri?: string): { namespace: { path: string; ... }; diagnostics: Diagnostic[] }`
 - `Entity`: `{ readonly id: string; readonly concept: string; readonly tier: Tier; field(name): Scalar|undefined; ref(member): Entity|undefined; ... }`
 
-From `@pragmatic-lab/mural/runtime`:
+From `@pragmatic-tech-ai/mural/runtime`:
 - `class ServiceBase { constructor(provider: IServiceProvider); protected readonly Provider: IServiceProvider }` (existing services call `super(provider)` then `this.Provider.get(Key)`).
 - `class ServiceKey<T> { constructor(description: string) }`
 - `IServiceProvider`: `get<T>(token): T | undefined` · `getRequired<T>(token): T`
@@ -50,10 +50,10 @@ From Plexus:
 
 ## Shared test fixtures (used verbatim across tasks)
 
-These compile clean against `@pragmatic-lab/todl@0.23.0` (verified from the TODL viewpoint/merge test suite). The meta-model is built into a base `TodlDocument`; the model is two same-id `.todl` files each conforming to a different viewpoint.
+These compile clean against `@pragmatic-tech-ai/todl@0.23.0` (verified from the TODL viewpoint/merge test suite). The meta-model is built into a base `TodlDocument`; the model is two same-id `.todl` files each conforming to a different viewpoint.
 
 ```ts
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
 
 // Meta-model (ontology base): concepts + two viewpoints. No prelude names used,
 // so load() (which does NOT inject the prelude) resolves everything.
@@ -91,7 +91,7 @@ Expected shape once composed: `draft.ownInstances()` → two entities `web` (con
 - Test: `src/renderer/src/modules/architecture-projects/services/tests/arch-model.test.ts`
 
 **Interfaces:**
-- Consumes: `ModelDraft`, `Repository`, `type Entity` from `@pragmatic-lab/todl`; `type IStorage` from `../../../services/storage/storage.js`.
+- Consumes: `ModelDraft`, `Repository`, `type Entity` from `@pragmatic-tech-ai/todl`; `type IStorage` from `../../../services/storage/storage.js`.
 - Produces: `export interface Viewpoint { id: string; framedConcepts: string[]; members: Entity[] }` and `export class ArchModel` with `constructor(draft: ModelDraft, storage: IStorage, namespace: string)`, `readonly namespace: string`, `viewpoints(): Viewpoint[]`, `entities(): Entity[]`, `repository(): Repository`. Tasks 2 consumes this same class (adds methods).
 
 - [ ] **Step 1: Write the failing test**
@@ -99,7 +99,7 @@ Expected shape once composed: `draft.ownInstances()` → two entities `web` (con
 ```ts
 // tests/arch-model.test.ts
 import { test, expect } from 'vitest'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 
@@ -154,7 +154,7 @@ Expected: FAIL — `ArchModel` not found / has no `arch-model.js`.
 
 ```ts
 // arch-model.ts
-import type { ModelDraft, Repository, Entity } from '@pragmatic-lab/todl'
+import type { ModelDraft, Repository, Entity } from '@pragmatic-tech-ai/todl'
 import type { IStorage } from '../../../services/storage/storage.js'
 
 // One viewpoint's projection over the model: the concepts it frames and the
@@ -222,7 +222,7 @@ git commit -m "feat(arch): ArchModel read surface — viewpoints, entities, repo
 - Test: `src/renderer/src/modules/architecture-projects/services/tests/arch-model-mutation.test.ts`
 
 **Interfaces:**
-- Consumes: the Task 1 `ArchModel` (same file), `ModelDraft#create/setField/addRef/remove/toTodlByFile`, `IStorage#WriteText/ReadText`, `check` + `parse` from `@pragmatic-lab/todl`.
+- Consumes: the Task 1 `ArchModel` (same file), `ModelDraft#create/setField/addRef/remove/toTodlByFile`, `IStorage#WriteText/ReadText`, `check` + `parse` from `@pragmatic-tech-ai/todl`.
 - Produces: adds `create(concept: string, id: string, homeUri?: string): Entity`, `setField(id: string, name: string, value: string): void`, `addRef(from: string, member: string, to: string): void`, `remove(id: string): void`, `onChanged(cb: () => void): () => void`, `save(): Promise<void>` to `ArchModel`.
 
 - [ ] **Step 1: Write the failing test**
@@ -230,7 +230,7 @@ git commit -m "feat(arch): ArchModel read surface — viewpoints, entities, repo
 ```ts
 // tests/arch-model-mutation.test.ts
 import { test, expect } from 'vitest'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft, check } from '@pragmatic-lab/todl'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft, check } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 
@@ -284,7 +284,7 @@ test('save writes each home file and the result recompiles clean', async () => {
   // Round-trip: the emitted model files recompile against the meta-model base
   // with no reference/validation errors.
   const mmDoc = toJSON(load([{ uri: 'archmm.todl', text: MM }]).model)
-  const { checkAgainst } = await import('@pragmatic-lab/todl')
+  const { checkAgainst } = await import('@pragmatic-tech-ai/todl')
   const diags = checkAgainst([mmDoc], [{ uri: 'model-a.todl', text: a }, { uri: 'model-b.todl', text: b }]).diagnostics
   expect(diags.filter((d) => d.severity === 'error')).toEqual([])
 })
@@ -355,7 +355,7 @@ Add `Entity` is already imported from Task 1. Change the `Entity` import to incl
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/renderer/src/modules/architecture-projects/services/tests/arch-model-mutation.test.ts`
-Expected: PASS (3 tests). If the round-trip test surfaces a `Diagnostic.severity` enum mismatch, compare against `Severity.Error` from `@pragmatic-lab/todl` instead of the string `'error'` — import `Severity` and use `d.severity === Severity.Error`.
+Expected: PASS (3 tests). If the round-trip test surfaces a `Diagnostic.severity` enum mismatch, compare against `Severity.Error` from `@pragmatic-tech-ai/todl` instead of the string `'error'` — import `Severity` and use `d.severity === Severity.Error`.
 
 - [ ] **Step 5: Commit**
 
@@ -373,7 +373,7 @@ git commit -m "feat(arch): ArchModel mutation, onChanged signal, multi-file save
 - Test: `src/renderer/src/modules/architecture-projects/services/tests/architecture-model-service.test.ts`
 
 **Interfaces:**
-- Consumes: `ServiceBase`, `ServiceKey`, `type IServiceProvider` from `@pragmatic-lab/mural/runtime`; `ModelDraft`, `Repository`, `graphFromJSON`, `parse`, `type TodlDocument`, `type SourceFile` from `@pragmatic-lab/todl`; `WorkspaceBaseResolver` (`../../../services/projects/workspace-base-resolver.js`); `collectTodlSources` (`../../meta-model/services/todl-sources.js`); `type OpenProject` (`../../project-explorer/services/open-project.js`); `ArchModel` (`./arch-model.js`).
+- Consumes: `ServiceBase`, `ServiceKey`, `type IServiceProvider` from `@pragmatic-tech-ai/mural/runtime`; `ModelDraft`, `Repository`, `graphFromJSON`, `parse`, `type TodlDocument`, `type SourceFile` from `@pragmatic-tech-ai/todl`; `WorkspaceBaseResolver` (`../../../services/projects/workspace-base-resolver.js`); `collectTodlSources` (`../../meta-model/services/todl-sources.js`); `type OpenProject` (`../../project-explorer/services/open-project.js`); `ArchModel` (`./arch-model.js`).
 - Produces: `export class ArchitectureModelService extends ServiceBase` with `static readonly Key`, `modelFor(op: OpenProject): Promise<ArchModel>`, `peek(rootPath: string): ArchModel | undefined`, `close(rootPath: string): void`. Task 4 consumes the same class (adds the lifecycle subscription).
 
 - [ ] **Step 1: Write the failing test**
@@ -381,8 +381,8 @@ git commit -m "feat(arch): ArchModel mutation, onChanged signal, multi-file save
 ```ts
 // tests/architecture-model-service.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { load, toJSON, type TodlDocument } from '@pragmatic-lab/todl'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { load, toJSON, type TodlDocument } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { WorkspaceBaseResolver } from '../../../../services/projects/workspace-base-resolver.js'
 import { Project, ProjectNode } from '../../../../services/projects/project.js'
@@ -463,8 +463,8 @@ Expected: FAIL — `ArchitectureModelService` not found.
 
 ```ts
 // architecture-model-service.ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ModelDraft, Repository, graphFromJSON, parse, type SourceFile } from '@pragmatic-lab/todl'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { ModelDraft, Repository, graphFromJSON, parse, type SourceFile } from '@pragmatic-tech-ai/todl'
 
 import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base-resolver.js'
 import { collectTodlSources } from '../../meta-model/services/todl-sources.js'
@@ -545,7 +545,7 @@ git commit -m "feat(arch): ArchitectureModelService build/cache/peek/close + nam
 - Test: `src/renderer/src/modules/architecture-projects/services/tests/architecture-model-service-lifecycle.test.ts`
 
 **Interfaces:**
-- Consumes: `ProjectExplorerService` (`../../project-explorer/services/project-explorer-service.js`), `ObservableCollection` from `@pragmatic-lab/mural/runtime`, the Task 3 `ArchitectureModelService`.
+- Consumes: `ProjectExplorerService` (`../../project-explorer/services/project-explorer-service.js`), `ObservableCollection` from `@pragmatic-tech-ai/mural/runtime`, the Task 3 `ArchitectureModelService`.
 - Produces: constructor now subscribes to `ProjectExplorerService.OpenProjects` and calls `close(rootPath)` for any cached project no longer open.
 
 - [ ] **Step 1: Write the failing test**
@@ -553,8 +553,8 @@ git commit -m "feat(arch): ArchitectureModelService build/cache/peek/close + nam
 ```ts
 // tests/architecture-model-service-lifecycle.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider, ObservableCollection } from '@pragmatic-lab/mural/runtime'
-import { load, toJSON } from '@pragmatic-lab/todl'
+import { ServiceProvider, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
+import { load, toJSON } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { WorkspaceBaseResolver } from '../../../../services/projects/workspace-base-resolver.js'
 import { ProjectExplorerService } from '../../../project-explorer/services/project-explorer-service.js'
@@ -665,6 +665,6 @@ git commit -m "feat(arch): drop cached model on project close; register Architec
 
 - **`Project`/`ProjectNode` constructors:** the service tests build `new Project('architecture', 'Acme', storage.Root, new ProjectNode('Acme', '', 'folder'))`. If the real `Project` constructor arity differs, read `src/renderer/src/services/projects/project.ts` and adjust the test construction — the production code only reads `op.Project.RootPath`/`.Name`, so any construction that sets those is fine.
 - **`ProjectNode` import path:** `../../../../services/projects/project.js` exports both `Project` and `ProjectNode` (confirmed in `architecture-project-factory.ts`). If `ProjectNode` lives elsewhere, follow the factory's import.
-- **Diagnostic severity:** if the Task 2 round-trip assertion `d.severity === 'error'` fails to typecheck or match, import `Severity` from `@pragmatic-lab/todl` and compare `d.severity === Severity.Error`.
+- **Diagnostic severity:** if the Task 2 round-trip assertion `d.severity === 'error'` fails to typecheck or match, import `Severity` from `@pragmatic-tech-ai/todl` and compare `d.severity === Severity.Error`.
 - **Do NOT** implement diagram binding, viewpoint selection on new-diagram, read-filtering by frames, or write-routing (viewpoint→home file) — those are SP4.
 ```

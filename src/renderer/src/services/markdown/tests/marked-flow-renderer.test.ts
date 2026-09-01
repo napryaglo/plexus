@@ -2,8 +2,8 @@ import { test, expect, vi } from 'vitest'
 import {
     Bold, Border, FlowDocument, Hyperlink, Image, InlineUIContainer, Italic, LineBreak,
     List, ListItem, ListMarkerStyle, Paragraph, Run, Span, Table, TextAlignment,
-} from '@pragmatic-lab/mural/basic'
-import { FontStyle, TextDecorations } from '@pragmatic-lab/mural/visual-engine'
+} from '@pragmatic-tech-ai/mural/basic'
+import { FontStyle, TextDecorations } from '@pragmatic-tech-ai/mural/visual-engine'
 import { renderMarkdown } from '../marked-flow-renderer.js'
 
 function blocks(md: string, ctx = {}): unknown[] { return renderMarkdown(md, ctx).Blocks.ToArray() }

@@ -1,5 +1,5 @@
-import { MetaData, MuralBase, ObservableCollection } from '@pragmatic-lab/mural/runtime'
-import type { CatalogStrategy, CatalogParam, LayoutStageSpec } from '@pragmatic-lab/fresco'
+import { MetaData, MuralBase, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
+import type { CatalogStrategy, CatalogParam, LayoutStageSpec } from '@pragmatic-tech-ai/fresco'
 
 import { NumberParamVM, BoolParamVM } from './layout-param-vm.js'
 

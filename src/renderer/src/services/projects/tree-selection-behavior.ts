@@ -1,5 +1,5 @@
-import { Behavior, type Visual } from '@pragmatic-lab/mural/runtime'
-import { Selector } from '@pragmatic-lab/mural/framework'
+import { Behavior, type Visual } from '@pragmatic-tech-ai/mural/runtime'
+import { Selector } from '@pragmatic-tech-ai/mural/framework'
 
 import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'
 

@@ -2,8 +2,8 @@
 // agent-chat.resources.mu) and the pure reducer that folds AgentEvents into an
 // ObservableCollection. Kept free of ServiceBase/window so it is unit-testable;
 // AgentService is a thin shell over it.
-import { MetaData, MuralBase, ObservableCollection, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
-import { type FlowDocument } from '@pragmatic-lab/mural/basic'
+import { MetaData, MuralBase, ObservableCollection, RelayCommand, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
+import { type FlowDocument } from '@pragmatic-tech-ai/mural/basic'
 import { AgentEventKind, type AgentEvent, type QuestionAnswer, type ToolApprovalAnswer } from '../../../../../shared/agent-api.js'
 import { buildFlowDocument } from '../../../services/markdown/markdown-document.js'
 import { QuestionCard } from './question-card.js'

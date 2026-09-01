@@ -1,5 +1,5 @@
-import { MetaData, MuralBase, type ServiceKey } from '@pragmatic-lab/mural/runtime'
-import { ToolboxItem, type ToolboxVisualDescriptor, type IToolboxDropFactory } from '@pragmatic-lab/mural/framework'
+import { MetaData, MuralBase, type ServiceKey } from '@pragmatic-tech-ai/mural/runtime'
+import { ToolboxItem, type ToolboxVisualDescriptor, type IToolboxDropFactory } from '@pragmatic-tech-ai/mural/framework'
 
 // A Plexus toolbox item that also exposes Display (= the term label) so a class
 // presentation template's $Display binds through the tile presenter's inherited

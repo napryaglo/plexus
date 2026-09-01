@@ -14,7 +14,7 @@ write the file) and is triggered by a new "Generate Presentation" project comman
 and as publish's first step. No compilation of the generated `.mu` happens here
 (that is sub-project 2); this sub-project emits and writes text only.
 
-**Tech Stack:** TypeScript (renderer), `@pragmatic-lab/todl` (`check`, `toJSON`,
+**Tech Stack:** TypeScript (renderer), `@pragmatic-tech-ai/todl` (`check`, `toJSON`,
 `TodlDocument`/`JsonNode`), mural runtime (`RelayCommand`, `Model` DP), `IStorage`
 seam, Vitest.
 
@@ -29,7 +29,7 @@ seam, Vitest.
 - The generated `.mu` references entities' binding surface `$Label` and icon
   geometry keys only; its `DataType = MetaModelEntity` names a view-model realised
   in sub-project 3. The generated file is **not compiled** in this sub-project.
-- Published/JSON types come from `@pragmatic-lab/todl`:
+- Published/JSON types come from `@pragmatic-tech-ai/todl`:
   `interface JsonNode { id: string; tier: string; typeOf: string; attrs: Record<string, Scalar> }`,
   `interface TodlDocument { nodes: JsonNode[]; edges: JsonEdge[] }`.
 - Generated filename is `presentation.generated.mu`; author files live under
@@ -134,7 +134,7 @@ git commit -m "feat(meta-model): presentation-generator formatting helpers"
 - Test: `src/renderer/src/modules/meta-model/services/tests/presentation-generator.test.ts`
 
 **Interfaces:**
-- Consumes: `TodlDocument`, `JsonNode` from `@pragmatic-lab/todl`.
+- Consumes: `TodlDocument`, `JsonNode` from `@pragmatic-tech-ai/todl`.
 - Produces: `enum OntologyKind`, `ontologyEntities(model): JsonNode[]`,
   `distinctIcons(model): string[]`.
 
@@ -142,7 +142,7 @@ git commit -m "feat(meta-model): presentation-generator formatting helpers"
 
 ```ts
 import { ontologyEntities, distinctIcons } from '../presentation-generator.js'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 function doc(nodes: TodlDocument['nodes']): TodlDocument { return { nodes, edges: [] } }
 
@@ -177,7 +177,7 @@ Expected: FAIL — no such exports.
 - [ ] **Step 3: Implement**
 
 ```ts
-import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
+import type { TodlDocument, JsonNode } from '@pragmatic-tech-ai/todl'
 
 // The ontology-tier typeOf values presented as first-class entities. `field`
 // (concept attributes) is intentionally excluded.
@@ -414,7 +414,7 @@ git commit -m "feat(projects): IPresentationProjectFactory capability + guard"
 
 **Interfaces:**
 - Consumes: `generatePresentationMu` (Task 3), `IPresentationProjectFactory` (Task 4),
-  `check`, `toJSON`, `Severity`, `TodlDocument` from `@pragmatic-lab/todl`.
+  `check`, `toJSON`, `Severity`, `TodlDocument` from `@pragmatic-tech-ai/todl`.
 - Produces: `MetaModelProjectFactory.regeneratePresentation(storage): Promise<void>`;
   presentation written by `publish` too.
 
@@ -422,7 +422,7 @@ git commit -m "feat(projects): IPresentationProjectFactory capability + guard"
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { MetaModelProjectFactory } from '../meta-model-project-factory.js'
 import { PROJECT_MANIFEST_FILENAME } from '../../../../services/projects/project-factory.js'
@@ -474,7 +474,7 @@ Add imports:
 
 ```ts
 import { generatePresentationMu } from './presentation-generator.js'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 // extend the existing project-factory import with IPresentationProjectFactory
 ```
 

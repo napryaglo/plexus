@@ -1,5 +1,5 @@
-import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
-import { RelayCommand } from '@pragmatic-lab/mural/runtime'
+import type { TodlDocument, JsonNode } from '@pragmatic-tech-ai/todl'
+import { RelayCommand } from '@pragmatic-tech-ai/mural/runtime'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import { MetaModelTreeNode, MetaModelNodeKind, type EntityRef } from './meta-model-tree-node.js'

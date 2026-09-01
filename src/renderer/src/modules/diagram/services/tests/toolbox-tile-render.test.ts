@@ -1,7 +1,7 @@
 import { test, expect, afterEach } from 'vitest'
-import { Application, type Visual } from '@pragmatic-lab/mural/runtime'
-import { DataTemplate, TextBlock, TextWrapping } from '@pragmatic-lab/mural/basic'
-import { ShapeToolboxItem, ToolboxItem, ToolboxVisualPresenter } from '@pragmatic-lab/mural/framework'
+import { Application, type Visual } from '@pragmatic-tech-ai/mural/runtime'
+import { DataTemplate, TextBlock, TextWrapping } from '@pragmatic-tech-ai/mural/basic'
+import { ShapeToolboxItem, ToolboxItem, ToolboxVisualPresenter } from '@pragmatic-tech-ai/mural/framework'
 
 import { DiagramResources } from '../../diagram.resources.mu.js'
 

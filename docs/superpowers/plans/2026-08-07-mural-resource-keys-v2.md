@@ -6,7 +6,7 @@
 
 **Architecture:** TODL contributes prelude schema only — revert the well-known annotations to lowercase, add `annotation label`, add a `ResourceKey` primitive and a `MuralResource` annotation base that `icon` extends, so `projectAnnotations` surfaces a `key`. All key logic (collision-aware assignment, stamping) lives Plexus-side in the presentation generator, operating on the in-memory `TodlDocument` that both presentation and `BlobPackageStore.persist` share, so a single stamp reaches `model.json`.
 
-**Tech Stack:** TypeScript (ESM, strict), `@pragmatic-lab/todl` (reflective typed graph, `node:test`), Plexus (Electron/electron-vite, Vitest), `@pragmatic-lab/mural` compiler, Verdaccio local registry.
+**Tech Stack:** TypeScript (ESM, strict), `@pragmatic-tech-ai/todl` (reflective typed graph, `node:test`), Plexus (Electron/electron-vite, Vitest), `@pragmatic-tech-ai/mural` compiler, Verdaccio local registry.
 
 ## Global Constraints
 
@@ -42,7 +42,7 @@
 
 **Interfaces:**
 - Consumes: nothing (schema authoring only).
-- Produces: prelude with lowercase `icon`/`label`/`toolbox`/`instance`, a `ResourceKey` primitive, a `MuralResource` annotation (optional `key : ResourceKey`), and `icon : MuralResource` (adds inherited optional `key`). Published as `@pragmatic-lab/todl@0.20.0`.
+- Produces: prelude with lowercase `icon`/`label`/`toolbox`/`instance`, a `ResourceKey` primitive, a `MuralResource` annotation (optional `key : ResourceKey`), and `icon : MuralResource` (adds inherited optional `key`). Published as `@pragmatic-tech-ai/todl@0.20.0`.
 
 - [ ] **Step 1: Add the failing schema test**
 
@@ -139,7 +139,7 @@ Expected: PASS. Note: the reflect / annotation tests that hand-build `typeOf: "i
 - [ ] **Step 8: Build, bump, publish to Verdaccio**
 
 Run: `cd TODL && npm run build && npm version minor --no-git-tag-version && npm publish`
-Expected: `@pragmatic-lab/todl@0.20.0` published to `http://localhost:4873/`.
+Expected: `@pragmatic-tech-ai/todl@0.20.0` published to `http://localhost:4873/`.
 
 - [ ] **Step 9: Commit**
 
@@ -169,12 +169,12 @@ EOF
 - Modify: `Plexus/src/renderer/src/modules/meta-model/services/scaffold/claude-root.md`
 
 **Interfaces:**
-- Consumes: `@pragmatic-lab/todl@0.20.0` from Verdaccio (Task 1).
+- Consumes: `@pragmatic-tech-ai/todl@0.20.0` from Verdaccio (Task 1).
 - Produces: Plexus on the new floor; scaffold docs teach the lowercase well-known annotations.
 
 - [ ] **Step 1: Raise the floor and install**
 
-In `Plexus/package.json` set `"@pragmatic-lab/todl": "^0.20.0"`. Then run: `cd Plexus && npm install`
+In `Plexus/package.json` set `"@pragmatic-tech-ai/todl": "^0.20.0"`. Then run: `cd Plexus && npm install`
 Expected: lockfile resolves `0.20.0` from Verdaccio.
 
 - [ ] **Step 2: Sanity-run the Plexus suite against the new prelude**
@@ -196,7 +196,7 @@ Expected: no matches.
 ```bash
 cd Plexus && git add package.json package-lock.json src/renderer/src/modules/meta-model/services/scaffold/todl-manual.md src/renderer/src/modules/meta-model/services/scaffold/meta-model-guide.md src/renderer/src/modules/meta-model/services/scaffold/claude-root.md
 git commit -m "$(cat <<'EOF'
-chore(deps): bump @pragmatic-lab/todl ^0.20.0; docs: lowercase well-known annotations
+chore(deps): bump @pragmatic-tech-ai/todl ^0.20.0; docs: lowercase well-known annotations
 
 Well-known annotations icon/label/toolbox are lowercase; revert the SP2 doc
 mentions that PascalCased them (user-defined annotation examples stay Pascal).
@@ -543,7 +543,7 @@ EOF
 
 ## Notes for the executor
 
-- **Cross-repo ordering is load-bearing:** Task 1 must publish `@pragmatic-lab/todl@0.20.0` to Verdaccio before Task 2's `npm install` can resolve it. Do not start Task 2 until Task 1 Step 8 succeeds.
+- **Cross-repo ordering is load-bearing:** Task 1 must publish `@pragmatic-tech-ai/todl@0.20.0` to Verdaccio before Task 2's `npm install` can resolve it. Do not start Task 2 until Task 1 Step 8 succeeds.
 - **The fix reverts the prelude, not the consumers.** Plexus's `typeOf === 'icon'` / `annotations['icon']` / toolbox `['toolbox']` reads and TODL's `reflect.js` `.icon` were correct; they need no change. The bug was SP1 PascalCasing the prelude annotation names.
 - **No `.mu` files change** — presentation dictionaries are generated text, not repo `.mu` sources, so `npm run compile:mu` is not needed.
 - **Regression is the safety net for the emit rerouting:** the existing generator/publisher/scaffold tests assert exact single-stem output (`mm_icon_actor`, etc.); Task 4 must leave those byte-identical.

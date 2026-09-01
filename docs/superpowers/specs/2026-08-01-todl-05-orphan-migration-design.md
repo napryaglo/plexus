@@ -1,13 +1,13 @@
 # TODL 0.5.0 Orphan Migration Design
 
 **Status:** ✅ Finished
-**Target:** Plexus (consumes `@pragmatic-lab/todl` 0.5.0)
+**Target:** Plexus (consumes `@pragmatic-tech-ai/todl` 0.5.0)
 **Date:** 2026-08-01
 
 ## 1. Goal
 
 Restore Plexus to a green suite and fix a live product regression introduced when
-Plexus bumped to `@pragmatic-lab/todl` 0.4.0/0.5.0. The model-first-class rule now
+Plexus bumped to `@pragmatic-tech-ai/todl` 0.4.0/0.5.0. The model-first-class rule now
 requires every concrete instance to be declared inside a `model { }` block
 (diagnostic `instance.orphan`), and two Plexus subsystems still emit/author
 top-level instances, producing **invalid TODL** — 5 failing tests and real broken

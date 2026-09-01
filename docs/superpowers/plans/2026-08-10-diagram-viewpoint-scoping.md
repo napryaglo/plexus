@@ -6,11 +6,11 @@
 
 **Architecture:** Per-diagram selected viewpoints live in the architecture manifest keyed by the diagram's path. `ArchDiagramBinding` carries the scope (default all); the drop factory reads it (read-filter). A modal picker sets the initial selection at creation (via an optional explorer participant seam); an Inspector toggle panel re-scopes an open diagram.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/todl@^0.23.0`, `@pragmatic-lab/mural/{framework,runtime}`, Vitest.
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/todl@^0.23.0`, `@pragmatic-tech-ai/mural/{framework,runtime}`, Vitest.
 
 ## Global Constraints
 
-- `@pragmatic-lab/todl@^0.23.0` (installed). Real enums; no relative `../src` mural imports; every test in a `tests/` subfolder.
+- `@pragmatic-tech-ai/todl@^0.23.0` (installed). Real enums; no relative `../src` mural imports; every test in a `tests/` subfolder.
 - `PROJECT_MANIFEST_FILENAME = 'project.plexus'` (from `services/projects/project-factory.js`).
 - `app.mu.js` is generated and **gitignored** — never `git add` it; add any new `.mu` to the `compile:mu` list in `package.json`.
 - The generic `DiagramDocument`/`DiagramDocumentFactory` stay untouched; the `INewFileParticipant` seam is optional (no-op when absent).
@@ -164,8 +164,8 @@ git commit -m "feat(arch): per-diagram viewpoint selection in the project manife
 ```ts
 // tests/arch-diagram-binding-scope.test.ts
 import { test, expect } from 'vitest'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
-import { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
+import { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 import { ArchDiagramBinding } from '../arch-diagram-binding.js'
@@ -225,9 +225,9 @@ Add a field + methods (place after the `bound` field / near `dispose`):
 ```ts
 // tests/arch-diagram-binding-service-scope.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider, ObservableCollection } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DiagramDocument, type IDocument, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
+import { ServiceProvider, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService, DiagramDocument, type IDocument, type DocumentsContentHostService } from '@pragmatic-tech-ai/mural/framework'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { FileDiagramStorage } from '../../../diagram/persistence/file-diagram-storage.js'
 import { WorkspaceBaseResolver } from '../../../../services/projects/workspace-base-resolver.js'
@@ -361,9 +361,9 @@ git commit -m "feat(arch): per-diagram viewpoint scope on the binding (read from
 ```ts
 // tests/arch-instance-drop-factory-scope.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, Figure, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DiagramDocument, Figure, type ToolboxDropContext } from '@pragmatic-tech-ai/mural/framework'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 import { ArchDiagramBindingService } from '../arch-diagram-binding-service.js'
@@ -490,9 +490,9 @@ git commit -m "feat(arch): drop read-filter — scope candidates to the diagram'
 ```ts
 // tests/diagram-viewpoint-scope-service.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider, type ICommand } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DiagramDocument, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
+import { ServiceProvider, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService, DiagramDocument, type DocumentsContentHostService } from '@pragmatic-tech-ai/mural/framework'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 import { ArchDiagramBindingService } from '../arch-diagram-binding-service.js'
@@ -556,8 +556,8 @@ test('toggling a row calls setDocumentScope with the new selected set', () => {
 import {
     MetaData, Model, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, type DocumentsContentHostService, type IDocument } from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService, type DocumentsContentHostService, type IDocument } from '@pragmatic-tech-ai/mural/framework'
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 
 // One viewpoint toggle for the active diagram.
@@ -724,7 +724,7 @@ test('the seam key is a ServiceKey and a participant satisfies the interface', (
 
 ```ts
 // services/documents/new-file-participant.ts
-import { ServiceKey } from '@pragmatic-lab/mural/runtime'
+import { ServiceKey } from '@pragmatic-tech-ai/mural/runtime'
 import type { OpenProject } from '../projects/open-project.js'
 
 // Optional post-new-file hook the ProjectExplorer calls after creating a file
@@ -758,8 +758,8 @@ Imports: `import { NewFileParticipantKey } from '../../../services/documents/new
 ```ts
 // modules/architecture-projects/services/tests/arch-new-diagram-participant.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { PROJECT_MANIFEST_FILENAME } from '../../../../services/projects/project-factory.js'
 import { ArchitectureModelService } from '../architecture-model-service.js'
@@ -826,7 +826,7 @@ test('a non-.diagram path is ignored', async () => {
 import {
     MetaData, Model, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 import type { INewFileParticipant } from '../../../services/documents/new-file-participant.js'
 import type { OpenProject } from '../../../services/projects/open-project.js'
 import { ArchitectureModelService } from './architecture-model-service.js'

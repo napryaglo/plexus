@@ -216,7 +216,7 @@ Expected: FAIL — module does not exist.
 // DataTemplate per entity, written into presentation/*.mu ONLY for keys not
 // already declared there, so author edits/consolidations survive regeneration.
 import type { IStorage } from '...'          // same IStorage the factories use
-import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
+import type { TodlDocument, JsonNode } from '@pragmatic-tech-ai/todl'
 
 import { ontologyEntities, classEntities, resolveFacets, iconKey, isRasterIcon } from './presentation-generator.js'
 import { projectAnnotations } from './annotation-projection.js'

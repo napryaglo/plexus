@@ -4,7 +4,7 @@ import { EditorReloadService } from '../editor-reload-service.js'
 import { FileWatchService } from '../file-watch-service.js'
 import { CodeEditorService } from '../../../modules/code-editor/code-editor-service.js'
 import { ProjectExplorerService } from '../../../modules/project-explorer/services/project-explorer-service.js'
-import { DialogService } from '@pragmatic-lab/mural/framework'
+import { DialogService } from '@pragmatic-tech-ai/mural/framework'
 
 function fakeDoc(dirty: boolean) {
   return { Id: 'x.todl', IsDirty: dirty, Reload: vi.fn(async () => {}) }

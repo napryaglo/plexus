@@ -72,7 +72,7 @@ async function fireScenarioDrop(l: Launched, scenarioId: string, x: number, y: n
             if (v?.constructor?.name === 'Diagram') diagram = v
         }
         if (!diagram || typeof diagram._fireItemDropped !== 'function') return { fired: false, itemFound: false }
-        const FORMAT = '@pragmatic-lab/mural/toolbox-item'
+        const FORMAT = '@pragmatic-tech-ai/mural/toolbox-item'
         const itemId = 'scenario:' + scenarioId
         const data = { Has: (f: string) => f === FORMAT, Get: (f: string) => (f === FORMAT ? itemId : undefined) }
         diagram._fireItemDropped({ Data: data, Position: { X: x, Y: y }, TargetContainer: undefined })

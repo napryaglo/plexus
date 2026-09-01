@@ -1,5 +1,5 @@
-import { MetaData, MuralBase, RelayCommand, ServiceBase, ServiceKey, type ICommand, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DialogService, type DocumentsContentHostService, type IDocument } from '@pragmatic-lab/mural/framework'
+import { MetaData, MuralBase, RelayCommand, ServiceBase, ServiceKey, type ICommand, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService, DialogService, type DocumentsContentHostService, type IDocument } from '@pragmatic-tech-ai/mural/framework'
 import { promptSave, SavePromptResult } from '../dialogs/save-prompt-model.js'
 
 // The host surface the guard needs (a subset of DocumentsContentHostService),

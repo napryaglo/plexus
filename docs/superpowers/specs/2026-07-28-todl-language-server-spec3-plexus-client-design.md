@@ -1,7 +1,7 @@
 # TODL Language Server — Spec 3: Plexus Client Integration
 
 **Goal:** Wire the completed out-of-process TODL language server
-(`@pragmatic-lab/todl/language-server`) into Plexus so that its Monaco `.todl`
+(`@pragmatic-tech-ai/todl/language-server`) into Plexus so that its Monaco `.todl`
 editors get the full LSP authoring loop — diagnostics, completion, hover,
 go-to-definition, find-references, document symbols, rename, semantic tokens,
 folding, code actions, formatting, signature help — driven by a real language
@@ -52,13 +52,13 @@ semantics-blind; the renderer never imports server internals.
 A new electron-vite build input bundles TODL's `language-server` stdio entry into
 `out/server/todl-language-server.js`:
 
-- Node built-ins (`fs`, `path`, `url`, …) stay external; `@pragmatic-lab/todl`
+- Node built-ins (`fs`, `path`, `url`, …) stay external; `@pragmatic-tech-ai/todl`
   (compiler + `language-service` + `language-server`) and `vscode-languageserver`
   are bundled in, so the child needs nothing from `node_modules` at runtime.
 - Configured as an additional rollup input under electron-vite's `main` build (or a
   sibling config), emitting a standalone CJS/ESM file that `utilityProcess.fork`
   can execute directly in dev and in the packaged app.
-- **Build-time source:** Plexus's installed `@pragmatic-lab/todl` must expose the
+- **Build-time source:** Plexus's installed `@pragmatic-tech-ai/todl` must expose the
   `./language-server` subpath. The clean prerequisite is publishing **TODL 0.3.0**
   to Verdaccio and bumping Plexus's dependency; during development a local
   `file:`-link to the TODL checkout is acceptable. This is a finishing/prerequisite

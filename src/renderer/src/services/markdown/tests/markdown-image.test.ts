@@ -1,7 +1,7 @@
 import { describe, test, expect, vi } from 'vitest'
-import { Size } from '@pragmatic-lab/mural/runtime'
-import { Image } from '@pragmatic-lab/mural/basic'
-import { BitmapImage } from '@pragmatic-lab/mural/visual-engine'
+import { Size } from '@pragmatic-tech-ai/mural/runtime'
+import { Image } from '@pragmatic-tech-ai/mural/basic'
+import { BitmapImage } from '@pragmatic-tech-ai/mural/visual-engine'
 import type { IStorage } from '../../storage/storage.js'
 import {
     isRemoteUri, resolveLocalPath, mimeForPath, bytesToDataUri, resolveImageUri, loadImageInto,

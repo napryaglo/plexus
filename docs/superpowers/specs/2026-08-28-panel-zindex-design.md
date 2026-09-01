@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-28
 **Status:** Approved design; pending implementation plan
-**Repos:** Mural (`@pragmatic-lab/mural` framework + diagram) and Plexus (app)
+**Repos:** Mural (`@pragmatic-tech-ai/mural` framework + diagram) and Plexus (app)
 
 ## Problem
 

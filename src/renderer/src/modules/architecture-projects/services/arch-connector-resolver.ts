@@ -1,4 +1,4 @@
-import type { Repository } from '@pragmatic-lab/todl'
+import type { Repository } from '@pragmatic-tech-ai/todl'
 import { acceptSet } from './arch-concept-type.js'
 
 // One way a drawn connector A→B can bind: the relationship member on A's concept

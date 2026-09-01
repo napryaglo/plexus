@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'vitest'
-import { ServiceProvider, ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
 import {
     ConnectorEndpoint,
     ContentHostService,
@@ -8,11 +8,11 @@ import {
     Figure,
     type DocumentsContentHostService,
     type IDocument,
-} from '@pragmatic-lab/mural/framework'
-import { Point } from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/framework'
+import { Point } from '@pragmatic-tech-ai/mural/runtime'
 import { LayoutPipelineService } from '../layout-pipeline-service.js'
 import { PresetScope } from '../preset-scope.js'
-import { GetPipelineCatalog, type PipelineConfiguration } from '@pragmatic-lab/fresco'
+import { GetPipelineCatalog, type PipelineConfiguration } from '@pragmatic-tech-ai/fresco'
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
 import { FileSystemService } from '../../../../services/file-system/file-system-service.js'
 import { FileDiagramStorage } from '../../persistence/file-diagram-storage.js'

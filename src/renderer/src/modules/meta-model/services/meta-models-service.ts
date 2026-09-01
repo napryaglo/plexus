@@ -16,8 +16,8 @@ import {
     ServiceBase,
     ServiceKey,
     type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
-import { DialogService, type IActivatable } from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/runtime'
+import { DialogService, type IActivatable } from '@pragmatic-tech-ai/mural/framework'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'

@@ -1,8 +1,8 @@
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import {
     ContentHostService, Diagram, DiagramDocument,
     type DocumentsContentHostService, type IDocument,
-} from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/framework'
 import { FileDiagramStorage } from '../persistence/file-diagram-storage.js'
 import { readGuides, writeGuides } from '../persistence/diagram-guides-store.js'
 

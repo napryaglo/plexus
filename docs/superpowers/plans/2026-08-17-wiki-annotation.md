@@ -6,7 +6,7 @@
 
 **Architecture:** `annotation wiki { path : string?; }` in TODL's prelude (auto-resolvable as `<concept>@wiki`, no machinery changes). One `WikiLocator` probes **open** projects' own sources to resolve a concept → `{ root, relPath }` (the declaring meta-model/library, not a consuming architecture). One `WikiService` exposes `hasWiki(concept): Promise<boolean>` (visibility, via the locator so the item shows exactly when openable) and `OpenWikiCommand` (opens `join(root, relPath)` via `CodeEditorService`). Each surface VM gains `Concept` + `HasWiki` DPs and a shared `when ($HasWiki = true) { ContextMenuService.ContextMenu = @OpenWikiMenu }` trigger.
 
-**Tech Stack:** TypeScript (TODL package + Plexus renderer), `@pragmatic-lab/todl` (`ModelDraft`, `Repository`, `parse`, `SourceFile`), mural runtime/framework (`Model`/`RegisterProperty`, `RelayCommand`, `ServiceBase`, `ContextMenuService`), mural `.mu` CLI, vitest, node:test (TODL).
+**Tech Stack:** TypeScript (TODL package + Plexus renderer), `@pragmatic-tech-ai/todl` (`ModelDraft`, `Repository`, `parse`, `SourceFile`), mural runtime/framework (`Model`/`RegisterProperty`, `RelayCommand`, `ServiceBase`, `ContextMenuService`), mural `.mu` CLI, vitest, node:test (TODL).
 
 ## Global Constraints
 
@@ -14,7 +14,7 @@
 - Enums over string-literal unions; no `type X = 'a'|'b'`.
 - Renderer: no `node:fs`/`node:path` — build paths with the local `join` helper (separator inferred from the directory), read/write via `FileSystemService`.
 - TODL tests run with `--test-force-exit`.
-- Publishing `@pragmatic-lab/todl` and `@pragmatic-lab/mural` goes ONLY to the local Verdaccio (`http://localhost:4873`), never public npm. Never commit `.npmrc`/secrets.
+- Publishing `@pragmatic-tech-ai/todl` and `@pragmatic-tech-ai/mural` goes ONLY to the local Verdaccio (`http://localhost:4873`), never public npm. Never commit `.npmrc`/secrets.
 - Approach A (source-only): wiki resolves only when the concept's declaring project is open in the workspace. A closed declaring project / missing file is a normal, handled outcome (no menu item / a status line), never a crash.
 - The wiki annotation is plain (`{ path : string?; }`), NOT `: MuralResource` — it is never baked into published presentation.
 - Commit after each task with the given message. Do NOT push (the user pushes explicitly). Branch off `main`/current branch first if on a default branch.
@@ -41,7 +41,7 @@ Create `TODL/src/stdlib/tests/prelude-wiki.test.ts` (mirror `prelude-iconsource.
 ```ts
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { load, toJSON, Repository, graphFromJSON } from '@pragmatic-lab/todl'
+import { load, toJSON, Repository, graphFromJSON } from '@pragmatic-tech-ai/todl'
 
 // A concept carrying a wiki annotation resolves `<concept>@wiki`.path.
 const SRC = `namespace demo {
@@ -86,11 +86,11 @@ cd TODL
 npm version minor --no-git-tag-version   # e.g. 0.29.0 -> 0.30.0
 npm publish                              # prepublishOnly builds; publishConfig → localhost:4873
 ```
-Note the new version (call it `<TODL_VERSION>`). Then in `Plexus/package.json` set `"@pragmatic-lab/todl": "^<TODL_VERSION>"` and:
+Note the new version (call it `<TODL_VERSION>`). Then in `Plexus/package.json` set `"@pragmatic-tech-ai/todl": "^<TODL_VERSION>"` and:
 ```bash
-cd Plexus && npm install @pragmatic-lab/todl@<TODL_VERSION>
+cd Plexus && npm install @pragmatic-tech-ai/todl@<TODL_VERSION>
 ```
-Verify: `grep '"version"' Plexus/node_modules/@pragmatic-lab/todl/package.json` shows `<TODL_VERSION>`.
+Verify: `grep '"version"' Plexus/node_modules/@pragmatic-tech-ai/todl/package.json` shows `<TODL_VERSION>`.
 
 - [ ] **Step 7: Commit (two repos)**
 
@@ -112,7 +112,7 @@ Resolve a concept to `{ root, relPath }` by probing each open project's own sour
 - Test: `Plexus/src/renderer/src/services/wiki/tests/wiki-locator.test.ts`
 
 **Interfaces:**
-- Consumes: `ProjectExplorerService.Key` → `.OpenProjects: ObservableCollection<OpenProject>`; `OpenProject.Project.RootPath: string`, `OpenProject.Project.Name: string`, `OpenProject.Storage: IStorage`; `collectTodlSources(storage): Promise<SourceFile[]>` from `../../modules/meta-model/services/todl-sources.js`; `ModelDraft.fromSources(baseRepos, sources, { namespace })`, `parse`, `type SourceFile` from `@pragmatic-lab/todl`.
+- Consumes: `ProjectExplorerService.Key` → `.OpenProjects: ObservableCollection<OpenProject>`; `OpenProject.Project.RootPath: string`, `OpenProject.Project.Name: string`, `OpenProject.Storage: IStorage`; `collectTodlSources(storage): Promise<SourceFile[]>` from `../../modules/meta-model/services/todl-sources.js`; `ModelDraft.fromSources(baseRepos, sources, { namespace })`, `parse`, `type SourceFile` from `@pragmatic-tech-ai/todl`.
 - Produces:
   - `class WikiLocator` with `constructor(provider: IServiceProvider)`
   - `resolveWiki(concept: string): Promise<{ root: string; relPath: string } | undefined>`
@@ -123,7 +123,7 @@ Create `Plexus/src/renderer/src/services/wiki/tests/wiki-locator.test.ts`:
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider, ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
 import { ProjectExplorerService } from '../../../modules/project-explorer/services/project-explorer-service.js'
 import { WikiLocator } from '../wiki-locator.js'
 
@@ -177,8 +177,8 @@ Expected: FAIL — `../wiki-locator.js` does not exist.
 Create `Plexus/src/renderer/src/services/wiki/wiki-locator.ts`:
 
 ```ts
-import { type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ModelDraft, parse, type SourceFile } from '@pragmatic-lab/todl'
+import { type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { ModelDraft, parse, type SourceFile } from '@pragmatic-tech-ai/todl'
 
 import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'
 import { collectTodlSources } from '../../modules/meta-model/services/todl-sources.js'
@@ -263,7 +263,7 @@ Create `Plexus/src/renderer/src/services/wiki/tests/wiki-service.test.ts`:
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { FileSystemService } from '../../file-system/file-system-service.js'
 import { CodeEditorService } from '../../../modules/code-editor/code-editor-service.js'
 import { WikiLocator } from '../wiki-locator.js'
@@ -324,7 +324,7 @@ Expected: FAIL — `../wiki-service.js` does not exist (and `WikiLocator.Key` if
 
 In `wiki-locator.ts` add the import + key:
 ```ts
-import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 // ...
 export class WikiLocator
 {
@@ -340,7 +340,7 @@ Create `Plexus/src/renderer/src/services/wiki/wiki-service.ts`:
 import {
     MetaData, Model, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 
 import { FileSystemService } from '../file-system/file-system-service.js'
 import { CodeEditorService } from '../../modules/code-editor/code-editor-service.js'
@@ -619,8 +619,8 @@ Create `Plexus/src/renderer/src/modules/diagram/services/tests/arch-toolbox-item
 
 ```ts
 import { test, expect } from 'vitest'
-import { ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
-import { ServiceKey } from '@pragmatic-lab/mural/runtime'
+import { ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
+import { ServiceKey } from '@pragmatic-tech-ai/mural/runtime'
 import { ArchToolboxItem } from '../arch-toolbox-item.js'
 
 test('ArchToolboxItem carries Concept and a settable HasWiki', () => {

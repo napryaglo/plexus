@@ -1,4 +1,4 @@
-import { Application, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { Application, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import {
     ContentHostService,
     DiagramDocument,
@@ -6,8 +6,8 @@ import {
     ToolboxRepository,
     ToolboxVisualDescriptor,
     type IDocument,
-} from '@pragmatic-lab/mural/framework'
-import type { Entity, Repository } from '@pragmatic-lab/todl'
+} from '@pragmatic-tech-ai/mural/framework'
+import type { Entity, Repository } from '@pragmatic-tech-ai/todl'
 
 import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolver.js'
 import { ArchToolboxItem } from '../../diagram/services/arch-toolbox-item.js'

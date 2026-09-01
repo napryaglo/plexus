@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { TitleService, type ITitleSource } from '../title-service.js'
 
 // A controllable title source: mutate the two values, then fire() to notify.

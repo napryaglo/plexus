@@ -25,9 +25,9 @@
 // Theme / Scheme are real class references (the no-string-proxies rule);
 // Shell owns the `Region` attached property. All other controls resolve
 // through the compiler's default symbol table.
-import Material from "@pragmatic-lab/mural/resources/material"
-import MaterialDark from "@pragmatic-lab/mural/resources/material"
-import Shell from "@pragmatic-lab/mural/framework/shell/shell.js"
+import Material from "@pragmatic-tech-ai/mural/resources/material"
+import MaterialDark from "@pragmatic-tech-ai/mural/resources/material"
+import Shell from "@pragmatic-tech-ai/mural/framework/shell/shell.js"
 
 // The app's modules — each a `module NAME { … }` const from its own file.
 // Listed in the `.modules:` block below, they compose onto the shell:
@@ -187,9 +187,9 @@ import SettingsResources from "./services/settings/settings.resources.mu.js"
 import SavePromptResources from "./services/dialogs/save-prompt.resources.mu.js"
 import PlexusDocumentHost from "./services/documents/plexus-document-host.js"
 // Framework tokens registered at the app ROOT below (see `.services:`).
-import SettingsStoreKey from "@pragmatic-lab/mural/framework"
-import ApplicationSettings from "@pragmatic-lab/mural/framework"
-import SettingsContributionKey from "@pragmatic-lab/mural/framework"
+import SettingsStoreKey from "@pragmatic-tech-ai/mural/framework"
+import ApplicationSettings from "@pragmatic-tech-ai/mural/framework"
+import SettingsContributionKey from "@pragmatic-tech-ai/mural/framework"
 
 // The Navigation region's service is provided by EditorShell itself: a base
 // NavigationService whose destinations flatten from the modules listed below.

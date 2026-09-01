@@ -1,5 +1,5 @@
-import { Size } from '@pragmatic-lab/mural/runtime'
-import type { Diagram, DiagramDocument, ExternalDroppedArgs } from '@pragmatic-lab/mural/framework'
+import { Size } from '@pragmatic-tech-ai/mural/runtime'
+import type { Diagram, DiagramDocument, ExternalDroppedArgs } from '@pragmatic-tech-ai/mural/framework'
 import type { IStorage } from '../../../services/storage/storage'
 import { classifyFile, classifyUri } from './classify-media'
 import { MediaKind } from './media-kind'

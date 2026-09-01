@@ -6,8 +6,8 @@
 import {
     Key, MetaData, MuralBase, ObservableCollection, RelayCommand,
     type ICommand,
-} from '@pragmatic-lab/mural/runtime'
-import type { IDockPanel, IDocument } from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/runtime'
+import type { IDockPanel, IDocument } from '@pragmatic-tech-ai/mural/framework'
 import {
     AgentEventKind,
     type AgentEvent, type CreateProjectRequest, type QuestionAnswer, type ToolApprovalAnswer,

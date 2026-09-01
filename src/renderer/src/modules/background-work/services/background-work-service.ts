@@ -1,8 +1,8 @@
 import {
     MuralBase, MetaData, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService, type DocumentsContentHostService } from '@pragmatic-tech-ai/mural/framework'
 import { TaskExecutorRegistry, TaskKind, type BackgroundTask, type ITaskContext, type ITaskExecutor } from './task-executor.js'
 import { TaskHandle, TaskStatus } from './task-handle.js'
 import { InlineExecutor, type InlineJob } from './inline-executor.js'

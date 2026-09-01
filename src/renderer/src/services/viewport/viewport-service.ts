@@ -1,4 +1,4 @@
-import { MuralBase, MetaData, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { MuralBase, MetaData, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 // The window-height feed behind a seam so ViewportService is testable without a
 // real DOM. The default implementation (windowViewportSource) reads the renderer

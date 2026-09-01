@@ -6,7 +6,7 @@
 
 **Architecture:** An `ArchDiagramDocument` (an `IDocument`) holds an `ArchInstanceModel` + a layout map; its editor is a `DataTemplate[ArchDiagramDocument]` hosting an `ArchDiagram` (a Plexus `Diagram` subclass) whose nodes are `InstanceNodeVM`s rendered through `Figure.Content`/`ContentTemplate` = `LibraryRegistry.resolve(term)`. A term palette drags `plexus/class-ref`; the drop and connector-created handlers mutate the model; Save emits `.todl` (validated by the existing `TodlValidationService`) + writes `.archdiagram`.
 
-**Tech Stack:** TypeScript, Electron renderer, `@pragmatic-lab/mural/framework` (`Diagram`, `Figure`, `DiagramDocument` patterns, `ItemDroppedArgs`, `ConnectorCreatedArgs`), `@pragmatic-lab/todl`, `LibraryRegistry` (Phase 2), Vitest, `FakeStorage`.
+**Tech Stack:** TypeScript, Electron renderer, `@pragmatic-tech-ai/mural/framework` (`Diagram`, `Figure`, `DiagramDocument` patterns, `ItemDroppedArgs`, `ConnectorCreatedArgs`), `@pragmatic-tech-ai/todl`, `LibraryRegistry` (Phase 2), Vitest, `FakeStorage`.
 
 ## Global Constraints (verified against the real APIs)
 
@@ -43,7 +43,7 @@
 
 ```ts
 import { test, expect } from 'vitest'
-import { check, checkAgainst, toJSON, type TodlDocument } from '@pragmatic-lab/todl'
+import { check, checkAgainst, toJSON, type TodlDocument } from '@pragmatic-tech-ai/todl'
 import { ArchInstanceModel } from '../architecture-instance-model.js'
 import { resolveTermDrop } from '../drop-resolver.js'
 
@@ -123,8 +123,8 @@ export function resolveTermDrop(model: ArchInstanceModel, termId: string): DropT
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { check, checkAgainst, toJSON } from '@pragmatic-lab/todl'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { check, checkAgainst, toJSON } from '@pragmatic-tech-ai/todl'
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { META_MODELS_BACKEND_ID } from '../../../meta-model/services/meta-models-backend.js'
@@ -179,8 +179,8 @@ test('newFile then Save writes a .archdiagram and a sibling .todl; open restores
 - [ ] **Step 3: Implement `arch-diagram-document.ts`**
 
 ```ts
-import { MetaData, Model, ObservableCollection } from '@pragmatic-lab/mural/runtime'
-import type { IDocument } from '@pragmatic-lab/mural/framework'
+import { MetaData, Model, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
+import type { IDocument } from '@pragmatic-tech-ai/mural/framework'
 import type { IStorage } from '../../../services/storage/storage.js'
 import { ArchInstanceModel } from './architecture-instance-model.js'
 import { InstanceNodeVM } from './instance-node-vm.js'
@@ -241,8 +241,8 @@ export class ArchDiagramDocument extends Model implements IDocument
 - [ ] **Step 4: Implement `arch-diagram-document-factory.ts`**
 
 ```ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { IDocument } from '@pragmatic-lab/mural/framework'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import type { IDocument } from '@pragmatic-tech-ai/mural/framework'
 import type { IDocumentFactory } from '../../../services/documents/document-factory.js'
 import type { IStorage } from '../../../services/storage/storage.js'
 import { PROJECT_MANIFEST_FILENAME } from '../../../services/projects/project-factory.js'

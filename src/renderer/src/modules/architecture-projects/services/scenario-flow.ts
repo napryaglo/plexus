@@ -1,5 +1,5 @@
 // Structural view of a todl Entity: enough to walk a scenario's flow. The real
-// Entity (@pragmatic-lab/todl) satisfies this (its refs(member) returns Entity[]).
+// Entity (@pragmatic-tech-ai/todl) satisfies this (its refs(member) returns Entity[]).
 export interface FlowEntity {
   id: string
   refs(member: string): FlowEntity[]

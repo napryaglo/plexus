@@ -2,11 +2,11 @@
 // artifacts. Both meta-model and library loaders delegate here; each passes its
 // own ctxExtra (e.g. { MetaModelEntity } or { LibraryClassData }) so the eval'd
 // body can reference those symbols via destructuring without hard-coding them here.
-import * as MuralRuntime from '@pragmatic-lab/mural/runtime'
-import * as MuralBasic from '@pragmatic-lab/mural/basic'
-import * as MuralFramework from '@pragmatic-lab/mural/framework'
-import * as MuralEngine from '@pragmatic-lab/mural/visual-engine'
-import { ResourceDictionary } from '@pragmatic-lab/mural/runtime'
+import * as MuralRuntime from '@pragmatic-tech-ai/mural/runtime'
+import * as MuralBasic from '@pragmatic-tech-ai/mural/basic'
+import * as MuralFramework from '@pragmatic-tech-ai/mural/framework'
+import * as MuralEngine from '@pragmatic-tech-ai/mural/visual-engine'
+import { ResourceDictionary } from '@pragmatic-tech-ai/mural/runtime'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import type { CompiledPresentation } from './presentation-publisher.js'

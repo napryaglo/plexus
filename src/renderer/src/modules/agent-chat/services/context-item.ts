@@ -3,7 +3,7 @@
 // file's parent dir, since --add-dir is directory-scoped); `Name` is the
 // basename shown on the composer chip. A per-conversation VM rendered by the
 // DataTemplate[ContextItemVM] chip template.
-import { MuralBase, MetaData, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MuralBase, MetaData, RelayCommand, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 
 // Split a path on its last '/' or '\\' separator — dependency-free (no node
 // 'path') so it runs in the renderer against either separator.

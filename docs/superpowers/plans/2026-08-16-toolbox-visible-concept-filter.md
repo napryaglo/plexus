@@ -6,11 +6,11 @@
 
 **Architecture:** A pure helper `conceptToolboxVisible(repo, concept)` reads the concept's `<concept>@toolbox` annotation node from the loaded `Repository` (same path as `iconEntityKey`), returning visible-unless-opted-out. Both `modelPageItems` and `scenarioPageItems` add it to their per-entity skip guard.
 
-**Tech Stack:** TypeScript (Plexus renderer), vitest (node env), `@pragmatic-lab/todl` (`Repository`, `ModelDraft`, `load`/`toJSON`/`graphFromJSON`).
+**Tech Stack:** TypeScript (Plexus renderer), vitest (node env), `@pragmatic-tech-ai/todl` (`Repository`, `ModelDraft`, `load`/`toJSON`/`graphFromJSON`).
 
 ## Global Constraints
 
-- Renderer-only. No `@pragmatic-lab/mural` or `@pragmatic-lab/todl` change.
+- Renderer-only. No `@pragmatic-tech-ai/mural` or `@pragmatic-tech-ai/todl` change.
 - Every test file lives in a `tests/` subfolder next to the code it exercises.
 - Opt-out semantics, default visible: absent annotation → visible; `visible = true` → visible; only `visible = false` hides. No meta-model migration.
 - Reuse the existing `toolbox` annotation (`annotation toolbox { visible : boolean; }`) — the same one `meta-model/services/toolbox-projection.ts` uses. Do NOT invent a new annotation name.
@@ -34,7 +34,7 @@ Create `src/renderer/src/modules/architecture-projects/services/tests/toolbox-vi
 
 ```ts
 import { test, expect } from 'vitest'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 import { modelPageItems, scenarioPageItems, conceptToolboxVisible } from '../arch-model-toolbox-contributor.js'
@@ -91,10 +91,10 @@ Expected: FAIL — `conceptToolboxVisible` is not exported (import error), and/o
 
 - [ ] **Step 3: Add the helper**
 
-In `arch-model-toolbox-contributor.ts`, add the import for `Repository` and the helper. The existing todl import is `import type { Entity } from '@pragmatic-lab/todl'` — extend it:
+In `arch-model-toolbox-contributor.ts`, add the import for `Repository` and the helper. The existing todl import is `import type { Entity } from '@pragmatic-tech-ai/todl'` — extend it:
 
 ```ts
-import type { Entity, Repository } from '@pragmatic-lab/todl'
+import type { Entity, Repository } from '@pragmatic-tech-ai/todl'
 ```
 
 Add the helper below `entityLabel` (before `modelPageItems`):

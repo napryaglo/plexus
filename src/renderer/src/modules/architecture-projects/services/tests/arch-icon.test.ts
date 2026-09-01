@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft, type Entity } from '@pragmatic-lab/todl'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft, type Entity } from '@pragmatic-tech-ai/todl'
 import { iconEntityKey } from '../arch-icon.js'
 
 // Build a repo whose base carries `<id>@icon` annotation nodes — the SOURCE shape a

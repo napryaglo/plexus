@@ -1,4 +1,4 @@
-import { MetaData, MuralBase, ObservableCollection, type ICommand, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, ObservableCollection, type ICommand, type PropertyDescriptor } from '@pragmatic-tech-ai/mural/runtime'
 
 import type { IProjectFactory } from './project-factory.js'
 import type { IStorage } from '../storage/storage.js'

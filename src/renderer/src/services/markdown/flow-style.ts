@@ -4,8 +4,8 @@
 // inline-code chip live here so the full marked-based renderer and any other
 // FlowDocument builder share one visual vocabulary. All colours bind to theme
 // tokens (DynamicResource) so rendered markdown tracks light/dark like the chrome.
-import { Border, InlineUIContainer, TextBlock } from '@pragmatic-lab/mural/basic'
-import { DynamicResource, MuralBase, type PropertyKey, Thickness } from '@pragmatic-lab/mural/runtime'
+import { Border, InlineUIContainer, TextBlock } from '@pragmatic-tech-ai/mural/basic'
+import { DynamicResource, MuralBase, type PropertyKey, Thickness } from '@pragmatic-tech-ai/mural/runtime'
 
 // Monospace stack for code (inline chips + fenced blocks).
 export const MONO = 'Consolas, "SF Mono", "Courier New", monospace'

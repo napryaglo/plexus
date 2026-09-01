@@ -1,5 +1,5 @@
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ModelDraft, checkAgainst, parse, type SourceFile } from '@pragmatic-lab/todl'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { ModelDraft, checkAgainst, parse, type SourceFile } from '@pragmatic-tech-ai/todl'
 
 import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base-resolver.js'
 import { collectTodlSources } from '../../../services/todl/todl-sources.js'

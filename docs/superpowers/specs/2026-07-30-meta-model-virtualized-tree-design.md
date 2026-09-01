@@ -258,7 +258,7 @@ Imports at the top of the resources file: `MetaModelTreeNode` and the
 
 ## Component 7 — Plexus: dependency + build
 
-- Bump `@pragmatic-lab/mural` to `^0.1.52` in `Plexus/package.json`, reinstall
+- Bump `@pragmatic-tech-ai/mural` to `^0.1.52` in `Plexus/package.json`, reinstall
   from Verdaccio.
 - Recompile `.mu` (the panel resources) via the existing `compile:mu` step.
 

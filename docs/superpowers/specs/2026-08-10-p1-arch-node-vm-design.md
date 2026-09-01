@@ -11,7 +11,7 @@
 - **The bug (two layers).** (1) The node is a generic rectangle (placeholder fallback). (2) The label is `displayLabel(entity)` = the entity's `label`/`name`, else the entity **id** ("component2") — `arch-diagram-binding.ts:27-39,71-75`. No icon is drawn on the canvas; icons appear only in toolbox tiles.
 - **Icon infrastructure is complete but unused on canvas.** `TodlPresentationRegistry.iconKeyFor(entityKey) → resourceKey` and `resolveAsset(resourceKey)` (`.../diagram/services/todl-presentation-registry.ts:99-109`). The toolbox tile renders its icon via `ToolboxVisualPresenter[Context=VisualContext.Tile, Descriptor=$Descriptor]` (`diagram.resources.mu:256-284`), where `Descriptor` is a `ToolboxVisualDescriptor(TodlVisualResolverKey, key)` (`diagram-panel-services.ts:81-83`). `TodlVisualResolver.Resolve(descriptor, context)` already contemplates a **`VisualContext.Figure`** (canvas, ~32px) alongside `Tile` (`todl-visual-resolver.ts:26-35`). The resolver handles vector icons, bitmaps, and the fallback glyph uniformly.
 - **Persistence.** The `.diagram` JSON (mural `DiagramStorage`, `file-diagram-storage.ts`) stores nodes by `Id` + position; entities persist separately in `.todl` (`arch-model.ts:88-93`). Positions live **only** in the `.diagram`. On open, mural recreates nodes with their `Id`s; `ArchDiagramBinding.rescan()` matches each node's `Id` to a live entity and syncs its label.
-- **Mural consumption.** Plexus imports the **published** `@pragmatic-lab/mural` (`package.json` `^0.3.4`) — no relative source imports. It registers `[DataType]` templates in `.mu` resources (`diagram.resources.mu`); there is **no** `ArchNodeVM` or arch node template today.
+- **Mural consumption.** Plexus imports the **published** `@pragmatic-tech-ai/mural` (`package.json` `^0.3.4`) — no relative source imports. It registers `[DataType]` templates in `.mu` resources (`diagram.resources.mu`); there is **no** `ArchNodeVM` or arch node template today.
 
 ## Design
 
@@ -76,7 +76,7 @@ Registration happens where Plexus wires its diagram services (module init), so t
 ## Build prerequisite (sequencing)
 
 P1 compiles against mural's M1–M4 API (`NodeViewModel`, `[DataType]` resolution, the node-serializer registry), which is on the unpublished mural branch. Before P1 **builds**, mural M4 must reach Plexus by one of:
-- **Publish** mural `0.4.0` (M1–M4) + bump Plexus `@pragmatic-lab/mural` → `^0.4.0` (durable, matches the established publish→bump pattern); or
+- **Publish** mural `0.4.0` (M1–M4) + bump Plexus `@pragmatic-tech-ai/mural` → `^0.4.0` (durable, matches the established publish→bump pattern); or
 - **Workspace-link** the local mural build into Plexus `node_modules` (faster dev loop, no premature publish).
 
 This is a build-time decision (raised at plan/execution), not a design dependency. The design is stable either way.

@@ -31,13 +31,13 @@ export default defineConfig({
           find: /^opentype\.js$/,
           replacement: fileURLToPath(new URL('./src/renderer/opentype-shim.mjs', import.meta.url)),
         },
-        // @pragmatic-lab/todl exposes only a ROOT ('.') export, whose nested
+        // @pragmatic-tech-ai/todl exposes only a ROOT ('.') export, whose nested
         // import.default → dist/index.js trips Vite's resolvePackageEntry (as
         // it does for mural's root — hence subpath imports everywhere else).
         // Redirect the bare specifier straight to the built entry.
         {
-          find: /^@pragmatic-lab\/todl$/,
-          replacement: fileURLToPath(new URL('./node_modules/@pragmatic-lab/todl/dist/index.js', import.meta.url)),
+          find: /^@pragmatic-tech-ai\/todl$/,
+          replacement: fileURLToPath(new URL('./node_modules/@pragmatic-tech-ai/todl/dist/index.js', import.meta.url)),
         },
         // mural's COMPILER (run in-process by LibraryRegistry to compile `.mural`
         // visual templates at runtime) statically imports `createRequire` from
@@ -61,12 +61,12 @@ export default defineConfig({
     // root dist and the renderer picks it up on reload, no cache dance. Safe —
     // exclude only skips bundling, resolution is unaffected.
     optimizeDeps: {
-      // Exclude fresco alongside mural: fresco imports @pragmatic-lab/mural,
+      // Exclude fresco alongside mural: fresco imports @pragmatic-tech-ai/mural,
       // and pre-bundling fresco while mural is excluded leaves fresco's mural
       // import external — a mixed optimized/non-optimized graph that produces
       // stale "504 Outdated Optimize Dep" errors. Excluding both serves them as
       // live dist ESM sharing one mural instance.
-      exclude: ['@pragmatic-lab/mural', '@pragmatic-lab/fresco'],
+      exclude: ['@pragmatic-tech-ai/mural', '@pragmatic-tech-ai/fresco'],
     },
     build: {
       rollupOptions: {

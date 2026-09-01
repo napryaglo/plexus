@@ -157,7 +157,7 @@ Each unit has one job and is independently testable:
 ## Out of scope (v1)
 
 - TODL-specific wiring (agent writes `.todl`, Plexus validates via
-  `@pragmatic-lab/todl`, diagnostics fed back as a repair loop) — the next
+  `@pragmatic-tech-ai/todl`, diagnostics fed back as a repair loop) — the next
   component, riding this engine.
 - API-key / Agent-SDK providers — a later `IAiProvider` implementation.
 - Per-action permission prompts in the UI.

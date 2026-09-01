@@ -5,7 +5,7 @@
 // router configs.
 
 import { test, expect } from 'vitest'
-import { ServiceProvider, ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
 import {
     ConnectorEndpoint,
     Connector,
@@ -16,9 +16,9 @@ import {
     type ResolvedPortSide,
     type DocumentsContentHostService,
     type IDocument,
-} from '@pragmatic-lab/mural/framework'
-import '@pragmatic-lab/mural/framework/diagram/routing/straight-router.js'
-import '@pragmatic-lab/mural/framework/diagram/routing/orthogonal-router.js'
+} from '@pragmatic-tech-ai/mural/framework'
+import '@pragmatic-tech-ai/mural/framework/diagram/routing/straight-router.js'
+import '@pragmatic-tech-ai/mural/framework/diagram/routing/orthogonal-router.js'
 import { LayoutPipelineService } from '../layout-pipeline-service.js'
 
 // Nodes are modelled as shape Figures — the geometry-owning, side-endpoint-host

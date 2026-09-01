@@ -6,11 +6,11 @@
 import {
     MetaData, MuralBase, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 import {
     ContentHostService, DialogService, PanelDockService,
     type DocumentsContentHostService,
-} from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/framework'
 import {
     AgentEventKind, AgentSkillKind,
     type AgentEvent, type CatalogItem, type CreateProjectRequest, type IAgentApi,

@@ -6,7 +6,7 @@
 
 **Architecture:** A main-process `AgentSessionManager` keys N `AgentSession`s (each one subprocess) by a renderer-minted `sessionId`; every IPC command carries that id and every pushed event is wrapped `{ SessionId, Event }`. The renderer's single `AgentService` singleton is split into a per-conversation `ChatSession` VM (a dock panel) and a root `ChatSessionsService` that owns the one bridge listener, routes events by `sessionId`, and persists resumable conversations through a `ChatStore`. Interactive MCP tool events (question/approval/create-project) are attributed to a session by threading the `sessionId` through a `?session=` query on each session's per-process MCP config URL.
 
-**Tech Stack:** TypeScript, Electron (main/preload/renderer), `@pragmatic-lab/mural` (`MuralBase`/`ServiceBase`/`ObservableCollection`/`RelayCommand`/DPs), Vitest (unit), Playwright `_electron` (e2e), mural `.mu` markup compiled via `npm run compile:mu`.
+**Tech Stack:** TypeScript, Electron (main/preload/renderer), `@pragmatic-tech-ai/mural` (`MuralBase`/`ServiceBase`/`ObservableCollection`/`RelayCommand`/DPs), Vitest (unit), Playwright `_electron` (e2e), mural `.mu` markup compiled via `npm run compile:mu`.
 
 **Spec:** `docs/superpowers/specs/2026-08-30-multi-conversation-agents-design.md`
 
@@ -743,7 +743,7 @@ A provider-free `MuralBase` dock panel holding one conversation's transcript + i
 
 ```ts
 import { test, expect } from 'vitest'
-import { Key } from '@pragmatic-lab/mural/runtime'
+import { Key } from '@pragmatic-tech-ai/mural/runtime'
 import { AgentEventKind, type AgentEvent, type QuestionAnswer, type ToolApprovalAnswer, type CreateProjectRequest } from '../../../../../../shared/agent-api.js'
 import { ChatSession, type ChatSessionCallbacks } from '../chat-session.js'
 import { TranscriptReducer } from '../transcript.js'
@@ -813,8 +813,8 @@ Expected: FAIL — module not found.
 import {
     Key, MetaData, MuralBase, ObservableCollection, RelayCommand,
     type ICommand,
-} from '@pragmatic-lab/mural/runtime'
-import type { IDockPanel } from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/runtime'
+import type { IDockPanel } from '@pragmatic-tech-ai/mural/framework'
 import {
     AgentEventKind,
     type AgentEvent, type CreateProjectRequest, type QuestionAnswer, type ToolApprovalAnswer,
@@ -978,7 +978,7 @@ test('rehydrate rebuilds display items of the right kinds', () => {
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { ChatStore, type StoredConversation } from '../chat-store.js'
 import { FileSystemService } from '../../../../services/file-system/file-system-service.js'
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
@@ -1035,7 +1035,7 @@ Expected: FAIL — modules not found.
 `src/renderer/src/modules/agent-chat/services/transcript-serializer.ts`:
 
 ```ts
-import type { MuralBase } from '@pragmatic-lab/mural/runtime'
+import type { MuralBase } from '@pragmatic-tech-ai/mural/runtime'
 import { UserMessage, AssistantMessage, ToolActivity, TranscriptRole } from './transcript.js'
 
 // A stored transcript entry — the minimal text-bearing shape needed to re-display
@@ -1071,7 +1071,7 @@ export function rehydrateTranscript(records: readonly SerializedMessage[]): Mura
 `src/renderer/src/modules/agent-chat/services/chat-store.ts` — copy the `OpenProjectsStore` file-IO shape (same private `join`, same lazy mirror), storing an array of `StoredConversation`:
 
 ```ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { EnvironmentService } from '../../../services/environment/environment-service.js'
 import { FileSystemService } from '../../../services/file-system/file-system-service.js'
 import type { SerializedMessage } from './transcript-serializer.js'
@@ -1165,8 +1165,8 @@ The root service that owns the single bridge listener, mints/opens/closes conver
 
 ```ts
 import { test, expect, beforeEach, afterEach } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { PanelDockService } from '@pragmatic-lab/mural/framework'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { PanelDockService } from '@pragmatic-tech-ai/mural/framework'
 import { AgentEventKind, type IAgentApi, type TaggedAgentEvent } from '../../../../../../shared/agent-api.js'
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
 import { OpenProjectsStore } from '../../../../services/projects/open-projects-store.js'
@@ -1281,8 +1281,8 @@ Expected: FAIL — module not found.
 import {
     MuralBase, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
-import { PanelDockService } from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/runtime'
+import { PanelDockService } from '@pragmatic-tech-ai/mural/framework'
 import { AgentEventKind, type CreateProjectRequest, type IAgentApi } from '../../../../../shared/agent-api.js'
 import { EnvironmentService } from '../../../services/environment/environment-service.js'
 import { OpenProjectsStore } from '../../../services/projects/open-projects-store.js'
@@ -1469,7 +1469,7 @@ export class ChatSessionsService extends ServiceBase
 export default ChatSessionsService
 ```
 
-Add the missing `MetaData` import from `@pragmatic-lab/mural/runtime`.
+Add the missing `MetaData` import from `@pragmatic-tech-ai/mural/runtime`.
 
 - [ ] **Step 4: Run test to verify it passes**
 

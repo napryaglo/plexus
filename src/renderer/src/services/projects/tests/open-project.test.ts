@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { RelayCommand } from '@pragmatic-lab/mural/runtime'
+import { RelayCommand } from '@pragmatic-tech-ai/mural/runtime'
 
 import { Project, ProjectNode } from '../project.js'
 import { OpenProject } from '../open-project.js'

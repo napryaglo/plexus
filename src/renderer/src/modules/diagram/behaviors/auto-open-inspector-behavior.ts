@@ -4,7 +4,7 @@ import {
     DocumentsContentHostService,
     type IDockPanel,
     type PanelDockService,
-} from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/framework'
 
 // The Id every DiagramInspector shares (DiagramInspector ctor: 'diagram-format').
 // The dock dedups panels by Id, so at most one Format Shape panel is ever docked

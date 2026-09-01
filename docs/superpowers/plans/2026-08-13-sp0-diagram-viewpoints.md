@@ -6,14 +6,14 @@
 
 **Architecture:** A diagram's viewpoints are its governing scope, read via `ArchDiagramBindingService.scopeForDocument(doc)` (the authority every later sub-project consumes). Persistence moves from the project manifest into the diagram document via a new mural `SerializedDiagram.metadata` slot. Creation and edit share `DiagramViewpointPickerService` + one modal template.
 
-**Tech Stack:** Mural (`@pragmatic-lab/mural`, node:test, Verdaccio); Plexus (electron-vite, vitest, `.mu` templates compiled by the mural CLI).
+**Tech Stack:** Mural (`@pragmatic-tech-ai/mural`, node:test, Verdaccio); Plexus (electron-vite, vitest, `.mu` templates compiled by the mural CLI).
 
 ## Global Constraints
 
 - Work on `main` in both repos. Commit/push only when the user explicitly asks. Commit messages end with `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 - Every test file lives in a `tests/` subfolder next to its source.
 - Real TypeScript `enum`s, never string-literal unions.
-- Plexus consumes `@pragmatic-lab/*` from local Verdaccio (`http://localhost:4873/`); publish mural there. After a mural bump: `npm install @pragmatic-lab/mural@<v>`, then `rm -rf node_modules/.vite`, then `npm run compile:mu`. User restarts the dev server.
+- Plexus consumes `@pragmatic-tech-ai/*` from local Verdaccio (`http://localhost:4873/`); publish mural there. After a mural bump: `npm install @pragmatic-tech-ai/mural@<v>`, then `rm -rf node_modules/.vite`, then `npm run compile:mu`. User restarts the dev server.
 - Do NOT write JSON via PowerShell `Set-Content -Encoding utf8` (BOM breaks vite) — use `node -e`/Write.
 - New `.mu` resource files must be added to the `compile:mu` file list in `package.json` and merged/mounted like the existing ones.
 - Locked design: ≥1 viewpoint required; creation defaults to all selected and **aborts** on cancel; edit pre-selects the current set; persistence via `metadata['arch.viewpoints']`; manifest is a load-time fallback only.
@@ -72,7 +72,7 @@ describe('DiagramDocument metadata', () => {
 ### Task 2: Plexus — consume the new mural; viewpoint persistence store
 
 **Files:**
-- Modify: `package.json` (`@pragmatic-lab/mural` → `^0.6.24`), then install + clear vite + `compile:mu`.
+- Modify: `package.json` (`@pragmatic-tech-ai/mural` → `^0.6.24`), then install + clear vite + `compile:mu`.
 - Create: `src/renderer/src/modules/architecture-projects/services/arch-diagram-viewpoints-store.ts`
 - Modify: `src/renderer/src/modules/architecture-projects/services/diagram-viewpoints.ts` (keep `readDiagramViewpoints` as the legacy fallback; the manifest writer is no longer called from the create/edit flow).
 - Test: `src/renderer/src/modules/architecture-projects/services/tests/arch-diagram-viewpoints-store.test.ts`
@@ -81,14 +81,14 @@ describe('DiagramDocument metadata', () => {
 - Consumes: `DiagramDocument.Metadata` (Task 1); `readDiagramViewpoints(storage, path)` (legacy manifest fallback).
 - Produces: `const ARCH_VIEWPOINTS_KEY = 'arch.viewpoints'`; `readViewpoints(doc: DiagramDocument): string[] | undefined` (reads `Metadata[ARCH_VIEWPOINTS_KEY]` as `string[]`, else `undefined`); `writeViewpoints(doc: DiagramDocument, ids: string[]): void` (merges into `Metadata`); `async loadViewpoints(doc, storage, path): Promise<string[] | undefined>` (document first, then manifest fallback).
 
-- [ ] **Step 1: Bump + install mural.** `package.json` → `^0.6.24`; `npm install @pragmatic-lab/mural@0.6.24`; `rm -rf node_modules/.vite`.
+- [ ] **Step 1: Bump + install mural.** `package.json` → `^0.6.24`; `npm install @pragmatic-tech-ai/mural@0.6.24`; `rm -rf node_modules/.vite`.
 
 - [ ] **Step 2: Write the failing test.**
 
 ```ts
 import { test, describe } from 'vitest';
 import assert from 'node:assert/strict';
-import { DiagramDocument } from '@pragmatic-lab/mural/framework';
+import { DiagramDocument } from '@pragmatic-tech-ai/mural/framework';
 import { readViewpoints, writeViewpoints, ARCH_VIEWPOINTS_KEY } from '../arch-diagram-viewpoints-store.js';
 
 describe('arch diagram viewpoints store', () => {

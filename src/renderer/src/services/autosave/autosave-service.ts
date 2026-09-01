@@ -1,8 +1,8 @@
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import {
     ApplicationSettings, ContentHostService, Setting,
     type DocumentsContentHostService, type IDocument,
-} from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/framework'
 
 export const AUTOSAVE_ENABLED_SETTING = 'documents.autosave.enabled'
 export const AUTOSAVE_INTERVAL_SETTING = 'documents.autosave.intervalMinutes'

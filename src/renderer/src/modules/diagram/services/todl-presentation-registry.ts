@@ -1,4 +1,4 @@
-import { Application, ResourceDictionary, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { Application, ResourceDictionary, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { setIconResourceResolver } from './icon-key-converter.js'
 
 // What a source contributes on each discover(): its baked icon ASSETS (geometries

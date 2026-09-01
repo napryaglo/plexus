@@ -1,4 +1,4 @@
-import { ServiceKey } from '@pragmatic-lab/mural/runtime'
+import { ServiceKey } from '@pragmatic-tech-ai/mural/runtime'
 import type { OpenProject } from '../projects/open-project.js'
 
 // Optional post-new-file hook the ProjectExplorer calls after creating a file

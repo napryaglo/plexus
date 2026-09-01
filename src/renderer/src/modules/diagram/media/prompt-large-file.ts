@@ -1,4 +1,4 @@
-import type { DialogService } from '@pragmatic-lab/mural/framework'
+import type { DialogService } from '@pragmatic-tech-ai/mural/framework'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
 import { LargeFileChoice } from './media-storage.js'
 

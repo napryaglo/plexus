@@ -4,7 +4,7 @@
 
 **Goal:** Package Plexus into downloadable installers — Windows MSI + Linux AppImage/deb — built and released by CI, with AppImage auto-update.
 
-**Architecture:** electron-builder is added as an additive packaging layer over the existing `electron-vite build` (which emits `out/{main,preload,renderer}` + `out/main/todl-language-server.cjs`). electron-builder asar-packs `out/**` plus production node_modules into per-platform installers. electron-updater (main process, guarded to Linux AppImage only) reads a GitHub Release. A GitHub Actions matrix builds Windows on `windows-latest` and Linux on `ubuntu-latest` and publishes one Release; CI resolves the private `@pragmatic-lab/*` packages from GitHub Packages.
+**Architecture:** electron-builder is added as an additive packaging layer over the existing `electron-vite build` (which emits `out/{main,preload,renderer}` + `out/main/todl-language-server.cjs`). electron-builder asar-packs `out/**` plus production node_modules into per-platform installers. electron-updater (main process, guarded to Linux AppImage only) reads a GitHub Release. A GitHub Actions matrix builds Windows on `windows-latest` and Linux on `ubuntu-latest` and publishes one Release; CI resolves the private `@pragmatic-tech-ai/*` packages from GitHub Packages.
 
 **Tech Stack:** electron-builder, electron-updater, electron-vite (existing), GitHub Actions, GitHub Packages.
 
@@ -242,7 +242,7 @@ If no change was needed, skip the commit (this task produced an artifact, not so
 
 - [ ] **Step 1: Move bundled-into-renderer deps to devDependencies**
 
-In `package.json`, move `@pragmatic-lab/mural`, `@pragmatic-lab/fresco`, and `monaco-editor` from `dependencies` to `devDependencies`. Leave in `dependencies`: `chokidar`, `@modelcontextprotocol/sdk`, `vscode-jsonrpc`, `@pragmatic-lab/todl`, `marked`, `highlight.js`, `vscode-languageserver-types`.
+In `package.json`, move `@pragmatic-tech-ai/mural`, `@pragmatic-tech-ai/fresco`, and `monaco-editor` from `dependencies` to `devDependencies`. Leave in `dependencies`: `chokidar`, `@modelcontextprotocol/sdk`, `vscode-jsonrpc`, `@pragmatic-tech-ai/todl`, `marked`, `highlight.js`, `vscode-languageserver-types`.
 
 - [ ] **Step 2: Reinstall to refresh the tree**
 
@@ -409,9 +409,9 @@ git commit -m "feat(updater): wire electron-updater (Linux AppImage auto-update)
 
 ## Phase 3 — CI release matrix + GitHub Packages
 
-> **DEFERRED — blocked on an org/scope rename (owner-driven).** GitHub Packages requires the npm scope to match the owning org login. The current scope `@pragmatic-lab` cannot be used: the `pragmatic-lab` login is owned by an unrelated third party (a 2020 "Holanda Pets" org), and no org the user owns has that login. Decision (2026-09-01): the user will **rename the package scope** across all framework repos (`@pragmatic-lab/*` → a new scope matching a user-owned org, e.g. `@pragmatic-labs-com/*`) once that org is set up, then publish the packages to GitHub Packages under it.
+> **DEFERRED — blocked on an org/scope rename (owner-driven).** GitHub Packages requires the npm scope to match the owning org login. The current scope `@pragmatic-tech-ai` cannot be used: the `pragmatic-lab` login is owned by an unrelated third party (a 2020 "Holanda Pets" org), and no org the user owns has that login. Decision (2026-09-01): the user will **rename the package scope** across all framework repos (`@pragmatic-tech-ai/*` → a new scope matching a user-owned org, e.g. `@pragmatic-tech-ais-com/*`) once that org is set up, then publish the packages to GitHub Packages under it.
 >
-> Until that rename lands, **Task 7 is on hold**. When it does, revisit this task's `owner`, the scope in the CI `.npmrc` step, and `electron-builder.yml` `publish.owner`/`repo` to match the final names. The scope rename itself is a **separate, larger cross-repo task** (every package name + every `@pragmatic-lab/*` import across Mural/Fresco/TODL/todl-runtime/Plexus, plus a Verdaccio republish) — not part of this plan.
+> Until that rename lands, **Task 7 is on hold**. When it does, revisit this task's `owner`, the scope in the CI `.npmrc` step, and `electron-builder.yml` `publish.owner`/`repo` to match the final names. The scope rename itself is a **separate, larger cross-repo task** (every package name + every `@pragmatic-tech-ai/*` import across Mural/Fresco/TODL/todl-runtime/Plexus, plus a Verdaccio republish) — not part of this plan.
 >
 > Phases 1–2 do NOT depend on any of this and proceed now against local Verdaccio.
 
@@ -433,7 +433,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write   # create the GitHub Release
-  packages: read    # read @pragmatic-lab/* from GitHub Packages
+  packages: read    # read @pragmatic-tech-ai/* from GitHub Packages
 jobs:
   build:
     strategy:
@@ -450,10 +450,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Point @pragmatic-lab at GitHub Packages (CI only)
+      - name: Point @pragmatic-tech-ai at GitHub Packages (CI only)
         shell: bash
         run: |
-          printf '@pragmatic-lab:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=%s\n' "${GITHUB_TOKEN}" > .npmrc
+          printf '@pragmatic-tech-ai:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=%s\n' "${GITHUB_TOKEN}" > .npmrc
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm ci
@@ -465,7 +465,7 @@ jobs:
 ```
 
 Notes for the implementer:
-- The `.npmrc` written in the workflow **overwrites** the committed Verdaccio `.npmrc` for the CI run only (the checkout's working copy), so local dev is untouched. Because it is written to the repo working dir, npm's project-level `.npmrc` resolution uses the GitHub Packages registry for the `@pragmatic-lab` scope.
+- The `.npmrc` written in the workflow **overwrites** the committed Verdaccio `.npmrc` for the CI run only (the checkout's working copy), so local dev is untouched. Because it is written to the repo working dir, npm's project-level `.npmrc` resolution uses the GitHub Packages registry for the `@pragmatic-tech-ai` scope.
 - `--publish always` makes electron-builder create/update the GitHub Release named for the tag and upload artifacts + updater metadata.
 
 - [ ] **Step 2: Lint the workflow YAML**

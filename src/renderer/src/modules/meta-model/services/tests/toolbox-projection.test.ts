@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 import { projectToolbox } from '../toolbox-projection.js'
 
 // A doc with: a visible taxonomy `actors` (2 terms, one hidden), and a taxonomy

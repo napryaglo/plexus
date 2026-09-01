@@ -1,6 +1,6 @@
-import { Application } from '@pragmatic-lab/mural/runtime'
-import { parseSvgIcon, type IconDefinition } from '@pragmatic-lab/mural/basic'
-import { BitmapImage } from '@pragmatic-lab/mural/visual-engine'
+import { Application } from '@pragmatic-tech-ai/mural/runtime'
+import { parseSvgIcon, type IconDefinition } from '@pragmatic-tech-ai/mural/basic'
+import { BitmapImage } from '@pragmatic-tech-ai/mural/visual-engine'
 
 // The fallback glyph an entity renders when its icon resource key is empty or
 // resolves nothing. A neutral "category" grid, monochrome (currentColor → themed

@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import type { Element } from '@pragmatic-lab/todl'
+import type { Element } from '@pragmatic-tech-ai/todl'
 import { ElementViewModel, registerElementViewModel, toViewModel } from '../element-view-model.js'
 
 // Minimal Element factory for VM tests (facets not under test get sane defaults).

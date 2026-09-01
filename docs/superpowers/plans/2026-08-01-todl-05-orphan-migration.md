@@ -6,11 +6,11 @@
 
 **Architecture:** Part A — `emitInstances` wraps concrete instances in a `model <ns>-model : <meta> uses <…> { }` block (local `class` nodes stay top-level, orphan-exempt; the model body rejects `class`); bindings are derived from the bases + the project namespace; `ArchInstanceModel.load` strips the synthesized container node so `own` stays instances-only. Part B — remove the descriptor from the scaffold guide, the TODL manual, and the `EA` test fixture.
 
-**Tech Stack:** TypeScript (strict ESM), `@pragmatic-lab/todl` (`TodlDocument`/`JsonNode` + `check`/`checkAgainst`/`toJSON`), Vitest.
+**Tech Stack:** TypeScript (strict ESM), `@pragmatic-tech-ai/todl` (`TodlDocument`/`JsonNode` + `check`/`checkAgainst`/`toJSON`), Vitest.
 
 ## Global Constraints
 
-- Consumes `@pragmatic-lab/todl` **0.5.0** — no TODL changes; the `model`/orphan rule is consumed as-is.
+- Consumes `@pragmatic-tech-ai/todl` **0.5.0** — no TODL changes; the `model`/orphan rule is consumed as-is.
 - **Concrete instances wrap in a `model` block; local `class` nodes stay top-level** (verified: `class` inside a model body is a syntax error).
 - **`deriveBindings`:** `metaModel` = the first (sorted) distinct `namespace` attr across the **base** nodes; `uses` = the remaining base namespaces plus the project namespace, sorted, with the meta-model slot removed. No bases → `{ metaModel: namespace, uses: [] }`. Validity only needs every bound name present in the merged doc (`validateModel` makes no meta-model/library distinction) — verified clean via `checkAgainst`.
 - **Model id:** `${namespace}-model` (deterministic, valid lowercase-kebab, no collision with `freshId`'s `<stem>-<seq>`).

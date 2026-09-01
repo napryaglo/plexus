@@ -6,14 +6,14 @@
 
 **Architecture:** A pure resolver turns a dropped term into candidate `(X, m)` drop-actions from the meta-model schema. `ArchModel` gains viewpoint→file routing (`createInViewpoint`). `ArchDiagramBinding` rescans on model change so drop-created figures bind. `ArchInstanceDropFactory` orchestrates: resolve → 0 reject / 1 auto / many chooser → create + ref + Figure + save. A `DropCandidateChooserService` popup (adapting the Problems dock) handles the many case.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/todl@^0.23.0` (`Repository`, `MetaKind`, `Entity`), `@pragmatic-lab/mural/framework` (`DiagramDocument`, `Figure`, `IToolboxDropFactory`, `ToolboxDropContext`), `@pragmatic-lab/mural/runtime` (`ServiceBase`/`ServiceKey`/`RelayCommand`/`ObservableCollection`/`Model`), Vitest.
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/todl@^0.23.0` (`Repository`, `MetaKind`, `Entity`), `@pragmatic-tech-ai/mural/framework` (`DiagramDocument`, `Figure`, `IToolboxDropFactory`, `ToolboxDropContext`), `@pragmatic-tech-ai/mural/runtime` (`ServiceBase`/`ServiceKey`/`RelayCommand`/`ObservableCollection`/`Model`), Vitest.
 
 ## Global Constraints
 
-- `@pragmatic-lab/todl@^0.23.0` (installed). Import `Repository`, `MetaKind`, `type Entity` from `@pragmatic-lab/todl`.
+- `@pragmatic-tech-ai/todl@^0.23.0` (installed). Import `Repository`, `MetaKind`, `type Entity` from `@pragmatic-tech-ai/todl`.
 - Real TypeScript enums (`DropActionKind`), never string-literal unions.
 - Every test file lives in a `tests/` subfolder next to its source.
-- No relative `../src` mural imports — use `@pragmatic-lab/mural/{framework,runtime}`.
+- No relative `../src` mural imports — use `@pragmatic-tech-ai/mural/{framework,runtime}`.
 - `app.mu.js` is generated and **gitignored** — run `compile:mu` but never `git add` it.
 - Standalone (non-architecture) diagrams must keep working: the drop falls back to a plain `CreateNode` when there is no `ArchModel`.
 - Commit after each task; messages end with `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
@@ -21,14 +21,14 @@
 
 ## Verified surfaces (do not re-derive)
 
-- `Repository` (`@pragmatic-lab/todl`): `allNodes(): Node[]` (`Node = { id, tier, typeOf, attrs: Map<string,Scalar> }`) · `resolve(id): Node | undefined` · `classOf(leaf): NodeId | null` · `represents(taxonomy): NodeId[]` · `supertypesOf(concept): NodeId[]` · `viewpointsFraming(concept): NodeId[]` · `effectiveSchema(concept): { relationships: { name: string; target: NodeId; cardinality }[] }`. `MetaKind.Concept === 'concept'`.
+- `Repository` (`@pragmatic-tech-ai/todl`): `allNodes(): Node[]` (`Node = { id, tier, typeOf, attrs: Map<string,Scalar> }`) · `resolve(id): Node | undefined` · `classOf(leaf): NodeId | null` · `represents(taxonomy): NodeId[]` · `supertypesOf(concept): NodeId[]` · `viewpointsFraming(concept): NodeId[]` · `effectiveSchema(concept): { relationships: { name: string; target: NodeId; cardinality }[] }`. `MetaKind.Concept === 'concept'`.
 - `ModelDraft` (SP2b): `create(concept, id, home?): Entity` · `setField(id, name, value): void` · `addRef(from, member, to): void` · `homeOf(id): string | undefined` · `toTodlByFile(): Map<string,string>` · `ownInstances(): Entity[]`. `create` does NOT stamp `conforms`.
 - `ArchModel` (SP3/SP4a): `entities()` · `viewpoints()` · `repository()` · `setField` · `addRef` · `save()` · `onChanged(cb): () => void` · `create(concept, id, home?)`. Protected: `draft`, `fire()`.
 - `ArchDiagramBinding` (SP4a): `constructor(doc: DiagramDocument, model: ArchModel)` · `attach()` · `dispose()`. Private `bound: Map<string, Figure>`, `off`.
 - `ArchDiagramBindingService` (SP4a): `bindings: Map<IDocument, ArchDiagramBinding>` (private).
 - `ArchInstanceDropFactory` (`arch-instance-drop-factory.ts`): plain class implementing `IToolboxDropFactory`; `ArchInstanceDropFactoryKey = new ServiceKey<IToolboxDropFactory>('ArchInstanceDropFactory')`; registered in `register-arch-toolbox-adapters.ts` via `services.registerInstance(ArchInstanceDropFactoryKey, new ArchInstanceDropFactory())`.
-- `ToolboxDropContext` (`@pragmatic-lab/mural/framework`): `{ Descriptor: { Key: string }, Position: { X: number; Y: number }, Diagram, Mutator: DiagramMutator }`. `Mutator.CreateNode(kind, x, y): unknown | null`. The `Mutator` is the `DiagramDocument`.
-- `Figure` (`@pragmatic-lab/mural/framework`): `get/set Id(): string | undefined` · `get/set LabelText(): string` · `get/set Kind(): string`.
+- `ToolboxDropContext` (`@pragmatic-tech-ai/mural/framework`): `{ Descriptor: { Key: string }, Position: { X: number; Y: number }, Diagram, Mutator: DiagramMutator }`. `Mutator.CreateNode(kind, x, y): unknown | null`. The `Mutator` is the `DiagramDocument`.
+- `Figure` (`@pragmatic-tech-ai/mural/framework`): `get/set Id(): string | undefined` · `get/set LabelText(): string` · `get/set Kind(): string`.
 - Problems popup pattern (`problems-service.ts` / `problems.resources.mu`): `MenuButton [ IsOpen=$IsOpen, Template=@Popup, TriggerTemplate=@Trigger ]`; popup `Template [ TargetType=MenuButton ] { MenuPopupHost PART_PopupHost { ClickAwayScrim PART_Scrim; Border PART_PopupContainer { ScrollViewer { ItemsControl [ ItemsSource=$Rows, ItemsPanel=@ListPanel ] } } } }`; rows are `Model`s with `Label` + a `Command`; `ItemsPanelTemplate { VirtualizingStackPanel [ Orientation=Vertical, ItemHeight=28 ] }`.
 
 ## Shared meta-model fixture (Tasks 1, 2, 5)
@@ -64,7 +64,7 @@ Expected `resolveDropActions` over this model with `scope = {ComponentView, Depl
 - Test: `src/renderer/src/modules/architecture-projects/services/tests/arch-drop-resolver.test.ts`
 
 **Interfaces:**
-- Consumes: `Repository`, `MetaKind` from `@pragmatic-lab/todl`.
+- Consumes: `Repository`, `MetaKind` from `@pragmatic-tech-ai/todl`.
 - Produces: `export enum DropActionKind { Instance='instance', Reference='reference' }`; `export interface DropAction { kind: DropActionKind; concept: string; member?: string; term?: string; label: string }`; `export function resolveDropActions(repo: Repository, descriptorKey: string, scope: ReadonlySet<string>): DropAction[]`.
 
 - [ ] **Step 1: Write the failing test**
@@ -72,7 +72,7 @@ Expected `resolveDropActions` over this model with `scope = {ComponentView, Depl
 ```ts
 // tests/arch-drop-resolver.test.ts
 import { test, expect } from 'vitest'
-import { load } from '@pragmatic-lab/todl'
+import { load } from '@pragmatic-tech-ai/todl'
 import { resolveDropActions, DropActionKind } from '../arch-drop-resolver.js'
 
 const MM = `namespace archmm {
@@ -120,7 +120,7 @@ Expected: FAIL — module not found.
 
 ```ts
 // arch-drop-resolver.ts
-import { MetaKind, type Repository } from '@pragmatic-lab/todl'
+import { MetaKind, type Repository } from '@pragmatic-tech-ai/todl'
 
 // What a term-drop can create: a direct instance of a framed concept, or an
 // instance of a concept X whose reference member m targets the dropped term's
@@ -195,7 +195,7 @@ git commit -m "feat(arch): drop candidate resolver — term → (X,m) actions"
 ```ts
 // tests/arch-model-routing.test.ts
 import { test, expect } from 'vitest'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft, checkAgainst, Severity } from '@pragmatic-lab/todl'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft, checkAgainst, Severity } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 
@@ -244,7 +244,7 @@ Expected: FAIL — `createInViewpoint` is not a function.
 
 - [ ] **Step 3: Write minimal implementation**
 
-Add to `arch-model.ts` (inside the class). Also add `import type { Entity } from '@pragmatic-lab/todl'` if not already imported (it is, from SP4a).
+Add to `arch-model.ts` (inside the class). Also add `import type { Entity } from '@pragmatic-tech-ai/todl'` if not already imported (it is, from SP4a).
 
 ```ts
     // The home file (source uri) an own entity round-trips to.
@@ -324,8 +324,8 @@ git commit -m "feat(arch): ArchModel.createInViewpoint — viewpoint→file rout
 ```ts
 // tests/arch-diagram-binding-rescan.test.ts
 import { test, expect } from 'vitest'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
-import { DiagramDocument, Figure } from '@pragmatic-lab/mural/framework'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
+import { DiagramDocument, Figure } from '@pragmatic-tech-ai/mural/framework'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 import { ArchDiagramBinding } from '../arch-diagram-binding.js'
@@ -376,8 +376,8 @@ Replace the body of `arch-diagram-binding.ts` with the rescan design (keep the `
 
 ```ts
 // arch-diagram-binding.ts
-import { DiagramDocument, Figure } from '@pragmatic-lab/mural/framework'
-import type { Entity } from '@pragmatic-lab/todl'
+import { DiagramDocument, Figure } from '@pragmatic-tech-ai/mural/framework'
+import type { Entity } from '@pragmatic-tech-ai/todl'
 import type { ArchModel } from './arch-model.js'
 
 // Binds an opened diagram to a project's ArchModel. On every model change it
@@ -468,7 +468,7 @@ git commit -m "feat(arch): ArchDiagramBinding rescans on change — binds drop-c
 ```ts
 // tests/drop-candidate-chooser-service.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 import { DropActionKind, type DropAction } from '../arch-drop-resolver.js'
 import { DropCandidateChooserService, ChooserRow } from '../drop-candidate-chooser-service.js'
 
@@ -506,7 +506,7 @@ Expected: FAIL — module not found.
 import {
     MetaData, Model, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 import type { DropAction } from './arch-drop-resolver.js'
 
 // One selectable candidate row. A Model so the .mu template binds $Label / $Command.
@@ -680,9 +680,9 @@ Add `import type { ArchModel } from './arch-model.js'` to that file if not prese
 ```ts
 // tests/arch-instance-drop-factory.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, Figure, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DiagramDocument, Figure, type ToolboxDropContext } from '@pragmatic-tech-ai/mural/framework'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 import { ArchDiagramBindingService } from '../arch-diagram-binding-service.js'
@@ -748,8 +748,8 @@ test('a non-architecture document falls back to a plain CreateNode', () => {
 - [ ] **Step 3: Rewrite `arch-instance-drop-factory.ts`**
 
 ```ts
-import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { Figure, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { Figure, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-tech-ai/mural/framework'
 
 import { resolveDropActions, DropActionKind, type DropAction } from './arch-drop-resolver.js'
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'

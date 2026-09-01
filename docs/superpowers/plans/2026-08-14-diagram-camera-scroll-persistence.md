@@ -59,8 +59,8 @@ git commit -m "feat(diagram): persist camera as zoom + scroll offset"
 
 ```ts
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { DiagramDocument, ContentHostService, Diagram, ScrollViewer } from '@pragmatic-lab/mural/framework'
-import { ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { DiagramDocument, ContentHostService, Diagram, ScrollViewer } from '@pragmatic-tech-ai/mural/framework'
+import { ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
 import { DiagramCameraService } from '../diagram-camera-service.js'
 import { writeCamera, readCamera, type DiagramCameraState } from '../../persistence/diagram-camera-store.js'
 
@@ -129,13 +129,13 @@ git commit -m "feat(diagram): persist/hydrate camera via Zoom + ScrollViewer off
 ### Task 3: bump mural to 0.9.0, install, verify
 
 **Files:**
-- Modify: `package.json` (`@pragmatic-lab/mural` `^0.7.0` → `^0.9.0`)
+- Modify: `package.json` (`@pragmatic-tech-ai/mural` `^0.7.0` → `^0.9.0`)
 
-- [ ] **Step 1: Bump the dep** in `package.json` to `"@pragmatic-lab/mural": "^0.9.0"`.
+- [ ] **Step 1: Bump the dep** in `package.json` to `"@pragmatic-tech-ai/mural": "^0.9.0"`.
 
 - [ ] **Step 2: Install from Verdaccio**
 
-Run: `npm install @pragmatic-lab/mural@0.9.0`
+Run: `npm install @pragmatic-tech-ai/mural@0.9.0`
 Expected: resolves 0.9.0 from `localhost:4873`. (If Vite later 504s on an outdated optimize-dep, the dev server needs `node_modules/.vite` cleared + restart — a runtime note, not a build blocker.)
 
 - [ ] **Step 3: Compile markup + typecheck**

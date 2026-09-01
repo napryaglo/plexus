@@ -27,7 +27,7 @@ import {
     type ICommand,
     type IServiceProvider,
     type KeyEventArgs,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 import {
     ContentHostService,
     DialogService,
@@ -35,7 +35,7 @@ import {
     ProjectFactoryRegistry,
     type DocumentsContentHostService,
     type IDocument,
-} from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/framework'
 
 import { FileSystemService } from '../../../services/file-system/file-system-service.js'
 import {

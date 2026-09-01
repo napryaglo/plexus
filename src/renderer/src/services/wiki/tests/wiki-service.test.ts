@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService } from '@pragmatic-lab/mural/framework'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService } from '@pragmatic-tech-ai/mural/framework'
 import { FileSystemService } from '../../file-system/file-system-service.js'
 import { WikiLocator } from '../wiki-locator.js'
 import { WikiService } from '../wiki-service.js'

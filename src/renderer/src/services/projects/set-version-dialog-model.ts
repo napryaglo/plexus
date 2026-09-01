@@ -1,4 +1,4 @@
-import { MetaData, MuralBase, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, RelayCommand, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 
 import { isValidVersion } from './semver-bump.js'
 

@@ -1,7 +1,7 @@
 # TODL — language manual
 
 The **Typed Object Definition Language** as accepted by the current
-`@pragmatic-lab/todl` compiler that Plexus runs on every keystroke. This
+`@pragmatic-tech-ai/todl` compiler that Plexus runs on every keystroke. This
 describes the surface the parser and validator actually enforce — not the older
 YAML-flavoured or `list<T>` forms you may find in archived sources.
 

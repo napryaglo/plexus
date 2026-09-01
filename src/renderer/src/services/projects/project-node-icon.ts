@@ -6,7 +6,7 @@
 // flows through a value converter: the per-kind node icon (`$Kind <<
 // KindToGeometry`) and the project header's expand/collapse chevron
 // (`$IsExpanded << ExpandedToChevron`).
-import { Application, Visibility, type ValueConverter } from '@pragmatic-lab/mural/runtime'
+import { Application, Visibility, type ValueConverter } from '@pragmatic-tech-ai/mural/runtime'
 
 import type { ProjectNodeKind } from './project.js'
 

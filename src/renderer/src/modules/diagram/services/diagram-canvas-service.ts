@@ -1,12 +1,12 @@
 import {
     Application, Color, ServiceBase, ServiceKey, ThemeManager, type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 import {
     ApplicationSettings, ContentHostService, DiagramDocument, Setting,
     type DocumentsContentHostService, type IDocument,
-} from '@pragmatic-lab/mural/framework'
-import { PaginatedCanvas } from '@pragmatic-lab/mural/basic'
-import { PatternBrush, PatternKind, SolidColorBrush } from '@pragmatic-lab/mural/visual-engine'
+} from '@pragmatic-tech-ai/mural/framework'
+import { PaginatedCanvas } from '@pragmatic-tech-ai/mural/basic'
+import { PatternBrush, PatternKind, SolidColorBrush } from '@pragmatic-tech-ai/mural/visual-engine'
 
 const SHOW_KEY   = 'diagram.grid.show'
 const SIZE_KEY   = 'diagram.grid.size'

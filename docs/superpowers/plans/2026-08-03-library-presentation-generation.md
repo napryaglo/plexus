@@ -27,14 +27,14 @@
 - Test: `src/renderer/src/modules/library/services/tests/library-presentation-generator.test.ts`
 
 **Interfaces:**
-- Consumes: `distinctIcons(model)`, `iconKey(path)`, `resolveFacets(node, annotations)`, `classEntities(model)` from `../../meta-model/services/presentation-generator.js`; `projectAnnotations(doc, id)` from `../../meta-model/services/annotation-projection.js`; `JsonNode`, `TodlDocument` from `@pragmatic-lab/todl`.
+- Consumes: `distinctIcons(model)`, `iconKey(path)`, `resolveFacets(node, annotations)`, `classEntities(model)` from `../../meta-model/services/presentation-generator.js`; `projectAnnotations(doc, id)` from `../../meta-model/services/annotation-projection.js`; `JsonNode`, `TodlDocument` from `@pragmatic-tech-ai/todl`.
 - Produces: `generateLibraryPresentationMu(model: TodlDocument, authorOverrideDicts: readonly string[]): string`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 import { test, expect } from 'vitest'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 import { generateLibraryPresentationMu } from '../library-presentation-generator.js'
 
 // Two Instance-tier classes (attrs.class === true): one with an icon, one without.
@@ -89,7 +89,7 @@ Expected: FAIL — module not found / `generateLibraryPresentationMu` not define
 // resource dictionary. Mirrors meta-model/services/presentation-generator.ts but
 // emits class-id-keyed templates binding $Display (the canvas supplies per-instance
 // display data), reusing that module's shared icon/label helpers. No I/O.
-import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
+import type { TodlDocument, JsonNode } from '@pragmatic-tech-ai/todl'
 
 import { distinctIcons, iconKey, resolveFacets, classEntities } from '../../meta-model/services/presentation-generator.js'
 import { projectAnnotations } from '../../meta-model/services/annotation-projection.js'
@@ -180,7 +180,7 @@ EOF
 - Test: `src/renderer/src/modules/library/services/tests/library-project-factory.test.ts` (extend)
 
 **Interfaces:**
-- Consumes: `generateLibraryPresentationMu` (Task 1); `IPresentationProjectFactory` from `../../../services/projects/project-factory.js`; `resolveBases` from `../../../services/projects/base-resolver.js`; `collectTaxonomySources` from `../../meta-model/services/todl-sources.js`; `checkAgainst, toJSON, Severity` from `@pragmatic-lab/todl`; `IStorage`, `StorageEntry`, `compareStorageEntries` (compareStorageEntries already imported).
+- Consumes: `generateLibraryPresentationMu` (Task 1); `IPresentationProjectFactory` from `../../../services/projects/project-factory.js`; `resolveBases` from `../../../services/projects/base-resolver.js`; `collectTaxonomySources` from `../../meta-model/services/todl-sources.js`; `checkAgainst, toJSON, Severity` from `@pragmatic-tech-ai/todl`; `IStorage`, `StorageEntry`, `compareStorageEntries` (compareStorageEntries already imported).
 - Produces: `LibraryProjectFactory.regeneratePresentation(storage: IStorage): Promise<void>`; private `writePresentation(storage, doc)`, `scanAuthorDicts(storage)`.
 
 - [ ] **Step 1: Write the failing tests** (append to `library-project-factory.test.ts`)
@@ -246,7 +246,7 @@ In `library-project-factory.ts`:
 
 1. Add imports:
 ```ts
-import { checkAgainst, toJSON, Severity, type TodlDocument } from '@pragmatic-lab/todl'   // extend existing todl import
+import { checkAgainst, toJSON, Severity, type TodlDocument } from '@pragmatic-tech-ai/todl'   // extend existing todl import
 import { type IPresentationProjectFactory } from '../../../services/projects/project-factory.js'   // add to existing import list
 import { compareStorageEntries, type IStorage, type StorageEntry } from '../../../services/storage/storage.js'   // add StorageEntry
 import { generateLibraryPresentationMu } from './library-presentation-generator.js'
@@ -338,14 +338,14 @@ EOF
 - Test: `src/renderer/src/modules/library/services/tests/library-presentation-publisher.test.ts`
 
 **Interfaces:**
-- Consumes: `generateLibraryPresentationMu` (Task 1); `distinctIcons` from `../../meta-model/services/presentation-generator.js`; `CompiledPresentation` type from `../../meta-model/services/presentation-publisher.js`; `compile, DEFAULT_SYMBOLS, svgToGeometryJs, type IncludeResolver, type IncludeResolution` from `@pragmatic-lab/mural/compiler`; `IStorage`; `TodlDocument`.
+- Consumes: `generateLibraryPresentationMu` (Task 1); `distinctIcons` from `../../meta-model/services/presentation-generator.js`; `CompiledPresentation` type from `../../meta-model/services/presentation-publisher.js`; `compile, DEFAULT_SYMBOLS, svgToGeometryJs, type IncludeResolver, type IncludeResolution` from `@pragmatic-tech-ai/mural/compiler`; `IStorage`; `TodlDocument`.
 - Produces: `publishLibraryPresentation(project: IStorage, dest: IStorage, base: string, doc: TodlDocument): Promise<PublishLibraryPresentationResult>` where `PublishLibraryPresentationResult = { ok: true; templates: number; icons: number } | { ok: false; missing: string[] }`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 import { test, expect } from 'vitest'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { publishLibraryPresentation } from '../library-presentation-publisher.js'
 
@@ -399,11 +399,11 @@ Expected: FAIL — module not found.
 // stripped), mirroring meta-model/services/presentation-publisher.ts. A referenced
 // icon with no project file blocks publish (nothing written). Author overrides are
 // intentionally ignored (the compiled artifact merges nothing).
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 import {
     compile, DEFAULT_SYMBOLS, svgToGeometryJs,
     type IncludeResolver, type IncludeResolution,
-} from '@pragmatic-lab/mural/compiler'
+} from '@pragmatic-tech-ai/mural/compiler'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import type { CompiledPresentation } from '../../meta-model/services/presentation-publisher.js'
@@ -412,7 +412,7 @@ import { generateLibraryPresentationMu } from './library-presentation-generator.
 
 const PRESENTATION_DIR = 'presentation'
 const COMPILED_FILE = 'presentation.compiled.json'
-const VISUAL_ENGINE = '@pragmatic-lab/mural/visual-engine'
+const VISUAL_ENGINE = '@pragmatic-tech-ai/mural/visual-engine'
 
 export type PublishLibraryPresentationResult =
     | { ok: true; templates: number; icons: number }
@@ -585,7 +585,7 @@ EOF
 - Test: `src/renderer/src/modules/library/services/tests/library-loader.test.ts` (extend)
 
 **Interfaces:**
-- Consumes: `CompiledPresentation` from `../../meta-model/services/presentation-publisher.js`; mural runtime/basic/framework/engine namespaces; `ResourceDictionary` from `@pragmatic-lab/mural/runtime`; `IStorage`.
+- Consumes: `CompiledPresentation` from `../../meta-model/services/presentation-publisher.js`; mural runtime/basic/framework/engine namespaces; `ResourceDictionary` from `@pragmatic-tech-ai/mural/runtime`; `IStorage`.
 - Produces: `loadLibraryPresentation(backend: IStorage, id: string, version: string): Promise<ResourceDictionary | undefined>`.
 
 - [ ] **Step 1: Write the failing test** (append to `library-loader.test.ts`; reuse its FakeStorage/backend setup pattern)
@@ -627,11 +627,11 @@ Expected: FAIL — `loadLibraryPresentation` not exported.
 - [ ] **Step 3: Implement** (append to `library-loader.ts`)
 
 ```ts
-import * as MuralRuntime from '@pragmatic-lab/mural/runtime'
-import * as MuralBasic from '@pragmatic-lab/mural/basic'
-import * as MuralFramework from '@pragmatic-lab/mural/framework'
-import * as MuralEngine from '@pragmatic-lab/mural/visual-engine'
-import { ResourceDictionary } from '@pragmatic-lab/mural/runtime'
+import * as MuralRuntime from '@pragmatic-tech-ai/mural/runtime'
+import * as MuralBasic from '@pragmatic-tech-ai/mural/basic'
+import * as MuralFramework from '@pragmatic-tech-ai/mural/framework'
+import * as MuralEngine from '@pragmatic-tech-ai/mural/visual-engine'
+import { ResourceDictionary } from '@pragmatic-tech-ai/mural/runtime'
 import type { CompiledPresentation } from '../../meta-model/services/presentation-publisher.js'
 
 // Load a library's baked presentation (class-keyed DataTemplates, geometry inlined)
@@ -683,7 +683,7 @@ EOF
 - Test: `src/renderer/src/modules/library/services/tests/library-registry.test.ts` (extend)
 
 **Interfaces:**
-- Consumes: `loadLibraryPresentation` (Task 5); `ResourceDictionary` from `@pragmatic-lab/mural/runtime`.
+- Consumes: `loadLibraryPresentation` (Task 5); `ResourceDictionary` from `@pragmatic-tech-ai/mural/runtime`.
 - Produces: a new `resolve` tiering — authored `visuals/*.mural` → presentation template → default box — and a `presentationVisuals` dictionary merged into `Application.Resources`.
 
 - [ ] **Step 1: Write the failing tests** (append to `library-registry.test.ts`)

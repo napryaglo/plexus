@@ -1,4 +1,4 @@
-import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase } from '@pragmatic-tech-ai/mural/runtime'
 
 // One editable parameter of a selected layout strategy. Two concrete VMs —
 // number and boolean — each with its own DataType-matched template (SpinEdit /

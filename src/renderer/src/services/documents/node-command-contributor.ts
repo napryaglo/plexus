@@ -1,4 +1,4 @@
-import { ServiceKey, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { ServiceKey, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 import type { OpenProject } from '../projects/open-project.js'
 import type { ProjectNode } from '../projects/project.js'
 

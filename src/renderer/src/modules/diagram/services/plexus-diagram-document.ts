@@ -1,5 +1,5 @@
-import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, DialogService, type CommandDefinition, type DiagramStorage, type Diagram } from '@pragmatic-lab/mural/framework'
+import type { IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DiagramDocument, DialogService, type CommandDefinition, type DiagramStorage, type Diagram } from '@pragmatic-tech-ai/mural/framework'
 import { DiagramCommandExtensionKey } from './diagram-command-extension.js'
 import { FileDiagramStorage } from '../persistence/file-diagram-storage.js'
 import { attachMediaDrop, attachMediaPaste, type MediaDropDeps } from '../media/media-drop-handler.js'

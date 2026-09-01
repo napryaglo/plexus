@@ -6,7 +6,7 @@
 
 **Architecture:** Mirror `LibraryProjectFactory`, but (a) bind `{ metaModel, libraries[] }` not just a meta-model, (b) author `.todl` (swap `formats` from `.diagram`), (c) no publish (terminal). The base-aware `TodlValidationService` + `resolveBases` already handle a `libraries[]` array, so live validation works once the manifest carries both. The New-Project dialog gains a `Switch`-row libraries checklist.
 
-**Tech Stack:** TypeScript (renderer), mural, `.mu` compiled via `npm run compile:mu`, Vitest, `@pragmatic-lab/todl@^0.2.0` (`checkAgainst`).
+**Tech Stack:** TypeScript (renderer), mural, `.mu` compiled via `npm run compile:mu`, Vitest, `@pragmatic-tech-ai/todl@^0.2.0` (`checkAgainst`).
 
 ## Global Constraints
 
@@ -56,7 +56,7 @@ git checkout -b architecture-resolver
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { PROJECT_MANIFEST_FILENAME, isPublishable } from '../../../../services/projects/project-factory.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
@@ -109,7 +109,7 @@ test('openProject tags .todl files as openable todl nodes', async () => {
 - [ ] **Step 4: Rewrite `architecture-project-factory.ts`:**
 
 ```ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import {
     PROJECT_MANIFEST_FILENAME,

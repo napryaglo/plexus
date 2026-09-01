@@ -1,6 +1,6 @@
 import { test, expect, beforeAll } from 'vitest'
-import { Application } from '@pragmatic-lab/mural/runtime'
-import { Color, FontStyle, FontWeight, SolidColorBrush, TextAlignment } from '@pragmatic-lab/mural/visual-engine'
+import { Application } from '@pragmatic-tech-ai/mural/runtime'
+import { Color, FontStyle, FontWeight, SolidColorBrush, TextAlignment } from '@pragmatic-tech-ai/mural/visual-engine'
 import { ArchNodeVM } from '../arch-node-vm.js'
 
 // The ArchNodeVM.TextStyle adapter is what mural's FormatMirror seeds from and

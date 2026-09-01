@@ -6,7 +6,7 @@
 
 **Architecture:** Three layers on the existing `filesystem.ts` seam. The **main process** owns a long-lived `claude -p` child behind an `IAiProvider` abstraction (registry + one CLI provider) and a single `AgentSession`. Typed **IPC** carries commands (renderer→main via `invoke`) and a new event push (main→renderer via `webContents.send`). The **renderer** consumes it through an injected `AgentService` that reduces events into an observable transcript, rendered by a chat-panel module through DataTemplates.
 
-**Tech Stack:** TypeScript (strict), Electron (main/preload/renderer), `@pragmatic-lab/mural` runtime (Model / ObservableCollection / RelayCommand / ServiceBase), `.mu` markup compiled by the mural CLI, Vitest (node environment).
+**Tech Stack:** TypeScript (strict), Electron (main/preload/renderer), `@pragmatic-tech-ai/mural` runtime (Model / ObservableCollection / RelayCommand / ServiceBase), `.mu` markup compiled by the mural CLI, Vitest (node environment).
 
 ## Global Constraints
 
@@ -1010,7 +1010,7 @@ The renderer-side domain: three item Models and the pure reducer that folds `Age
 - Test: `src/renderer/src/modules/agent-chat/services/transcript.test.ts`
 
 **Interfaces:**
-- Consumes: `AgentEvent`, `AgentEventKind` (Task 1); `Model`, `ObservableCollection`, `MetaData` from `@pragmatic-lab/mural/runtime`.
+- Consumes: `AgentEvent`, `AgentEventKind` (Task 1); `Model`, `ObservableCollection`, `MetaData` from `@pragmatic-tech-ai/mural/runtime`.
 - Produces:
   - `enum TranscriptRole { User='user', Assistant='assistant', Tool='tool' }`
   - `class UserMessage extends Model { get Text(): string }` (ctor `(text: string)`)
@@ -1104,7 +1104,7 @@ Expected: FAIL — `Cannot find module './transcript.js'`.
 // agent-chat.resources.mu) and the pure reducer that folds AgentEvents into an
 // ObservableCollection. Kept free of ServiceBase/window so it is unit-testable;
 // AgentService is a thin shell over it.
-import { MetaData, Model, ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
 import { AgentEventKind, type AgentEvent } from '../../../../../shared/agent-api.js'
 
 export enum TranscriptRole { User = 'user', Assistant = 'assistant', Tool = 'tool' }
@@ -1238,7 +1238,7 @@ The injected capability-content service: wires `window.api.agent` to a `Transcri
 - Create: `src/renderer/src/modules/agent-chat/services/agent-service.ts`
 
 **Interfaces:**
-- Consumes: `IAgentApi`, `AgentEvent` (Task 1); `TranscriptReducer` (Task 8); `ServiceBase`, `ServiceKey`, `Model`, `MetaData`, `ObservableCollection`, `RelayCommand`, `IServiceProvider` from `@pragmatic-lab/mural/runtime`; `EnvironmentService` (`src/renderer/src/services/environment/environment-service.ts`).
+- Consumes: `IAgentApi`, `AgentEvent` (Task 1); `TranscriptReducer` (Task 8); `ServiceBase`, `ServiceKey`, `Model`, `MetaData`, `ObservableCollection`, `RelayCommand`, `IServiceProvider` from `@pragmatic-tech-ai/mural/runtime`; `EnvironmentService` (`src/renderer/src/services/environment/environment-service.ts`).
 - Produces: `class AgentService extends ServiceBase` with `static Key`, and bound properties `Transcript`, `Draft`, `Status`, `SendCommand`.
 
 Note on working directory: v1 resolves the session cwd from `EnvironmentService.CurrentDirectory` (a guaranteed real path). Binding it to the *active project's* `RootPath` is a one-line change once an active-project accessor exists — tracked in the spec's out-of-scope list, not built here.
@@ -1265,7 +1265,7 @@ import {
     ServiceKey,
     type ICommand,
     type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 import type { IAgentApi } from '../../../../../shared/agent-api.js'
 import { EnvironmentService } from '../../../services/environment/environment-service.js'
 import { TranscriptReducer } from './transcript.js'

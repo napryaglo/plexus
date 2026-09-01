@@ -1,6 +1,6 @@
-import { Application, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ApplicationSettings, type IDocument, type ISettingsContribution } from '@pragmatic-lab/mural/framework'
-import type { Geometry } from '@pragmatic-lab/mural/visual-engine'
+import { Application, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { ApplicationSettings, type IDocument, type ISettingsContribution } from '@pragmatic-tech-ai/mural/framework'
+import type { Geometry } from '@pragmatic-tech-ai/mural/visual-engine'
 import { FileSystemService } from '../file-system/file-system-service.js'
 import { SettingsPage } from './settings-page.js'
 

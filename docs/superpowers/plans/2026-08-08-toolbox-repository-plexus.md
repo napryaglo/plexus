@@ -6,7 +6,7 @@
 
 **Architecture:** Two Plexus `IToolboxVisualResolver`s (`LibraryClassVisualResolver` wrapping `LibraryRegistry`; `ConceptVisualResolver` icon-based) + one `IToolboxDropFactory` (`ArchInstanceDropFactory` delegating to `ArchDiagramDocument.CreateNode`), registered under typed `ServiceKey`s. `ToolboxService` becomes a populator of the mural repository and exposes `.Repository`. Tiles, canvas nodes, and the preview all mount `ToolboxVisualPresenter`, whose slotted visual inherits its DataContext (the class template binds `$Display` on the item / VM / preview node). Hard cutover: `TermTile`, `toolbox-term-template`, the Plexus `ToolboxPage`, `InstanceNodeVM.Template`, and every `ToolboxShape` / `TOOLBOX_NODE_KIND_FORMAT` reference are deleted.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural` (framework/runtime/basic), Vitest (`src/**/*.test.ts`), electron-vite, mural `.mu` markup (compiled by the mural compiler; DataTypes register via TS `import` in the `.mu`, and mural built-ins like `ToolboxVisualPresenter`/`ToolboxPage` are known without import).
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural` (framework/runtime/basic), Vitest (`src/**/*.test.ts`), electron-vite, mural `.mu` markup (compiled by the mural compiler; DataTypes register via TS `import` in the `.mu`, and mural built-ins like `ToolboxVisualPresenter`/`ToolboxPage` are known without import).
 
 **Spec:** `docs/superpowers/specs/2026-08-08-toolbox-repository-plexus-design.md`
 
@@ -55,10 +55,10 @@
 
 **Files:**
 - Modify: `Mural/package.json` (`version`)
-- Modify: `Plexus/package.json` (`dependencies["@pragmatic-lab/mural"]`)
+- Modify: `Plexus/package.json` (`dependencies["@pragmatic-tech-ai/mural"]`)
 
 **Interfaces:**
-- Produces: an installed `@pragmatic-lab/mural@0.3.0` in Plexus exposing (from `@pragmatic-lab/mural/framework`) `ToolboxRepository`, `ToolboxItem`, `ToolboxPage`, `ToolboxVisualDescriptor`, `IToolboxVisualResolver`, `VisualContext`, `IToolboxDropFactory`, `ToolboxDropContext`, `ToolboxVisualPresenter`, `TOOLBOX_ITEM_FORMAT`; and the absence of `ToolboxShape` / `TOOLBOX_NODE_KIND_FORMAT`.
+- Produces: an installed `@pragmatic-tech-ai/mural@0.3.0` in Plexus exposing (from `@pragmatic-tech-ai/mural/framework`) `ToolboxRepository`, `ToolboxItem`, `ToolboxPage`, `ToolboxVisualDescriptor`, `IToolboxVisualResolver`, `VisualContext`, `IToolboxDropFactory`, `ToolboxDropContext`, `ToolboxVisualPresenter`, `TOOLBOX_ITEM_FORMAT`; and the absence of `ToolboxShape` / `TOOLBOX_NODE_KIND_FORMAT`.
 
 - [ ] **Step 1: Verify mural main is green and set the version**
 
@@ -66,11 +66,11 @@ Run in `Mural/`: `npm test` (expect the Spec-A-merged suite green), then set `ve
 
 - [ ] **Step 2: Build and publish mural to Verdaccio**
 
-Run in `Mural/`: `npm run build` then `npm publish --registry http://localhost:4873/`. Expect a successful publish of `@pragmatic-lab/mural@0.3.0`.
+Run in `Mural/`: `npm run build` then `npm publish --registry http://localhost:4873/`. Expect a successful publish of `@pragmatic-tech-ai/mural@0.3.0`.
 
 - [ ] **Step 3: Bump Plexus dependency and install**
 
-Set `Plexus/package.json` `dependencies["@pragmatic-lab/mural"]` to `^0.3.0`. Run in `Plexus/`: `npm install --registry http://localhost:4873/` (or the repo's configured registry). Expect `node_modules/@pragmatic-lab/mural/package.json` version `0.3.0`.
+Set `Plexus/package.json` `dependencies["@pragmatic-tech-ai/mural"]` to `^0.3.0`. Run in `Plexus/`: `npm install --registry http://localhost:4873/` (or the repo's configured registry). Expect `node_modules/@pragmatic-tech-ai/mural/package.json` version `0.3.0`.
 
 - [ ] **Step 4: Smoke-test the new exports are importable**
 
@@ -78,7 +78,7 @@ Write a throwaway `Plexus/src/renderer/src/modules/diagram/services/tests/mural-
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import * as fw from '@pragmatic-lab/mural/framework'
+import * as fw from '@pragmatic-tech-ai/mural/framework'
 
 describe('mural 0.3.0 toolbox exports', () => {
   it('exposes the toolbox subsystem and drops the old symbols', () => {
@@ -105,7 +105,7 @@ git -C Mural add package.json && git -C Mural commit -m "chore: bump mural to 0.
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 git -C Plexus add package.json src/renderer/src/modules/diagram/services/tests/mural-030-smoke.test.ts
-git -C Plexus commit -m "chore: consume @pragmatic-lab/mural@0.3.0
+git -C Plexus commit -m "chore: consume @pragmatic-tech-ai/mural@0.3.0
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
@@ -128,8 +128,8 @@ Keep the smoke test until Task 11 (it is deleted in the final cleanup).
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import { ServiceKey } from '@pragmatic-lab/mural/runtime'
-import { ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT, type IToolboxVisualResolver, type IToolboxDropFactory } from '@pragmatic-lab/mural/framework'
+import { ServiceKey } from '@pragmatic-tech-ai/mural/runtime'
+import { ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT, type IToolboxVisualResolver, type IToolboxDropFactory } from '@pragmatic-tech-ai/mural/framework'
 import { ArchToolboxItem } from '../arch-toolbox-item.js'
 
 describe('ArchToolboxItem', () => {
@@ -162,8 +162,8 @@ Expected: FAIL — `Cannot find module '../arch-toolbox-item.js'`.
 - [ ] **Step 3: Write the implementation**
 
 ```ts
-import { MetaData, Model, type ServiceKey } from '@pragmatic-lab/mural/runtime'
-import { ToolboxItem, type ToolboxVisualDescriptor, type IToolboxDropFactory } from '@pragmatic-lab/mural/framework'
+import { MetaData, Model, type ServiceKey } from '@pragmatic-tech-ai/mural/runtime'
+import { ToolboxItem, type ToolboxVisualDescriptor, type IToolboxDropFactory } from '@pragmatic-tech-ai/mural/framework'
 
 // A Plexus toolbox item that also exposes Display (= the term label) so a class
 // presentation template's $Display binds through the tile presenter's inherited
@@ -218,9 +218,9 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import { DataTemplate } from '@pragmatic-lab/mural/basic'
-import { Border } from '@pragmatic-lab/mural/basic'
-import { VisualContext, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { DataTemplate } from '@pragmatic-tech-ai/mural/basic'
+import { Border } from '@pragmatic-tech-ai/mural/basic'
+import { VisualContext, ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
 import { LibraryClassVisualResolver } from '../library-class-visual-resolver.js'
 
 function fakeRegistry() {
@@ -272,8 +272,8 @@ Expected: FAIL — module not found.
 - [ ] **Step 3: Write the implementation**
 
 ```ts
-import { Element, ServiceKey, type Visual } from '@pragmatic-lab/mural/runtime'
-import { VisualContext, type IToolboxVisualResolver, type ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { Element, ServiceKey, type Visual } from '@pragmatic-tech-ai/mural/runtime'
+import { VisualContext, type IToolboxVisualResolver, type ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
 import type { LibraryRegistry } from '../../library/services/library-registry.js'
 
 export const LibraryClassVisualResolverKey = new ServiceKey<IToolboxVisualResolver>('LibraryClassVisualResolver')
@@ -336,7 +336,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Test: `src/renderer/src/modules/diagram/services/tests/concept-visual-resolver.test.ts`
 
 **Interfaces:**
-- Consumes: `buildCtx`, `buildIconTemplate`, `buildDefaultTemplate` from `../../library/services/visual-library.js`; `parseSvgIcon`, `Icon` from `@pragmatic-lab/mural/basic`; mural `VisualContext`, `IToolboxVisualResolver`, `ToolboxVisualDescriptor`, `Element`, `Visual`, `ServiceKey`.
+- Consumes: `buildCtx`, `buildIconTemplate`, `buildDefaultTemplate` from `../../library/services/visual-library.js`; `parseSvgIcon`, `Icon` from `@pragmatic-tech-ai/mural/basic`; mural `VisualContext`, `IToolboxVisualResolver`, `ToolboxVisualDescriptor`, `Element`, `Visual`, `ServiceKey`.
 - Produces: `ConceptVisualResolverKey: ServiceKey<IToolboxVisualResolver>` and `class ConceptVisualResolver implements IToolboxVisualResolver` with `Register(key: string, icon: string | undefined): void`.
 
 - [ ] **Step 1: Confirm the icon-template helper signature**
@@ -347,7 +347,7 @@ Read `src/renderer/src/modules/library/services/visual-library.ts` and the test 
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import { VisualContext, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { VisualContext, ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
 import { ConceptVisualResolver } from '../concept-visual-resolver.js'
 
 const SVG = '<svg viewBox="0 0 24 24"><path d="M0 0h24v24H0z"/></svg>'
@@ -383,9 +383,9 @@ Expected: FAIL — module not found.
 - [ ] **Step 4: Write the implementation** (mirrors `library-registry.ts:152` icon building)
 
 ```ts
-import { Element, ServiceKey, type Visual } from '@pragmatic-lab/mural/runtime'
-import { parseSvgIcon } from '@pragmatic-lab/mural/basic'
-import { VisualContext, type IToolboxVisualResolver, type ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { Element, ServiceKey, type Visual } from '@pragmatic-tech-ai/mural/runtime'
+import { parseSvgIcon } from '@pragmatic-tech-ai/mural/basic'
+import { VisualContext, type IToolboxVisualResolver, type ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
 import { buildCtx, buildIconTemplate, buildDefaultTemplate } from '../../library/services/visual-library.js'
 
 export const ConceptVisualResolverKey = new ServiceKey<IToolboxVisualResolver>('ConceptVisualResolver')
@@ -450,8 +450,8 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import { Point } from '@pragmatic-lab/mural/runtime'
-import { ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { Point } from '@pragmatic-tech-ai/mural/runtime'
+import { ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
 import { ArchInstanceDropFactory } from '../arch-instance-drop-factory.js'
 
 describe('ArchInstanceDropFactory', () => {
@@ -489,8 +489,8 @@ Expected: FAIL — module not found.
 - [ ] **Step 3: Write the implementation**
 
 ```ts
-import { ServiceKey } from '@pragmatic-lab/mural/runtime'
-import type { IToolboxDropFactory, ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { ServiceKey } from '@pragmatic-tech-ai/mural/runtime'
+import type { IToolboxDropFactory, ToolboxDropContext } from '@pragmatic-tech-ai/mural/framework'
 
 export const ArchInstanceDropFactoryKey = new ServiceKey<IToolboxDropFactory>('ArchInstanceDropFactory')
 
@@ -540,7 +540,7 @@ Verify the `ServiceProvider` API shape first (Step 1): the summary of mural DI i
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { LibraryRegistry } from '../../library/services/library-registry.js'
 import { registerArchToolboxAdapters } from '../register-arch-toolbox-adapters.js'
 import { LibraryClassVisualResolverKey } from '../library-class-visual-resolver.js'
@@ -578,7 +578,7 @@ Expected: FAIL — module not found.
 - [ ] **Step 3: Write the implementation**
 
 ```ts
-import type { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import type { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { LibraryRegistry } from '../../library/services/library-registry.js'
 import { LibraryClassVisualResolver, LibraryClassVisualResolverKey } from './library-class-visual-resolver.js'
 import { ConceptVisualResolver, ConceptVisualResolverKey } from './concept-visual-resolver.js'
@@ -640,8 +640,8 @@ Read the current `sourceBackends()` (it yields `ensureMetaModelsBackend` + `ensu
 
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest'
-import { Application } from '@pragmatic-lab/mural/runtime'
-import { ToolboxRepository, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { Application } from '@pragmatic-tech-ai/mural/runtime'
+import { ToolboxRepository, ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
 import { ToolboxService } from '../diagram-panel-services.js'
 import { LibraryClassVisualResolverKey } from '../library-class-visual-resolver.js'
 import { ConceptVisualResolverKey } from '../concept-visual-resolver.js'
@@ -887,7 +887,7 @@ Expected: FAIL — `Descriptor` doesn't exist.
 Remove `TemplateKey` (lines ~22–23), `DataKey` (lines ~28–29), their getters/setters (lines ~53–55), and the `this.set_property_value(InstanceNodeVM.DataKey, this)` in the ctor. Add:
 
 ```ts
-import { ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
 import { LibraryClassVisualResolverKey } from '../../diagram/services/library-class-visual-resolver.js'
 import { ConceptVisualResolverKey } from '../../diagram/services/concept-visual-resolver.js'
 
@@ -957,8 +957,8 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import { Application } from '@pragmatic-lab/mural/runtime'
-import { ToolboxRepository, ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT } from '@pragmatic-lab/mural/framework'
+import { Application } from '@pragmatic-tech-ai/mural/runtime'
+import { ToolboxRepository, ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT } from '@pragmatic-tech-ai/mural/framework'
 import { LibraryTreeNode, LibraryNodeKind } from '../library-tree-node.js'
 import { LibraryClassVisualResolverKey } from '../../../diagram/services/library-class-visual-resolver.js'
 // beforeEach: ensure Application.current.Services carries a ToolboxRepository with a
@@ -990,8 +990,8 @@ Expected: FAIL — `Descriptor` / new drag shape absent.
 Remove the `TOOLBOX_NODE_KIND_FORMAT` import + `BeginKindDragData` DP. Add:
 
 ```ts
-import { Application } from '@pragmatic-lab/mural/runtime'
-import { ToolboxRepository, ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT } from '@pragmatic-lab/mural/framework'
+import { Application } from '@pragmatic-tech-ai/mural/runtime'
+import { ToolboxRepository, ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT } from '@pragmatic-tech-ai/mural/framework'
 import { LibraryClassVisualResolverKey } from '../../diagram/services/library-class-visual-resolver.js'
 
 public static readonly DescriptorKey = Model.RegisterProperty<ToolboxVisualDescriptor | undefined>(

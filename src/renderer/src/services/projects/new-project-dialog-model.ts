@@ -4,7 +4,7 @@ import {
     ObservableCollection,
     RelayCommand,
     type ICommand,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 
 import type { FileSystemService } from '../file-system/file-system-service.js'
 import type { BaseRef } from './base-binding.js'

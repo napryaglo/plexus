@@ -1,7 +1,7 @@
 // Bundle the TODL language server into a single self-contained CJS file so the
 // forked child needs nothing from node_modules at runtime (vendored, decoupled
 // from the registry version). The entry is TODL's own canonical stdio bin
-// (dist/language-server/stdio.js) — the same path whether @pragmatic-lab/todl is
+// (dist/language-server/stdio.js) — the same path whether @pragmatic-tech-ai/todl is
 // npm-linked for dev or installed from the registry — bundled with its own deps
 // (vscode-languageserver, the compiler, the language-service). Only Node
 // built-ins stay external.
@@ -9,14 +9,14 @@ import { build } from 'esbuild'
 import { builtinModules } from 'node:module'
 import { existsSync } from 'node:fs'
 
-const ENTRY = 'node_modules/@pragmatic-lab/todl/dist/language-server/stdio.js'
+const ENTRY = 'node_modules/@pragmatic-tech-ai/todl/dist/language-server/stdio.js'
 
 if (!existsSync(ENTRY)) {
   console.error(
     `\n[build-todl-server] Missing ${ENTRY}.\n` +
-    `The TODL language server must be available: publish @pragmatic-lab/todl (>=0.3.0, ` +
+    `The TODL language server must be available: publish @pragmatic-tech-ai/todl (>=0.3.0, ` +
     `with dist built) to the registry and reinstall, or 'npm run build' in the TODL ` +
-    `checkout and 'npm link @pragmatic-lab/todl' here.\n`,
+    `checkout and 'npm link @pragmatic-tech-ai/todl' here.\n`,
   )
   process.exit(1)
 }

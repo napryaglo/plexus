@@ -6,7 +6,7 @@
 
 **Architecture:** The claude-CLI provider discovers a project's `.claude/agents/*.md` + `.claude/skills/*/SKILL.md` (via a pure scanner behind an injectable IO seam), exposed through a new IPC method and cached per-project by a renderer `ProjectAgentCatalog`. The project-header context menu (`ProjectContextMenu`, bound to `OpenProject`) gains a dynamic **"Run Agent / Skill ▸"** submenu — reusing the exact `ItemsSource`/`ItemTemplate` pattern the existing "Add New" submenu uses — whose items call `ChatSessionsService.RunAgentSkill`. That seeds a new `ChatSession` (from the Multi-Conversation foundation) with the invocation turn and submits a Background Work task (the built-in Inline executor) whose `open` override reveals the conversation.
 
-**Tech Stack:** TypeScript, Electron (main/preload/renderer), `@pragmatic-lab/mural`, Vitest, Playwright `_electron`, mural `.mu` markup (`npm run compile:mu`).
+**Tech Stack:** TypeScript, Electron (main/preload/renderer), `@pragmatic-tech-ai/mural`, Vitest, Playwright `_electron`, mural `.mu` markup (`npm run compile:mu`).
 
 **Spec:** `docs/superpowers/specs/2026-08-30-project-agent-skill-runner-design.md`
 
@@ -385,7 +385,7 @@ A renderer service that fetches + caches a project's catalog per project directo
 
 ```ts
 import { test, expect, beforeEach, afterEach } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { AgentSkillKind, type IAgentApi, type ProjectCatalog } from '../../../../../../shared/agent-api.js'
 import { ProjectAgentCatalog } from '../project-agent-catalog.js'
 
@@ -431,7 +431,7 @@ Expected: FAIL — module not found.
 ```ts
 // Caches each open project's .claude/ catalog (agents + skills), fetched once via
 // the agent bridge and refetched only after Invalidate (call on project rescan).
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import type { IAgentApi, ProjectCatalog } from '../../../../../shared/agent-api.js'
 
 export class ProjectAgentCatalog extends ServiceBase
@@ -787,7 +787,7 @@ Expected: FAIL — module not found.
 ```ts
 // One row in the project's "Run Agent / Skill" submenu: a label + the command that
 // launches that catalog item. Mirrors NewItemChoice (the "Add New" submenu row).
-import { MetaData, MuralBase, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, RelayCommand, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 import { AgentSkillKind, type CatalogItem, type ProjectCatalog } from '../../../../../shared/agent-api.js'
 
 export class AgentSkillChoice extends MuralBase
@@ -858,7 +858,7 @@ In `project-explorer-service.ts`, add imports:
 import { ProjectAgentCatalog } from '../../agent-chat/services/project-agent-catalog.js'
 import { ChatSessionsService } from '../../agent-chat/services/chat-sessions-service.js'
 import { buildAgentSkillChoices } from '../../agent-chat/services/agent-skill-choice.js'
-import { ObservableCollection } from '@pragmatic-lab/mural/runtime'   // if not already imported
+import { ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'   // if not already imported
 ```
 
 At the end of `wireProjectCommands(op)`, add:

@@ -2,7 +2,7 @@
 // changes to in-renderer consumers. Pure lifecycle + fan-out: it does not know
 // about editors or validation — consumers subscribe and decide. Eagerly resolved
 // at startup (main.js) so it listens before any project work.
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { type FileChangeEvent, type IFileWatchApi } from '../../../../shared/file-watch-api.js'
 import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'
 

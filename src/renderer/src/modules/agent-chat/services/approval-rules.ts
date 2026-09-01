@@ -2,7 +2,7 @@
 // tool-approval rules, with a Revoke per row. Sourced from the agent bridge
 // (listApprovalRules / revokeApprovalRule) through a narrow injectable port so the
 // VM is unit-testable without window.api. Every view-bound property is a DP.
-import { MetaData, MuralBase, ObservableCollection, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, ObservableCollection, RelayCommand, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 import type { ApprovalRule } from '../../../../../shared/agent-api.js'
 
 // The bridge subset this surface needs. `projectKey` is the agent's working

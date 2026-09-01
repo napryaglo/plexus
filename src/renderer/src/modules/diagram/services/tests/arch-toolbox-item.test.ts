@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { ServiceKey } from '@pragmatic-lab/mural/runtime'
-import { ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT, type IToolboxVisualResolver, type IToolboxDropFactory } from '@pragmatic-lab/mural/framework'
+import { ServiceKey } from '@pragmatic-tech-ai/mural/runtime'
+import { ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT, type IToolboxVisualResolver, type IToolboxDropFactory } from '@pragmatic-tech-ai/mural/framework'
 import { ArchToolboxItem } from '../arch-toolbox-item.js'
 
 describe('ArchToolboxItem', () => {

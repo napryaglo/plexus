@@ -4,7 +4,7 @@
 // agent. Commands are wired to no-ops; clicking through a card still previews
 // its answered/recap state. Kept as pure builders so the sample data lives in
 // one place and is easy to extend.
-import { MuralBase } from '@pragmatic-lab/mural/runtime'
+import { MuralBase } from '@pragmatic-tech-ai/mural/runtime'
 import type { ApprovalRule } from '../../../../../shared/agent-api.js'
 import { UserMessage, AssistantMessage, ToolActivity } from './transcript.js'
 import { QuestionCard } from './question-card.js'

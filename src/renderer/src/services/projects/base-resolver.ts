@@ -1,6 +1,6 @@
-import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { TodlDocument, PackageRef } from '@pragmatic-lab/todl'
-import { PackageKind } from '@pragmatic-lab/todl'
+import type { IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import type { TodlDocument, PackageRef } from '@pragmatic-tech-ai/todl'
+import { PackageKind } from '@pragmatic-tech-ai/todl'
 
 import type { IStorage } from '../storage/storage.js'
 import { ensureMetaModelsBackend } from '../../modules/meta-model/services/meta-models-backend.js'

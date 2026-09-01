@@ -1,5 +1,5 @@
 import { test, expect, afterEach } from 'vitest'
-import { Application, ResourceDictionary, ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { Application, ResourceDictionary, ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import type { PresentationContribution, PresentationSource } from '../todl-presentation-registry.js'
 import { TodlPresentationRegistry } from '../todl-presentation-registry.js'

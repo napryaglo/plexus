@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-28
 **Status:** Approved (design); ready for implementation planning
-**Scope:** Mural (`@pragmatic-lab/mural`) + Plexus renderer
+**Scope:** Mural (`@pragmatic-tech-ai/mural`) + Plexus renderer
 
 ## Goal
 

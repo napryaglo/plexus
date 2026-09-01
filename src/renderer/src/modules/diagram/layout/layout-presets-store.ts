@@ -1,5 +1,5 @@
-import { type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { PipelineConfiguration } from '@pragmatic-lab/fresco'
+import { type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import type { PipelineConfiguration } from '@pragmatic-tech-ai/fresco'
 
 import { EnvironmentService } from '../../../services/environment/environment-service.js'
 import { FileSystemService } from '../../../services/file-system/file-system-service.js'

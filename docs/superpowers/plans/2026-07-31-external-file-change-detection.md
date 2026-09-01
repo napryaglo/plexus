@@ -462,7 +462,7 @@ Create `src/renderer/src/services/file-watch/file-watch-service.ts`:
 // changes to in-renderer consumers. Pure lifecycle + fan-out: it does not know
 // about editors or validation — consumers subscribe and decide. Eagerly resolved
 // at startup (main.js) so it listens before any project work.
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { type FileChangeEvent, type IFileWatchApi } from '../../../../shared/file-watch-api.js'
 import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'
 
@@ -707,7 +707,7 @@ import { EditorReloadService } from '../editor-reload-service.js'
 import { FileWatchService } from '../file-watch-service.js'
 import { CodeEditorService } from '../../../modules/code-editor/code-editor-service.js'
 import { ProjectExplorerService } from '../../../modules/project-explorer/services/project-explorer-service.js'
-import { DialogService } from '@pragmatic-lab/mural/runtime'
+import { DialogService } from '@pragmatic-tech-ai/mural/runtime'
 
 function fakeDoc(dirty: boolean) {
   return { IsDirty: dirty, Reload: vi.fn(async () => {}) }
@@ -784,7 +784,7 @@ Expected: FAIL — `editor-reload-service.js` not found.
 
 - [ ] **Step 3: Implement the consumer**
 
-> Import-path check: confirm where `DialogService` is exported from and match it. The reference below imports it from `@pragmatic-lab/mural/runtime`; if `project-explorer-service.ts` (which uses `DialogService.Key`) imports it from a different subpath (e.g. `@pragmatic-lab/mural/framework`), use that same specifier here and in the test.
+> Import-path check: confirm where `DialogService` is exported from and match it. The reference below imports it from `@pragmatic-tech-ai/mural/runtime`; if `project-explorer-service.ts` (which uses `DialogService.Key`) imports it from a different subpath (e.g. `@pragmatic-tech-ai/mural/framework`), use that same specifier here and in the test.
 
 Create `src/renderer/src/services/file-watch/editor-reload-service.ts`:
 
@@ -792,7 +792,7 @@ Create `src/renderer/src/services/file-watch/editor-reload-service.ts`:
 // Reacts to external file changes for files OPEN in the editor: reload a clean
 // buffer silently; prompt before discarding unsaved edits on a dirty buffer.
 // Eagerly resolved at startup so it listens from boot.
-import { ServiceBase, ServiceKey, DialogService, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, DialogService, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { FileChangeKind, type FileChangeEvent } from '../../../../shared/file-watch-api.js'
 import { FileWatchService } from './file-watch-service.js'
 import { CodeEditorService } from '../../modules/code-editor/code-editor-service.js'
@@ -951,7 +951,7 @@ Create `src/renderer/src/services/file-watch/project-rescan-service.ts`:
 // Reacts to external file changes anywhere under an open project root by
 // re-scanning + re-validating that project (the same path the agent's
 // refresh_project uses). Debounced per folder so a burst collapses to one rescan.
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { type FileChangeEvent } from '../../../../shared/file-watch-api.js'
 import { FileWatchService } from './file-watch-service.js'
 import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'

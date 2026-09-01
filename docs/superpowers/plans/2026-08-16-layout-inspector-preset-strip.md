@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Renderer-only. No `@pragmatic-lab/mural`, `@pragmatic-lab/fresco`, or `@pragmatic-lab/todl` change.
+- Renderer-only. No `@pragmatic-tech-ai/mural`, `@pragmatic-tech-ai/fresco`, or `@pragmatic-tech-ai/todl` change.
 - Every test file lives in a `tests/` subfolder next to the code it exercises (e.g. `layout/tests/…`), never beside the source.
 - No `node:fs`/`node:path` in the renderer: build paths with the local `join` helper (separator inferred from the directory), read/write through `FileSystemService`.
 - Presets persist one `<name>.json` (a Fresco `PipelineConfiguration`) per preset in `<EnvironmentService.UserDataDirectory>/layout-presets/`.
@@ -46,8 +46,8 @@ Create `src/renderer/src/modules/diagram/layout/tests/layout-presets-store.test.
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { PipelineConfiguration } from '@pragmatic-lab/fresco'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import type { PipelineConfiguration } from '@pragmatic-tech-ai/fresco'
 
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
 import { FileSystemService } from '../../../../services/file-system/file-system-service.js'
@@ -143,8 +143,8 @@ Expected: FAIL — the current `LayoutPresetsStore` constructor takes no argumen
 Replace the entire contents of `src/renderer/src/modules/diagram/layout/layout-presets-store.ts`:
 
 ```ts
-import { type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { PipelineConfiguration } from '@pragmatic-lab/fresco'
+import { type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import type { PipelineConfiguration } from '@pragmatic-tech-ai/fresco'
 
 import { EnvironmentService } from '../../../services/environment/environment-service.js'
 import { FileSystemService } from '../../../services/file-system/file-system-service.js'
@@ -270,7 +270,7 @@ Create `src/renderer/src/modules/diagram/layout/tests/layout-stage-vm-load-spec.
 
 ```ts
 import { test, expect } from 'vitest'
-import type { CatalogStrategy, LayoutStageSpec } from '@pragmatic-lab/fresco'
+import type { CatalogStrategy, LayoutStageSpec } from '@pragmatic-tech-ai/fresco'
 
 import { LayoutStageVM, DEFAULT_OPTION } from '../layout-stage-vm.js'
 
@@ -371,7 +371,7 @@ Add the `LoadSpec` method (public, after `Reapply`):
 Add the `LayoutStageSpec` type to the existing Fresco import if not already present. The current import is:
 
 ```ts
-import type { CatalogStrategy, CatalogParam, LayoutStageSpec } from '@pragmatic-lab/fresco'
+import type { CatalogStrategy, CatalogParam, LayoutStageSpec } from '@pragmatic-tech-ai/fresco'
 ```
 
 `LayoutStageSpec` is already imported (used by the `onChange` type) — no import change needed. Confirm `NumberParamVM`/`BoolParamVM` are imported as values (they are: `import { NumberParamVM, BoolParamVM } from './layout-param-vm.js'`).
@@ -464,8 +464,8 @@ Create `src/renderer/src/modules/diagram/layout/save-preset-prompt.ts`:
 ```ts
 import {
     MetaData, Model, RelayCommand, type ICommand,
-} from '@pragmatic-lab/mural/runtime'
-import { DialogService } from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/runtime'
+import { DialogService } from '@pragmatic-tech-ai/mural/framework'
 
 // Content view-model for the "save layout preset" dialog. Rendered by
 // DataTemplate[SavePresetPromptModel] (a name field + Cancel/Save). The host
@@ -562,7 +562,7 @@ Append to `src/renderer/src/modules/diagram/layout/tests/layout-pipeline-service
 Add to the imports block at the top of the file:
 
 ```ts
-import { GetPipelineCatalog, type PipelineConfiguration } from '@pragmatic-lab/fresco'
+import { GetPipelineCatalog, type PipelineConfiguration } from '@pragmatic-tech-ai/fresco'
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
 import { FileSystemService } from '../../../../services/file-system/file-system-service.js'
 ```
@@ -649,8 +649,8 @@ import {
     ServiceKey,
     type ICommand,
     type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
-import { Connector, ContentHostService, DialogService, DiagramDocument, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/runtime'
+import { Connector, ContentHostService, DialogService, DiagramDocument, type DocumentsContentHostService } from '@pragmatic-tech-ai/mural/framework'
 import {
     GetPipelineCatalog,
     BuildPipeline,
@@ -660,7 +660,7 @@ import {
     type EdgeRouting,
     type Edge,
     type LayoutStageSpec,
-} from '@pragmatic-lab/fresco'
+} from '@pragmatic-tech-ai/fresco'
 
 import {
     extract,

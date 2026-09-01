@@ -1,4 +1,4 @@
-import { ResourceDictionary, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ResourceDictionary, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import type { PresentationContribution, PresentationSource } from '../../diagram/services/todl-presentation-registry.js'
 import { ensureLibrariesBackend } from './libraries-backend.js'

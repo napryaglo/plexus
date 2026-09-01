@@ -2,7 +2,7 @@
 
 **Status:** Design. Plexus phase of the viewpoint-scoped multi-file architecture
 model (parent: `docs/superpowers/specs/2026-08-09-viewpoint-multifile-architecture-model-design.md`).
-Builds on the TODL foundation (SP1+SP2, `@pragmatic-lab/todl@0.23.0`). SP4
+Builds on the TODL foundation (SP1+SP2, `@pragmatic-tech-ai/todl@0.23.0`). SP4
 (diagram viewpoint-scoping) consumes this service.
 
 **Date:** 2026-08-09
@@ -111,7 +111,7 @@ Live project-open smoke (the ObservableCollection subscription) is manual.
 
 ## 6. Constraints
 
-- `@pragmatic-lab/todl@^0.23.0`; import `ModelDraft`, `Repository`, `graphFromJSON`,
+- `@pragmatic-tech-ai/todl@^0.23.0`; import `ModelDraft`, `Repository`, `graphFromJSON`,
   `type TodlDocument`, `type Entity` from it.
 - Real enums; every test in a `tests/` subfolder; render/logic through services,
   no relative `../src` mural imports.

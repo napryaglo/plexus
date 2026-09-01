@@ -6,7 +6,7 @@
 
 **Architecture:** A feature-tested factory capability (`IVersionedProjectFactory`) abstracts version read/write per producer; a pure `bumpVersion`/`isValidVersion` helper computes new versions; a `SetVersionDialogModel` view-model drives the Custom flow through the existing `DialogService`. `ProjectExplorerService` wires four feature-gated commands onto `OpenProject`, and the `.mu` context menu binds them under a `Bump Version` submenu.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural/runtime` (`Model`, `RelayCommand`, `ICommand`) + `/framework` (`DialogService`, `Checkbox`), Vitest, mural `.mu` (compiled via `npm run compile:mu`).
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural/runtime` (`Model`, `RelayCommand`, `ICommand`) + `/framework` (`DialogService`, `Checkbox`), Vitest, mural `.mu` (compiled via `npm run compile:mu`).
 
 ## Global Constraints
 
@@ -351,7 +351,7 @@ Expected: FAIL — `Cannot find module '../set-version-dialog-model.js'`.
 Create `services/projects/set-version-dialog-model.ts`:
 
 ```ts
-import { MetaData, Model, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, RelayCommand, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 
 import { isValidVersion } from './semver-bump.js'
 

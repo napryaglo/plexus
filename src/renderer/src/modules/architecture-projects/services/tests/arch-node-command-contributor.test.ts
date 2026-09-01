@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { ProjectExplorerService } from '../../../project-explorer/services/project-explorer-service.js'
 import { ArchDiagramBindingService } from '../arch-diagram-binding-service.js'
 import { DiagramViewpointsEditor } from '../diagram-viewpoints-editor.js'

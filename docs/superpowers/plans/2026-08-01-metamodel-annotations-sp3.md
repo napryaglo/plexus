@@ -6,11 +6,11 @@
 
 **Architecture:** A shared pure `resolveFacets(node, annotations)` centralizes the attr-primary/annotation-fallback rule. `entityTemplate` resolves icon/label through it (reusing SP2's `projectAnnotations`); `distinctIcons` unions annotation-sourced icons so they are `include`d/copied; `buildEntity` applies the same resolver to keep the drawer label consistent. No Mural/runtime/TODL changes.
 
-**Tech Stack:** TypeScript (strict ESM), `@pragmatic-lab/todl` (`TodlDocument`/`JsonNode` types only), Vitest.
+**Tech Stack:** TypeScript (strict ESM), `@pragmatic-tech-ai/todl` (`TodlDocument`/`JsonNode` types only), Vitest.
 
 ## Global Constraints
 
-- Consumes `@pragmatic-lab/todl` **0.5.0** (already installed) — no TODL/emit changes; pure consumption of `model.json`.
+- Consumes `@pragmatic-tech-ai/todl` **0.5.0** (already installed) — no TODL/emit changes; pure consumption of `model.json`.
 - **Attr-primary, annotation-fallback:** `icon = attrs.icon ?? annotations.icon?.path`; `label = attrs.label ?? annotations.label?.text ?? humanize(id)`. Only a non-empty string counts as an icon.
 - **Well-known vocabulary (hard-coded):** annotation `icon` with param `path`; annotation `label` with param `text`. No others this slice.
 - **Generated output shape unchanged** — same Border/StackPanel/Shape/TextBlock and static `@mm_icon_…` references; only the source of the baked values changes.
@@ -35,7 +35,7 @@
 - Test: `src/renderer/src/modules/meta-model/services/tests/presentation-generator.test.ts`
 
 **Interfaces:**
-- Consumes: `JsonNode` (type) from `@pragmatic-lab/todl`; the existing `humanize` in this file.
+- Consumes: `JsonNode` (type) from `@pragmatic-tech-ai/todl`; the existing `humanize` in this file.
 - Produces: `export interface PresentationFacets { icon?: string; label: string }` and `export function resolveFacets(node: JsonNode, annotations: Record<string, Record<string, unknown>>): PresentationFacets` — used by Tasks 2 and 3.
 
 - [ ] **Step 1: Write the failing tests**
@@ -44,17 +44,17 @@ Append to `tests/presentation-generator.test.ts` (add `resolveFacets` to the exi
 
 ```ts
 test('resolveFacets: attr wins over annotation for icon and label', () => {
-    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'a.svg', label: 'Attr' } } as unknown as import('@pragmatic-lab/todl').JsonNode
+    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'a.svg', label: 'Attr' } } as unknown as import('@pragmatic-tech-ai/todl').JsonNode
     expect(resolveFacets(node, { icon: { path: 'ann.svg' }, label: { text: 'Ann' } })).toEqual({ icon: 'a.svg', label: 'Attr' })
 })
 
 test('resolveFacets: annotation fallback when no attr present', () => {
-    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} } as unknown as import('@pragmatic-lab/todl').JsonNode
+    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} } as unknown as import('@pragmatic-tech-ai/todl').JsonNode
     expect(resolveFacets(node, { icon: { path: 'ann.svg' }, label: { text: 'Ann' } })).toEqual({ icon: 'ann.svg', label: 'Ann' })
 })
 
 test('resolveFacets: humanize label and no icon when neither present', () => {
-    const node = { id: 'app-component', tier: 'Ontology', typeOf: 'concept', attrs: {} } as unknown as import('@pragmatic-lab/todl').JsonNode
+    const node = { id: 'app-component', tier: 'Ontology', typeOf: 'concept', attrs: {} } as unknown as import('@pragmatic-tech-ai/todl').JsonNode
     expect(resolveFacets(node, {})).toEqual({ icon: undefined, label: 'App Component' })
 })
 ```
@@ -171,7 +171,7 @@ Expected: FAIL — `distinctIcons` omits annotation icons; the actor template sh
 
 - [ ] **Step 3: Import `projectAnnotations`**
 
-In `presentation-generator.ts`, add after the existing `@pragmatic-lab/todl` import:
+In `presentation-generator.ts`, add after the existing `@pragmatic-tech-ai/todl` import:
 
 ```ts
 import { projectAnnotations } from './annotation-projection.js'

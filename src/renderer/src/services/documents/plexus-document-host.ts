@@ -1,5 +1,5 @@
-import { RelayCommand, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DocumentsContentHostService, type IDocument } from '@pragmatic-lab/mural/framework'
+import { RelayCommand, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DocumentsContentHostService, type IDocument } from '@pragmatic-tech-ai/mural/framework'
 import { DocumentCloseGuard } from './document-close-guard.js'
 
 // The Plexus content host: the framework document host with its USER-INITIATED

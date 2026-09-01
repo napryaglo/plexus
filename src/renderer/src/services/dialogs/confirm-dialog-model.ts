@@ -3,7 +3,7 @@ import {
     MuralBase,
     RelayCommand,
     type ICommand,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 
 // A reusable yes/no confirmation dialog view-model. The host shows it through
 // DialogService and awaits a boolean: ConfirmCommand closes `true`, CancelCommand

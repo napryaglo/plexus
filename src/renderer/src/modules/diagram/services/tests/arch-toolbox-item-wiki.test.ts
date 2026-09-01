@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
-import { ServiceKey } from '@pragmatic-lab/mural/runtime'
+import { ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
+import { ServiceKey } from '@pragmatic-tech-ai/mural/runtime'
 import { ArchToolboxItem } from '../arch-toolbox-item.js'
 
 test('ArchToolboxItem carries Concept and a settable HasWiki', () => {

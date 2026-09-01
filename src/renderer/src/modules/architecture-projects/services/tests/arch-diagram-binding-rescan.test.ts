@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
-import { DiagramDocument, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
+import { DiagramDocument, ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
 import { TodlVisualResolverKey } from '../../../diagram/services/todl-visual-resolver.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'

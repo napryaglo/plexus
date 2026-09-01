@@ -1,6 +1,6 @@
 import { test, expect, beforeEach, afterEach } from 'vitest'
-import { ObservableCollection, ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DialogService, PanelDockService, type IDocument } from '@pragmatic-lab/mural/framework'
+import { ObservableCollection, ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService, DialogService, PanelDockService, type IDocument } from '@pragmatic-tech-ai/mural/framework'
 import { AgentEventKind, AgentSkillKind, type CatalogItem, type IAgentApi, type TaggedAgentEvent } from '../../../../../../shared/agent-api.js'
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
 import { OpenProjectsStore } from '../../../../services/projects/open-projects-store.js'

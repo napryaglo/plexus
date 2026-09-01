@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { load } from '@pragmatic-lab/todl'
+import { load } from '@pragmatic-tech-ai/todl'
 import { defaultLabel, humanize } from '../arch-default-label.js'
 import { DropActionKind, type DropAction } from '../arch-drop-resolver.js'
 

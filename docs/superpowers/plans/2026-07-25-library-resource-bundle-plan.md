@@ -6,7 +6,7 @@
 
 **Architecture:** Two pure helpers (a taxonomy-source collector that excludes `samples/`, and a `library-bundle.ts` module that derives classes from the compiled model + scans resource folders) feed an extended `publish` that assembles `library.json` and copies the resource folders alongside the existing `model.json` + `src/`.
 
-**Tech Stack:** TypeScript, Electron (renderer), `@pragmatic-lab/todl` (compiler), Vitest, in-memory `FakeStorage` test double.
+**Tech Stack:** TypeScript, Electron (renderer), `@pragmatic-tech-ai/todl` (compiler), Vitest, in-memory `FakeStorage` test double.
 
 ## Global Constraints
 
@@ -129,7 +129,7 @@ git commit -m "feat(library): taxonomy source collector that excludes samples/"
 - Test: `src/renderer/src/modules/library/services/tests/library-bundle.test.ts` (create)
 
 **Interfaces:**
-- Consumes: `TodlDocument` from `@pragmatic-lab/todl` (`{ nodes: JsonNode[]; edges }`, `JsonNode = { id, tier, typeOf, attrs }`).
+- Consumes: `TodlDocument` from `@pragmatic-tech-ai/todl` (`{ nodes: JsonNode[]; edges }`, `JsonNode = { id, tier, typeOf, attrs }`).
 - Produces:
   - `interface PublishedClass { id: string; localId?: string; label?: string; concept: string; template?: string; thumbnail?: string; doc?: string }`
   - `interface LibraryBundleManifest { id; version; name; description?; metaModel: {id;version}; classes: PublishedClass[]; assets: string[]; docs: string[]; samples: string[] }`
@@ -141,7 +141,7 @@ Create `src/renderer/src/modules/library/services/tests/library-bundle.test.ts`:
 
 ```ts
 import { test, expect } from 'vitest'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import { deriveClasses } from '../library-bundle.js'
 
@@ -186,7 +186,7 @@ Expected: FAIL — `../library-bundle.js` does not exist.
 Create `src/renderer/src/modules/library/services/library-bundle.ts`:
 
 ```ts
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 // One instantiable class a published library provides — a palette item. Derived
 // from the compiled model's Instance-tier clabjects; resource paths are attached

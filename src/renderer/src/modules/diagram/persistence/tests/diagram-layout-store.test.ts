@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { DiagramDocument } from '@pragmatic-lab/mural/framework'
-import type { PipelineConfiguration } from '@pragmatic-lab/fresco'
+import { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
+import type { PipelineConfiguration } from '@pragmatic-tech-ai/fresco'
 import {
     readLayoutConfig, writeLayoutConfig,
     diagramPresetNames, getDiagramPreset, saveDiagramPreset, deleteDiagramPreset,

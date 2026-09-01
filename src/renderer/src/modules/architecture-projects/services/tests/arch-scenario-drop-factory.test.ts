@@ -1,6 +1,6 @@
 import { test, expect, vi } from 'vitest'
-import { Point, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, ToolboxVisualDescriptor, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { Point, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DiagramDocument, ToolboxVisualDescriptor, type ToolboxDropContext } from '@pragmatic-tech-ai/mural/framework'
 import { TodlVisualResolverKey } from '../../../diagram/services/todl-visual-resolver.js'
 import { ArchToolboxItem } from '../../../diagram/services/arch-toolbox-item.js'
 import { ArchDiagramBindingService } from '../arch-diagram-binding-service.js'

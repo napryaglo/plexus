@@ -1,4 +1,4 @@
-import { MetaKind, type Entity, type Repository } from '@pragmatic-lab/todl'
+import { MetaKind, type Entity, type Repository } from '@pragmatic-tech-ai/todl'
 
 // Diagram containment metadata, derived from the meta-model. A containment
 // relationship's refs project as visual NESTING (a child node inside a container

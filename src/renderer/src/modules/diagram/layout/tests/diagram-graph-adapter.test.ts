@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { Graph } from '@pragmatic-lab/fresco'
+import { Graph } from '@pragmatic-tech-ai/fresco'
 
 import { extract, computeOutcome, applySides, nodeSize } from '../diagram-graph-adapter.js'
 

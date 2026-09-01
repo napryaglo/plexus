@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { RelayCommand } from '@pragmatic-lab/mural/runtime'
+import { RelayCommand } from '@pragmatic-tech-ai/mural/runtime'
 
 import { MetaModelTreeNode, MetaModelNodeKind, type EntityRef } from '../meta-model-tree-node.js'
 

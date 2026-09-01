@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 import { readCamera, writeCamera } from '../diagram-camera-store.js'
 
 test('writeCamera then readCamera round-trips a camera through document metadata', () => {

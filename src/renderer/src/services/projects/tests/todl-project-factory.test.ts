@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { PROJECT_MANIFEST_FILENAME, type ProjectFileFormat, type ProjectManifestEnvelope } from '../project-factory.js'
 import type { BaseBindings } from '../base-binding.js'

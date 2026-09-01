@@ -6,13 +6,13 @@
 
 **Architecture:** Mural already bridges native OS drops into its `DataObject` (`Data.Get('Files')` → `FileList`, `Data.Get('text/uri-list')` → string) at the DOM boundary in `html-target.ts`; the only reason OS drops are ignored today is that `attachCanvasDropBehavior` guards on the toolbox format and returns early. We relax that guard and add a new `ExternalDropped` event on `Diagram`. On the Plexus side a `MediaDropHandler` subscribes to that event, classifies each payload, applies a storage policy (inline < 1 MB / copy into a project `media/` folder / link), builds a `MediaNodeVM` (a content `NodeViewModel` rendered through a `.mu` DataTemplate reusing the existing `markdown-image` resolution), and positions it via `doc.SetNodeVisual`. A `media` node serializer persists `{ mediaKind, source, hyperlinkUri, label }`; geometry stays in `NodeVisualStore`.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural` (framework + visual-engine), Electron (main/preload IPC), mural `.mu` templates, vitest (Plexus) / `tsx --test` (Mural), Playwright (e2e).
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural` (framework + visual-engine), Electron (main/preload IPC), mural `.mu` templates, vitest (Plexus) / `tsx --test` (Mural), Playwright (e2e).
 
 **Spec:** `docs/superpowers/specs/2026-08-28-diagram-media-drop-design.md`
 
 ## Global Constraints
 
-- **Mural version bump:** `@pragmatic-lab/mural` `0.35.0` → `0.36.0`; Plexus dependency `^0.35.0` → `^0.36.0`. Mural is consumed from the local Verdaccio registry — republish + reinstall (or `npm link`) after Mural source changes.
+- **Mural version bump:** `@pragmatic-tech-ai/mural` `0.35.0` → `0.36.0`; Plexus dependency `^0.35.0` → `^0.36.0`. Mural is consumed from the local Verdaccio registry — republish + reinstall (or `npm link`) after Mural source changes.
 - **Enums, never string-literal unions** (`enum MediaKind`, `enum MediaLinkRenderMode`, `enum LargeFileChoice`, `enum StoragePlacement`).
 - **Every test file lives in a `tests/` subfolder next to the source it covers.**
 - **Render only through templates/bindings** — no imperative chrome; the visual is a `.mu` `DataTemplate` keyed by `DataType = MediaNodeVM`.
@@ -538,7 +538,7 @@ The content view-model for a media shape, mirroring `ArchNodeVM`'s DP pattern, w
 
 ```typescript
 import { describe, it, expect, vi } from 'vitest'
-import { Size } from '@pragmatic-lab/mural/runtime'
+import { Size } from '@pragmatic-tech-ai/mural/runtime'
 import { MediaKind } from '../media-kind'
 import { MediaNodeVM } from '../media-node-vm'
 
@@ -584,9 +584,9 @@ Expected: FAIL — `MediaNodeVM` not found.
 Follow `arch-node-vm.ts` (lines 18-95) exactly for the DP idiom. `resolveImageUri` already handles remote/data URIs directly and reads local project-relative paths via `storage.ReadBytes` — reuse it.
 
 ```typescript
-import { MuralBase, MetaData, Size } from '@pragmatic-lab/mural/runtime'
-import { NodeViewModel } from '@pragmatic-lab/mural/framework'
-import { BitmapImage } from '@pragmatic-lab/mural/visual-engine'
+import { MuralBase, MetaData, Size } from '@pragmatic-tech-ai/mural/runtime'
+import { NodeViewModel } from '@pragmatic-tech-ai/mural/framework'
+import { BitmapImage } from '@pragmatic-tech-ai/mural/visual-engine'
 import type { IStorage } from '../../../services/storage/storage'
 import { resolveImageUri } from '../../../services/markdown/markdown-image'
 import { MediaKind } from './media-kind'
@@ -980,8 +980,8 @@ Expected: FAIL — module not found.
 - [ ] **Step 3: Implement `media-drop-handler.ts`**
 
 ```typescript
-import type { Diagram, DiagramDocument, ExternalDroppedArgs } from '@pragmatic-lab/mural/framework'
-import { Size } from '@pragmatic-lab/mural/runtime'
+import type { Diagram, DiagramDocument, ExternalDroppedArgs } from '@pragmatic-tech-ai/mural/framework'
+import { Size } from '@pragmatic-tech-ai/mural/runtime'
 import type { IStorage } from '../../../services/storage/storage'
 import { classifyFile, classifyUri } from './classify-media'
 import { MediaKind } from './media-kind'

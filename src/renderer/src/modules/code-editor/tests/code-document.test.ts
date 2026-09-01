@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
 
 import { CodeDocument } from '../code-document.js'
 import { StorageCodeFile, type ICodeFile } from '../code-file.js'

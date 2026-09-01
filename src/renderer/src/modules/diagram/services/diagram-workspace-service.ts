@@ -4,10 +4,10 @@ import {
     ServiceBase,
     ServiceKey,
     type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 import {
     DiagramDocument,
-} from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/framework'
 
 // DiagramWorkspaceService — owns Plexus's in-memory diagram DOCUMENT (an
 // IDocument), ported from the Diagrammer demo (demo/demos/diagram).

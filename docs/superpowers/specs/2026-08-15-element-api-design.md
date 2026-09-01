@@ -1,7 +1,7 @@
 # Element API — Design
 
 **Status:** approved design, pending spec review → implementation plan.
-**Scope:** cross-repo — the core format lives in TODL (`@pragmatic-lab/todl`); the
+**Scope:** cross-repo — the core format lives in TODL (`@pragmatic-tech-ai/todl`); the
 selection bridge, presentation resolver, and view-model layer live in Plexus.
 
 ## Goal
@@ -18,7 +18,7 @@ selectors.
 Three layers, strict dependency direction (TODL is upstream and stays pure):
 
 ```
-TODL (@pragmatic-lab/todl)          pure data + projection
+TODL (@pragmatic-tech-ai/todl)          pure data + projection
   Element (type)
   toElement(repo, entity, opts) -> Element
 

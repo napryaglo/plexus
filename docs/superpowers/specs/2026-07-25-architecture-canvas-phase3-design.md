@@ -25,7 +25,7 @@ The **headless core (Units A–C) is unaffected in shape**: the model still crea
 - `Figure extends ContentControl` — has `Content` / `ContentTemplate` / `Template` DPs (plus `Left`/`Top`/`Geometry`/`Fill`/`Text`). Overriding the `Figure` template to add a `ContentPresenter` lets a node render an arbitrary `DataTemplate`. Content-driven sizing is **not** supported (explicit `W`/`H`) — v1 uses a fixed node size.
 - `DiagramDocument.CreateNode(kind,x,y)`; `Nodes` + `Connectors` (endpoints carry `.Node`); `Save()/Load()` over a **closed** `SerializedNode` schema (no per-node data bag).
 - Drop: `attachCanvasDropBehavior`, `TOOLBOX_NODE_KIND_FORMAT`, `Diagram.AddItemDroppedListener`, `DropReceiver` DP. A custom `plexus/class-ref` drop format coexists with the toolbox format.
-- Exports (from `@pragmatic-lab/mural/framework`): `Diagram`, `DiagramDocument`, `Figure`, `Group`, `ToolboxShape`, `SHAPE_CATALOG`, `attachCanvasDropBehavior`, `TOOLBOX_NODE_KIND_FORMAT`.
+- Exports (from `@pragmatic-tech-ai/mural/framework`): `Diagram`, `DiagramDocument`, `Figure`, `Group`, `ToolboxShape`, `SHAPE_CATALOG`, `attachCanvasDropBehavior`, `TOOLBOX_NODE_KIND_FORMAT`.
 
 **TODL instance graph — mutation + reactivity exist; source emission does not.**
 - `Repository`: `builder()`, `resolve(id)`, `instancesOf(concept)`, `isClass(id)`, `classOf(leaf)`, `effectiveFields(leaf)`, `changed: Signal<GraphChangeArgs>`; schema types `ConceptSchema`/`FieldSchema`/`RelationshipSchema`.

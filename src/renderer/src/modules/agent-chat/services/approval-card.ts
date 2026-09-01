@@ -2,7 +2,7 @@
 // commands (Approve once / Always allow <prefix> / Deny) and a depleting
 // countdown ring; on expiry it auto-submits AllowOnce. Every view-bound property
 // is a registered DP (mural binds via get_property_value).
-import { MetaData, MuralBase, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, RelayCommand, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 import { ToolApprovalDecision, type ToolApprovalAnswer, type ToolApprovalRequest } from '../../../../../shared/agent-api.js'
 
 const TICK_MS = 100

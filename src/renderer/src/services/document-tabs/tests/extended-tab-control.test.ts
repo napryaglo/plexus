@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { TabControl } from '@pragmatic-lab/mural/framework'
+import { TabControl } from '@pragmatic-tech-ai/mural/framework'
 import { ExtendedTabControl } from '../extended-tab-control.js'
 
 // ExtendedTabControl is a thin re-template of mural's TabControl: it must BE a

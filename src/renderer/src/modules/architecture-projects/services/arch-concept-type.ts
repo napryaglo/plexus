@@ -1,4 +1,4 @@
-import { MetaKind, type Repository } from '@pragmatic-lab/todl'
+import { MetaKind, type Repository } from '@pragmatic-tech-ai/todl'
 
 // The concept a node stands for: a concept stands for itself; otherwise the class
 // it instantiates, else the concept its taxonomy represents, else its own typeOf.

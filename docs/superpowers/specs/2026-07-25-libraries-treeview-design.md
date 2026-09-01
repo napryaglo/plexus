@@ -45,7 +45,7 @@ One unified `LibraryTreeNode extends Model` with a `Kind` discriminator (mirrors
   with `DragDropEffects.Copy`; `undefined` otherwise. **Same payload the Phase 3
   canvas drop pipeline accepts**, so a class dragged from the tree onto an
   `.archdiagram` creates a node. `TOOLBOX_NODE_KIND_FORMAT` is imported from
-  `@pragmatic-lab/mural/framework`.
+  `@pragmatic-tech-ai/mural/framework`.
 
 Two small static factories keep construction readable: `LibraryTreeNode.group(name, kind)`
 (Library/Concept container node) and

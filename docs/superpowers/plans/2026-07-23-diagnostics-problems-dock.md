@@ -6,13 +6,13 @@
 
 **Architecture:** A root-scoped `DiagnosticsService` is the single source of truth for every diagnostic, keyed by `(owner, projectId)`. `TodlValidationService` becomes a producer that validates each open project whole (on project-open and on edits) and publishes the full diagnostic set. The Monaco editor and a `ProblemsService`-backed dock both consume from the store. Publish routes failures into the dock.
 
-**Tech Stack:** TypeScript, Electron, `@pragmatic-lab/mural` (UI framework + runtime: `Model`, `ObservableCollection`, `ServiceBase`, `ServiceKey`, `RelayCommand`, `.mu` templates), `@pragmatic-lab/todl` (validation), Monaco editor, Vitest.
+**Tech Stack:** TypeScript, Electron, `@pragmatic-tech-ai/mural` (UI framework + runtime: `Model`, `ObservableCollection`, `ServiceBase`, `ServiceKey`, `RelayCommand`, `.mu` templates), `@pragmatic-tech-ai/todl` (validation), Monaco editor, Vitest.
 
 ## Global Constraints
 
 - Every test file lives in a `tests/` subfolder next to the code it exercises (e.g. `src/renderer/src/services/diagnostics/tests/diagnostics-service.test.ts`), never beside the source. Vitest globs `src/**/*.test.ts`.
 - Use real TypeScript `enum`s, never string-literal union types (project rule).
-- No relative `../src` imports into the framework — consume `@pragmatic-lab/mural` / `@pragmatic-lab/todl` from the package.
+- No relative `../src` imports into the framework — consume `@pragmatic-tech-ai/mural` / `@pragmatic-tech-ai/todl` from the package.
 - Diagnostic positions are 1-based; `endColumn` is exclusive (Monaco + TODL convention).
 - `projectId` is the project's `Project.RootPath` (the only stable identity); `projectName` is `Project.Name`.
 - The producer id ("owner") for TODL diagnostics is the string `"todl"`.
@@ -176,7 +176,7 @@ git commit -m "feat(diagnostics): canonical Diagnostic type + editor projection"
 - Test: `src/renderer/src/services/diagnostics/tests/diagnostics-service.test.ts`
 
 **Interfaces:**
-- Consumes: `Diagnostic` from `./diagnostic.js`; `ServiceBase`, `ServiceKey`, `ObservableCollection`, `IServiceProvider` from `@pragmatic-lab/mural/runtime`.
+- Consumes: `Diagnostic` from `./diagnostic.js`; `ServiceBase`, `ServiceKey`, `ObservableCollection`, `IServiceProvider` from `@pragmatic-tech-ai/mural/runtime`.
 - Produces:
   - `class DiagnosticsService extends ServiceBase` with `static readonly Key`.
   - `Publish(owner: string, projectId: string, diagnostics: readonly Diagnostic[]): void` — replaces the whole `(owner, projectId)` slice.
@@ -191,7 +191,7 @@ Create `src/renderer/src/services/diagnostics/tests/diagnostics-service.test.ts`
 
 ```ts
 import { test, expect, vi } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { DiagnosticsService } from '../diagnostics-service.js'
 import { DiagnosticSeverity, type Diagnostic } from '../diagnostic.js'
 
@@ -266,7 +266,7 @@ Expected: FAIL — `Cannot find module '../diagnostics-service.js'`.
 Create `src/renderer/src/services/diagnostics/diagnostics-service.ts`:
 
 ```ts
-import { ServiceBase, ServiceKey, ObservableCollection, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, ObservableCollection, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import type { Diagnostic } from './diagnostic.js'
 
 // The single, source-agnostic store for every diagnostic in the app. Producers
@@ -572,14 +572,14 @@ export function diagnosticToCanonical(
 }
 ```
 
-Because the file already imports `Diagnostic` from `@pragmatic-lab/todl` under that name, alias the TODL import to avoid a name clash. Change the existing top import line:
+Because the file already imports `Diagnostic` from `@pragmatic-tech-ai/todl` under that name, alias the TODL import to avoid a name clash. Change the existing top import line:
 
 ```ts
-import { checkAgainst, Severity, type Diagnostic, type SourceFile, type TodlDocument } from '@pragmatic-lab/todl'
+import { checkAgainst, Severity, type Diagnostic, type SourceFile, type TodlDocument } from '@pragmatic-tech-ai/todl'
 ```
 to:
 ```ts
-import { checkAgainst, Severity, type Diagnostic as Diagnostic_TODL, type SourceFile, type TodlDocument } from '@pragmatic-lab/todl'
+import { checkAgainst, Severity, type Diagnostic as Diagnostic_TODL, type SourceFile, type TodlDocument } from '@pragmatic-tech-ai/todl'
 ```
 and update the two existing references to the TODL diagnostic type in this file (`diagnosticToEditor(d: Diagnostic)` and `let diagnostics: readonly Diagnostic[]` inside `validateSources`) to use `Diagnostic_TODL`.
 
@@ -834,7 +834,7 @@ Change `openFile` to subscribe the doc to the store and unsubscribe on close:
 Add the needed imports for `ContentHostService` / `DocumentsContentHostService` at the top if not present:
 
 ```ts
-import { ContentHostService, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+import { ContentHostService, type DocumentsContentHostService } from '@pragmatic-tech-ai/mural/framework'
 ```
 
 - [ ] **Step 7: Run tests + typecheck**
@@ -922,7 +922,7 @@ Create `src/renderer/src/modules/problems/tests/problems-service.test.ts`:
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { DiagnosticsService } from '../../../services/diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity, type Diagnostic } from '../../../services/diagnostics/diagnostic.js'
 import { ProblemsService, ProblemRowKind } from '../problems-service.js'
@@ -1004,7 +1004,7 @@ Create `src/renderer/src/modules/problems/problems-service.ts`:
 import {
     Model, MetaData, ObservableCollection, ServiceBase, ServiceKey, RelayCommand,
     type ICommand, type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 import { DiagnosticsService } from '../../services/diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity, type Diagnostic } from '../../services/diagnostics/diagnostic.js'
 import { CodeEditorService } from '../code-editor/code-editor-service.js'

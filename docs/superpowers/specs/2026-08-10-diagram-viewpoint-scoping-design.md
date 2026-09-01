@@ -164,7 +164,7 @@ toggle panel → setDocumentScope → binding.setScope + writeDiagramViewpoints 
 
 ## 7. Constraints
 
-- `@pragmatic-lab/todl@^0.23.0`; real enums; every test in a `tests/` subfolder;
+- `@pragmatic-tech-ai/todl@^0.23.0`; real enums; every test in a `tests/` subfolder;
   no relative `../src` mural imports; `app.mu.js` is generated/gitignored (never
   commit); add any new `.mu` to the `compile:mu` list in `package.json`.
 - The generic `DiagramDocument`/`DiagramDocumentFactory` remain untouched; the

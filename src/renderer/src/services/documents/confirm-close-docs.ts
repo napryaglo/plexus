@@ -1,4 +1,4 @@
-import type { DialogService, DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+import type { DialogService, DocumentsContentHostService } from '@pragmatic-tech-ai/mural/framework'
 import { promptSave, SavePromptResult } from '../dialogs/save-prompt-model.js'
 
 // Consolidated unsaved-changes gate for app quit. Returns true when it is safe to

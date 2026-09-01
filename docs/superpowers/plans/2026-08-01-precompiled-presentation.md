@@ -6,7 +6,7 @@
 
 **Architecture:** At publish, `compile(generatedMu, { include: bakeSvgGeometry, symbols })` inlines each icon's geometry into the compiled resources body; we persist `{ body, symbols, className }`. At load, `new Function('_ctx', destructure + body + 'return C.Clone()')(ctx)` rebuilds the `ResourceDictionary` with no parse, no compile, no SVG reads. Compiled-only (old publishes get a clear "republish" error); a missing icon blocks publish.
 
-**Tech Stack:** TypeScript, Vitest, `@pragmatic-lab/mural/compiler` (`compile`, `DEFAULT_SYMBOLS`, `svgToGeometryJs`), `FakeStorage`.
+**Tech Stack:** TypeScript, Vitest, `@pragmatic-tech-ai/mural/compiler` (`compile`, `DEFAULT_SYMBOLS`, `svgToGeometryJs`), `FakeStorage`.
 
 ## Global Constraints
 
@@ -28,7 +28,7 @@
 - Test: `src/renderer/src/modules/meta-model/services/tests/presentation-publisher.test.ts` (rewrite), `src/renderer/src/modules/meta-model/services/tests/meta-model-project-factory.test.ts` (update the backend-payload test).
 
 **Interfaces:**
-- Consumes: `generatePresentationMu(doc, [])`, `distinctIcons(doc)`, `ontologyEntities(doc)` (existing); `compile`, `DEFAULT_SYMBOLS`, `svgToGeometryJs` from `@pragmatic-lab/mural/compiler`.
+- Consumes: `generatePresentationMu(doc, [])`, `distinctIcons(doc)`, `ontologyEntities(doc)` (existing); `compile`, `DEFAULT_SYMBOLS`, `svgToGeometryJs` from `@pragmatic-tech-ai/mural/compiler`.
 - Produces:
   - `interface CompiledPresentation { body: string; symbols: string[]; className: string }` (exported).
   - `publishPresentation(project: IStorage, dest: IStorage, base: string, doc: TodlDocument): Promise<PublishPresentationResult>` where
@@ -40,7 +40,7 @@ Replace the body of `presentation-publisher.test.ts` with:
 
 ```ts
 import { test, expect } from 'vitest'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { publishPresentation } from '../presentation-publisher.js'
@@ -112,18 +112,18 @@ Expected: FAIL — publisher still writes raw `.mu`/SVGs and returns bare stats.
 - [ ] **Step 3: Rewrite `presentation-publisher.ts`**
 
 ```ts
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 import {
     compile, DEFAULT_SYMBOLS, svgToGeometryJs,
     type IncludeResolver, type IncludeResolution,
-} from '@pragmatic-lab/mural/compiler'
+} from '@pragmatic-tech-ai/mural/compiler'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import { generatePresentationMu, distinctIcons, ontologyEntities } from './presentation-generator.js'
 
 const PRESENTATION_DIR = 'presentation'
 const COMPILED_FILE = 'presentation.compiled.json'
-const VISUAL_ENGINE = '@pragmatic-lab/mural/visual-engine'
+const VISUAL_ENGINE = '@pragmatic-tech-ai/mural/visual-engine'
 
 // The self-contained, evaluable presentation payload written into the backend.
 // `body` is the compiled resources class (geometry inlined, imports stripped);
@@ -265,10 +265,10 @@ Replace the body of `presentation-loader.test.ts` with:
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import { DataTemplate } from '@pragmatic-lab/mural/basic'
+import { DataTemplate } from '@pragmatic-tech-ai/mural/basic'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 import { publishPresentation } from '../presentation-publisher.js'
 import { loadPresentation } from '../presentation-loader.js'
 
@@ -319,11 +319,11 @@ Expected: FAIL — the loader still reads `presentation.generated.mu`, which no 
 // is a compiled `resources` class with all icon geometry inlined, so there is no
 // parse, no compile, and no SVG read at load — just a `new Function` eval with the
 // mural runtime supplied via ctx (mirrors the compiler's own instantiate()).
-import * as MuralRuntime from '@pragmatic-lab/mural/runtime'
-import * as MuralBasic from '@pragmatic-lab/mural/basic'
-import * as MuralFramework from '@pragmatic-lab/mural/framework'
-import * as MuralEngine from '@pragmatic-lab/mural/visual-engine'
-import { ResourceDictionary } from '@pragmatic-lab/mural/runtime'
+import * as MuralRuntime from '@pragmatic-tech-ai/mural/runtime'
+import * as MuralBasic from '@pragmatic-tech-ai/mural/basic'
+import * as MuralFramework from '@pragmatic-tech-ai/mural/framework'
+import * as MuralEngine from '@pragmatic-tech-ai/mural/visual-engine'
+import { ResourceDictionary } from '@pragmatic-tech-ai/mural/runtime'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import { MetaModelEntity } from './meta-model-entity.js'

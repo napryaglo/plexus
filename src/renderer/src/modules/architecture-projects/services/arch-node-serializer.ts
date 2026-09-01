@@ -1,5 +1,5 @@
-import { registerNodeSerializer, serializerByType } from '@pragmatic-lab/mural/framework'
-import { Color, SolidColorBrush, type FontStyle, type FontWeight, type TextAlignment, type TextDecorations } from '@pragmatic-lab/mural/visual-engine'
+import { registerNodeSerializer, serializerByType } from '@pragmatic-tech-ai/mural/framework'
+import { Color, SolidColorBrush, type FontStyle, type FontWeight, type TextAlignment, type TextDecorations } from '@pragmatic-tech-ai/mural/visual-engine'
 import { ArchNodeVM } from './arch-node-vm.js'
 
 // The label-style overrides the user set on a node's title (Format Shape → Text

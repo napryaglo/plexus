@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- **Mural M1–M4 + this plan's Task 1 must be available to Plexus** as `@pragmatic-lab/mural` (Task 2 — publish `0.4.0` + bump, or workspace-link). Plexus imports ONLY the published surface (`@pragmatic-lab/mural/{framework,runtime,basic,visual-engine,compiler}`) — no relative `../src` / internals.
+- **Mural M1–M4 + this plan's Task 1 must be available to Plexus** as `@pragmatic-tech-ai/mural` (Task 2 — publish `0.4.0` + bump, or workspace-link). Plexus imports ONLY the published surface (`@pragmatic-tech-ai/mural/{framework,runtime,basic,visual-engine,compiler}`) — no relative `../src` / internals.
 - **Real TS enums**, never string-literal unions.
 - **Test files** live next to source per each repo's convention (Mural: `tests/` subfolder; Plexus: its established test layout — match neighbouring tests).
 - **Render through templates/bindings** — the arch node's visual flows through the `[DataType=ArchNodeVM]` DataTemplate, no hardcoded chrome.
@@ -70,11 +70,11 @@ describe('DiagramMutator.AddNode', () => {
 ### Task 2 (BRIDGE): make Mural available to Plexus
 
 **Decision made at execution start (human-authorised):**
-- **Publish path:** checkpoint Mural M4 + Task 1 to `main` (fast-forward), `npm version minor` → `0.4.0`, `npm publish`, then in Plexus bump `@pragmatic-lab/mural` → `^0.4.0` and install. Durable; matches the established publish→bump pattern.
-- **Link path:** `npm run build` in Mural, then point Plexus `node_modules/@pragmatic-lab/mural` at the local build (symlink). Faster; no publish; revert before any Plexus release.
+- **Publish path:** checkpoint Mural M4 + Task 1 to `main` (fast-forward), `npm version minor` → `0.4.0`, `npm publish`, then in Plexus bump `@pragmatic-tech-ai/mural` → `^0.4.0` and install. Durable; matches the established publish→bump pattern.
+- **Link path:** `npm run build` in Mural, then point Plexus `node_modules/@pragmatic-tech-ai/mural` at the local build (symlink). Faster; no publish; revert before any Plexus release.
 
-- [ ] **Step 1:** Execute the chosen path so Plexus resolves `NodeViewModel`, the `[DataType]` template resolution, `DiagramMutator.AddNode`, and the node-serializer registry from `@pragmatic-lab/mural`.
-- [ ] **Step 2: Verify** in Plexus: `import { NodeViewModel } from '@pragmatic-lab/mural/framework'` resolves and the node-serializer registry export is present. Plexus `typecheck` sees the new surface.
+- [ ] **Step 1:** Execute the chosen path so Plexus resolves `NodeViewModel`, the `[DataType]` template resolution, `DiagramMutator.AddNode`, and the node-serializer registry from `@pragmatic-tech-ai/mural`.
+- [ ] **Step 2: Verify** in Plexus: `import { NodeViewModel } from '@pragmatic-tech-ai/mural/framework'` resolves and the node-serializer registry export is present. Plexus `typecheck` sees the new surface.
 
 ---
 

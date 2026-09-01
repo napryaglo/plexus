@@ -1,4 +1,4 @@
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { WorkspaceBaseResolver } from '../../projects/workspace-base-resolver.js'
 
 // The language client resolves a project's bases through WorkspaceBaseResolver.

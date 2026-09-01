@@ -13,7 +13,7 @@
 // Span, br → LineBreak. Any other tag is dropped, its text content preserved.
 import {
     Bold, Hyperlink, Italic, LineBreak, Run, Span, type Inline,
-} from '@pragmatic-lab/mural/basic'
+} from '@pragmatic-tech-ai/mural/basic'
 
 // Monospace stack for inline <code> — mirrors the code chip in marked-flow-renderer.
 const MONO = 'Consolas, "SF Mono", "Courier New", monospace'

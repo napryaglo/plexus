@@ -11,11 +11,11 @@ live-validate `.todl` in Monaco (inline squiggles), publish compiled
 (carries the code-level detail; tasks reference it rather than duplicating).
 
 **Tech Stack:** TypeScript (ESM, strict), mural runtime/framework, Monaco,
-`@pragmatic-lab/todl@^0.1.0`, Vitest.
+`@pragmatic-tech-ai/todl@^0.1.0`, Vitest.
 
 ## Global Constraints
 
-- `@pragmatic-lab/todl@^0.1.0` in `dependencies` (done — installed from Verdaccio).
+- `@pragmatic-tech-ai/todl@^0.1.0` in `dependencies` (done — installed from Verdaccio).
 - Every test file in a `tests/` subfolder next to its source. Vitest; no
   Monaco/DOM in tests — pure functions + services against `FakeStorage`.
 - Real TS enums for fixed value sets (`EditorSeverity`). Named constants for the

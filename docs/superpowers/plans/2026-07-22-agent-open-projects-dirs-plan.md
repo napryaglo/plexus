@@ -362,7 +362,7 @@ const agent: IAgentApi = {
 
 ```ts
 import { test, expect, beforeEach, afterEach } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import type { IAgentApi, AgentEvent } from '../../../../../shared/agent-api.js'
 import { EnvironmentService } from '../../../services/environment/environment-service.js'

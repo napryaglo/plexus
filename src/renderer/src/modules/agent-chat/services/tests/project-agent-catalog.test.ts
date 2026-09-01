@@ -1,5 +1,5 @@
 import { test, expect, afterEach } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { AgentSkillKind, type IAgentApi, type ProjectCatalog } from '../../../../../../shared/agent-api.js'
 import { ProjectAgentCatalog } from '../project-agent-catalog.js'
 

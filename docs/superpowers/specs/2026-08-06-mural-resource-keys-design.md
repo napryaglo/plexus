@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-06 (reconciled 2026-08-07 — see §Reconciliation)
 **Status:** Approved, reconciled to the C-like identifier grammar
-**Repos:** TODL (`@pragmatic-lab/todl`, prelude schema) + Plexus (all key logic)
+**Repos:** TODL (`@pragmatic-tech-ai/todl`, prelude schema) + Plexus (all key logic)
 
 > **Reconciliation (2026-08-07).** This spec predates the C-like identifier
 > migration (TODL 0.19.0 / Plexus SP2). The body below still uses the old
@@ -15,7 +15,7 @@
 > application nodes whose `typeOf === 'icon'`.
 >
 > **Version.** `0.19.0` is already published (the C-like release). The
-> MuralResource prelude change is **`@pragmatic-lab/todl@0.20.0`**; Plexus floor
+> MuralResource prelude change is **`@pragmatic-tech-ai/todl@0.20.0`**; Plexus floor
 > → `^0.20.0`.
 >
 > **Folded prerequisite — well-known annotations are a lowercase exception
@@ -79,7 +79,7 @@ element, and `distinctIcons`. Two weaknesses:
 
 Making the generator the single key authority fixes (1) — it can dedup — and
 stamping the key onto the annotation fixes (2). Annotation inheritance (shipped
-in `@pragmatic-lab/todl` 0.18.0) is exactly the mechanism: `MuralResource` as a
+in `@pragmatic-tech-ai/todl` 0.18.0) is exactly the mechanism: `MuralResource` as a
 base generalises the pattern to future bakeable resource kinds (brush, geometry,
 embedded blob) that all inherit the same `Key` slot.
 
@@ -121,7 +121,7 @@ annotation icon : MuralResource { path : string?; }
 - `icon` inherits `Key` via `effectiveSchema` (annotation params are `HasField`
   edges; inheritance walks `Extends` first-wins — already the mechanism).
 - Regenerate `prelude.generated.ts` (`npm run gen:prelude`), bump version,
-  publish to Verdaccio, bump Plexus `@pragmatic-lab/todl` floor.
+  publish to Verdaccio, bump Plexus `@pragmatic-tech-ai/todl` floor.
 - No new TODL validation, no emit change, no reflection change: `projectAnnotations`
   already surfaces every application attr, so a stamped `Key` appears in the
   `icon` bag automatically.

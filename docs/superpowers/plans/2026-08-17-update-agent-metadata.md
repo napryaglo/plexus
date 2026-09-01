@@ -6,7 +6,7 @@
 
 **Architecture:** A new `TodlProjectFactory.updateScaffold` overwrites every scaffold entry except `CLAUDE.md` (only self-healed when missing); an `isTodlProject` `instanceof` guard feature-tests it; `ProjectExplorerService` wires a menu command onto `OpenProject` gated by that guard.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural/runtime` (`RelayCommand`, `ICommand`), Vitest, mural `.mu` (compiled via `npm run compile:mu`).
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural/runtime` (`RelayCommand`, `ICommand`), Vitest, mural `.mu` (compiled via `npm run compile:mu`).
 
 ## Global Constraints
 

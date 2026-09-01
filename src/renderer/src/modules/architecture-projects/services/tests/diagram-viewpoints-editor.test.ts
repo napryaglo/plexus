@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DialogService, type IDocument } from '@pragmatic-lab/mural/framework'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DialogService, type IDocument } from '@pragmatic-tech-ai/mural/framework'
 import { ArchDiagramBindingService } from '../arch-diagram-binding-service.js'
 import { DiagramViewpointsEditor } from '../diagram-viewpoints-editor.js'
 import type { LeavingNode } from '../viewpoint-scope-reconcile.js'

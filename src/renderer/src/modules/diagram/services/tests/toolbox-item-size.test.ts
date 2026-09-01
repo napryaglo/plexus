@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ResourceDictionary } from '@pragmatic-lab/mural/runtime'
+import { ResourceDictionary } from '@pragmatic-tech-ai/mural/runtime'
 
 import { applyToolboxItemSize, ITEM_WIDTH_RESOURCE, ITEM_HEIGHT_RESOURCE } from '../diagram-panel-services.js'
 

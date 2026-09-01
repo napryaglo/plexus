@@ -3,7 +3,7 @@
 // mirroring OpenProjectsStore. ChatSessionsService upserts a conversation only when
 // the provider can resume it (Resumable && ResumeToken), so non-resumable chats are
 // never written.
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { EnvironmentService } from '../../../services/environment/environment-service.js'
 import { FileSystemService } from '../../../services/file-system/file-system-service.js'
 import type { SerializedMessage } from './transcript-serializer.js'

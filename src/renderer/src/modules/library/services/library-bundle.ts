@@ -1,4 +1,4 @@
-import { deriveClasses as todlDeriveClasses, type PublishedClass as TodlPublishedClass, type TodlDocument } from '@pragmatic-lab/todl'
+import { deriveClasses as todlDeriveClasses, type PublishedClass as TodlPublishedClass, type TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 

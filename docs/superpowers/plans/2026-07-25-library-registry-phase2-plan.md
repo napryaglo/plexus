@@ -6,18 +6,18 @@
 
 **Architecture:** Three units — a headless bundle loader (`library-loader.ts`), a mount+resolve service (`library-registry.ts` + `visual-library.ts`) that compiles `.mural` at runtime and merges the templates into `Application.Resources`, and a nav-capability browse panel (`libraries-panel-service.ts` + `library.resources.mu`). Failures report to the Problems dock via `DiagnosticsService`.
 
-**Tech Stack:** TypeScript, Electron renderer, `@pragmatic-lab/mural` (`compiler.instantiate`, `basic.DataTemplate`, `runtime.ResourceDictionary`/`Application`), Vitest, `FakeStorage`.
+**Tech Stack:** TypeScript, Electron renderer, `@pragmatic-tech-ai/mural` (`compiler.instantiate`, `basic.DataTemplate`, `runtime.ResourceDictionary`/`Application`), Vitest, `FakeStorage`.
 
 ## Global Constraints
 
 - **Every test file lives in a `tests/` subfolder** next to its source.
 - **Enums over string-literal unions** in our own code.
 - **Verified contracts (do not re-derive):**
-  - `instantiate(source, ctx)` from `@pragmatic-lab/mural/compiler`: a **bare-element** root (e.g. `TextBlock [ Text = $Display ]`) compiles as a fragment and returns a **zero-arg factory** `() => Visual`. There is **no `Fragment` keyword**. `ctx = { ...runtime, ...basic, ...visualEngine }`.
-  - `DataTemplate` (from `@pragmatic-lab/mural/basic`): `new DataTemplate(factory, dataType?)`; `Apply(data)` calls `factory(data)` and does **not** set `DataContext` — the factory must.
+  - `instantiate(source, ctx)` from `@pragmatic-tech-ai/mural/compiler`: a **bare-element** root (e.g. `TextBlock [ Text = $Display ]`) compiles as a fragment and returns a **zero-arg factory** `() => Visual`. There is **no `Fragment` keyword**. `ctx = { ...runtime, ...basic, ...visualEngine }`.
+  - `DataTemplate` (from `@pragmatic-tech-ai/mural/basic`): `new DataTemplate(factory, dataType?)`; `Apply(data)` calls `factory(data)` and does **not** set `DataContext` — the factory must.
   - `Visual` has a settable `DataContext`.
-  - `ContentPresenter.ContentTemplate` is a `DataTemplate | undefined` DP (`@pragmatic-lab/mural/basic`).
-  - Imports: `Visual, ResourceDictionary, Application, ServiceBase, ServiceKey, Model, MetaData, ObservableCollection, type IServiceProvider` ← `@pragmatic-lab/mural/runtime`; `DataTemplate, type DataTemplateFactory, Border, TextBlock, ContentPresenter` ← `@pragmatic-lab/mural/basic`; `instantiate` ← `@pragmatic-lab/mural/compiler`.
+  - `ContentPresenter.ContentTemplate` is a `DataTemplate | undefined` DP (`@pragmatic-tech-ai/mural/basic`).
+  - Imports: `Visual, ResourceDictionary, Application, ServiceBase, ServiceKey, Model, MetaData, ObservableCollection, type IServiceProvider` ← `@pragmatic-tech-ai/mural/runtime`; `DataTemplate, type DataTemplateFactory, Border, TextBlock, ContentPresenter` ← `@pragmatic-tech-ai/mural/basic`; `instantiate` ← `@pragmatic-tech-ai/mural/compiler`.
   - `DiagnosticsService.Publish(owner, projectId, Diagnostic[])`; `Diagnostic = { owner, projectId, projectName, uri: string|null, message, severity, span: null }`; `DiagnosticSeverity.{Error,Warning}` (`../../../services/diagnostics/*`).
   - Libraries backend: `ensureLibrariesBackend(provider): IStorage`, layout `<id>/<version>/{library.json, visuals/<classId>.mural, …}`.
 - **Bundle manifest (Phase 1):** `library.json = { id, version, name, description?, metaModel, classes: { id, localId?, label?, concept, template?, thumbnail?, doc? }[], assets, docs, samples }`.
@@ -252,12 +252,12 @@ Expected: FAIL — `../visual-library.js` does not exist.
 Create `src/renderer/src/modules/library/services/visual-library.ts`:
 
 ```ts
-import { instantiate } from '@pragmatic-lab/mural/compiler'
-import * as muralRuntime from '@pragmatic-lab/mural/runtime'
-import * as muralBasic from '@pragmatic-lab/mural/basic'
-import * as muralEngine from '@pragmatic-lab/mural/visual-engine'
-import { DataTemplate, type DataTemplateFactory } from '@pragmatic-lab/mural/basic'
-import type { Visual } from '@pragmatic-lab/mural/runtime'
+import { instantiate } from '@pragmatic-tech-ai/mural/compiler'
+import * as muralRuntime from '@pragmatic-tech-ai/mural/runtime'
+import * as muralBasic from '@pragmatic-tech-ai/mural/basic'
+import * as muralEngine from '@pragmatic-tech-ai/mural/visual-engine'
+import { DataTemplate, type DataTemplateFactory } from '@pragmatic-tech-ai/mural/basic'
+import type { Visual } from '@pragmatic-tech-ai/mural/runtime'
 
 // The runtime symbol table instantiate() destructures the fragment's referenced
 // symbols from. Built once per registry.
@@ -324,7 +324,7 @@ Create `src/renderer/src/modules/library/services/tests/library-registry.test.ts
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
@@ -395,8 +395,8 @@ Expected: FAIL — `../library-registry.js` does not exist.
 Create `src/renderer/src/modules/library/services/library-registry.ts`:
 
 ```ts
-import { Application, ResourceDictionary, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { DataTemplate } from '@pragmatic-lab/mural/basic'
+import { Application, ResourceDictionary, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import type { DataTemplate } from '@pragmatic-tech-ai/mural/basic'
 
 import { ensureLibrariesBackend } from './libraries-backend.js'
 import { discoverLibraries, readTemplateSource, type LoadedLibrary, type LoadProblem } from './library-loader.js'
@@ -513,7 +513,7 @@ Create `src/renderer/src/modules/library/services/tests/libraries-panel-service.
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
@@ -573,9 +573,9 @@ Expected: FAIL — `../libraries-panel-service.js` does not exist.
 Create `src/renderer/src/modules/library/services/libraries-panel-service.ts`:
 
 ```ts
-import { MetaData, Model, ObservableCollection, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { IActivatable } from '@pragmatic-lab/mural/framework'
-import type { DataTemplate } from '@pragmatic-lab/mural/basic'
+import { MetaData, Model, ObservableCollection, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import type { IActivatable } from '@pragmatic-tech-ai/mural/framework'
+import type { DataTemplate } from '@pragmatic-tech-ai/mural/basic'
 
 import { LibraryRegistry } from './library-registry.js'
 

@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { TodlLanguageClient } from '../todl-language-client.js'
 import { WorkspaceBaseResolver } from '../../projects/workspace-base-resolver.js'
 import { DiagnosticsService } from '../../diagnostics/diagnostics-service.js'

@@ -1,5 +1,5 @@
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DialogService, type IDocument } from '@pragmatic-lab/mural/framework'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DialogService, type IDocument } from '@pragmatic-tech-ai/mural/framework'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import { pickViewpoints } from './viewpoint-picker.js'

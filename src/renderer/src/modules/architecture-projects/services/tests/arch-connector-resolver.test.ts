@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { load } from '@pragmatic-lab/todl'
+import { load } from '@pragmatic-tech-ai/todl'
 import { resolveConnectorActions } from '../arch-connector-resolver.js'
 
 const MM = `namespace archmm {

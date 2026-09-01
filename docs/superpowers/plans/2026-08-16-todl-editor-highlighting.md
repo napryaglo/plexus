@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- **No `@pragmatic-lab/todl` changes and no republish.** Renderer-only.
+- **No `@pragmatic-tech-ai/todl` changes and no republish.** Renderer-only.
 - **Every test file lives in a `tests/` subfolder next to the code it exercises** (e.g. `src/renderer/src/services/todl/tests/…`).
 - **Tests run in the `node` vitest environment and must NOT import `monaco-editor`.** All tested logic lives in pure modules; monaco-touching glue (`todl-language.ts`, `register-providers.ts`, `code-editor.ts`) is wired but not unit-tested (existing convention: "monaco adapters tested headless").
 - **Uniform keyword-blue** for all three token classes. Blue matches Monaco's own keyword color per base: dark `569CD6`, light `0000FF` (6-hex, no leading `#`).

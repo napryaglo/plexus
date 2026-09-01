@@ -1,5 +1,5 @@
-import { Behavior, type Visual } from '@pragmatic-lab/mural/runtime'
-import { DataObject, DragDropEffects, type DragEventArgs, type DragStartSpec } from '@pragmatic-lab/mural/visual-engine'
+import { Behavior, type Visual } from '@pragmatic-tech-ai/mural/runtime'
+import { DataObject, DragDropEffects, type DragEventArgs, type DragStartSpec } from '@pragmatic-tech-ai/mural/visual-engine'
 
 import { OpenProject } from './open-project.js'
 import { ProjectNode } from './project.js'

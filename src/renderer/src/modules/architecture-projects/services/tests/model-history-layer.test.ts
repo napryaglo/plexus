@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { HistoryLayerId } from '@pragmatic-lab/mural/framework'
+import { HistoryLayerId } from '@pragmatic-tech-ai/mural/framework'
 import { ModelHistoryLayer } from '../model-history-layer.js'
 import type { ArchModel } from '../arch-model.js'
 

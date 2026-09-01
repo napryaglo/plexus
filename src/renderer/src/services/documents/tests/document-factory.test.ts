@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import type { IDocument } from '@pragmatic-lab/mural/framework'
+import type { IDocument } from '@pragmatic-tech-ai/mural/framework'
 import type { IStorage } from '../../storage/storage.js'
 import { isRelocatable, type IDocumentFactory, type IRelocatableDocumentFactory } from '../document-factory.js'
 

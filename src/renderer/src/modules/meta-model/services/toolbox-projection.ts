@@ -5,7 +5,7 @@
 // visible : boolean; }`): a taxonomy appears ONLY if it carries
 // `annotate toolbox { visible = true }`; a term is shown UNLESS it carries
 // `annotate toolbox { visible = false }`.
-import { projectAnnotations, type TodlDocument, type JsonNode } from '@pragmatic-lab/todl'
+import { projectAnnotations, type TodlDocument, type JsonNode } from '@pragmatic-tech-ai/todl'
 
 import { resolveFacets } from './presentation-generator.js'
 import { termsOf } from './meta-model-tree-builder.js'

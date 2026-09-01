@@ -2,11 +2,11 @@
 
 **Date:** 2026-08-11
 **Branch:** `feat/sp5-todl-0.24-consumers` (off Plexus `main`)
-**Program:** reference-integrity fix, sub-project 5 of 5 — the consumer side. SP1 (union relationship targets), SP2 (tech-architecture meta-model retype, `@pragmatic-lab/todl@0.24.0` published to Verdaccio), SP3 (data migration quoted→bare), SP4 (edge-record cleanup) all landed on TODL `main`.
+**Program:** reference-integrity fix, sub-project 5 of 5 — the consumer side. SP1 (union relationship targets), SP2 (tech-architecture meta-model retype, `@pragmatic-tech-ai/todl@0.24.0` published to Verdaccio), SP3 (data migration quoted→bare), SP4 (edge-record cleanup) all landed on TODL `main`.
 
 ## Goal
 
-Bring Plexus onto `@pragmatic-lab/todl@^0.24.0` and update the one consumer the
+Bring Plexus onto `@pragmatic-tech-ai/todl@^0.24.0` and update the one consumer the
 SP1 `RelationshipSchema.target → targets[]` change breaks, and fix the
 arch drop factory so a dropped entity satisfies its meta-model's required
 `label` field. Then republish tech-architecture from the app (manual smoke).
@@ -18,7 +18,7 @@ An audit of Plexus found the SP1-breaking surface is tiny:
   (`accept.has(rel.target)`). It will not compile against 0.24.0.
 - `deriveClasses` is **fully delegated** to TODL core
   (`library-bundle.ts` imports `deriveClasses`/`PublishedClass` from
-  `@pragmatic-lab/todl`); the relationship-target logic lives in TODL, already
+  `@pragmatic-tech-ai/todl`); the relationship-target logic lives in TODL, already
   SP1-updated. No Plexus change.
 - **No test** reads relationship `.target` (matches are layout `source`/`target`
   routing and a mock signature).
@@ -35,7 +35,7 @@ its required `label`, so the model fails validation
 
 ## Section 1 — Version bump + the forced fix
 
-- `package.json`: `@pragmatic-lab/todl` `^0.23.0` → `^0.24.0`; reinstall from
+- `package.json`: `@pragmatic-tech-ai/todl` `^0.23.0` → `^0.24.0`; reinstall from
   Verdaccio (`http://localhost:4873/`).
 - `arch-drop-resolver.ts:39`: replace
   ```ts
@@ -82,7 +82,7 @@ Plexus uses **vitest** (`npm test` → `vitest run`); typecheck is
 
 - **Unit — union resolver:** `resolveDropActions` is pure over a `Repository`.
   Build the repo the way existing arch tests do (`checkAgainst`/
-  `ModelDraft.fromSources` from `@pragmatic-lab/todl` — see
+  `ModelDraft.fromSources` from `@pragmatic-tech-ai/todl` — see
   `services/tests/arch-diagram-binding-*.test.ts`): a concept `edge` with
   `relationship end -> actor | component;`, a viewpoint framing `edge`, plus
   `actor`/`component` concepts and instances. Assert a dropped `component` term
@@ -113,7 +113,7 @@ Plexus uses **vitest** (`npm test` → `vitest run`); typecheck is
 
 ## Constraints
 
-- Plexus imports `@pragmatic-lab/*` from Verdaccio only — no relative `../src`
+- Plexus imports `@pragmatic-tech-ai/*` from Verdaccio only — no relative `../src`
   imports into the framework packages.
 - Every Plexus test file lives in a `tests/` subfolder next to its source
   (vitest globs `src/**/*.test.ts`).

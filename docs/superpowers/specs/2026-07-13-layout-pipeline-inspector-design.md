@@ -17,7 +17,7 @@ Plexus owns a `DiagramDocument` whose `Nodes`/`Connectors` are live mural
 shapes on a canvas. Integration is an adapter loop: extract a `Graph` from
 the active diagram → run the user's pipeline → write results back onto the
 diagram shapes. The two projects do not reference each other today, so this
-adds a new `@pragmatic-lab/fresco` dependency to Plexus plus a new inspector
+adds a new `@pragmatic-tech-ai/fresco` dependency to Plexus plus a new inspector
 contribution.
 
 ## Decisions (settled during brainstorming)
@@ -58,7 +58,7 @@ schema, not class references. Both stay independently buildable and testable.
 
 ### 1. Fresco: `PipelineCatalog` (the one Fresco change — additive)
 
-A pure-data description, exported from `@pragmatic-lab/fresco`, built by
+A pure-data description, exported from `@pragmatic-tech-ai/fresco`, built by
 joining the existing `STAGE_REGISTRIES` (in
 `src/ge/configuration-loader.ts` — what's instantiable) with
 `pipeline-elements.yaml` (display metadata: `Name`, `AlgorithmName`,

@@ -6,7 +6,7 @@
 
 **Architecture:** The library bundle carries the term's annotation icon path (`deriveClasses` projects it; publish copies `resources/`); the loader surfaces it on `LoadedClass`; and `LibraryRegistry.refresh`, when a class has no authored template but has an icon, reads the bundled SVG, `parseSvgIcon`s it at runtime, and mounts an icon+label template built by `buildIconTemplate`. Authored templates win; a missing/unparseable SVG warns and falls back to the default box.
 
-**Tech Stack:** TypeScript, Vitest, `@pragmatic-lab/mural` (`basic`: `parseSvgIcon`, `Icon`, `IconDefinition`; `compiler`: `instantiate`), `FakeStorage`.
+**Tech Stack:** TypeScript, Vitest, `@pragmatic-tech-ai/mural` (`basic`: `parseSvgIcon`, `Icon`, `IconDefinition`; `compiler`: `instantiate`), `FakeStorage`.
 
 ## Global Constraints
 
@@ -241,7 +241,7 @@ git commit -m "feat(library): surface a class icon path on LoadedClass + readIco
 - Test: `src/renderer/src/modules/library/services/tests/visual-library.test.ts` (create/extend); `src/renderer/src/modules/library/services/tests/library-registry.test.ts` (extend).
 
 **Interfaces:**
-- Consumes: `readIconSource` (Task 2); `parseSvgIcon`, `Icon`, `IconDefinition` from `@pragmatic-lab/mural/basic`; existing `buildCtx`, `compileTemplate`, `readTemplateSource`.
+- Consumes: `readIconSource` (Task 2); `parseSvgIcon`, `Icon`, `IconDefinition` from `@pragmatic-tech-ai/mural/basic`; existing `buildCtx`, `compileTemplate`, `readTemplateSource`.
 - Produces: `buildIconTemplate(iconDef: IconDefinition, ctx: Record<string, unknown>): DataTemplate`.
 
 - [ ] **Step 1: Write the failing visual-library test**
@@ -250,8 +250,8 @@ Create `src/renderer/src/modules/library/services/tests/visual-library.test.ts`:
 
 ```ts
 import { test, expect } from 'vitest'
-import { parseSvgIcon, Icon } from '@pragmatic-lab/mural/basic'
-import type { Visual } from '@pragmatic-lab/mural/runtime'
+import { parseSvgIcon, Icon } from '@pragmatic-tech-ai/mural/basic'
+import type { Visual } from '@pragmatic-tech-ai/mural/runtime'
 
 import { buildCtx, buildIconTemplate } from '../visual-library.js'
 
@@ -286,7 +286,7 @@ Expected: FAIL — `buildIconTemplate` is not exported.
 In `visual-library.ts`, `Visual`, `DataTemplate`, `DataTemplateFactory`, and `instantiate` are already imported. Add only `Icon` / `IconDefinition` by extending the existing basic import line:
 
 ```ts
-import { DataTemplate, type DataTemplateFactory, Icon, type IconDefinition } from '@pragmatic-lab/mural/basic'
+import { DataTemplate, type DataTemplateFactory, Icon, type IconDefinition } from '@pragmatic-tech-ai/mural/basic'
 ```
 
 Append:
@@ -382,7 +382,7 @@ In `library-registry.ts`, extend the imports:
 ```ts
 import { discoverLibraries, readTemplateSource, readIconSource, type LoadedLibrary, type LoadProblem } from './library-loader.js'
 import { buildCtx, compileTemplate, buildDefaultTemplate, buildIconTemplate } from './visual-library.js'
-import { parseSvgIcon } from '@pragmatic-lab/mural/basic'
+import { parseSvgIcon } from '@pragmatic-tech-ai/mural/basic'
 ```
 
 Replace the class loop body in `refresh` (the `const source = …` block through its `try/catch`):
@@ -435,7 +435,7 @@ git commit -m "feat(library): mount an icon template for a class with an icon an
 
 ## Notes for the implementer
 
-- The runtime SVG→glyph path is `parseSvgIcon(svgText): IconDefinition` + the `Icon` element, both from `@pragmatic-lab/mural/basic`. No compile-time SVG step.
+- The runtime SVG→glyph path is `parseSvgIcon(svgText): IconDefinition` + the `Icon` element, both from `@pragmatic-tech-ai/mural/basic`. No compile-time SVG step.
 - `buildIconTemplate` reuses the fragment compile path (so `$Display` and theme resources behave exactly like the default template) and only sets the constant `Icon.Source` by walking the built tree via `Visual.logicalChildren` / `visualChildren`. `instanceof Icon` matches because the fragment's `ctx` (`buildCtx()`) and the import are the same `Icon` class.
 - Precedence lives entirely in `refresh`: authored template first (`continue`), icon second, default otherwise. Do not touch `resolve` or the default template.
 - A library published before this change carries no `icon`; it must be republished. Expected, not a bug.

@@ -53,7 +53,7 @@ affordance with removable chips.
   registered"`, unknown `PanelDockService`) are ignored.
 - **No `Date.now()`/`setInterval`** in main-process code.
 - Mural changes ship via Verdaccio: bump version → `npm run build` → publish →
-  Plexus `npm install @pragmatic-lab/mural@X` → `npm run build`.
+  Plexus `npm install @pragmatic-tech-ai/mural@X` → `npm run build`.
 - MVVM in the renderer: view-observable state on DPs; no view-tree reads from VMs.
 
 ## Design

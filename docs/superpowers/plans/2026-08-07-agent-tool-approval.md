@@ -6,11 +6,11 @@
 
 **Architecture:** Add `--permission-prompt-tool mcp__plexus__approve_tool` to the headless CLI spawn and register `approve_tool` on the existing in-process `PlexusMcpServer`. It reuses the proven `ask_user_question` round-trip: allow-list check → (miss) emit a `ToolApproval` event → block → resolve to an allow/deny verdict JSON. Rules are `{tool, prefix?}`; the renderer card mirrors `QuestionCard` and owns the countdown.
 
-**Tech Stack:** TypeScript (ESM, strict), Electron (main/preload/renderer), `@modelcontextprotocol/sdk` + `zod` (MCP server), `@pragmatic-lab/mural` (renderer UI + `ProgressIndicator`), Vitest.
+**Tech Stack:** TypeScript (ESM, strict), Electron (main/preload/renderer), `@modelcontextprotocol/sdk` + `zod` (MCP server), `@pragmatic-tech-ai/mural` (renderer UI + `ProgressIndicator`), Vitest.
 
 ## Global Constraints
 
-- Plexus only; no TODL change. `@pragmatic-lab/todl` floor unchanged.
+- Plexus only; no TODL change. `@pragmatic-tech-ai/todl` floor unchanged.
 - Use real enums, never string-literal unions. Every renderer view-bound property is a registered mural DP (`Model.RegisterProperty`), read via `get_property_value`.
 - Every test file lives in a `tests/` subfolder next to its source.
 - No relative `../src` imports into framework packages.
@@ -555,7 +555,7 @@ Create `.../services/approval-card.ts`:
 // commands (Approve once / Always allow <prefix> / Deny) and a depleting
 // countdown ring; on expiry it auto-submits AllowOnce. Every view-bound property
 // is a registered DP (mural binds via get_property_value).
-import { MetaData, Model, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, RelayCommand, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 import { ToolApprovalDecision, type ToolApprovalAnswer, type ToolApprovalRequest } from '../../../../../shared/agent-api.js'
 
 const TICK_MS = 100

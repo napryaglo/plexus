@@ -1,8 +1,8 @@
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 import {
     compile, DEFAULT_SYMBOLS, svgToGeometryJs,
     type IncludeResolver, type IncludeResolution,
-} from '@pragmatic-lab/mural/compiler'
+} from '@pragmatic-tech-ai/mural/compiler'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import { distinctIcons, assignResourceKeys, buildIconIndex, isRasterIcon, includeLine } from './presentation-generator.js'
@@ -10,8 +10,8 @@ import { distinctIcons, assignResourceKeys, buildIconIndex, isRasterIcon, includ
 const PRESENTATION_DIR = 'presentation'
 const COMPILED_FILE = 'presentation.compiled.json'
 export const ICON_INDEX_FILE = 'icon-index.json'
-const BASIC = '@pragmatic-lab/mural/basic'
-const VISUAL_ENGINE = '@pragmatic-lab/mural/visual-engine'
+const BASIC = '@pragmatic-tech-ai/mural/basic'
+const VISUAL_ENGINE = '@pragmatic-tech-ai/mural/visual-engine'
 const DICT_NAME = 'MetaModelPresentation'
 
 // Raster icon extensions → MIME type for the baked data URI.

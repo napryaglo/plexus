@@ -1,9 +1,9 @@
-import { instantiate, DEFAULT_SYMBOLS } from '@pragmatic-lab/mural/compiler'
-import * as muralRuntime from '@pragmatic-lab/mural/runtime'
-import * as muralBasic from '@pragmatic-lab/mural/basic'
-import * as muralEngine from '@pragmatic-lab/mural/visual-engine'
-import { DataTemplate, type DataTemplateFactory } from '@pragmatic-lab/mural/basic'
-import type { Visual } from '@pragmatic-lab/mural/runtime'
+import { instantiate, DEFAULT_SYMBOLS } from '@pragmatic-tech-ai/mural/compiler'
+import * as muralRuntime from '@pragmatic-tech-ai/mural/runtime'
+import * as muralBasic from '@pragmatic-tech-ai/mural/basic'
+import * as muralEngine from '@pragmatic-tech-ai/mural/visual-engine'
+import { DataTemplate, type DataTemplateFactory } from '@pragmatic-tech-ai/mural/basic'
+import type { Visual } from '@pragmatic-tech-ai/mural/runtime'
 import { IconKeyConverter, ImageKeyConverter } from '../../diagram/services/icon-key-converter.js'
 
 // Compiler symbol table extended with the fragment-referenced converters so

@@ -1,5 +1,5 @@
-import { MuralBase, MetaData, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DocumentsContentHostService, type IDocument } from '@pragmatic-lab/mural/framework'
+import { MuralBase, MetaData, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService, DocumentsContentHostService, type IDocument } from '@pragmatic-tech-ai/mural/framework'
 import { ProjectExplorerService } from '../modules/project-explorer/services/project-explorer-service.js'
 
 // The window/app title, resolved with the same precedence the HTML band used

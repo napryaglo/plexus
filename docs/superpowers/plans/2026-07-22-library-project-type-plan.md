@@ -6,7 +6,7 @@
 
 **Architecture:** A "consuming project" declares `BaseBindings` (meta-model, and later libraries); `resolveBases` reads their compiled `model.json` from the backends; the renamed base-aware `TodlValidationService` validates any project via `checkAgainst(bases, sources)` (meta-model = `[]`, unchanged). `LibraryProjectFactory` mirrors `MetaModelProjectFactory` with a meta-model-bound publish. The New-Project dialog gains a meta-model picker for library projects.
 
-**Tech Stack:** TypeScript (renderer), mural, `.mu` compiled via `npm run compile:mu`, Vitest, `@pragmatic-lab/todl` (`checkAgainst` from SP3).
+**Tech Stack:** TypeScript (renderer), mural, `.mu` compiled via `npm run compile:mu`, Vitest, `@pragmatic-tech-ai/todl` (`checkAgainst` from SP3).
 
 ## Global Constraints
 
@@ -73,8 +73,8 @@ export interface BaseBindings {
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { check, toJSON } from '@pragmatic-lab/todl'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { check, toJSON } from '@pragmatic-tech-ai/todl'
 
 import { StorageProviderRegistry } from '../../storage/storage-provider-registry.js'
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
@@ -127,8 +127,8 @@ test('no bindings resolves to empty', async () => {
 - [ ] **Step 4: Implement `base-resolver.ts`:**
 
 ```ts
-import type { IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import type { IStorage } from '../storage/storage.js'
 import { ensureMetaModelsBackend } from '../../modules/meta-model/services/meta-models-backend.js'
@@ -184,7 +184,7 @@ Rename `MetaModelValidationService` → `TodlValidationService`, move to `src/re
 - Modify: `src/renderer/src/app.mu` (add `TodlValidationService` to `.services:`)
 
 **Interfaces:**
-- Consumes: `resolveBases` (Task 2); `checkAgainst` (`@pragmatic-lab/todl`); `PROJECT_MANIFEST_FILENAME`, `type BaseBindings` (Task 2 / project-factory).
+- Consumes: `resolveBases` (Task 2); `checkAgainst` (`@pragmatic-tech-ai/todl`); `PROJECT_MANIFEST_FILENAME`, `type BaseBindings` (Task 2 / project-factory).
 - Produces: `class TodlValidationService` (static `Key`), `AttachDocument(doc, storage)`, `Revalidate()`, `ClearBaseCache(storage?)`; `validateSources(sources, bases?)`.
 
 - [ ] **Step 1: Move the file** — `git mv src/renderer/src/modules/meta-model/services/meta-model-validation-service.ts src/renderer/src/services/todl/todl-validation-service.ts` and `git mv` its test to `src/renderer/src/services/todl/tests/todl-validation-service.test.ts`. Fix relative import depths in both (now under `services/todl/` — `../../` reaches `services/`, `../../../modules/` reaches modules).
@@ -194,7 +194,7 @@ Rename `MetaModelValidationService` → `TodlValidationService`, move to `src/re
 - [ ] **Step 3: Add the `bases` param to `validateSources`** (default `[]`, switch to `checkAgainst`):
 
 ```ts
-import { checkAgainst, Severity, type Diagnostic, type SourceFile, type TodlDocument } from '@pragmatic-lab/todl'
+import { checkAgainst, Severity, type Diagnostic, type SourceFile, type TodlDocument } from '@pragmatic-tech-ai/todl'
 
 export function validateSources(sources: SourceFile[], bases: TodlDocument[] = []): Map<string, EditorDiagnostic[]> {
   const byUri = new Map<string, EditorDiagnostic[]>()
@@ -291,8 +291,8 @@ Existing factories (`MetaModelProjectFactory`, `ArchitectureProjectFactory`) kee
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { fromJSON, check, toJSON } from '@pragmatic-lab/todl'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { fromJSON, check, toJSON } from '@pragmatic-tech-ai/todl'
 
 import { PROJECT_MANIFEST_FILENAME } from '../../../../services/projects/project-factory.js'
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
@@ -393,7 +393,7 @@ for (const s of sources) await dest.WriteText(`${base}/src/${s.uri}`, s.text)
 return { ok: true, message: `Published ${manifest.id}@${manifest.libVersion} (${sources.length} file(s)).` }
 ```
 
-  Imports: `checkAgainst, toJSON, Severity` from `@pragmatic-lab/todl`; `resolveBases` from base-resolver; `ensureLibrariesBackend` from `./libraries-backend.js`; `type BaseRef`/`BaseBindings` from base-binding; `collectTodlSources`, `extname`, `joinRel` from the meta-model module's `todl-sources.js` (reuse — `import { collectTodlSources, extname, joinRel } from '../../meta-model/services/todl-sources.js'`).
+  Imports: `checkAgainst, toJSON, Severity` from `@pragmatic-tech-ai/todl`; `resolveBases` from base-resolver; `ensureLibrariesBackend` from `./libraries-backend.js`; `type BaseRef`/`BaseBindings` from base-binding; `collectTodlSources`, `extname`, `joinRel` from the meta-model module's `todl-sources.js` (reuse — `import { collectTodlSources, extname, joinRel } from '../../meta-model/services/todl-sources.js'`).
 
 - [ ] **Step 5: Run — pass. Typecheck.**
 

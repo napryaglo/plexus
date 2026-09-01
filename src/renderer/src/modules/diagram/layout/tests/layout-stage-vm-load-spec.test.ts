@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import type { CatalogStrategy, LayoutStageSpec } from '@pragmatic-lab/fresco'
+import type { CatalogStrategy, LayoutStageSpec } from '@pragmatic-tech-ai/fresco'
 
 import { LayoutStageVM, DEFAULT_OPTION } from '../layout-stage-vm.js'
 

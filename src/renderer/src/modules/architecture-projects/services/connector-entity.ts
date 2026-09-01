@@ -1,4 +1,4 @@
-import type { Entity, Repository } from '@pragmatic-lab/todl'
+import type { Entity, Repository } from '@pragmatic-tech-ai/todl'
 import type { ArchModel } from './arch-model.js'
 import { acceptSet } from './arch-concept-type.js'
 

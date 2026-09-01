@@ -1,6 +1,6 @@
 import { describe, test } from 'vitest'
 import assert from 'node:assert/strict'
-import { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 import type { IStorage } from '../../../../services/storage/storage.js'
 import { readViewpoints, writeViewpoints, writeViewpointsToFile, ARCH_VIEWPOINTS_KEY } from '../arch-diagram-viewpoints-store.js'
 

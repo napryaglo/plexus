@@ -1,5 +1,5 @@
-import { ModelDraft } from '@pragmatic-lab/todl'
-import type { Repository, Entity, SourceFile } from '@pragmatic-lab/todl'
+import { ModelDraft } from '@pragmatic-tech-ai/todl'
+import type { Repository, Entity, SourceFile } from '@pragmatic-tech-ai/todl'
 import type { IStorage } from '../../../services/storage/storage.js'
 import { type WikiOrigin, openProjectOrigin } from '../../../services/projects/wiki-origin.js'
 

@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { PROJECT_MANIFEST_FILENAME } from '../../../../services/projects/project-factory.js'
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'

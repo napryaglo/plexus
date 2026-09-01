@@ -6,7 +6,7 @@
 
 **Architecture:** `Panel` gains a `ZIndex` attached property; `visualChildren` returns a stable ZIndex-sorted snapshot while `logicalChildren` keeps insertion order; `Panel.SetZIndex` notifies the parent to invalidate the sorted snapshot and re-render; the SVG renderer reconciles child DOM order positionally. The diagram adds four commands (pure `zorder.ts` math + `DiagramCommands` install + keyboard + context menu) and persists a per-figure `zIndex` in `NodeVisual`.
 
-**Tech Stack:** TypeScript, mural framework (`@pragmatic-lab/mural`), Plexus (Electron/electron-vite), Vitest + `node:test`, jsdom for renderer tests.
+**Tech Stack:** TypeScript, mural framework (`@pragmatic-tech-ai/mural`), Plexus (Electron/electron-vite), Vitest + `node:test`, jsdom for renderer tests.
 
 **Spec:** `Plexus/docs/superpowers/specs/2026-08-28-panel-zindex-design.md`
 
@@ -492,7 +492,7 @@ Expected: Ideally PASS already (attached setters are generic + `Panel` is regist
 
 - [ ] **Step 3: (Only if needed) close the wiring gap**
 
-If Step 2 failed, inspect how `Canvas.Left` resolves in `compiler.ts` around `emitSetDP` (~3395) and `ensureImport`. The likely gap is that `Panel` needs its `DEFAULT_SYMBOLS` import entry to resolve the runtime `SetZIndex`/key — but `symbol-table.ts:17` already maps `Panel` → `@pragmatic-lab/mural/runtime`. Make the minimal change the failure points to (no speculative edits). Re-run until PASS.
+If Step 2 failed, inspect how `Canvas.Left` resolves in `compiler.ts` around `emitSetDP` (~3395) and `ensureImport`. The likely gap is that `Panel` needs its `DEFAULT_SYMBOLS` import entry to resolve the runtime `SetZIndex`/key — but `symbol-table.ts:17` already maps `Panel` → `@pragmatic-tech-ai/mural/runtime`. Make the minimal change the failure points to (no speculative edits). Re-run until PASS.
 
 - [ ] **Step 4: Run the full compiler suite**
 
@@ -1195,11 +1195,11 @@ In `diagram.resources.mu`, inside `DiagramContextMenu`, after the Distribute ite
 
 - [ ] **Step 3: Point Plexus at the new mural (GATED — ask before publishing)**
 
-The renderer bundles mural's built `dist`. To consume Task 6's commands, mural must be published to Verdaccio (`http://localhost:4873`) and reinstalled, OR `npm link`ed for local iteration (per `Plexus/CLAUDE.md`). **Publishing is a gated action — do NOT publish unless the user explicitly asks.** For the plan's purposes: bump the floor in `Plexus/package.json` (`@pragmatic-lab/mural` → `^0.35.0`) and STOP here if not yet authorized to publish/reinstall; report that the menu wiring compiles against the new API once mural is available.
+The renderer bundles mural's built `dist`. To consume Task 6's commands, mural must be published to Verdaccio (`http://localhost:4873`) and reinstalled, OR `npm link`ed for local iteration (per `Plexus/CLAUDE.md`). **Publishing is a gated action — do NOT publish unless the user explicitly asks.** For the plan's purposes: bump the floor in `Plexus/package.json` (`@pragmatic-tech-ai/mural` → `^0.35.0`) and STOP here if not yet authorized to publish/reinstall; report that the menu wiring compiles against the new API once mural is available.
 
 ```bash
 cd Plexus
-# edit package.json: "@pragmatic-lab/mural": "^0.35.0"
+# edit package.json: "@pragmatic-tech-ai/mural": "^0.35.0"
 ```
 
 - [ ] **Step 4: Compile the markup + typecheck (after mural is available)**

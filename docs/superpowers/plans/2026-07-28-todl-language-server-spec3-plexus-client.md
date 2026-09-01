@@ -4,11 +4,11 @@
 
 **Goal:** Wire the completed out-of-process TODL language server into Plexus so its Monaco `.todl` editors get the full LSP authoring loop, with the in-renderer validation pass retired.
 
-> **Status: ✅ Implemented & merged to `main` (verified 2026-08-06).** All deliverables are on `main` — `TodlServerHost` + `register.ts` (main), the preload channel, `TodlLanguageClient` + provider adapters (renderer), wired at startup (`main/index.ts` → `registerTodlServerHandlers`; `renderer/main.js` → `registerTodlProviders`). The vendored server bundle builds (`scripts/build-todl-server.mjs` → `out/main/todl-language-server.cjs`) from `@pragmatic-lab/todl@0.14.0`, which ships the `/language-server` subpath. Plexus todl tests 22/22 green. The unticked step boxes below were not checked off during execution — they are **not** outstanding work. The sole remaining gate is the human-run manual smoke checklist (`../todl-lsp-smoke-checklist.md`).
+> **Status: ✅ Implemented & merged to `main` (verified 2026-08-06).** All deliverables are on `main` — `TodlServerHost` + `register.ts` (main), the preload channel, `TodlLanguageClient` + provider adapters (renderer), wired at startup (`main/index.ts` → `registerTodlServerHandlers`; `renderer/main.js` → `registerTodlProviders`). The vendored server bundle builds (`scripts/build-todl-server.mjs` → `out/main/todl-language-server.cjs`) from `@pragmatic-tech-ai/todl@0.14.0`, which ships the `/language-server` subpath. Plexus todl tests 22/22 green. The unticked step boxes below were not checked off during execution — they are **not** outstanding work. The sole remaining gate is the human-run manual smoke checklist (`../todl-lsp-smoke-checklist.md`).
 
 **Architecture:** Electron main forks a vendored, self-contained server bundle (`utilityProcess`) and relays framed JSON-RPC message *objects* over IPC through an opaque preload pipe. A renderer `TodlLanguageClient` service runs a `vscode-jsonrpc` `MessageConnection` over that pipe, pushes every project `.todl` (+ resolved bases) to the server, routes pushed diagnostics into the existing `DiagnosticsService`, and registers ~12 hand-rolled Monaco provider adapters. Documents are identified by a synthetic `todl://<projectKey>/<relpath>` URI backed by a client registry; multi-file `WorkspaceEdit`s apply through one unified path (open buffers via the Monaco model, closed files via `IStorage`).
 
-**Tech Stack:** TypeScript (ESM, strict), Electron + electron-vite, Vitest, monaco-editor 0.55, `@pragmatic-lab/todl`, `vscode-jsonrpc`, `vscode-languageserver-types`, esbuild (server bundle), mural runtime (DI / `ServiceBase` / `Model` DPs).
+**Tech Stack:** TypeScript (ESM, strict), Electron + electron-vite, Vitest, monaco-editor 0.55, `@pragmatic-tech-ai/todl`, `vscode-jsonrpc`, `vscode-languageserver-types`, esbuild (server bundle), mural runtime (DI / `ServiceBase` / `Model` DPs).
 
 ## Global Constraints
 
@@ -21,7 +21,7 @@
 - Diagnostic owner id is the string `"todl"` (already used by `DiagnosticsService`).
 - LSP positions are 0-based; Monaco positions and canonical `Diagnostic`/`EditorDiagnostic` are 1-based with exclusive end. Convert at the boundary only.
 - Work happens in the **Plexus** repo on branch `todl-language-server-spec3-plexus-client` (already created). All commits are Plexus commits.
-- **Prerequisite (not a task):** the build needs `@pragmatic-lab/todl` to expose the `./language-server` + `./language-service` subpaths. Cut/publish **TODL 0.3.0** to Verdaccio and bump Plexus's dependency, or `npm link` the local TODL checkout, before Task 1's build step. The vendored bundle is what ships at runtime.
+- **Prerequisite (not a task):** the build needs `@pragmatic-tech-ai/todl` to expose the `./language-server` + `./language-service` subpaths. Cut/publish **TODL 0.3.0** to Verdaccio and bump Plexus's dependency, or `npm link` the local TODL checkout, before Task 1's build step. The vendored bundle is what ships at runtime.
 
 ---
 
@@ -80,7 +80,7 @@ Add to `package.json` `dependencies`: `"vscode-jsonrpc": "^8.2.0"`, `"vscode-lan
 // that speaks LSP over stdio. Bundled by scripts/build-todl-server.mjs and
 // forked by TodlServerHost. Kept tiny so the bundle is just the server + core.
 import { createConnection } from 'vscode-languageserver/node'
-import { createServer } from '@pragmatic-lab/todl/language-server'
+import { createServer } from '@pragmatic-tech-ai/todl/language-server'
 
 const connection = createConnection(process.stdin, process.stdout)
 createServer(connection)
@@ -509,7 +509,7 @@ export function createTodlLspConnection(bridge: ITodlLspApi): MessageConnection 
 ```ts
 // tests/todl-language-client-registry.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { TodlLanguageClient } from '../todl-language-client.js'
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
 
@@ -556,7 +556,7 @@ To test notification traffic without a real connection, `Initialize` accepts any
 ```ts
 // tests/todl-language-client-attach.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { TodlLanguageClient } from '../todl-language-client.js'
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
 
@@ -616,7 +616,7 @@ test('AttachProject sets bases then didOpens every project .todl', async () => {
 ```ts
 // tests/todl-language-client-docsync.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { TodlLanguageClient } from '../todl-language-client.js'
 import { CodeDocument } from '../../../modules/code-editor/code-document.js'
 import { StorageCodeFile } from '../../../modules/code-editor/code-file.js'
@@ -669,7 +669,7 @@ test('editing an attached doc sends a full-text didChange', async () => {
 ```ts
 // tests/todl-language-client-diagnostics.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { TodlLanguageClient } from '../todl-language-client.js'
 import { DiagnosticsService } from '../../diagnostics/diagnostics-service.js'
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
@@ -892,7 +892,7 @@ Add a `ResyncAll()` to the client that re-runs `setBases` + `didOpen` for every 
 ```ts
 // tests/todl-language-client-edits.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { TodlLanguageClient } from '../todl-language-client.js'
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
 

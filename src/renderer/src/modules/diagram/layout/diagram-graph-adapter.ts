@@ -1,4 +1,4 @@
-import { Graph } from '@pragmatic-lab/fresco'
+import { Graph } from '@pragmatic-tech-ai/fresco'
 
 // A layout position from Fresco. Fresco's Point (X/Y) satisfies this;
 // declared locally so the adapter's tests don't need mural's Point.

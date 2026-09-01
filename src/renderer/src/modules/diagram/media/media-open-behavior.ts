@@ -1,4 +1,4 @@
-import { Application, Behavior, type PointerEventArgs, Visual } from '@pragmatic-lab/mural/runtime'
+import { Application, Behavior, type PointerEventArgs, Visual } from '@pragmatic-tech-ai/mural/runtime'
 import { FileSystemService } from '../../../services/file-system/file-system-service.js'
 import { MediaNodeVM } from './media-node-vm.js'
 

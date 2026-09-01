@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { LibraryRegistry } from '../../../library/services/library-registry.js'
 import { registerArchToolboxAdapters } from '../register-arch-toolbox-adapters.js'
 import { TodlVisualResolverKey } from '../todl-visual-resolver.js'

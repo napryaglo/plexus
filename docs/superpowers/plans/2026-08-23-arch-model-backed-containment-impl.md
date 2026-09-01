@@ -6,13 +6,13 @@
 
 **Architecture:** Three repos in a publish cascade. **TODL** gains prelude `container` + `containment` annotations (definitions). **Mural** fires a `NodeReparented` diagram event from `ContainerPlacement.reparent`/`reHome` so a drag-nest is observable, and bumps TODL. **Plexus** consumes both, adds `ArchModel.removeRef`, computes container concepts (containment targets ∪ `@container`) and containment relationships (`@containment` ∪ `in`-named) from the repo, sets `ArchNodeVM.IsContainer` so mural realizes those nodes as `ContentContainerFigure`s, projects `in` refs to visual nesting in `rescan`, and writes a nest/un-nest gesture back to the model via the new reparent event (rejecting nestings the meta-model can't hold). The generic container is a shape-kind toolbox tile whose nesting stays visual-only.
 
-**Tech Stack:** TypeScript. TODL (`@pragmatic-lab/todl`), Mural (`@pragmatic-lab/mural`), Plexus (Electron renderer). Verdaccio (`http://localhost:4873`).
+**Tech Stack:** TypeScript. TODL (`@pragmatic-tech-ai/todl`), Mural (`@pragmatic-tech-ai/mural`), Plexus (Electron renderer). Verdaccio (`http://localhost:4873`).
 
 **Spec:** `Plexus/docs/superpowers/specs/2026-08-23-arch-model-backed-containment-design.md`. Prior plan (Mural VM-backed container seam, already merged + published in 0.21.0): `Mural/docs/superpowers/plans/2026-08-23-vm-backed-container-seam.md`.
 
 ## Global Constraints
 
-- Publish `@pragmatic-lab/*` ONLY to Verdaccio (`http://localhost:4873`), NEVER public npm, and ONLY at the two explicit gated publish steps (Task A3, Task B3) — each pauses for the user's go-ahead.
+- Publish `@pragmatic-tech-ai/*` ONLY to Verdaccio (`http://localhost:4873`), NEVER public npm, and ONLY at the two explicit gated publish steps (Task A3, Task B3) — each pauses for the user's go-ahead.
 - Every test file lives in a `tests/` subfolder next to the code it exercises.
 - Real TypeScript enums, never string-literal unions. Cross-class internals: named-interface cast, never bracket access.
 - Never mutate the corpus at `C:/Users/Eugene/Projects/plexus_tests`; Plexus e2e runs against a scratch copy via `PLEXUS_TEST_CORPUS`.
@@ -86,7 +86,7 @@ namespace mm {
 
 ### Task A3: **[GATED PUBLISH]** Publish TODL 0.33.0 to Verdaccio
 
-- [ ] **Step 1: STOP — ask the user to confirm the publish.** Only on explicit go-ahead: `npm publish` (runs `prepublishOnly` clean+build). Verify: `curl -s http://localhost:4873/@pragmatic-lab%2ftodl | node -e "…dist-tags"` shows `latest: 0.33.0`.
+- [ ] **Step 1: STOP — ask the user to confirm the publish.** Only on explicit go-ahead: `npm publish` (runs `prepublishOnly` clean+build). Verify: `curl -s http://localhost:4873/@pragmatic-tech-ai%2ftodl | node -e "…dist-tags"` shows `latest: 0.33.0`.
 - [ ] **Step 2: Finish the branch** (superpowers:finishing-a-development-branch — merge locally per the established pattern).
 
 ---
@@ -97,7 +97,7 @@ Repo: `c:\Users\Eugene\Projects\architecture-agent\Mural` (branch first). Versio
 
 ### Task B1: Bump TODL dependency
 
-- [ ] **Step 1:** `npm install @pragmatic-lab/todl@^0.33.0`.
+- [ ] **Step 1:** `npm install @pragmatic-tech-ai/todl@^0.33.0`.
 - [ ] **Step 2:** `npx tsc --noEmit` — confirm no breakage from the TODL bump.
 - [ ] **Step 3:** Commit "chore(deps): bump todl to ^0.33.0".
 
@@ -159,7 +159,7 @@ Repo: `c:\Users\Eugene\Projects\architecture-agent\Plexus`, branch `feat/arch-mo
 - Consumes: TODL `ModelDraft.removeRef(from, member, to): void` (exists).
 - Produces: `ArchModel.removeRef(from: string, member: string, to: string): void` — delegates to `draft.removeRef` then `fire()` (mirrors `addRef` at arch-model.ts:78).
 
-- [ ] **Step 1:** `npm install @pragmatic-lab/todl@^0.33.0 @pragmatic-lab/mural@^0.21.1`; `npm run typecheck` — confirm clean against the new upstreams.
+- [ ] **Step 1:** `npm install @pragmatic-tech-ai/todl@^0.33.0 @pragmatic-tech-ai/mural@^0.21.1`; `npm run typecheck` — confirm clean against the new upstreams.
 - [ ] **Step 2: Write the failing test** — build an `ArchModel` over a draft with an `in` ref (mirror an existing arch-model test's setup), call `removeRef`, assert the ref is gone (`entity.refs('in')` empty) and `onChanged` fired.
 - [ ] **Step 3: Run it, verify it fails** (`removeRef` not a function).
 - [ ] **Step 4: Implement** in `arch-model.ts`, next to `addRef`:

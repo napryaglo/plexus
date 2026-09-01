@@ -6,14 +6,14 @@
 
 **Architecture:** One `LibraryTreeNode` view-model (single type + `Kind` discriminator, mirroring `ProjectNode`) recursed by a `HierarchicalDataTemplate [itemsselector = Children]`. `LibrariesPanelService` builds the tree from `LibraryRegistry.refresh()` and exposes `Roots` + a two-way `SelectedNode` whose change toggles a leaf's `IsPreviewOpen`. Class leaves carry a drag payload using the same `TOOLBOX_NODE_KIND_FORMAT` term id the Phase 3 canvas already accepts.
 
-**Tech Stack:** TypeScript, Electron renderer, `@pragmatic-lab/mural` (`Model`, `ObservableCollection`, `TreeView`, `HierarchicalDataTemplate`, `DataObject`, `TOOLBOX_NODE_KIND_FORMAT`), Vitest, `FakeStorage`.
+**Tech Stack:** TypeScript, Electron renderer, `@pragmatic-tech-ai/mural` (`Model`, `ObservableCollection`, `TreeView`, `HierarchicalDataTemplate`, `DataObject`, `TOOLBOX_NODE_KIND_FORMAT`), Vitest, `FakeStorage`.
 
 ## Global Constraints
 
 - Every test file lives in a `tests/` subfolder next to its source (repo rule).
 - Real TypeScript `enum`s, never string-literal unions (repo rule).
 - Node hierarchy is exactly: **Library → Concept → Class** (concept = each class's `LoadedClass.concept`).
-- Class-leaf drag payload sets `TOOLBOX_NODE_KIND_FORMAT` (imported from `@pragmatic-lab/mural/framework`) to the full dotted term id (`cls.id`), effects `DragDropEffects.Copy`.
+- Class-leaf drag payload sets `TOOLBOX_NODE_KIND_FORMAT` (imported from `@pragmatic-tech-ai/mural/framework`) to the full dotted term id (`cls.id`), effects `DragDropEffects.Copy`.
 - No new icon assets: reuse `@Libraries` for Library rows (shown via `$IsLibrary << ToVisibility`); Concept/Class rows are text.
 - Concepts sorted by name; classes sorted by display name.
 - Run one test: `npx vitest run <path>`; full suite `npx vitest run`; markup `npm run compile:mu`; types `npm run typecheck`; live check `npm run dev`. Always `cd /c/Users/Eugene/Projects/architecture-agent/Plexus` first (shell cwd can drift).
@@ -35,7 +35,7 @@
 - Test: `src/renderer/src/modules/library/services/tests/library-tree-node.test.ts`
 
 **Interfaces:**
-- Consumes: `@pragmatic-lab/mural/runtime` (`Model`, `ObservableCollection`, `DataObject`, `DragDropEffects`, `MetaData`), `@pragmatic-lab/mural/framework` (`TOOLBOX_NODE_KIND_FORMAT`), `@pragmatic-lab/mural/basic` (`DataTemplate` type).
+- Consumes: `@pragmatic-tech-ai/mural/runtime` (`Model`, `ObservableCollection`, `DataObject`, `DragDropEffects`, `MetaData`), `@pragmatic-tech-ai/mural/framework` (`TOOLBOX_NODE_KIND_FORMAT`), `@pragmatic-tech-ai/mural/basic` (`DataTemplate` type).
 - Produces:
   - `enum LibraryNodeKind { Library = 'library', Concept = 'concept', Class = 'class' }`
   - `class LibraryTreeNode extends Model` with getters: `Name: string`, `Kind: LibraryNodeKind`, `Children: ObservableCollection<LibraryTreeNode>`, `IsLibrary: boolean`, `IsDraggable: boolean`, `IsPreviewOpen: boolean` (get/set), `TermId: string`, `Concept: string`, `Display: string`, `Label: string`, `LocalId: string`, `Template: DataTemplate | undefined`, `Data: LibraryTreeNode`, `BeginKindDragData: (() => { data: DataObject; effects: DragDropEffects }) | undefined`.
@@ -47,8 +47,8 @@
 ```ts
 // src/renderer/src/modules/library/services/tests/library-tree-node.test.ts
 import { test, expect } from 'vitest'
-import { DataTemplate } from '@pragmatic-lab/mural/basic'
-import { TOOLBOX_NODE_KIND_FORMAT } from '@pragmatic-lab/mural/framework'
+import { DataTemplate } from '@pragmatic-tech-ai/mural/basic'
+import { TOOLBOX_NODE_KIND_FORMAT } from '@pragmatic-tech-ai/mural/framework'
 import { LibraryTreeNode, LibraryNodeKind } from '../library-tree-node.js'
 
 test('group node: kind, name, empty children, inert (not draggable, no preview payload)', () => {
@@ -95,9 +95,9 @@ Expected: FAIL, cannot resolve `../library-tree-node.js`.
 - [ ] **Step 3: Implement `library-tree-node.ts`**
 
 ```ts
-import { DataObject, DragDropEffects, MetaData, Model, ObservableCollection } from '@pragmatic-lab/mural/runtime'
-import { TOOLBOX_NODE_KIND_FORMAT } from '@pragmatic-lab/mural/framework'
-import type { DataTemplate } from '@pragmatic-lab/mural/basic'
+import { DataObject, DragDropEffects, MetaData, Model, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
+import { TOOLBOX_NODE_KIND_FORMAT } from '@pragmatic-tech-ai/mural/framework'
+import type { DataTemplate } from '@pragmatic-tech-ai/mural/basic'
 
 // The three tiers of the Libraries tree. One node type carries all three, kept
 // apart by Kind (mirrors ProjectNode's single-type-plus-Kind shape).
@@ -224,7 +224,7 @@ git commit -m "feat(library): LibraryTreeNode model + group/leaf factories"
 ```ts
 // src/renderer/src/modules/library/services/tests/libraries-panel-service.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
@@ -332,8 +332,8 @@ Expected: FAIL.
 - [ ] **Step 3: Rewrite `libraries-panel-service.ts`**
 
 ```ts
-import { MetaData, Model, ObservableCollection, ServiceBase, ServiceKey, type IServiceProvider, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
-import type { IActivatable } from '@pragmatic-lab/mural/framework'
+import { MetaData, Model, ObservableCollection, ServiceBase, ServiceKey, type IServiceProvider, type PropertyDescriptor } from '@pragmatic-tech-ai/mural/runtime'
+import type { IActivatable } from '@pragmatic-tech-ai/mural/framework'
 
 import { LibraryRegistry } from './library-registry.js'
 import { LibraryTreeNode, LibraryNodeKind } from './library-tree-node.js'

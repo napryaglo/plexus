@@ -1,6 +1,6 @@
 import { test, expect, afterEach } from 'vitest'
-import { Icon } from '@pragmatic-lab/mural/basic'
-import type { Visual } from '@pragmatic-lab/mural/runtime'
+import { Icon } from '@pragmatic-tech-ai/mural/basic'
+import type { Visual } from '@pragmatic-tech-ai/mural/runtime'
 
 import { buildCtx, compileTemplate, buildDefaultTemplate, buildFigureTemplate } from '../visual-library.js'
 import { setIconResourceResolver } from '../../../diagram/services/icon-key-converter.js'

@@ -85,7 +85,7 @@ A minimal `IDocument` that holds the parsed `FlowDocument` for a wiki page. The 
 - Test: `src/renderer/src/services/wiki/tests/wiki-document.test.ts`
 
 **Interfaces:**
-- Consumes: `buildFlowDocument(markdown): FlowDocument` from `../markdown/markdown-document.js` (Task 1); `FlowDocument` type from `@pragmatic-lab/mural/basic`; `IDocument` from `@pragmatic-lab/mural/framework`.
+- Consumes: `buildFlowDocument(markdown): FlowDocument` from `../markdown/markdown-document.js` (Task 1); `FlowDocument` type from `@pragmatic-tech-ai/mural/basic`; `IDocument` from `@pragmatic-tech-ai/mural/framework`.
 - Produces:
   - `class WikiDocument implements IDocument` with `constructor(path: string, text: string)`
   - `Id: string` (the path), `Title: string` (file name), `IsDirty: boolean` (always `false`), `Document: FlowDocument` (DP), `Save(): void` (no-op), `Refresh(text: string): void`
@@ -96,7 +96,7 @@ Create `src/renderer/src/services/wiki/tests/wiki-document.test.ts`:
 
 ```ts
 import { test, expect } from 'vitest'
-import { FlowDocument } from '@pragmatic-lab/mural/basic'
+import { FlowDocument } from '@pragmatic-tech-ai/mural/basic'
 import { WikiDocument } from '../wiki-document.js'
 
 test('WikiDocument exposes Id (path), Title (file name), read-only IsDirty', () => {
@@ -132,9 +132,9 @@ Expected: FAIL — `../wiki-document.js` does not exist.
 Create `src/renderer/src/services/wiki/wiki-document.ts`:
 
 ```ts
-import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
-import { FlowDocument } from '@pragmatic-lab/mural/basic'
-import type { IDocument } from '@pragmatic-lab/mural/framework'
+import { MetaData, Model } from '@pragmatic-tech-ai/mural/runtime'
+import { FlowDocument } from '@pragmatic-tech-ai/mural/basic'
+import type { IDocument } from '@pragmatic-tech-ai/mural/framework'
 
 import { buildFlowDocument } from '../markdown/markdown-document.js'
 
@@ -206,7 +206,7 @@ Replace the Monaco open with a `WikiDocument` opened in the content host (dedupe
 - Test: `src/renderer/src/services/wiki/tests/wiki-service.test.ts` (rewrite the open assertions)
 
 **Interfaces:**
-- Consumes: `WikiDocument` (Task 2); `ContentHostService` + `DocumentsContentHostService` from `@pragmatic-lab/mural/framework`; `FileSystemService.ReadText(path): Promise<string>` + `Exists(path): Promise<boolean>`; `WikiLocator.resolveWiki` (unchanged).
+- Consumes: `WikiDocument` (Task 2); `ContentHostService` + `DocumentsContentHostService` from `@pragmatic-tech-ai/mural/framework`; `FileSystemService.ReadText(path): Promise<string>` + `Exists(path): Promise<boolean>`; `WikiLocator.resolveWiki` (unchanged).
 - Produces: `WikiService.openWiki(concept: string): Promise<void>` now opens a `WikiDocument` (Id = `join(root, relPath)`) in the content host; `hasWiki` + `OpenWikiCommand` + `Status` unchanged.
 
 - [ ] **Step 1: Rewrite the openWiki tests for the rendered path**
@@ -215,8 +215,8 @@ Replace the whole body of `src/renderer/src/services/wiki/tests/wiki-service.tes
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService } from '@pragmatic-lab/mural/framework'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService } from '@pragmatic-tech-ai/mural/framework'
 import { FileSystemService } from '../../file-system/file-system-service.js'
 import { WikiLocator } from '../wiki-locator.js'
 import { WikiService } from '../wiki-service.js'
@@ -296,7 +296,7 @@ import { CodeEditorService } from '../../modules/code-editor/code-editor-service
 with the content host + document imports:
 
 ```ts
-import { ContentHostService, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+import { ContentHostService, type DocumentsContentHostService } from '@pragmatic-tech-ai/mural/framework'
 import { WikiDocument } from './wiki-document.js'
 ```
 

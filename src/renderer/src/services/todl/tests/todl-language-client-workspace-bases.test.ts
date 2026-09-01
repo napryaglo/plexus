@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { toJSON, check } from '@pragmatic-lab/todl'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { toJSON, check } from '@pragmatic-tech-ai/todl'
 
 import { FakeStorage } from '../../storage/tests/fake-storage.js'
 import { WorkspaceBaseResolver } from '../../projects/workspace-base-resolver.js'

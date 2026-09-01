@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft, type Entity } from '@pragmatic-lab/todl'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft, type Entity } from '@pragmatic-tech-ai/todl'
 import { iconEntityKey } from '../arch-icon.js'
 
 // component: implementedBy (order 1) and categorisedAs (order 2) both declare iconSource.

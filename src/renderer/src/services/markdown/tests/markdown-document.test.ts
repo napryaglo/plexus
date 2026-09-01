@@ -2,7 +2,7 @@ import { test, expect } from 'vitest'
 import {
     Bold, Border, Hyperlink, InlineUIContainer, Italic, List, ListItem, ListMarkerStyle,
     Paragraph, Run, Table, TableCell, TableRow, TextAlignment,
-} from '@pragmatic-lab/mural/basic'
+} from '@pragmatic-tech-ai/mural/basic'
 import { buildFlowDocument } from '../markdown-document.js'
 
 // Read a block's paragraph inlines as a flat array (blocks expose ToArray).

@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider, ObservableCollection } from '@pragmatic-lab/mural/runtime'
-import { check, toJSON, type TodlDocument } from '@pragmatic-lab/todl'
+import { ServiceProvider, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
+import { check, toJSON, type TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import { StorageProviderRegistry } from '../../storage/storage-provider-registry.js'
 import { FakeStorage } from '../../storage/tests/fake-storage.js'

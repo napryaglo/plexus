@@ -6,7 +6,7 @@
 
 **Architecture:** A small `NewItemChoice` view-model (one per `ProjectFileFormat`) drives a dynamic `MenuItem` submenu bound with `ItemsControl.ItemsSource`. `ProjectExplorerService.newFileIn` is parameterized by the specific format to create; the host builds the choices onto both `OpenProject` and `ProjectNode`. The architecture factory declares two formats (`.archdiagram` first, `.todl` second). No per-type UI code.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural` (runtime + framework, from Verdaccio), Vitest, mural `.mu` markup.
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural` (runtime + framework, from Verdaccio), Vitest, mural `.mu` markup.
 
 ## Global Constraints
 
@@ -33,7 +33,7 @@
 
 ```ts
 import { test, expect } from 'vitest'
-import { RelayCommand } from '@pragmatic-lab/mural/runtime'
+import { RelayCommand } from '@pragmatic-tech-ai/mural/runtime'
 import { NewItemChoice } from '../new-item-choice.js'
 
 test('NewItemChoice exposes its label and runs its command', () => {
@@ -53,7 +53,7 @@ Expected: FAIL — cannot find module `../new-item-choice.js`.
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-import { MetaData, Model, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 
 // One entry in a project's / node's "Add New" submenu: a labelled command that
 // creates a file of a specific declared format in the target container. The host
@@ -106,7 +106,7 @@ git commit -m "feat: NewItemChoice view-model for the Add New submenu"
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { PROJECT_MANIFEST_FILENAME } from '../../../../services/projects/project-factory.js'
 import { ArchitectureProjectFactory } from '../architecture-project-factory.js'
@@ -265,7 +265,7 @@ Expected: FAIL — `op.NewItemChoices` is undefined; the diagram choice can't cr
 In `open-project.ts`, add the import:
 
 ```ts
-import { MetaData, Model, ObservableCollection, type ICommand, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, ObservableCollection, type ICommand, type PropertyDescriptor } from '@pragmatic-tech-ai/mural/runtime'
 import { NewItemChoice } from './new-item-choice.js'
 ```
 

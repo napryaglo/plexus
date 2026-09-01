@@ -6,7 +6,7 @@
 
 **Architecture:** TODL gains a pure `Element` type + `toElement(repo, entity, opts)` (deep-nested, cycle-guarded, four facets, presentation/home injected). Plexus adds a presentation resolver (reusing `iconEntityKey` + the registry), a `selectionToElements` bridge, and an `ElementViewModel` layer whose concrete per-concept subclass type drives mural template resolution.
 
-**Tech Stack:** TypeScript; TODL (`@pragmatic-lab/todl`, node:test); Plexus (electron-vite, vitest); mural (`@pragmatic-lab/mural`).
+**Tech Stack:** TypeScript; TODL (`@pragmatic-tech-ai/todl`, node:test); Plexus (electron-vite, vitest); mural (`@pragmatic-tech-ai/mural`).
 
 ## Global Constraints
 
@@ -17,7 +17,7 @@
 - **Every test file lives in a `tests/` subfolder** next to its source (both repos).
 - **Enums, not string-literal unions.** `Cardinality` is already a TODL enum; reuse it.
 - **TODL publishes to the local Verdaccio only** (`http://localhost:4873`). Version bump `0.24.0 → 0.25.0`.
-- **Plexus bumps** `@pragmatic-lab/todl` to `^0.25.0` after the TODL publish.
+- **Plexus bumps** `@pragmatic-tech-ai/todl` to `^0.25.0` after the TODL publish.
 - **Commit per repo; branch first if on the default branch.** Commit/push only as the executor's workflow allows.
 - **`referredBy` is root-only.** **`truncated` nodes carry flat facets but empty `refs`.** **Depth cut ≠ cycle:** a `maxDepth` stop leaves `refs` empty with no `truncated` flag.
 
@@ -331,7 +331,7 @@ git commit -m "feat(model): add Element projection (toElement)"
 
 **Interfaces:**
 - Consumes: Task 1's `toElement` export.
-- Produces: `@pragmatic-lab/todl@0.25.0` on `http://localhost:4873`, consumable by Plexus.
+- Produces: `@pragmatic-tech-ai/todl@0.25.0` on `http://localhost:4873`, consumable by Plexus.
 
 - [ ] **Step 1: Bump the version**
 
@@ -340,17 +340,17 @@ In `TODL/package.json`, change `"version": "0.24.0"` to `"version": "0.25.0"`.
 - [ ] **Step 2: Build + publish to Verdaccio**
 
 Run: `cd TODL && npm run build && npm publish --registry http://localhost:4873`
-Expected: `+ @pragmatic-lab/todl@0.25.0`.
+Expected: `+ @pragmatic-tech-ai/todl@0.25.0`.
 
 - [ ] **Step 3: Verify the published tarball exports `toElement`**
 
-Run: `npm view @pragmatic-lab/todl@0.25.0 version --registry http://localhost:4873`
+Run: `npm view @pragmatic-tech-ai/todl@0.25.0 version --registry http://localhost:4873`
 Expected: `0.25.0`.
 
 - [ ] **Step 4: Commit** (branch first if on the default branch)
 
 ```bash
-cd TODL && git add package.json && git commit -m "chore: release @pragmatic-lab/todl@0.25.0"
+cd TODL && git add package.json && git commit -m "chore: release @pragmatic-tech-ai/todl@0.25.0"
 ```
 
 ---
@@ -363,12 +363,12 @@ cd TODL && git add package.json && git commit -m "chore: release @pragmatic-lab/
 - Test: `Plexus/src/renderer/src/modules/architecture-projects/services/tests/element-presentation.test.ts`
 
 **Interfaces:**
-- Consumes: `toElement`/`PresentationHint` from `@pragmatic-lab/todl@0.25.0`; `iconEntityKey(repo, e)` from `./arch-icon.js`; `TodlPresentationRegistry.iconKeyFor(key): string | undefined` from `../../diagram/services/todl-presentation-registry.js`.
+- Consumes: `toElement`/`PresentationHint` from `@pragmatic-tech-ai/todl@0.25.0`; `iconEntityKey(repo, e)` from `./arch-icon.js`; `TodlPresentationRegistry.iconKeyFor(key): string | undefined` from `../../diagram/services/todl-presentation-registry.js`.
 - Produces: `function resolveElementPresentation(repo: Repository, registry: TodlPresentationRegistry, e: Entity, defaultLabel: string): PresentationHint`.
 
 - [ ] **Step 1: Bump the TODL dependency + install**
 
-In `Plexus/package.json` change `"@pragmatic-lab/todl": "^0.24.0"` to `"^0.25.0"`, then:
+In `Plexus/package.json` change `"@pragmatic-tech-ai/todl": "^0.24.0"` to `"^0.25.0"`, then:
 Run: `cd Plexus && npm install`
 Expected: installs `0.25.0`.
 
@@ -378,7 +378,7 @@ Create `Plexus/src/renderer/src/modules/architecture-projects/services/tests/ele
 
 ```ts
 import { test, expect } from 'vitest'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft, type Entity } from '@pragmatic-lab/todl'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft, type Entity } from '@pragmatic-tech-ai/todl'
 import { resolveElementPresentation } from '../element-presentation.js'
 import type { TodlPresentationRegistry } from '../../../diagram/services/todl-presentation-registry.js'
 
@@ -428,7 +428,7 @@ Expected: FAIL — cannot find `../element-presentation.js`.
 Create `Plexus/src/renderer/src/modules/architecture-projects/services/element-presentation.ts`:
 
 ```ts
-import type { Entity, Repository, PresentationHint } from '@pragmatic-lab/todl'
+import type { Entity, Repository, PresentationHint } from '@pragmatic-tech-ai/todl'
 import { iconEntityKey } from './arch-icon.js'
 import type { TodlPresentationRegistry } from '../../diagram/services/todl-presentation-registry.js'
 
@@ -477,7 +477,7 @@ git commit -m "feat(arch): element presentation resolver + bump todl 0.25.0"
 - Test: `Plexus/src/renderer/src/modules/architecture-projects/services/tests/element-selection-bridge.test.ts`
 
 **Interfaces:**
-- Consumes: `toElement`, `Element`, `Entity` from `@pragmatic-lab/todl`; `resolveElementPresentation` (Task 3); `ArchDiagramBindingService.modelForDocument(doc): ArchModel | undefined`; `ArchModel.repository()`, `.entities()`, `.homeOf(id)`; `TodlPresentationRegistry`; `DiagramDocument.ActiveView` (a mural `Diagram | undefined`); node VMs expose `.Id`. `SelectedItems` is inherited from `Selector` (`readonly unknown[]`) but not on the `Diagram` d.ts — reach it via an interface cast.
+- Consumes: `toElement`, `Element`, `Entity` from `@pragmatic-tech-ai/todl`; `resolveElementPresentation` (Task 3); `ArchDiagramBindingService.modelForDocument(doc): ArchModel | undefined`; `ArchModel.repository()`, `.entities()`, `.homeOf(id)`; `TodlPresentationRegistry`; `DiagramDocument.ActiveView` (a mural `Diagram | undefined`); node VMs expose `.Id`. `SelectedItems` is inherited from `Selector` (`readonly unknown[]`) but not on the `Diagram` d.ts — reach it via an interface cast.
 - Produces: `function selectionToElements(doc: DiagramDocument, bindingSvc: ArchDiagramBindingService, registry: TodlPresentationRegistry): Element[]`.
 
 - [ ] **Step 1: Write the failing test**
@@ -486,8 +486,8 @@ Create `Plexus/src/renderer/src/modules/architecture-projects/services/tests/ele
 
 ```ts
 import { test, expect } from 'vitest'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
-import { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
+import { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 import { ArchNodeVM } from '../arch-node-vm.js'
@@ -547,8 +547,8 @@ Expected: FAIL — cannot find `../element-selection-bridge.js`.
 Create `Plexus/src/renderer/src/modules/architecture-projects/services/element-selection-bridge.ts`:
 
 ```ts
-import { toElement, type Element, type Entity, type ToElementOptions } from '@pragmatic-lab/todl'
-import type { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import { toElement, type Element, type Entity, type ToElementOptions } from '@pragmatic-tech-ai/todl'
+import type { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 import { resolveElementPresentation } from './element-presentation.js'
 import type { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import type { TodlPresentationRegistry } from '../../diagram/services/todl-presentation-registry.js'
@@ -614,7 +614,7 @@ git commit -m "feat(arch): diagram selection -> Element[] bridge"
 - Test: `Plexus/src/renderer/src/modules/architecture-projects/view-model/tests/element-view-model.test.ts`
 
 **Interfaces:**
-- Consumes: `Element`, `Scalar` from `@pragmatic-lab/todl`.
+- Consumes: `Element`, `Scalar` from `@pragmatic-tech-ai/todl`.
 - Produces: `class ElementViewModel` (props `id`, `concept`, `label`, `icon`; protected `field(name)`, `ref(member)`, `refs(member)`); `registerElementViewModel(concept, ctor)`; `toViewModel(element): ElementViewModel`; type `ElementViewModelCtor = new (e: Element) => ElementViewModel`.
 
 - [ ] **Step 1: Write the failing test**
@@ -623,7 +623,7 @@ Create `Plexus/src/renderer/src/modules/architecture-projects/view-model/tests/e
 
 ```ts
 import { test, expect } from 'vitest'
-import type { Element } from '@pragmatic-lab/todl'
+import type { Element } from '@pragmatic-tech-ai/todl'
 import { ElementViewModel, registerElementViewModel, toViewModel } from '../element-view-model.js'
 
 // Minimal Element factory for VM tests (facets not under test get sane defaults).
@@ -679,7 +679,7 @@ Expected: FAIL — cannot find `../element-view-model.js`.
 Create `Plexus/src/renderer/src/modules/architecture-projects/view-model/element-view-model.ts`:
 
 ```ts
-import type { Element, Scalar } from '@pragmatic-lab/todl'
+import type { Element, Scalar } from '@pragmatic-tech-ai/todl'
 
 // Bindable view-model over an Element. The concrete subclass TYPE is what mural
 // resolves a DataTemplate against; its getters flatten Element facets into clean
@@ -773,7 +773,7 @@ git commit -m "feat(arch): ElementViewModel base + registry + toViewModel"
 - Test: `Plexus/src/renderer/src/modules/architecture-projects/view-model/tests/arch-view-models.test.ts`
 
 **Interfaces:**
-- Consumes: `ElementViewModel`, `registerElementViewModel`, `toViewModel` (Task 5); `Element` from `@pragmatic-lab/todl`.
+- Consumes: `ElementViewModel`, `registerElementViewModel`, `toViewModel` (Task 5); `Element` from `@pragmatic-tech-ai/todl`.
 - Produces: `class Component`, `class Technology`, `class Category` (all extend `ElementViewModel`); `function registerArchViewModels(): void` that registers all three. `Component` exposes `name`, `implementedBy: Technology[]`, `cat: Category | undefined`, `hostedIn: Technology | undefined`.
 
 - [ ] **Step 1: Write the failing test**
@@ -782,7 +782,7 @@ Create `Plexus/src/renderer/src/modules/architecture-projects/view-model/tests/a
 
 ```ts
 import { test, expect } from 'vitest'
-import type { Element } from '@pragmatic-lab/todl'
+import type { Element } from '@pragmatic-tech-ai/todl'
 import { toViewModel } from '../element-view-model.js'
 import { Component, Technology, Category, registerArchViewModels } from '../arch-view-models.js'
 

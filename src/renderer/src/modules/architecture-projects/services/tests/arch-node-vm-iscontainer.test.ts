@@ -1,5 +1,5 @@
 import { test, expect, beforeAll } from 'vitest'
-import { Application } from '@pragmatic-lab/mural/runtime'
+import { Application } from '@pragmatic-tech-ai/mural/runtime'
 import { ArchNodeVM } from '../arch-node-vm.js'
 
 beforeAll(() => {

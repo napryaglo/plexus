@@ -1,4 +1,4 @@
-import { MuralBase, MetaData, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MuralBase, MetaData, RelayCommand, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 
 // Lifecycle of one background task.
 export enum TaskStatus {

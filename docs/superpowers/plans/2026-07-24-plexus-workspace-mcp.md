@@ -824,7 +824,7 @@ Create `src/renderer/src/services/workspace/tests/workspace-refresh-service.test
 ```ts
 import { test, describe, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { WorkspaceRefreshService } from '../workspace-refresh-service.js'
 import { ProjectExplorerService } from '../../../modules/project-explorer/services/project-explorer-service.js'
 import { DiagnosticsService } from '../../diagnostics/diagnostics-service.js'
@@ -921,7 +921,7 @@ Create `src/renderer/src/services/workspace/workspace-refresh-service.ts`:
 // a compact problem summary from DiagnosticsService, and returns it to the agent
 // bridge (which unblocks the tool call in main). Eagerly constructed at startup so
 // a refresh works even if the chat panel was never opened.
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import type { AgentEvent, IAgentApi, RefreshProjectRequest } from '../../../../shared/agent-api.js'
 import { AgentEventKind } from '../../../../shared/agent-api.js'
 import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'

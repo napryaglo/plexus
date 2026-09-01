@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import type { PipelineConfiguration } from '@pragmatic-lab/fresco'
+import type { PipelineConfiguration } from '@pragmatic-tech-ai/fresco'
 import type { IStorage, StorageEntry } from '../../../../services/storage/storage.js'
 import { ProjectLayoutPresetsStore } from '../project-layout-presets-store.js'
 

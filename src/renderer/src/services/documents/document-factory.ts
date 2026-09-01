@@ -1,4 +1,4 @@
-import type { IDocument } from '@pragmatic-lab/mural/framework'
+import type { IDocument } from '@pragmatic-tech-ai/mural/framework'
 import type { IStorage } from '../storage/storage.js'
 
 // The file-editing half of the old IProjectFactory — extracted so an EDITOR owns

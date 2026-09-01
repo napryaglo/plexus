@@ -14,9 +14,9 @@
 // mural's Image sizes to Source.NaturalSize, so we MUST know the dimensions or the
 // slot collapses to zero — hence the decode step. `measure` is injected (default
 // decodes via a browser HTMLImageElement) so this unit-tests headless.
-import { Size } from '@pragmatic-lab/mural/runtime'
-import { Image, InlineUIContainer } from '@pragmatic-lab/mural/basic'
-import { BitmapImage, Stretch } from '@pragmatic-lab/mural/visual-engine'
+import { Size } from '@pragmatic-tech-ai/mural/runtime'
+import { Image, InlineUIContainer } from '@pragmatic-tech-ai/mural/basic'
+import { BitmapImage, Stretch } from '@pragmatic-tech-ai/mural/visual-engine'
 import type { IStorage } from '../../services/storage/storage.js'
 
 // Widest an image renders before it's scaled down to fit the reading column.

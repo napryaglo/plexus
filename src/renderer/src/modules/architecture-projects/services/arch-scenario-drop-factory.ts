@@ -1,12 +1,12 @@
-import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DiagramDocument, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-tech-ai/mural/framework'
 
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import { ArchNodeVM, ARCH_TILE_DEFAULT } from './arch-node-vm.js'
 import { planScenarioDrop, collectScenarioFlow, containerChildSlot, type ContainmentLayout, type FlowEntity } from './scenario-flow.js'
 import { containingContainerOf, isContainerConcept, membershipChildrenOf } from './containment.js'
 import type { ArchModel } from './arch-model.js'
-import type { Entity } from '@pragmatic-lab/todl'
+import type { Entity } from '@pragmatic-tech-ai/todl'
 
 export const ArchScenarioDropFactoryKey = new ServiceKey<IToolboxDropFactory>('ArchScenarioDropFactory')
 

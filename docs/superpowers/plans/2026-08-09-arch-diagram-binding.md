@@ -6,12 +6,12 @@
 
 **Architecture:** A per-document `ArchDiagramBinding` maps each mural `Figure` whose `Figure.Id` equals a model entity id to that entity, syncs its label, and removes it when the entity is deleted. An app-scoped `ArchDiagramBindingService` observes `DocumentsContentHostService.OpenDocuments`, attaches a binding to each opened `DiagramDocument` in an architecture project, and disposes it on close. The generic `DiagramDocument`/`DiagramDocumentFactory` are untouched — the binding is a pure external observer.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural/framework` (`DiagramDocument`, `Figure`, `ContentHostService`/`DocumentsContentHostService`, `IDocument`), `@pragmatic-lab/mural/runtime` (`ServiceBase`/`ServiceKey`/`ObservableCollection`), `@pragmatic-lab/todl@^0.23.0` (`Entity`), Vitest.
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural/framework` (`DiagramDocument`, `Figure`, `ContentHostService`/`DocumentsContentHostService`, `IDocument`), `@pragmatic-tech-ai/mural/runtime` (`ServiceBase`/`ServiceKey`/`ObservableCollection`), `@pragmatic-tech-ai/todl@^0.23.0` (`Entity`), Vitest.
 
 ## Global Constraints
 
-- `@pragmatic-lab/todl@^0.23.0` (already installed). Import `Entity` from `@pragmatic-lab/todl`.
-- Import mural types from `@pragmatic-lab/mural/framework` and `@pragmatic-lab/mural/runtime` — never a relative `../src` path.
+- `@pragmatic-tech-ai/todl@^0.23.0` (already installed). Import `Entity` from `@pragmatic-tech-ai/todl`.
+- Import mural types from `@pragmatic-tech-ai/mural/framework` and `@pragmatic-tech-ai/mural/runtime` — never a relative `../src` path.
 - Real TypeScript enums, never string-literal unions.
 - Every test file lives in a `tests/` subfolder next to its source.
 - Do NOT modify the generic `DiagramDocument` or `DiagramDocumentFactory`. The only diagram-module change allowed is adding a read-only getter to `FileDiagramStorage`.
@@ -21,13 +21,13 @@
 
 ## Verified surfaces (do not re-derive)
 
-- `DiagramDocument` (`@pragmatic-lab/mural/framework`): `new DiagramDocument(storage?)` · `get Nodes(): ObservableCollection<Figure | Group>` · `CreateNode(kind: string, x: number, y: number): Figure | null` · `DeleteNodes(items: readonly unknown[]): void` · `get Storage(): DiagramStorage | undefined` · `Save()` / `Load()`. Built-in kinds `'rectangle'`/`'ellipse'` work headless; an unknown kind returns `null`.
-- `Figure` (`@pragmatic-lab/mural/framework`): `get/set Id(): string | undefined` · `get/set LabelText(): string` · `get/set Left/Top(): number` · `get/set Kind(): string`. `CreateNode` auto-assigns `.Id`; set your own `.Id` **after** the call and it sticks.
-- `DocumentsContentHostService` (`@pragmatic-lab/mural/framework`): resolved via `this.Provider.getRequired(ContentHostService.Key) as DocumentsContentHostService`. `get OpenDocuments(): ObservableCollection<IDocument>`. `IDocument = { readonly Id; readonly Title; readonly IsDirty; Save() }`.
+- `DiagramDocument` (`@pragmatic-tech-ai/mural/framework`): `new DiagramDocument(storage?)` · `get Nodes(): ObservableCollection<Figure | Group>` · `CreateNode(kind: string, x: number, y: number): Figure | null` · `DeleteNodes(items: readonly unknown[]): void` · `get Storage(): DiagramStorage | undefined` · `Save()` / `Load()`. Built-in kinds `'rectangle'`/`'ellipse'` work headless; an unknown kind returns `null`.
+- `Figure` (`@pragmatic-tech-ai/mural/framework`): `get/set Id(): string | undefined` · `get/set LabelText(): string` · `get/set Left/Top(): number` · `get/set Kind(): string`. `CreateNode` auto-assigns `.Id`; set your own `.Id` **after** the call and it sticks.
+- `DocumentsContentHostService` (`@pragmatic-tech-ai/mural/framework`): resolved via `this.Provider.getRequired(ContentHostService.Key) as DocumentsContentHostService`. `get OpenDocuments(): ObservableCollection<IDocument>`. `IDocument = { readonly Id; readonly Title; readonly IsDirty; Save() }`.
 - `ObservableCollection<T>`: `ToArray(): T[]` · `Add(item)` · `Remove(item): boolean` · `Subscribe(listener: () => void): () => void`.
 - `FileDiagramStorage` (`src/renderer/src/modules/diagram/persistence/file-diagram-storage.ts`): `constructor(public Path: string, private readonly storage: IStorage, seed: string | null)`; implements mural's `DiagramStorage`. Needs a `get ProjectStorage(): IStorage` getter (Task 2).
 - `ArchModel` (`src/renderer/src/modules/architecture-projects/services/arch-model.ts`, SP3): `entities(): Entity[]` · `onChanged(cb: () => void): () => void` · `setField(id, name, value: string): void` · `remove(id: string): void` · `repository(): Repository`.
-- `Entity` (`@pragmatic-lab/todl`): `{ readonly id: string; readonly concept: string; field(name: string): Scalar | undefined }`.
+- `Entity` (`@pragmatic-tech-ai/todl`): `{ readonly id: string; readonly concept: string; field(name: string): Scalar | undefined }`.
 - `ArchitectureModelService` (SP3): `static readonly Key` · `modelFor(op: OpenProject): Promise<ArchModel>`.
 - `ProjectExplorerService`: `static readonly Key` · `get OpenProjects(): ObservableCollection<OpenProject>`.
 - `OpenProject` (`src/renderer/src/services/projects/open-project.ts`): `.Project: Project` · `.Storage: IStorage`. `Project.Type: string` (architecture projects = `'architecture'`).
@@ -37,7 +37,7 @@
 Reuses the SP3 fixture — compiles clean against `todl@0.23.0`.
 
 ```ts
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 
@@ -81,8 +81,8 @@ The model has own instances `web` (concept `Component`) and `host` (concept `Nod
 ```ts
 // tests/arch-diagram-binding.test.ts
 import { test, expect } from 'vitest'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
-import { DiagramDocument, Figure } from '@pragmatic-lab/mural/framework'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
+import { DiagramDocument, Figure } from '@pragmatic-tech-ai/mural/framework'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 import { ArchDiagramBinding } from '../arch-diagram-binding.js'
@@ -171,8 +171,8 @@ Expected: FAIL — `ArchDiagramBinding` module not found.
 
 ```ts
 // arch-diagram-binding.ts
-import { DiagramDocument, Figure } from '@pragmatic-lab/mural/framework'
-import type { Entity } from '@pragmatic-lab/todl'
+import { DiagramDocument, Figure } from '@pragmatic-tech-ai/mural/framework'
+import type { Entity } from '@pragmatic-tech-ai/todl'
 import type { ArchModel } from './arch-model.js'
 
 // Binds a single opened diagram to a project's ArchModel: mural Figures whose
@@ -279,9 +279,9 @@ In `file-diagram-storage.ts`, add a getter exposing the backing project storage 
 ```ts
 // tests/arch-diagram-binding-service.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider, ObservableCollection } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DiagramDocument, Figure, type IDocument } from '@pragmatic-lab/mural/framework'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
+import { ServiceProvider, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService, DiagramDocument, Figure, type IDocument } from '@pragmatic-tech-ai/mural/framework'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { FileDiagramStorage } from '../../../diagram/persistence/file-diagram-storage.js'
 import { ProjectExplorerService } from '../../../project-explorer/services/project-explorer-service.js'
@@ -322,7 +322,7 @@ function diagramFor(projStorage: FakeStorage): DiagramDocument {
 // and a prebuilt ArchModel. `type` selects the project type.
 function wire(projStorage: FakeStorage, model: ArchModel, type = 'architecture') {
     const open = new ObservableCollection<IDocument>()
-    const host = { OpenDocuments: open } as unknown as import('@pragmatic-lab/mural/framework').DocumentsContentHostService
+    const host = { OpenDocuments: open } as unknown as import('@pragmatic-tech-ai/mural/framework').DocumentsContentHostService
     const project = new Project(type, 'Acme', projStorage.Root, new ProjectNode('Acme', '', 'folder'))
     const op = { Project: project, Storage: projStorage } as unknown as OpenProject
     const explorer = { OpenProjects: new ObservableCollection<OpenProject>([op]) } as unknown as ProjectExplorerService
@@ -393,8 +393,8 @@ Expected: FAIL — `ArchDiagramBindingService` module not found.
 
 ```ts
 // arch-diagram-binding-service.ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DiagramDocument, type DocumentsContentHostService, type IDocument } from '@pragmatic-lab/mural/framework'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService, DiagramDocument, type DocumentsContentHostService, type IDocument } from '@pragmatic-tech-ai/mural/framework'
 
 import { FileDiagramStorage } from '../../diagram/persistence/file-diagram-storage.js'
 import { ProjectExplorerService } from '../../project-explorer/services/project-explorer-service.js'
@@ -532,7 +532,7 @@ git commit -m "feat(arch): ArchDiagramBindingService — attach bindings to open
 ```ts
 // tests/diagram-workspace-service.test.ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { DiagramWorkspaceService } from '../diagram-workspace-service.js'
 
 test('the workspace document opens empty — no seeded demo canvas', () => {
@@ -564,7 +564,7 @@ In `diagram-workspace-service.ts`:
     }
 ```
 
-3. Remove the now-unused `ConnectorEndpoint` import from the `@pragmatic-lab/mural/framework` import (keep `DiagramDocument`).
+3. Remove the now-unused `ConnectorEndpoint` import from the `@pragmatic-tech-ai/mural/framework` import (keep `DiagramDocument`).
 4. Update the class doc-comment: replace the "seeds a small scene" / "same shapes and connectors the demo bootstrap places" wording with a note that the document opens empty (the seeded demo was retired in SP4a).
 
 - [ ] **Step 4: Run test to verify it passes**

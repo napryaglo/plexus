@@ -22,7 +22,7 @@ In scope:
 - App icon/branding assets.
 - **GitHub Actions** release workflow (matrix: `windows-latest`, `ubuntu-latest`)
   publishing one GitHub Release.
-- CI resolves the private `@pragmatic-lab/*` packages via **GitHub Packages**.
+- CI resolves the private `@pragmatic-tech-ai/*` packages via **GitHub Packages**.
 
 Out of scope (documented as future work, not built):
 - macOS (DMG/zip, signing, notarization, Mac auto-update).
@@ -131,12 +131,12 @@ load-bearing; a placeholder is acceptable for v1 and flagged for replacement.
   - `package:win` — `npm run build && electron-builder --win`.
   - `package:linux` — `npm run build && electron-builder --linux`.
 - `version`: `0.0.1 → 0.1.0`.
-- **Dependency reclassification:** `@pragmatic-lab/mural`, `@pragmatic-lab/fresco`,
+- **Dependency reclassification:** `@pragmatic-tech-ai/mural`, `@pragmatic-tech-ai/fresco`,
   and `monaco-editor` are bundled into `out/renderer` at build time and are not
   required by the main process at runtime. Move them from `dependencies` to
   `devDependencies` so electron-builder does not ship them inside the asar.
   Runtime `dependencies` that remain (used by the main process): `chokidar`,
-  `@modelcontextprotocol/sdk`, `vscode-jsonrpc`, `@pragmatic-lab/todl`,
+  `@modelcontextprotocol/sdk`, `vscode-jsonrpc`, `@pragmatic-tech-ai/todl`,
   `marked`, `highlight.js`, `vscode-languageserver-types`. **Verification:** a
   packaged run must exercise diagram open, agent chat, and the TODL language
   server to confirm nothing bundled-only was actually needed at runtime; if a
@@ -176,7 +176,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write   # create the Release
-  packages: read    # read @pragmatic-lab/* from GitHub Packages
+  packages: read    # read @pragmatic-tech-ai/* from GitHub Packages
 jobs:
   build:
     strategy:
@@ -193,7 +193,7 @@ jobs:
         with:
           node-version: 22
           registry-url: https://npm.pkg.github.com
-          scope: '@pragmatic-lab'
+          scope: '@pragmatic-tech-ai'
       - run: npm ci
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -208,21 +208,21 @@ Both matrix legs publish to the same Release (electron-builder dedups by tag).
 ### 6. GitHub Packages prerequisite (private-dep access)
 
 **This is a prerequisite, not code in the Plexus repo.** CI runners cannot reach
-the local Verdaccio (`localhost:4873`), so the `@pragmatic-lab/*` packages must
+the local Verdaccio (`localhost:4873`), so the `@pragmatic-tech-ai/*` packages must
 live somewhere the runners can read. Chosen mechanism: GitHub Packages.
 
 Constraint: GitHub Packages' npm registry requires the package **scope to match
-the owning org/user**. The scope is `@pragmatic-lab` but the repos are under the
-`napryaglo` user — so publishing `@pragmatic-lab/*` to GitHub Packages requires a
+the owning org/user**. The scope is `@pragmatic-tech-ai` but the repos are under the
+`napryaglo` user — so publishing `@pragmatic-tech-ai/*` to GitHub Packages requires a
 **GitHub organization named `pragmatic-lab`** to own those packages. Steps
 (one-time + on each framework change):
 
 1. Create a `pragmatic-lab` GitHub org (or accept a scope rename — not chosen).
-2. Publish `@pragmatic-lab/mural`, `@pragmatic-lab/fresco`, `@pragmatic-lab/todl`
-   **and their transitive `@pragmatic-lab` deps** (e.g. `@pragmatic-lab/todl-runtime`)
+2. Publish `@pragmatic-tech-ai/mural`, `@pragmatic-tech-ai/fresco`, `@pragmatic-tech-ai/todl`
+   **and their transitive `@pragmatic-tech-ai` deps** (e.g. `@pragmatic-tech-ai/todl-runtime`)
    to `https://npm.pkg.github.com` under that org.
 3. Plexus repo gets a committed `.npmrc` for CI:
-   `@pragmatic-lab:registry=https://npm.pkg.github.com` (auth via `NODE_AUTH_TOKEN`
+   `@pragmatic-tech-ai:registry=https://npm.pkg.github.com` (auth via `NODE_AUTH_TOKEN`
    in CI). Local dev keeps using Verdaccio via the developer's own `.npmrc`
    (not committed, or via `npm_config_registry`), so local builds are unaffected.
 
@@ -261,7 +261,7 @@ Verdaccio.
 - **Phase 2 — Linux targets + auto-update.** Add AppImage/deb targets +
   `src/main/updater.ts` + wiring + test. Deliverable: Linux artifacts + guarded
   updater.
-- **Phase 3 — CI + GitHub Packages.** Publish `@pragmatic-lab/*` to GitHub
+- **Phase 3 — CI + GitHub Packages.** Publish `@pragmatic-tech-ai/*` to GitHub
   Packages (prerequisite), add `.npmrc` for CI, add `release.yml`. Deliverable: a
   tag push yields a published GitHub Release.
 

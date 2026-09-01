@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { Key } from '@pragmatic-lab/mural/runtime'
+import { Key } from '@pragmatic-tech-ai/mural/runtime'
 import { StoredConversationRow, type ConversationRowCallbacks } from '../stored-conversation-row.js'
 import type { StoredConversation } from '../chat-store.js'
 

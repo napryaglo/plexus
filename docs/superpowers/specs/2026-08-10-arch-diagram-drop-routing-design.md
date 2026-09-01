@@ -155,7 +155,7 @@ drop term ──► ArchInstanceDropFactory.CreateDropped(ctx)
 
 ## 7. Constraints
 
-- `@pragmatic-lab/todl@^0.23.0`; real enums (`DropActionKind`); every test in a `tests/` subfolder; no relative `../src` mural imports; `app.mu.js` is generated/gitignored (never commit).
+- `@pragmatic-tech-ai/todl@^0.23.0`; real enums (`DropActionKind`); every test in a `tests/` subfolder; no relative `../src` mural imports; `app.mu.js` is generated/gitignored (never commit).
 - Standalone (non-architecture) diagrams keep working — the drop falls back to a plain shape when there is no `ArchModel`.
 - Commit messages end with `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 

@@ -1,4 +1,4 @@
-import type { ValueConverter } from '@pragmatic-lab/mural/runtime'
+import type { ValueConverter } from '@pragmatic-tech-ai/mural/runtime'
 
 // Formats a camera zoom factor (1 = 100%) as a whole-number percentage for the
 // zoom toolbar readout. Nullish (no live view yet) renders as blank. Used in

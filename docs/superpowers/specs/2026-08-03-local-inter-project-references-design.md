@@ -10,7 +10,7 @@ open-set *is* the "solution"; resolution is implicit (workspace-link semantics),
 like `pnpm`/`npm` workspace linking or a .NET `ProjectReference`.
 
 **Tech Stack:** Plexus renderer (TypeScript, electron-vite, mural framework,
-service-based observables). Consumes `@pragmatic-lab/todl` (`check`,
+service-based observables). Consumes `@pragmatic-tech-ai/todl` (`check`,
 `checkAgainst`, `toJSON`, `TodlDocument`). No TODL changes — this is entirely
 Plexus-side.
 
@@ -216,7 +216,7 @@ convention).
   resolution runs the same compile code `publish()` runs (via
   `compileToDocument`), returning what `publish()` would write given the same
   bases.
-- TODL (`@pragmatic-lab/todl`) is unchanged; this is Plexus-side only.
+- TODL (`@pragmatic-tech-ai/todl`) is unchanged; this is Plexus-side only.
 
 ## Non-goals
 

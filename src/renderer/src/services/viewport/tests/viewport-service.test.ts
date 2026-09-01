@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { ViewportService, type IViewportSource } from '../viewport-service.js'
 
 // A fake window: lets the test push a new size and fire the resize callback.

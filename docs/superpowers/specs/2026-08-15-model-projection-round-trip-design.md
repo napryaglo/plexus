@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-15
 **Status:** Design (approved shape; pending spec review → implementation plan)
-**Repo:** Plexus (consumes `@pragmatic-lab/mural`, `@pragmatic-lab/todl`)
+**Repo:** Plexus (consumes `@pragmatic-tech-ai/mural`, `@pragmatic-tech-ai/todl`)
 
 ## Goal
 

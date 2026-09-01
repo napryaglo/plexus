@@ -11,8 +11,8 @@
 // change it re-tints them to the header's surface (@SurfaceContainer) / ink
 // (@OnSurfaceVariant) so the caption strip and the mural header read as one
 // surface. It also tags <body> on macOS (traffic-light insets in index.html).
-import { Application, ThemeManager } from '@pragmatic-lab/mural/runtime'
-import { SolidColorBrush } from '@pragmatic-lab/mural/visual-engine'
+import { Application, ThemeManager } from '@pragmatic-tech-ai/mural/runtime'
+import { SolidColorBrush } from '@pragmatic-tech-ai/mural/visual-engine'
 
 // The header strip paints the shared @Surface chrome tone, inked
 // @OnSurfaceVariant — the WCO caption buttons match those so the caption strip

@@ -1,11 +1,11 @@
 import {
     MetaData, MuralBase, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 
-import { ContentHostService, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+import { ContentHostService, type DocumentsContentHostService } from '@pragmatic-tech-ai/mural/framework'
 
-import type { Repository } from '@pragmatic-lab/todl'
+import type { Repository } from '@pragmatic-tech-ai/todl'
 
 import type { IStorage } from '../storage/storage.js'
 import { FileSystemService } from '../file-system/file-system-service.js'

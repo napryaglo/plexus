@@ -1,6 +1,6 @@
 // Caches each open project's .claude/ catalog (agents + skills), fetched once via
 // the agent bridge and refetched only after Invalidate (call on project rescan).
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import type { IAgentApi, ProjectCatalog } from '../../../../../shared/agent-api.js'
 
 export class ProjectAgentCatalog extends ServiceBase

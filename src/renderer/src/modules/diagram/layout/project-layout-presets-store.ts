@@ -1,4 +1,4 @@
-import type { PipelineConfiguration } from '@pragmatic-lab/fresco'
+import type { PipelineConfiguration } from '@pragmatic-tech-ai/fresco'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import { safeStem } from './layout-presets-store.js'

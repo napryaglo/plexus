@@ -6,7 +6,7 @@
 
 **Architecture:** Mirror the library-delete flow. `MetaModelTreeNode` gains `ModelId`/`ModelVersion`/`DeleteCommand`; `buildCatalog` wires each Model/Version node's `DeleteCommand` to an `onDelete` callback; `MetaModelsService.deleteTarget` scans dependent libraries, confirms, deletes the folder (recursive `IStorage.Delete`) with empty-id cleanup, and reloads; the `.mu` attaches the menu to deletable nodes.
 
-**Tech Stack:** TypeScript (strict ESM), `@pragmatic-lab/mural` (`Model`/`RelayCommand`/`ICommand`, `DialogService`), `FakeStorage`, Vitest.
+**Tech Stack:** TypeScript (strict ESM), `@pragmatic-tech-ai/mural` (`Model`/`RelayCommand`/`ICommand`, `DialogService`), `FakeStorage`, Vitest.
 
 ## Global Constraints
 
@@ -17,7 +17,7 @@
 - `IStorage.Delete(path)` is recursive (`rm(force, recursive)`); a missing path is a no-op.
 - Every test file lives in a `tests/` subfolder (Vitest globs `src/**/*.test.ts`).
 - Single file: `npx vitest run <path>`; whole suite: `npm test`; typecheck: `npm run typecheck`.
-- `ICommand.Execute(parameter?)` / `CanExecute(parameter?)` (`node_modules/@pragmatic-lab/mural/dist/runtime/command.d.ts`).
+- `ICommand.Execute(parameter?)` / `CanExecute(parameter?)` (`node_modules/@pragmatic-tech-ai/mural/dist/runtime/command.d.ts`).
 
 ## File Structure
 
@@ -40,7 +40,7 @@
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `tests/meta-model-tree-node.test.ts` (add `RelayCommand` to the `@pragmatic-lab/mural/runtime` import, and `MetaModelNodeKind` if not present):
+Append to `tests/meta-model-tree-node.test.ts` (add `RelayCommand` to the `@pragmatic-tech-ai/mural/runtime` import, and `MetaModelNodeKind` if not present):
 
 ```ts
 test('IsDeletable is true for Model and Version, false for Group and Entity', () => {
@@ -72,7 +72,7 @@ Expected: FAIL — `IsDeletable` / `ModelId` / `DeleteCommand` don't exist.
 In `meta-model-tree-node.ts`, extend the runtime import to include the `ICommand` type:
 
 ```ts
-import { MetaData, Model, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, ObservableCollection, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 ```
 
 Add these registered properties after `ChildrenKey`:
@@ -171,7 +171,7 @@ Expected: FAIL — `buildCatalog` takes 2 args / `DeleteTarget` unexported.
 In `meta-model-tree-builder.ts`, add the `RelayCommand` import:
 
 ```ts
-import { RelayCommand } from '@pragmatic-lab/mural/runtime'
+import { RelayCommand } from '@pragmatic-tech-ai/mural/runtime'
 ```
 
 Add the interface (near `PublishedModel`):
@@ -314,8 +314,8 @@ Expected: FAIL — `dependentLibraryNames` / `deleteTarget` don't exist.
 In `meta-models-service.ts`, add:
 
 ```ts
-import { RelayCommand } from '@pragmatic-lab/mural/runtime'
-import { DialogService } from '@pragmatic-lab/mural/framework'
+import { RelayCommand } from '@pragmatic-tech-ai/mural/runtime'
+import { DialogService } from '@pragmatic-tech-ai/mural/framework'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import { ConfirmDialogModel } from '../../../services/dialogs/confirm-dialog-model.js'
@@ -324,7 +324,7 @@ import { discoverLibraries, type LoadedLibrary } from '../../library/services/li
 import { buildCatalog, type DeleteTarget } from './meta-model-tree-builder.js'
 ```
 
-Note: the existing `import { buildCatalog } from './meta-model-tree-builder.js'` line is replaced by the one above (adds `DeleteTarget`). The existing `DialogService` note: `IActivatable` is already imported from `@pragmatic-lab/mural/framework`; add `DialogService` to that framework import instead of a second import line if you prefer. `RelayCommand` is unused by the service itself and may be omitted — it lives in the builder; do NOT add an unused import.
+Note: the existing `import { buildCatalog } from './meta-model-tree-builder.js'` line is replaced by the one above (adds `DeleteTarget`). The existing `DialogService` note: `IActivatable` is already imported from `@pragmatic-tech-ai/mural/framework`; add `DialogService` to that framework import instead of a second import line if you prefer. `RelayCommand` is unused by the service itself and may be omitted — it lives in the builder; do NOT add an unused import.
 
 (Drop `RelayCommand` from this list — it is only used in `meta-model-tree-builder.ts`, Task 2.)
 

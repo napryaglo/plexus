@@ -6,7 +6,7 @@
 
 **Architecture:** Publish emits assets-only (`presentation.compiled.json` = icon geometries keyed by resource key) plus a flat `icon-index.json` (`entityKey → resourceKey`). `TodlPresentationRegistry` merges every package's asset dict app-global and builds one `entityKey → resourceKey` index. `TodlVisualResolver` always returns the single default template, applied with `{ IconKey: registry.iconKeyFor(descriptor.Key) }`; the template's `Shape [ Geometry = $IconKey << IconKeyConverter ]` resolves the geometry from app resources, or a shipped default glyph. Descriptor sites are unchanged. Host still draws the caption.
 
-**Tech Stack:** TypeScript, mural (`@pragmatic-lab/mural`), vitest, `.mu` markup compiled via `compileTemplate`/`instantiate`.
+**Tech Stack:** TypeScript, mural (`@pragmatic-tech-ai/mural`), vitest, `.mu` markup compiled via `compileTemplate`/`instantiate`.
 
 ## Global Constraints
 
@@ -28,7 +28,7 @@
 
 **Interfaces:**
 - Produces: `buildIconIndex(doc: TodlDocument, prefix: string): Map<string, string>` — for every presentable entity (`ontologyEntities` + `classEntities`) that resolves an icon, maps `prefix + entity.id → resourceKeyFor(doc, icon)`. `prefix` is `''` (library) or `'mm:'` (meta-model). Entities without an icon are omitted.
-- Consumes: existing `ontologyEntities`, `classEntities`, `resolveFacets`, `resourceKeyFor`, `assignResourceKeys` from the same file; `projectAnnotations` from `@pragmatic-lab/todl`.
+- Consumes: existing `ontologyEntities`, `classEntities`, `resolveFacets`, `resourceKeyFor`, `assignResourceKeys` from the same file; `projectAnnotations` from `@pragmatic-tech-ai/todl`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -59,7 +59,7 @@ it('applies an empty prefix for the library keyspace', () => {
 
 ```ts
 // presentation-generator.ts
-import { projectAnnotations } from '@pragmatic-lab/todl'
+import { projectAnnotations } from '@pragmatic-tech-ai/todl'
 
 // entityKey (prefix + id) → icon resource key, for every presentable entity that
 // resolves an icon. prefix is '' (library keyspace) or 'mm:' (meta-model keyspace),
@@ -96,7 +96,7 @@ Notes: use an inline SVG path geometry the `.mu` compiler bakes. Pick a neutral 
 
 ```ts
 // default-icon-resource.test.ts
-import { Application } from '@pragmatic-lab/mural/runtime'
+import { Application } from '@pragmatic-tech-ai/mural/runtime'
 import { DiagramResources } from '../../diagram.resources.mu.js' // match how other tests import the compiled dict
 
 it('ships a resolvable PlexusDefaultIcon geometry', () => {
@@ -132,7 +132,7 @@ it('ships a resolvable PlexusDefaultIcon geometry', () => {
 - Produces:
   - `class IconKeyConverter { convert(key: unknown): unknown }` — resolves `key` (a resource-key string) to a `Geometry` via the active resource resolver; on empty/unresolved key returns the `PlexusDefaultIcon` resource; if even that is absent returns `undefined`.
   - `setIconResourceResolver(fn: ((key: string) => unknown) | undefined): void` — module-level override used headless / to bridge the registry. Default resolver reads `Application.current?.Resources.Resolve(key)`.
-- Consumes: `Application` from `@pragmatic-lab/mural/runtime`.
+- Consumes: `Application` from `@pragmatic-tech-ai/mural/runtime`.
 
 Rationale: markup instantiates converters zero-arg, so the converter reads a module-scoped resolver (settable) rather than constructor injection. Task 8 points the resolver at `registry.resolveAsset`.
 
@@ -168,7 +168,7 @@ it('falls back to PlexusDefaultIcon for an unresolved key', () => {
 
 ```ts
 // icon-key-converter.ts
-import { Application } from '@pragmatic-lab/mural/runtime'
+import { Application } from '@pragmatic-tech-ai/mural/runtime'
 
 const DEFAULT_ICON_KEY = 'PlexusDefaultIcon'
 
@@ -219,7 +219,7 @@ export class IconKeyConverter
 - [ ] **Step 1: Update the test** — the default template must contain a `Shape` (icon carrier) and NO `TextBlock`, and applying it with `{ IconKey }` must not throw:
 
 ```ts
-import { Shape, TextBlock } from '@pragmatic-lab/mural/basic'
+import { Shape, TextBlock } from '@pragmatic-tech-ai/mural/basic'
 import { buildCtx, buildDefaultTemplate } from '../visual-library.js'
 import { setIconResourceResolver } from '../../../diagram/services/icon-key-converter.js'
 

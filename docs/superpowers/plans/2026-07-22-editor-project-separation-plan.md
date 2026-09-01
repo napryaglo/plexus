@@ -6,7 +6,7 @@
 
 **Architecture:** Today `DiagramProjectFactory` (in the diagram module) bundles the `architecture` project lifecycle *and* `.diagram` file I/O. We split it: a Plexus `IDocumentFactory` (open/save/new + optional relocate) owns file I/O, resolved from a `DocumentDefinition.Factory` token via the framework's already-present `DocumentTypeRegistry`; `DiagramDocumentFactory` (diagram module) and `TodlDocumentFactory` (meta-model module) are the editors. The `architecture` project lifecycle moves to an `ArchitectureProjectFactory` registered by the architecture-repository module. `ProjectExplorerService` routes file operations by extension. No mural change is needed — the `.documents:` contribution point and `DocumentTypeRegistry` already exist; we register the registry as a root service so its constructor populates it.
 
-**Tech Stack:** TypeScript (renderer), mural framework (`@pragmatic-lab/mural`), `.mu` declarative modules compiled via `npm run compile:mu`, Vitest.
+**Tech Stack:** TypeScript (renderer), mural framework (`@pragmatic-tech-ai/mural`), `.mu` declarative modules compiled via `npm run compile:mu`, Vitest.
 
 ## Global Constraints
 
@@ -57,7 +57,7 @@
 - Test: `src/renderer/src/services/documents/tests/document-factory.test.ts`
 
 **Interfaces:**
-- Consumes: `IDocument` (`@pragmatic-lab/mural/framework`), `IStorage` (`../storage/storage.js`).
+- Consumes: `IDocument` (`@pragmatic-tech-ai/mural/framework`), `IStorage` (`../storage/storage.js`).
 - Produces:
   - `interface IDocumentFactory { openFile(storage: IStorage, path: string): Promise<IDocument>; saveFile(document: IDocument): Promise<void>; newFile(storage: IStorage, name: string): Promise<string> }`
   - `interface IRelocatableDocumentFactory { relocateOpenFile(document: IDocument, newPath: string): void }`
@@ -69,7 +69,7 @@ Create `src/renderer/src/services/documents/tests/document-factory.test.ts`:
 
 ```ts
 import { test, expect } from 'vitest'
-import type { IDocument } from '@pragmatic-lab/mural/framework'
+import type { IDocument } from '@pragmatic-tech-ai/mural/framework'
 import type { IStorage } from '../../storage/storage.js'
 import { isRelocatable, type IDocumentFactory, type IRelocatableDocumentFactory } from '../document-factory.js'
 
@@ -100,7 +100,7 @@ Expected: FAIL — cannot resolve `../document-factory.js`.
 Create `src/renderer/src/services/documents/document-factory.ts`:
 
 ```ts
-import type { IDocument } from '@pragmatic-lab/mural/framework'
+import type { IDocument } from '@pragmatic-tech-ai/mural/framework'
 import type { IStorage } from '../storage/storage.js'
 
 // The file-editing half of the old IProjectFactory — extracted so an EDITOR owns
@@ -162,7 +162,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Test: `src/renderer/src/modules/diagram/services/tests/diagram-document-factory.test.ts`
 
 **Interfaces:**
-- Consumes: `IDocumentFactory`, `IRelocatableDocumentFactory` (Task 1); `DiagramDocument`, `IDocument` (`@pragmatic-lab/mural/framework`); `FileDiagramStorage` (`../persistence/file-diagram-storage.js`); `IStorage`; `ServiceBase`, `ServiceKey`, `IServiceProvider` (`@pragmatic-lab/mural/runtime`).
+- Consumes: `IDocumentFactory`, `IRelocatableDocumentFactory` (Task 1); `DiagramDocument`, `IDocument` (`@pragmatic-tech-ai/mural/framework`); `FileDiagramStorage` (`../persistence/file-diagram-storage.js`); `IStorage`; `ServiceBase`, `ServiceKey`, `IServiceProvider` (`@pragmatic-tech-ai/mural/runtime`).
 - Produces: `class DiagramDocumentFactory extends ServiceBase implements IDocumentFactory, IRelocatableDocumentFactory` with static `Key`; `openFile(storage, path)`, `saveFile(document)`, `newFile(storage, name)`, `relocateOpenFile(document, newPath)`.
 
 - [ ] **Step 1: Write the failing test**
@@ -171,8 +171,8 @@ Create `src/renderer/src/modules/diagram/services/tests/diagram-document-factory
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { DiagramDocumentFactory } from '../diagram-document-factory.js'
@@ -224,8 +224,8 @@ Expected: FAIL — cannot resolve `../diagram-document-factory.js`.
 Create `src/renderer/src/modules/diagram/services/diagram-document-factory.ts` (the `.diagram` I/O lifted from `DiagramProjectFactory`, with `newFile` dropping the format arg):
 
 ```ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, type IDocument } from '@pragmatic-lab/mural/framework'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DiagramDocument, type IDocument } from '@pragmatic-tech-ai/mural/framework'
 
 import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../services/documents/document-factory.js'
 import type { IStorage } from '../../../services/storage/storage.js'
@@ -318,7 +318,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Test: `src/renderer/src/modules/meta-model/services/tests/todl-document-factory.test.ts`
 
 **Interfaces:**
-- Consumes: `IDocumentFactory`, `IRelocatableDocumentFactory` (Task 1); `IDocument` (`@pragmatic-lab/mural/framework`); `CodeDocument` (`../../code-editor/code-document.js`); `StorageCodeFile` (`../../code-editor/code-file.js`); `MetaModelValidationService` (`./meta-model-validation-service.js`); `IStorage`; `ServiceBase`, `ServiceKey`, `IServiceProvider`.
+- Consumes: `IDocumentFactory`, `IRelocatableDocumentFactory` (Task 1); `IDocument` (`@pragmatic-tech-ai/mural/framework`); `CodeDocument` (`../../code-editor/code-document.js`); `StorageCodeFile` (`../../code-editor/code-file.js`); `MetaModelValidationService` (`./meta-model-validation-service.js`); `IStorage`; `ServiceBase`, `ServiceKey`, `IServiceProvider`.
 - Produces: `class TodlDocumentFactory extends ServiceBase implements IDocumentFactory, IRelocatableDocumentFactory` with static `Key`; `openFile(storage, path)` (creates a `CodeDocument`, attaches to the validator if present), `saveFile(document)`, `newFile(storage, name)`, `relocateOpenFile(document, newPath)`.
 
 - [ ] **Step 1: Write the failing test**
@@ -327,7 +327,7 @@ Create `src/renderer/src/modules/meta-model/services/tests/todl-document-factory
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { CodeDocument } from '../../../code-editor/code-document.js'
@@ -381,8 +381,8 @@ Expected: FAIL — cannot resolve `../todl-document-factory.js`.
 Create `src/renderer/src/modules/meta-model/services/todl-document-factory.ts` (the `.todl` I/O lifted from `MetaModelProjectFactory`, `newFile` dropping the format arg):
 
 ```ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { IDocument } from '@pragmatic-lab/mural/framework'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import type { IDocument } from '@pragmatic-tech-ai/mural/framework'
 
 import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../../services/documents/document-factory.js'
 import type { IStorage } from '../../../services/storage/storage.js'
@@ -475,7 +475,7 @@ Create `src/renderer/src/modules/architecture-repository/services/tests/architec
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { PROJECT_MANIFEST_FILENAME } from '../../../../services/projects/project-factory.js'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
@@ -529,7 +529,7 @@ Expected: FAIL — cannot resolve `../architecture-project-factory.js`.
 Create `src/renderer/src/modules/architecture-repository/services/architecture-project-factory.ts` (the lifecycle half of the old `DiagramProjectFactory`, with `formats` retained and all file I/O removed):
 
 ```ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import {
     PROJECT_MANIFEST_FILENAME,
@@ -660,7 +660,7 @@ The cutover. `ProjectExplorerService` stops calling `op.Factory.openFile/saveFil
 - Delete: `src/renderer/src/modules/diagram/services/tests/diagram-project-factory.test.ts`
 
 **Interfaces:**
-- Consumes: `DocumentTypeRegistry` (`@pragmatic-lab/mural/framework`); `IDocumentFactory`, `isRelocatable` (Task 1); `DiagramDocumentFactory` (Task 2); `TodlDocumentFactory` (Task 3); `ArchitectureProjectFactory` (Task 4).
+- Consumes: `DocumentTypeRegistry` (`@pragmatic-tech-ai/mural/framework`); `IDocumentFactory`, `isRelocatable` (Task 1); `DiagramDocumentFactory` (Task 2); `TodlDocumentFactory` (Task 3); `ArchitectureProjectFactory` (Task 4).
 - Produces: `ProjectExplorerService.resolveDocumentFactory(ext: string): IDocumentFactory | undefined` (private); rewired `openNode`, `openDocument`, `saveActive`, `newFileIn`, `repointOpenDocuments`.
 
 - [ ] **Step 1: Rewrite the explorer test harness (failing test)**
@@ -669,8 +669,8 @@ In `tests/project-explorer-service.test.ts`, replace the imports block (lines 1�
 
 ```ts
 import { test, expect } from 'vitest'
-import { Key, ServiceProvider, type KeyEventArgs } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DialogService, DocumentsContentHostService, DocumentTypeRegistry, ProjectFactoryRegistry, type IDocument } from '@pragmatic-lab/mural/framework'
+import { Key, ServiceProvider, type KeyEventArgs } from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService, DialogService, DocumentsContentHostService, DocumentTypeRegistry, ProjectFactoryRegistry, type IDocument } from '@pragmatic-tech-ai/mural/framework'
 
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
 import { FileSystemService } from '../../../../services/file-system/file-system-service.js'
@@ -857,7 +857,7 @@ import {
     ProjectFactoryRegistry,
     type DocumentsContentHostService,
     type IDocument,
-} from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/framework'
 ```
 
 3b. Change the project-factory import (lines 40–47) to drop `isRelocatable` and add the document-factory import after it:
@@ -1093,7 +1093,7 @@ Edit `src/renderer/src/app.mu`. In `.services:`, add `DocumentTypeRegistry` imme
 - [ ] **Step 9: Recompile the modules**
 
 Run: `npm run compile:mu`
-Expected: exits 0; `diagram.module.mu.js`, `architecture-repository.module.mu.js`, `meta-model.module.mu.js`, and `app.mu.js` are regenerated. If it errors on an unresolved `DocumentTypeRegistry` symbol, add an explicit import to `app.mu` mirroring the settings imports (`import DocumentTypeRegistry from "@pragmatic-lab/mural/framework"`) and re-run.
+Expected: exits 0; `diagram.module.mu.js`, `architecture-repository.module.mu.js`, `meta-model.module.mu.js`, and `app.mu.js` are regenerated. If it errors on an unresolved `DocumentTypeRegistry` symbol, add an explicit import to `app.mu` mirroring the settings imports (`import DocumentTypeRegistry from "@pragmatic-tech-ai/mural/framework"`) and re-run.
 
 - [ ] **Step 10: Typecheck and run the full suite**
 
@@ -1179,7 +1179,7 @@ Edit `meta-model-project-factory.ts`:
   export class MetaModelProjectFactory extends ServiceBase implements IProjectFactory, IPublishableProjectFactory
   ```
 - Delete the `openFile`, `saveFile`, `relocateOpenFile`, and `newFile` methods (the file-I/O block, originally lines ~78–105). Keep `createProject`, `openProject`, `saveProject`, `publish`, `buildProject`, `populate`, and helpers.
-- Remove now-unused imports: `type IDocument` (`@pragmatic-lab/mural/framework`), `CodeDocument`, `StorageCodeFile`, `MetaModelValidationService` — moved to `TodlDocumentFactory`. Keep `check`, `toJSON`, `Severity`, `ensureMetaModelsBackend`, `collectTodlSources`, `extname`, `joinRel`, `compareStorageEntries`, `IStorage`, `Project`/`ProjectNode`. The Step 5 compile catches any missed reference.
+- Remove now-unused imports: `type IDocument` (`@pragmatic-tech-ai/mural/framework`), `CodeDocument`, `StorageCodeFile`, `MetaModelValidationService` — moved to `TodlDocumentFactory`. Keep `check`, `toJSON`, `Severity`, `ensureMetaModelsBackend`, `collectTodlSources`, `extname`, `joinRel`, `compareStorageEntries`, `IStorage`, `Project`/`ProjectNode`. The Step 5 compile catches any missed reference.
 
 - [ ] **Step 4: Verify the meta-model factory test passes**
 

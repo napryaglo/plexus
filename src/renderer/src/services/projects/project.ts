@@ -1,4 +1,4 @@
-import { MetaData, MuralBase, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, ObservableCollection, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 
 import { NewItemChoice } from './new-item-choice.js'
 

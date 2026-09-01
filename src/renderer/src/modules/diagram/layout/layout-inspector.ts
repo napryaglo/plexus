@@ -1,6 +1,6 @@
-import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime'
-import { Inspector } from '@pragmatic-lab/mural/framework'
-import type { Diagram } from '@pragmatic-lab/mural/framework'
+import { MetaData, MuralBase } from '@pragmatic-tech-ai/mural/runtime'
+import { Inspector } from '@pragmatic-tech-ai/mural/framework'
+import type { Diagram } from '@pragmatic-tech-ai/mural/framework'
 
 // The right-region inspector entry for the layout pipeline builder.
 // Modeled on DiagramInspector: it carries the active Diagram as an

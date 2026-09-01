@@ -4,8 +4,8 @@
 // AUTHOR-owned (presentation/*.mu): missing stubs are scaffolded write-once and the
 // author DataTemplates are inlined into the single assets block. A referenced icon
 // with no project file blocks publish (nothing written).
-import type { TodlDocument } from '@pragmatic-lab/todl'
-import { compile, DEFAULT_SYMBOLS } from '@pragmatic-lab/mural/compiler'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
+import { compile, DEFAULT_SYMBOLS } from '@pragmatic-tech-ai/mural/compiler'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import {

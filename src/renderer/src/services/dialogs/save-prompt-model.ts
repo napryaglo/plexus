@@ -1,5 +1,5 @@
-import { MetaData, MuralBase, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
-import type { DialogService } from '@pragmatic-lab/mural/framework'
+import { MetaData, MuralBase, RelayCommand, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
+import type { DialogService } from '@pragmatic-tech-ai/mural/framework'
 
 // A three-way "unsaved changes" prompt view-model. The host shows it through
 // DialogService and awaits a SavePromptResult: Save persists then proceeds,

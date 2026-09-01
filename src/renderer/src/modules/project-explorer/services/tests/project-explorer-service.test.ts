@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { Key, ServiceProvider, type KeyEventArgs } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, DialogService, DocumentsContentHostService, DocumentTypeRegistry, ProjectFactoryRegistry, type IDocument } from '@pragmatic-lab/mural/framework'
+import { Key, ServiceProvider, type KeyEventArgs } from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService, DialogService, DocumentsContentHostService, DocumentTypeRegistry, ProjectFactoryRegistry, type IDocument } from '@pragmatic-tech-ai/mural/framework'
 
 import { EnvironmentService } from '../../../../services/environment/environment-service.js'
 import { FileSystemService } from '../../../../services/file-system/file-system-service.js'

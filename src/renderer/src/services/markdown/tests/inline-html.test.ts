@@ -1,5 +1,5 @@
 import { describe, test, expect, vi } from 'vitest'
-import { Bold, Hyperlink, Italic, LineBreak, Run, Span } from '@pragmatic-lab/mural/basic'
+import { Bold, Hyperlink, Italic, LineBreak, Run, Span } from '@pragmatic-tech-ai/mural/basic'
 import { parseTag, HtmlTagKind, isWhitelistedTag, htmlFragmentToInlines } from '../inline-html.js'
 
 const noop = (): void => {}

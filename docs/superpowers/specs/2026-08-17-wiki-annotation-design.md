@@ -50,7 +50,7 @@ is never baked. Being in the prelude, it is injected as an implicit base by
 `repo.resolve(\`${concept}@wiki\`)` resolves anywhere — no meta-model
 republish needed (same as `icon`).
 
-Publish: bump `@pragmatic-lab/todl` (minor), publish to the local Verdaccio
+Publish: bump `@pragmatic-tech-ai/todl` (minor), publish to the local Verdaccio
 (`localhost:4873`), bump Plexus's `todl` dependency.
 
 ### B. Plexus — `WikiService` (the DRY core)

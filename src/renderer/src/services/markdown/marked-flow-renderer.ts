@@ -14,9 +14,9 @@ import {
     ListMarkerStyle, Paragraph, Run, Span, Table, TableCell, TableRow, TextAlignment,
     TextElement, Border,
     type Block, type Inline,
-} from '@pragmatic-lab/mural/basic'
-import { TextDecorations, FontStyle } from '@pragmatic-lab/mural/visual-engine'
-import { Thickness } from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/basic'
+import { TextDecorations, FontStyle } from '@pragmatic-tech-ai/mural/visual-engine'
+import { Thickness } from '@pragmatic-tech-ai/mural/runtime'
 import { highlightCode, codeScopeToToken } from './code-highlight.js'
 import { parseTag, openTagInline, HtmlTagKind } from './inline-html.js'
 import { createMarkdownImage, type MarkdownImageContext } from './markdown-image.js'

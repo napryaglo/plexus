@@ -6,8 +6,8 @@
 // so it never appears in packaged builds.
 import {
     MetaData, MuralBase, ObservableCollection, ServiceBase, ServiceKey, type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
-import type { IDockPanel } from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/runtime'
+import type { IDockPanel } from '@pragmatic-tech-ai/mural/framework'
 import { ProjectExplorerService } from '../../project-explorer/services/project-explorer-service.js'
 import { NewProjectCard } from './new-project-card.js'
 import { galleryCards } from './gallery-fixtures.js'

@@ -1,4 +1,4 @@
-import { RelayCommand, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { RelayCommand, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import type { OpenProject } from '../../../services/projects/open-project.js'
 import type { ProjectNode } from '../../../services/projects/project.js'
 import type { INodeCommandContributor, NodeAction } from '../../../services/documents/node-command-contributor.js'

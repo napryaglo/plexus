@@ -6,7 +6,7 @@
 
 **Architecture:** Add a general `OnExpand()` notification hook to mural's `TreeViewItem` (publish 0.1.52), then in Plexus build a uniform `MetaModelTreeNode` VM (mirrors `ProjectNode`) whose Version nodes lazily read `model.json` on expand, grouping entities by ontology kind. One `HierarchicalDataTemplate` renders the whole heterogeneous tree; `IsVirtualizing = true` bounds render cost.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural` (Model/DP/ObservableCollection/TreeView), `@pragmatic-lab/todl` (`TodlDocument`), Vitest (Plexus), `node:test` (Mural), Verdaccio local registry.
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural` (Model/DP/ObservableCollection/TreeView), `@pragmatic-tech-ai/todl` (`TodlDocument`), Vitest (Plexus), `node:test` (Mural), Verdaccio local registry.
 
 ## Global Constraints
 
@@ -135,7 +135,7 @@ Edit `package.json`: `"version": "0.1.51"` → `"version": "0.1.52"`.
 
 Run: `npm publish`
 (`prepublishOnly` runs `clean` + `build` automatically.)
-Expected: `+ @pragmatic-lab/mural@0.1.52`.
+Expected: `+ @pragmatic-tech-ai/mural@0.1.52`.
 
 - [ ] **Step 8: Commit**
 
@@ -160,24 +160,24 @@ EOF
 **Repo:** `Plexus` (new branch `meta-model-virtualized-tree` from `main`)
 
 **Files:**
-- Modify: `package.json` (`"@pragmatic-lab/mural": "^0.1.51"` → `"^0.1.52"`)
+- Modify: `package.json` (`"@pragmatic-tech-ai/mural": "^0.1.51"` → `"^0.1.52"`)
 
 **Interfaces:**
-- Consumes: the published `@pragmatic-lab/mural@0.1.52` from Task 1.
+- Consumes: the published `@pragmatic-tech-ai/mural@0.1.52` from Task 1.
 - Produces: the OnExpand hook available in `node_modules` for Tasks 3 & 7.
 
 - [ ] **Step 1: Bump the dependency range**
 
-Edit `package.json`: set `"@pragmatic-lab/mural": "^0.1.52"`.
+Edit `package.json`: set `"@pragmatic-tech-ai/mural": "^0.1.52"`.
 
 - [ ] **Step 2: Reinstall from Verdaccio**
 
 Run: `npm install`
-Expected: `@pragmatic-lab/mural@0.1.52` installed.
+Expected: `@pragmatic-tech-ai/mural@0.1.52` installed.
 
 - [ ] **Step 3: Verify the hook shipped in the installed dist**
 
-Run: `grep -n "OnExpand" node_modules/@pragmatic-lab/mural/dist/framework/list/tree-view.js`
+Run: `grep -n "OnExpand" node_modules/@pragmatic-tech-ai/mural/dist/framework/list/tree-view.js`
 Expected: a match inside the `IsExpanded` handler (`data?.OnExpand?.()`). If no match, Task 1's publish didn't land — stop and fix before continuing.
 
 - [ ] **Step 4: Commit**
@@ -185,7 +185,7 @@ Expected: a match inside the `IsExpanded` handler (`data?.OnExpand?.()`). If no 
 ```bash
 git add package.json package-lock.json
 git commit -m "$(cat <<'EOF'
-chore(deps): bump @pragmatic-lab/mural to ^0.1.52 (OnExpand hook)
+chore(deps): bump @pragmatic-tech-ai/mural to ^0.1.52 (OnExpand hook)
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 EOF
@@ -203,7 +203,7 @@ EOF
 - Test: `src/renderer/src/modules/meta-model/services/tests/meta-model-tree-node.test.ts`
 
 **Interfaces:**
-- Consumes: `Model`, `MetaData`, `ObservableCollection` from `@pragmatic-lab/mural/runtime`.
+- Consumes: `Model`, `MetaData`, `ObservableCollection` from `@pragmatic-tech-ai/mural/runtime`.
 - Produces:
   - `enum MetaModelNodeKind { Model = 'model', Version = 'version', Group = 'group', Entity = 'entity' }`
   - `class MetaModelTreeNode extends Model` with getters `Kind: MetaModelNodeKind`, `Label: string`, `Children: ObservableCollection<MetaModelTreeNode>`, and `OnExpand(): void`.
@@ -274,7 +274,7 @@ Expected: FAIL — cannot find module `../meta-model-tree-node.js`.
 Create `src/renderer/src/modules/meta-model/services/meta-model-tree-node.ts`:
 
 ```ts
-import { MetaData, Model, ObservableCollection } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
 
 // A uniform tree node for the Meta-models panel — one type for every level
 // (model id, version, kind group, entity) so a single HierarchicalDataTemplate
@@ -395,7 +395,7 @@ EOF
 - Modify: `src/renderer/src/modules/meta-model/services/tests/meta-models-service.test.ts` (the three `scanPublishedModels` tests move to the builder test — see Step 6)
 
 **Interfaces:**
-- Consumes: `IStorage` from `../../../services/storage/storage.js`; `MetaModelTreeNode`, `MetaModelNodeKind` from `./meta-model-tree-node.js` (Task 3); `ontologyEntities`, `humanize`, `OntologyKind` from `./presentation-generator.js`; `TodlDocument`, `JsonNode` from `@pragmatic-lab/todl`.
+- Consumes: `IStorage` from `../../../services/storage/storage.js`; `MetaModelTreeNode`, `MetaModelNodeKind` from `./meta-model-tree-node.js` (Task 3); `ontologyEntities`, `humanize`, `OntologyKind` from `./presentation-generator.js`; `TodlDocument`, `JsonNode` from `@pragmatic-tech-ai/todl`.
 - Produces:
   - `interface PublishedModel { id: string; versions: string[] }`
   - `scanPublishedModels(storage: IStorage): Promise<PublishedModel[]>`
@@ -495,7 +495,7 @@ Expected: FAIL — cannot find module `../meta-model-tree-builder.js`.
 Create `src/renderer/src/modules/meta-model/services/meta-model-tree-builder.ts`:
 
 ```ts
-import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
+import type { TodlDocument, JsonNode } from '@pragmatic-tech-ai/todl'
 
 import type { IStorage } from '../../../services/storage/storage.js'
 import { MetaModelTreeNode, MetaModelNodeKind } from './meta-model-tree-node.js'
@@ -629,7 +629,7 @@ EOF
 - Test: `src/renderer/src/modules/meta-model/services/tests/meta-model-node-icon.test.ts`
 
 **Interfaces:**
-- Consumes: `Application`, `ValueConverter` from `@pragmatic-lab/mural/runtime`; `MetaModelNodeKind` from `./meta-model-tree-node.js`.
+- Consumes: `Application`, `ValueConverter` from `@pragmatic-tech-ai/mural/runtime`; `MetaModelNodeKind` from `./meta-model-tree-node.js`.
 - Produces: `iconKeyForNodeKind(kind: MetaModelNodeKind): string` and `export const MetaModelKindToGeometry: ValueConverter`.
 
 - [ ] **Step 1: Write the failing test**
@@ -666,7 +666,7 @@ Create `src/renderer/src/modules/meta-model/services/meta-model-node-icon.ts`. T
 // MetaModelTreeNode.Children — see meta-model.resources.mu), so the data-driven
 // icon flows through a value converter (`$Kind << MetaModelKindToGeometry`).
 // Distinct from the project explorer's KindToGeometry (different key set).
-import { Application, type ValueConverter } from '@pragmatic-lab/mural/runtime'
+import { Application, type ValueConverter } from '@pragmatic-tech-ai/mural/runtime'
 
 import { MetaModelNodeKind } from './meta-model-tree-node.js'
 
@@ -783,8 +783,8 @@ import {
     ServiceBase,
     ServiceKey,
     type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
-import type { IActivatable } from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/runtime'
+import type { IActivatable } from '@pragmatic-tech-ai/mural/framework'
 
 import { ensureMetaModelsBackend } from './meta-models-backend.js'
 import { buildCatalog } from './meta-model-tree-builder.js'

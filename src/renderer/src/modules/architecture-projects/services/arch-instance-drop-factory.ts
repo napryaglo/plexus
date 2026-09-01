@@ -1,5 +1,5 @@
-import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, DialogService, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DiagramDocument, DialogService, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-tech-ai/mural/framework'
 
 import { resolveDropActions, DropActionKind, type DropAction } from './arch-drop-resolver.js'
 import { containmentMemberFor, isContainerConcept } from './containment.js'

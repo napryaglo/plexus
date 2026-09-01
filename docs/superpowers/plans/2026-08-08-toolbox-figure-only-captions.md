@@ -6,7 +6,7 @@
 
 **Architecture:** The `ToolboxVisualPresenter` resolves a figure-only visual; the hosting `.mu` template draws a `TextBlock` caption bound to the host's label field. The programmatic visual tiers (`buildDefaultTemplate`/`buildIconTemplate`) and the presentation scaffold stop emitting labels.
 
-**Tech Stack:** TypeScript, mural (`@pragmatic-lab/mural` ^0.3.2) markup (`.mu`) + runtime, Vitest.
+**Tech Stack:** TypeScript, mural (`@pragmatic-tech-ai/mural` ^0.3.2) markup (`.mu`) + runtime, Vitest.
 
 ## Global Constraints
 

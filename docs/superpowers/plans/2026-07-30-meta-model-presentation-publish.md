@@ -6,7 +6,7 @@
 
 **Architecture:** A new pure-ish `presentation-publisher.ts` unit does the layout (writes the generated source via the existing `generatePresentationMu`, recursively copies the project's `presentation/` overrides, and copies each `distinctIcons(doc)` SVG preserving its path) over two `IStorage`s. `publish` calls it after the existing `model.json` + `src/` writes. Everything is `IStorage`-based, so a full flow is unit-testable with `FakeStorage` and no renderer.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural` (`IStorage`), `@pragmatic-lab/todl` (`TodlDocument`), Vitest.
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural` (`IStorage`), `@pragmatic-tech-ai/todl` (`TodlDocument`), Vitest.
 
 ## Global Constraints
 
@@ -26,7 +26,7 @@
 - Test: `src/renderer/src/modules/meta-model/services/tests/presentation-publisher.test.ts`
 
 **Interfaces:**
-- Consumes: `IStorage`, `StorageEntry` from `../../../services/storage/storage.js`; `generatePresentationMu`, `distinctIcons`, `ontologyEntities` from `./presentation-generator.js`; `TodlDocument` from `@pragmatic-lab/todl`.
+- Consumes: `IStorage`, `StorageEntry` from `../../../services/storage/storage.js`; `generatePresentationMu`, `distinctIcons`, `ontologyEntities` from `./presentation-generator.js`; `TodlDocument` from `@pragmatic-tech-ai/todl`.
 - Produces:
   - `interface PresentationPublishStats { templates: number; icons: number }`
   - `async function publishPresentation(project: IStorage, dest: IStorage, base: string, doc: TodlDocument, authorDicts: readonly string[]): Promise<PresentationPublishStats>`
@@ -37,7 +37,7 @@ Create `src/renderer/src/modules/meta-model/services/tests/presentation-publishe
 
 ```ts
 import { test, expect } from 'vitest'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { publishPresentation } from '../presentation-publisher.js'
@@ -121,7 +121,7 @@ Expected: FAIL — cannot find module `../presentation-publisher.js`.
 Create `src/renderer/src/modules/meta-model/services/presentation-publisher.ts`:
 
 ```ts
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import type { IStorage, StorageEntry } from '../../../services/storage/storage.js'
 import { generatePresentationMu, distinctIcons, ontologyEntities } from './presentation-generator.js'

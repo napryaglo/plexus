@@ -1,4 +1,4 @@
-import { type Repository } from '@pragmatic-lab/todl'
+import { type Repository } from '@pragmatic-tech-ai/todl'
 import { conceptTypeOf, acceptSet } from './arch-concept-type.js'
 
 export interface PropFill { member: string; term: string }

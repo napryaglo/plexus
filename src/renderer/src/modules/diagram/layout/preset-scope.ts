@@ -1,4 +1,4 @@
-import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase } from '@pragmatic-tech-ai/mural/runtime'
 
 // Where a named layout preset lives. A preset can be saved to any of three
 // scopes, listed together in the inspector's preset combobox:

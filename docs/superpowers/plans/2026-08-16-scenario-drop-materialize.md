@@ -6,14 +6,14 @@
 
 **Architecture:** A pure module computes the flow (participants, step edges, layered columns, positions) from a scenario entity; a thin drop factory applies that plan to the diagram (reuse-first node creation + `CreateConnector`); a Scenarios toolbox page lists draggable scenarios. Mirrors the existing `ArchModelInstanceDropFactory` / `ArchModelToolboxContributor` place-existing-entity pattern.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural` framework (`DiagramDocument`, `ArchNodeVM`, `ConnectorEndpoint`), `@pragmatic-lab/todl` `Entity`, vitest (node env).
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural` framework (`DiagramDocument`, `ArchNodeVM`, `ConnectorEndpoint`), `@pragmatic-tech-ai/todl` `Entity`, vitest (node env).
 
 ## Global Constraints
 
 - **Visualization only.** No `model.create` / `model.addRef` / `model.save`. The only model call is `model.notifyChanged()` (triggers the binding rescan that labels/icons the nodes).
 - **No TODL changes.**
 - **Every test file lives in a `tests/` subfolder** next to its source.
-- **Tests run in the `node` vitest env; do not import `monaco-editor`.** `@pragmatic-lab/mural` and `@pragmatic-lab/todl` ARE importable (vitest `deps.inline`), as the sibling arch-service tests show.
+- **Tests run in the `node` vitest env; do not import `monaco-editor`.** `@pragmatic-tech-ai/mural` and `@pragmatic-tech-ai/todl` ARE importable (vitest `deps.inline`), as the sibling arch-service tests show.
 - **Enums over string-literal unions** for any fixed set.
 - Meta-model relationship names (fixed): `scenario.sequences`, `sequence.steps`, `step.src`, `step.dst`.
 - Intended for a **Scenarios-viewpoint** diagram; no structural-edge suppression logic is added.
@@ -94,7 +94,7 @@ Expected: FAIL (module missing).
 // scenario-flow.ts  (part 1 of 3 — collection)
 
 // Structural view of a todl Entity: enough to walk a scenario's flow. The real
-// Entity (@pragmatic-lab/todl) satisfies this (its refs(member) returns Entity[]).
+// Entity (@pragmatic-tech-ai/todl) satisfies this (its refs(member) returns Entity[]).
 export interface FlowEntity {
   id: string
   refs(member: string): FlowEntity[]
@@ -318,8 +318,8 @@ git commit -m "feat(scenario-drop): layered flow layout + drop plan (pure)"
 ```ts
 // tests/arch-scenario-drop-factory.test.ts
 import { test, expect, vi } from 'vitest'
-import { Point, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, ToolboxVisualDescriptor, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { Point, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DiagramDocument, ToolboxVisualDescriptor, type ToolboxDropContext } from '@pragmatic-tech-ai/mural/framework'
 import { TodlVisualResolverKey } from '../../../diagram/services/todl-visual-resolver.js'
 import { ArchToolboxItem } from '../../../diagram/services/arch-toolbox-item.js'
 import { ArchDiagramBindingService } from '../arch-diagram-binding-service.js'
@@ -396,8 +396,8 @@ Expected: FAIL (module missing).
 
 ```ts
 // arch-scenario-drop-factory.ts
-import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ConnectorEndpoint, DiagramDocument, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { ConnectorEndpoint, DiagramDocument, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-tech-ai/mural/framework'
 
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import { ArchNodeVM } from './arch-node-vm.js'

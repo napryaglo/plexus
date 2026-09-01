@@ -1,6 +1,6 @@
-import { Behavior, type Visual } from '@pragmatic-lab/mural/runtime'
-import { TreeView, TreeViewItem, type ItemTemplateSelector } from '@pragmatic-lab/mural/framework'
-import type { DataTemplate } from '@pragmatic-lab/mural/basic'
+import { Behavior, type Visual } from '@pragmatic-tech-ai/mural/runtime'
+import { TreeView, TreeViewItem, type ItemTemplateSelector } from '@pragmatic-tech-ai/mural/framework'
+import type { DataTemplate } from '@pragmatic-tech-ai/mural/basic'
 
 import { OpenProject } from './open-project.js'
 

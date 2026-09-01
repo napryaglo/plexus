@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import { iconKey, humanize, ontologyEntities, classEntities, distinctIcons, generatePresentationAssets, isRasterIcon, includeLine, resolveFacets, assignResourceKeys, resourceKeyFor, stampResourceKeys, buildIconIndex } from '../presentation-generator.js'
 
@@ -81,23 +81,23 @@ test('classEntities returns Instance-tier class nodes only', () => {
 })
 
 test('resolveFacets: icon comes from the annotation only; label is attr-primary', () => {
-    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'a.svg', label: 'Attr' } } as unknown as import('@pragmatic-lab/todl').JsonNode
+    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'a.svg', label: 'Attr' } } as unknown as import('@pragmatic-tech-ai/todl').JsonNode
     // The attrs.icon field is ignored; the annotation supplies the icon. Label still prefers the attr.
     expect(resolveFacets(node, { icon: { path: 'ann.svg' }, label: { text: 'Ann' } })).toEqual({ icon: 'ann.svg', label: 'Attr' })
 })
 
 test('resolveFacets: no icon when the annotation is absent, even with a raw attrs.icon', () => {
-    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'a.svg' } } as unknown as import('@pragmatic-lab/todl').JsonNode
+    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: { icon: 'a.svg' } } as unknown as import('@pragmatic-tech-ai/todl').JsonNode
     expect(resolveFacets(node, {})).toEqual({ icon: undefined, label: 'Actor' })
 })
 
 test('resolveFacets: annotation icon + annotation label when no attr label present', () => {
-    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} } as unknown as import('@pragmatic-lab/todl').JsonNode
+    const node = { id: 'actor', tier: 'Ontology', typeOf: 'concept', attrs: {} } as unknown as import('@pragmatic-tech-ai/todl').JsonNode
     expect(resolveFacets(node, { icon: { path: 'ann.svg' }, label: { text: 'Ann' } })).toEqual({ icon: 'ann.svg', label: 'Ann' })
 })
 
 test('resolveFacets: humanize label and no icon when neither present', () => {
-    const node = { id: 'app-component', tier: 'Ontology', typeOf: 'concept', attrs: {} } as unknown as import('@pragmatic-lab/todl').JsonNode
+    const node = { id: 'app-component', tier: 'Ontology', typeOf: 'concept', attrs: {} } as unknown as import('@pragmatic-tech-ai/todl').JsonNode
     expect(resolveFacets(node, {})).toEqual({ icon: undefined, label: 'App Component' })
 })
 

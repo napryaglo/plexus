@@ -2,15 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Bring Plexus onto `@pragmatic-lab/todl@^0.24.0`, make the one union-broken consumer union-aware, and give dropped entities a valid required `label`.
+**Goal:** Bring Plexus onto `@pragmatic-tech-ai/todl@^0.24.0`, make the one union-broken consumer union-aware, and give dropped entities a valid required `label`.
 
 **Architecture:** Bump the dependency (Verdaccio); fix `arch-drop-resolver.ts` to test the relationship `targets` array instead of a single `target`; add a pure `arch-default-label.ts` helper the drop factory calls to set `label`. `deriveClasses` is delegated to TODL (unchanged); emit stays bare + operator-free via 0.24.0.
 
-**Tech Stack:** TypeScript (ESM, strict), Electron/electron-vite, vitest. `@pragmatic-lab/*` from Verdaccio (`http://localhost:4873/`).
+**Tech Stack:** TypeScript (ESM, strict), Electron/electron-vite, vitest. `@pragmatic-tech-ai/*` from Verdaccio (`http://localhost:4873/`).
 
 ## Global Constraints
 
-- Plexus imports `@pragmatic-lab/*` from Verdaccio only — no relative `../src` imports into framework packages.
+- Plexus imports `@pragmatic-tech-ai/*` from Verdaccio only — no relative `../src` imports into framework packages.
 - Every Plexus test file lives in a `tests/` subfolder next to its source (vitest globs `src/**/*.test.ts`).
 - Real TypeScript `enum`s, never string-literal unions.
 - Commit messages end with `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
@@ -35,9 +35,9 @@ The bump is the forcing function: `RelationshipSchema.target` no longer exists i
 
 - [ ] **Step 1: Bump the dependency and reinstall**
 
-Edit `package.json`: `"@pragmatic-lab/todl": "^0.23.0"` → `"@pragmatic-lab/todl": "^0.24.0"`.
+Edit `package.json`: `"@pragmatic-tech-ai/todl": "^0.23.0"` → `"@pragmatic-tech-ai/todl": "^0.24.0"`.
 Run: `npm install --registry http://localhost:4873/`
-Expected: `@pragmatic-lab/todl@0.24.0` installed (verify: `npm ls @pragmatic-lab/todl`).
+Expected: `@pragmatic-tech-ai/todl@0.24.0` installed (verify: `npm ls @pragmatic-tech-ai/todl`).
 
 - [ ] **Step 2: Confirm the compile break**
 
@@ -116,7 +116,7 @@ Create `services/tests/arch-default-label.test.ts`:
 
 ```ts
 import { test, expect } from 'vitest'
-import { load } from '@pragmatic-lab/todl'
+import { load } from '@pragmatic-tech-ai/todl'
 import { defaultLabel, humanize } from '../arch-default-label.js'
 import { DropActionKind, type DropAction } from '../arch-drop-resolver.js'
 
@@ -158,7 +158,7 @@ Expected: FAIL (`arch-default-label.js` does not exist).
 Create `services/arch-default-label.ts`:
 
 ```ts
-import type { Repository } from '@pragmatic-lab/todl'
+import type { Repository } from '@pragmatic-tech-ai/todl'
 import { DropActionKind, type DropAction } from './arch-drop-resolver.js'
 
 // Title-case the last dotted segment of an id: `m365_copilot` -> `M365 Copilot`.
@@ -234,7 +234,7 @@ Expected: both green.
 
 - [ ] **Step 2: Report + manual smoke handoff**
 
-- Plexus on `@pragmatic-lab/todl@^0.24.0`; `arch-drop-resolver` union-aware; dropped entities carry a default `label`; `deriveClasses` and the arch emitter unchanged (delegated to TODL, bare + operator-free).
+- Plexus on `@pragmatic-tech-ai/todl@^0.24.0`; `arch-drop-resolver` union-aware; dropped entities carry a default `label`; `deriveClasses` and the arch emitter unchanged (delegated to TODL, bare + operator-free).
 - **Manual smoke (needs Electron — `npm run dev`):**
   1. Open the tech-architecture meta-model project and **republish** it (regenerates any published/compiled artifact under 0.24.0).
   2. In an architecture project, drop a library term onto a diagram: confirm the candidate routing works (auto/chooser), the created entity shows a sensible label, and re-opening / saving the `.todl` shows **bare** refs with **no** `operator` (SP3/SP4 preserved on regeneration).

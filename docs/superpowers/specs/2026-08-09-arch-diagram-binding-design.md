@@ -156,11 +156,11 @@ Unit tests, each in a `tests/` subfolder.
 
 ## 7. Constraints
 
-- `@pragmatic-lab/todl@^0.23.0`; import `DiagramDocument`, `Figure`,
+- `@pragmatic-tech-ai/todl@^0.23.0`; import `DiagramDocument`, `Figure`,
   `DocumentsContentHostService`, `type IDocument` from
-  `@pragmatic-lab/mural/framework`; `ServiceBase`/`ServiceKey`/
-  `ObservableCollection` from `@pragmatic-lab/mural/runtime`; `Entity` from
-  `@pragmatic-lab/todl`.
+  `@pragmatic-tech-ai/mural/framework`; `ServiceBase`/`ServiceKey`/
+  `ObservableCollection` from `@pragmatic-tech-ai/mural/runtime`; `Entity` from
+  `@pragmatic-tech-ai/todl`.
 - Real enums; every test in a `tests/` subfolder; no relative `../src` mural
   imports.
 - The generic `DiagramDocument`/`DiagramDocumentFactory` are not modified — the

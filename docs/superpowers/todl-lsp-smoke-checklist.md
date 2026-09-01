@@ -4,7 +4,7 @@ The irreducibly visual gate for Spec 3 (Plexus client). Everything below is
 headless-tested where possible; this checklist covers what only real Monaco +
 Electron can prove. Run with `npm run dev`.
 
-**Prerequisite:** `@pragmatic-lab/todl` must expose the `language-server` subpath
+**Prerequisite:** `@pragmatic-tech-ai/todl` must expose the `language-server` subpath
 (TODL 0.3.0 published to Verdaccio, or `npm link` to a local TODL checkout with
 `dist` built). `npm run build:todl-server` must have produced
 `out/main/todl-language-server.cjs`.

@@ -1,4 +1,4 @@
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { FileSystemService } from '../file-system/file-system-service.js'
 import { LocalFileStorage } from './local-file-storage.js'

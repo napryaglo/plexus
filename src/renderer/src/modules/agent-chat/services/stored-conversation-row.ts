@@ -4,7 +4,7 @@
 // DataTemplate[DataType = StoredConversationRow] and carries its own commands +
 // inline-rename state (IsEditing swaps a TextBox in for the title, mirroring the
 // project-tree rename pattern).
-import { Key, MetaData, MuralBase, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { Key, MetaData, MuralBase, RelayCommand, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 import type { StoredConversation } from './chat-store.js'
 import { timeAgo } from './time-ago.js'
 

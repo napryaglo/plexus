@@ -6,7 +6,7 @@
 
 **Architecture:** Three seams — a **task** (kind + payload + observable handle), an **`ITaskExecutor`** strategy registered per kind (inline async now; Web Worker / IPC later behind the same seam), and a root-registered **`BackgroundWorkService`** manager that schedules by per-executor capacity, owns the observable task registry, and drives a status-bar dock. Mirrors the existing `ProblemsService` + `@ProblemsDock` pattern for the surfacing.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural` (`ServiceBase`, `MuralBase` DPs, `ObservableCollection`, `RelayCommand`), mural `.mu` markup compiled via `compile:mu`, Vitest (tests in `tests/` subfolders), Playwright/Electron e2e.
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural` (`ServiceBase`, `MuralBase` DPs, `ObservableCollection`, `RelayCommand`), mural `.mu` markup compiled via `compile:mu`, Vitest (tests in `tests/` subfolders), Playwright/Electron e2e.
 
 **Spec:** [docs/superpowers/specs/2026-08-30-background-work-service-design.md](../specs/2026-08-30-background-work-service-design.md)
 
@@ -17,7 +17,7 @@
 - **MVVM / mural conventions** — view-observable state lives on `MuralBase` DPs via `MuralBase.RegisterProperty`; services extend `ServiceBase` and resolve siblings via `this.Provider.get(Key)`.
 - **Render through templates only** — all visible chrome via `DataTemplate`/`Style`/binding in `.mu`; no hardcoded visuals in TS.
 - **New `.mu` files must be added to the `compile:mu` script's explicit file list** in `package.json`, before `app.mu`.
-- **Consumed mural version:** `@pragmatic-lab/mural` `^0.40.0` (already installed).
+- **Consumed mural version:** `@pragmatic-tech-ai/mural` `^0.40.0` (already installed).
 - **Scope of this plan:** the reusable subsystem + one **demo task** for end-to-end UI validation. Completion toasts, publish migration, and layout migration are follow-up plans (see end).
 
 ---
@@ -240,7 +240,7 @@ Expected: FAIL — cannot resolve `../task-handle.js`.
 
 ```ts
 // task-handle.ts
-import { MuralBase, MetaData, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MuralBase, MetaData, RelayCommand, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 
 // Lifecycle of one background task.
 export enum TaskStatus {
@@ -472,7 +472,7 @@ git commit -m "feat(background-work): inline reference executor"
 ```ts
 // tests/background-work-service.test.ts
 import { describe, it, expect, vi } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { BackgroundWorkService } from '../background-work-service.js'
 import { TaskStatus } from '../task-handle.js'
 import { TaskKind, type ITaskContext, type ITaskExecutor } from '../task-executor.js'
@@ -604,7 +604,7 @@ Expected: FAIL — cannot resolve `../background-work-service.js`.
 import {
     MuralBase, MetaData, ObservableCollection, RelayCommand, ServiceBase, ServiceKey,
     type ICommand, type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 import { TaskExecutorRegistry, TaskKind, type BackgroundTask, type ITaskContext, type ITaskExecutor } from './task-executor.js'
 import { TaskHandle, TaskStatus } from './task-handle.js'
 import { InlineExecutor, type InlineJob } from './inline-executor.js'
@@ -765,7 +765,7 @@ git commit -m "feat(background-work): manager service (queue, concurrency, cance
 - Test: `src/renderer/src/modules/background-work/services/tests/task-output-document.test.ts`
 
 **Interfaces:**
-- Consumes: `TaskHandle` (Task 2); `IDocument` from `@pragmatic-lab/mural/framework`.
+- Consumes: `TaskHandle` (Task 2); `IDocument` from `@pragmatic-tech-ai/mural/framework`.
 - Produces: `class TaskOutputDocument implements IDocument` — `Id = 'task-output:' + handle.Id`, `Title = handle.Title + ' — output'`, `IsDirty = false`, `Save()` no-op; readonly `Handle: TaskHandle` (the `.mu` view binds `$Handle.Output` / `$Handle.Status`).
 
 - [ ] **Step 1: Write the failing test**
@@ -801,7 +801,7 @@ Expected: FAIL — cannot resolve `../task-output-document.js`.
 
 ```ts
 // task-output-document.ts
-import type { IDocument } from '@pragmatic-lab/mural/framework'
+import type { IDocument } from '@pragmatic-tech-ai/mural/framework'
 import type { TaskHandle } from './task-handle.js'
 
 // A read-only document tab showing one task's live output log. Opened via
@@ -847,7 +847,7 @@ git commit -m "feat(background-work): read-only task output document"
 - Test: `src/renderer/src/modules/background-work/services/tests/background-work-service.test.ts` (add cases)
 
 **Interfaces:**
-- Consumes: `ContentHostService`, `DocumentsContentHostService` from `@pragmatic-lab/mural/framework`; `TaskOutputDocument` (Task 5).
+- Consumes: `ContentHostService`, `DocumentsContentHostService` from `@pragmatic-tech-ai/mural/framework`; `TaskOutputDocument` (Task 5).
 - Produces: each submitted `TaskHandle` gets its `OpenOutputCommand` set; invoking it calls `host.Open(new TaskOutputDocument(handle))` (cached per handle so re-open re-activates the same doc).
 
 - [ ] **Step 1: Write the failing test (append to background-work-service.test.ts)**
@@ -857,7 +857,7 @@ it('sets OpenOutputCommand which opens a task-output document on the content hos
     const provider = new ServiceProvider()
     const opened: Array<{ Id: string }> = []
     // Register a fake DocumentsContentHostService under ContentHostService.Key.
-    const { ContentHostService } = await import('@pragmatic-lab/mural/framework')
+    const { ContentHostService } = await import('@pragmatic-tech-ai/mural/framework')
     provider.register(ContentHostService.Key, () => ({ Open: (d: { Id: string }) => opened.push(d) }) as never)
     const s = new (await import('../background-work-service.js')).BackgroundWorkService(provider)
     const { handle } = s.run('inline', async () => 1)
@@ -881,9 +881,9 @@ Add imports and wire the command in `submit()`. In `background-work-service.ts`:
 
 ```ts
 // add to imports:
-import { ContentHostService, type DocumentsContentHostService } from '@pragmatic-lab/mural/framework'
+import { ContentHostService, type DocumentsContentHostService } from '@pragmatic-tech-ai/mural/framework'
 import { TaskOutputDocument } from './task-output-document.js'
-import { RelayCommand } from '@pragmatic-lab/mural/runtime'   // already imported — keep single import line
+import { RelayCommand } from '@pragmatic-tech-ai/mural/runtime'   // already imported — keep single import line
 ```
 
 Add a per-handle output-doc cache field:

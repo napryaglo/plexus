@@ -1,6 +1,6 @@
 // One row in the project's "Run Agent / Skill" submenu: a label + the command that
 // launches that catalog item. Mirrors NewItemChoice (the "Add New" submenu row).
-import { MetaData, MuralBase, RelayCommand, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, RelayCommand, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 import { AgentSkillKind, type CatalogItem, type ProjectCatalog } from '../../../../../shared/agent-api.js'
 
 export class AgentSkillChoice extends MuralBase

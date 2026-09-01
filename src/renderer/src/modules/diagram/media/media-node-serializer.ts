@@ -1,4 +1,4 @@
-import { registerNodeSerializer, serializerByType } from '@pragmatic-lab/mural/framework'
+import { registerNodeSerializer, serializerByType } from '@pragmatic-tech-ai/mural/framework'
 import { MediaKind } from './media-kind'
 import { MediaNodeVM } from './media-node-vm'
 

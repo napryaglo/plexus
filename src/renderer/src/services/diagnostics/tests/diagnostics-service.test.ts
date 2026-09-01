@@ -1,5 +1,5 @@
 import { test, expect, vi } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { DiagnosticsService } from '../diagnostics-service.js'
 import { DiagnosticSeverity, type Diagnostic } from '../diagnostic.js'
 

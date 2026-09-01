@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { serializerByType } from '@pragmatic-lab/mural/framework'
+import { serializerByType } from '@pragmatic-tech-ai/mural/framework'
 import { MediaKind } from '../media-kind'
 import { MediaNodeVM } from '../media-node-vm'
 import { registerMediaNodeSerializer } from '../media-node-serializer'

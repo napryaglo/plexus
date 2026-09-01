@@ -6,7 +6,7 @@
 
 **Architecture:** Two small new app-level services — `ViewportService` (tracks `window.innerHeight`) and `ClipboardService` (`writeText`). `ProblemsService` gains filter state, a live `ListMaxHeight`, and copy/clear commands; its `rebuild()` filters before grouping while keeping counts as unfiltered totals. `problems.resources.mu` overrides the `MenuButton`'s popup control `Template` to host a header/toolbar plus a height-capped `ScrollViewer` wrapping an `ItemsControl` (bound to `$Rows`) whose `ItemsPanel` is a `VirtualizingStackPanel`.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural` (runtime/basic/framework), mural `.mu` templates (compiled via `npm run compile:mu`), vitest.
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural` (runtime/basic/framework), mural `.mu` templates (compiled via `npm run compile:mu`), vitest.
 
 ## Global Constraints
 
@@ -49,7 +49,7 @@ Create `src/renderer/src/services/clipboard/tests/clipboard-service.test.ts`:
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { ClipboardService } from '../clipboard-service.js'
 
 test('writeText forwards to the injected writer', async () => {
@@ -71,7 +71,7 @@ Expected: FAIL — cannot find module `../clipboard-service.js`.
 Create `src/renderer/src/services/clipboard/clipboard-service.ts`:
 
 ```ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 // A writer that persists text to the system clipboard. Injected so tests capture
 // the text without touching the real clipboard.
@@ -136,7 +136,7 @@ Create `src/renderer/src/services/viewport/tests/viewport-service.test.ts`:
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { ViewportService, type IViewportSource } from '../viewport-service.js'
 
 // A fake window: lets the test push a new height and fire the resize callback.
@@ -179,7 +179,7 @@ Expected: FAIL — cannot find module `../viewport-service.js`.
 Create `src/renderer/src/services/viewport/viewport-service.ts`:
 
 ```ts
-import { Model, MetaData, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { Model, MetaData, ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 // The window-height feed behind a seam so ViewportService is testable without a
 // real DOM. The default implementation (windowViewportSource) reads the renderer
@@ -354,7 +354,7 @@ Expected: FAIL — `problems.ShowErrors`/`FilterText` are not properties yet (un
 
 In `src/renderer/src/modules/problems/problems-service.ts`:
 
-3a. Ensure the import line includes `PropertyDescriptor` (it already imports from `@pragmatic-lab/mural/runtime`); add `type PropertyDescriptor` to that import if not present.
+3a. Ensure the import line includes `PropertyDescriptor` (it already imports from `@pragmatic-tech-ai/mural/runtime`); add `type PropertyDescriptor` to that import if not present.
 
 3b. Add these DPs to `ProblemsService` (after the `IsOpenKey` declaration):
 

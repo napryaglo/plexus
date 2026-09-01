@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { BackgroundWorkService } from '../background-work-service.js'
 import { TaskStatus } from '../task-handle.js'
 import { TaskKind, type ITaskContext, type ITaskExecutor } from '../task-executor.js'
@@ -129,7 +129,7 @@ describe('BackgroundWorkService', () => {
         const provider = new ServiceProvider()
         const opened: Array<{ Id: string }> = []
         // Register a fake DocumentsContentHostService under ContentHostService.Key.
-        const { ContentHostService } = await import('@pragmatic-lab/mural/framework')
+        const { ContentHostService } = await import('@pragmatic-tech-ai/mural/framework')
         provider.register(ContentHostService.Key, () => ({ Open: (d: { Id: string }) => opened.push(d) }) as never)
         const s = new BackgroundWorkService(provider)
         const { handle } = s.run('inline', async () => 1)

@@ -6,7 +6,7 @@
 
 **Architecture:** A new abstract class `TodlProjectFactory extends ServiceBase implements IProjectFactory` holds the project lifecycle (`createProject`/`openProject`/`saveProject`/`buildProject`/`populate`), a `formats`-derived node-kind map, and an `ensureScaffold` that writes the union of a base scaffold (`.claude/todl-manual.md` + `.claude/todl-rules.md`) and each subclass's own contributions. The three concrete factories subclass it and declare only what differs (`formats`, `buildManifest`, `scaffoldContributions`, plus their publish/producer/presentation capabilities). The shared `todl-sources` helper relocates out of the meta-model module into `services/todl/`.
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural/runtime` (`ServiceBase`, `Model`), `@pragmatic-lab/todl`, Vite `?raw` markdown asset imports, Vitest.
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural/runtime` (`ServiceBase`, `Model`), `@pragmatic-tech-ai/todl`, Vite `?raw` markdown asset imports, Vitest.
 
 ## Global Constraints
 
@@ -108,7 +108,7 @@ Create the base class and the two shared scaffold documents, tested in isolation
 - Create: `Plexus/src/renderer/src/services/projects/tests/todl-project-factory.test.ts`
 
 **Interfaces:**
-- Consumes: `services/projects/project.js` (`Project`, `ProjectNode`, `ProjectNodeKind`), `services/projects/project-factory.js` (`PROJECT_MANIFEST_FILENAME`, `IProjectFactory`, `ProjectFileFormat`, `ProjectManifestEnvelope`), `services/projects/base-binding.js` (`BaseBindings`), `services/storage/storage.js` (`IStorage`, `compareStorageEntries`), `@pragmatic-lab/mural/runtime` (`ServiceBase`, `IServiceProvider`).
+- Consumes: `services/projects/project.js` (`Project`, `ProjectNode`, `ProjectNodeKind`), `services/projects/project-factory.js` (`PROJECT_MANIFEST_FILENAME`, `IProjectFactory`, `ProjectFileFormat`, `ProjectManifestEnvelope`), `services/projects/base-binding.js` (`BaseBindings`), `services/storage/storage.js` (`IStorage`, `compareStorageEntries`), `@pragmatic-tech-ai/mural/runtime` (`ServiceBase`, `IServiceProvider`).
 - Produces (for Tasks 3–5):
   - `abstract class TodlProjectFactory extends ServiceBase implements IProjectFactory`
   - `interface ScaffoldFile { readonly path: string; readonly content: string }`
@@ -195,7 +195,7 @@ Create `services/projects/tests/todl-project-factory.test.ts`. It drives the bas
 
 ```ts
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { PROJECT_MANIFEST_FILENAME, type ProjectFileFormat, type ProjectManifestEnvelope } from '../project-factory.js'
 import type { BaseBindings } from '../base-binding.js'
@@ -283,7 +283,7 @@ Expected: FAIL — `Cannot find module '../todl-project-factory.js'`.
 Create `services/projects/todl-project-factory.ts`:
 
 ```ts
-import { ServiceBase, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import todlManual from './scaffold/todl-manual.md?raw'
 import todlRules from './scaffold/todl-rules.md?raw'
@@ -498,11 +498,11 @@ In `meta-model-project-factory.ts`:
 
 Change the class declaration and imports. Replace:
 ```ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 ```
 with:
 ```ts
-import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { TodlProjectFactory, type ScaffoldFile } from '../../../services/projects/todl-project-factory.js'
 import { META_MODEL_SCAFFOLD } from './meta-model-scaffold.js'
 ```
@@ -645,11 +645,11 @@ In `library-project-factory.ts`:
 
 Replace:
 ```ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 ```
 with:
 ```ts
-import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { TodlProjectFactory, type ScaffoldFile } from '../../../services/projects/todl-project-factory.js'
 import { LIBRARY_SCAFFOLD } from './library-scaffold.js'
 ```
@@ -796,11 +796,11 @@ In `architecture-project-factory.ts`:
 
 Replace:
 ```ts
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 ```
 with:
 ```ts
-import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { TodlProjectFactory, type ScaffoldFile } from '../../../services/projects/todl-project-factory.js'
 import { ARCHITECTURE_SCAFFOLD } from './architecture-scaffold.js'
 ```

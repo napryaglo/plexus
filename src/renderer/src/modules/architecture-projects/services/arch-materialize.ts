@@ -1,4 +1,4 @@
-import { MetaKind, type Repository } from '@pragmatic-lab/todl'
+import { MetaKind, type Repository } from '@pragmatic-tech-ai/todl'
 
 export interface MaterializeSpec { concept?: string; via?: string; propagate?: boolean }
 

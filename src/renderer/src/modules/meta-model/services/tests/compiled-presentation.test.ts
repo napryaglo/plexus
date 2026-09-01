@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { ResourceDictionary } from '@pragmatic-lab/mural/runtime'
+import { ResourceDictionary } from '@pragmatic-tech-ai/mural/runtime'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 import { publishPresentation } from '../presentation-publisher.js'
 import { loadCompiledPresentation } from '../compiled-presentation.js'
 

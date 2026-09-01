@@ -6,7 +6,7 @@
 
 **Architecture:** One enabling seam in Mural (the drop pipeline carries the container under the drop point on the drop context), consumed by two policies: generic containers adopt freely in Mural's router; arch (model-backed) containers validate in Plexus (meta-model containment + viewpoint) with a modal on reject. Model-backed nesting is projected from the model at any depth; a one-line meta-model change makes `location.parent` a containment relationship so location chains project.
 
-**Tech Stack:** TypeScript. Mural (`@pragmatic-lab/mural`) WPF-style visual tree; Plexus Electron/electron-vite renderer; TODL meta-model (`.todl`). Tests: Mural `tsx --test`, Plexus `vitest` + Playwright (`_electron`).
+**Tech Stack:** TypeScript. Mural (`@pragmatic-tech-ai/mural`) WPF-style visual tree; Plexus Electron/electron-vite renderer; TODL meta-model (`.todl`). Tests: Mural `tsx --test`, Plexus `vitest` + Playwright (`_electron`).
 
 **Spec:** [docs/superpowers/specs/2026-08-24-drop-into-container-containment-design.md](../specs/2026-08-24-drop-into-container-containment-design.md)
 
@@ -59,7 +59,7 @@
 
 ## Global Constraints
 
-- Publish `@pragmatic-lab/*` ONLY to Verdaccio `http://localhost:4873`, NEVER public npm, and ONLY when the user explicitly asks.
+- Publish `@pragmatic-tech-ai/*` ONLY to Verdaccio `http://localhost:4873`, NEVER public npm, and ONLY when the user explicitly asks.
 - Commit/push ONLY when the user explicitly asks.
 - NEVER mutate the real corpus `C:/Users/Eugene/Projects/plexus_tests` — clone it (`cloneCorpus`) for any e2e that writes.
 - Every test file lives in a `tests/` subfolder next to the source it exercises.
@@ -298,7 +298,7 @@ In `handleReparent`'s `member === undefined` branch, call `showContainmentReject
 ### Task 7: Integration — versions, publish (gated), full suites
 
 **Files:**
-- Modify: `Mural/package.json` (minor bump), `Plexus/package.json` (`@pragmatic-lab/mural` → new minor)
+- Modify: `Mural/package.json` (minor bump), `Plexus/package.json` (`@pragmatic-tech-ai/mural` → new minor)
 
 **Interfaces:**
 - Consumes: all prior tasks green.
@@ -306,7 +306,7 @@ In `handleReparent`'s `member === undefined` branch, call `showContainmentReject
 
 - [ ] **Step 1: Bump Mural minor** (`0.25.1` → `0.26.0`), update the `NodeVisual`/serialization comments only if the wire form changed (it did not — `parentId` already serialized).
 
-- [ ] **Step 2: Publish Mural to Verdaccio — ONLY if the user authorizes.** If not, STOP and ask. Then bump Plexus's `@pragmatic-lab/mural` dep and `npm install` (or keep `npm link` for local verification).
+- [ ] **Step 2: Publish Mural to Verdaccio — ONLY if the user authorizes.** If not, STOP and ask. Then bump Plexus's `@pragmatic-tech-ai/mural` dep and `npm install` (or keep `npm link` for local verification).
 
 - [ ] **Step 3: Full Mural suite** `cd Mural && npm test` — expect green.
 

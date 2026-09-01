@@ -1,4 +1,4 @@
-import type { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import type { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { LibraryRegistry } from '../../library/services/library-registry.js'
 import { ArchInstanceDropFactory, ArchInstanceDropFactoryKey } from '../../architecture-projects/services/arch-instance-drop-factory.js'
 import { ArchModelInstanceDropFactory, ArchModelInstanceDropFactoryKey } from '../../architecture-projects/services/arch-model-instance-drop-factory.js'

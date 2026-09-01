@@ -6,11 +6,11 @@
 
 **Architecture:** One shared pure helper (`projectAnnotations`) walks the `Annotated` graph edges out of a target node. The concept path feeds it into a new `Annotations` property on `MetaModelEntity` inside the existing `buildEntity` projection; the package path feeds it into a `manifest.json` written during publish and read by a never-throws loader mirroring `library.json` / `library-loader`. No canvas/instance code is touched; no TODL/emit changes.
 
-**Tech Stack:** TypeScript (strict ESM), `@pragmatic-lab/mural/runtime` (`Model`/`RegisterProperty`), `@pragmatic-lab/todl` (`TodlDocument` type only), Vitest.
+**Tech Stack:** TypeScript (strict ESM), `@pragmatic-tech-ai/mural/runtime` (`Model`/`RegisterProperty`), `@pragmatic-tech-ai/todl` (`TodlDocument` type only), Vitest.
 
 ## Global Constraints
 
-- Plexus consumes `@pragmatic-lab/todl` **0.5.0** (already bumped in `7d466a5`) — no further TODL/emit changes; SP2 is pure consumption of the compiled `model.json`.
+- Plexus consumes `@pragmatic-tech-ai/todl` **0.5.0** (already bumped in `7d466a5`) — no further TODL/emit changes; SP2 is pure consumption of the compiled `model.json`.
 - **Wire-string constants, not TODL enum imports.** Consume serialized values via local named constants (as `meta-model-entity-builder.ts` does with `const HAS_FIELD = 'HasField'`). Exact values: annotation edge kind `'Annotated'`, package node id `'package'`, provenance attr `'namespace'`.
 - **Bag shape is a nested `Record`:** `Record<string, Record<string, unknown>>`, keyed by annotation name → its scalar param values, with the `namespace` provenance attr stripped.
 - **Loader never throws:** a malformed/missing manifest returns a safe default (`name: id`, `annotations: {}`) plus one error problem.
@@ -36,7 +36,7 @@
 - Test: `src/renderer/src/modules/meta-model/services/tests/annotation-projection.test.ts`
 
 **Interfaces:**
-- Consumes: `TodlDocument` (type only) from `@pragmatic-lab/todl` — `{ nodes: Array<{ id: string; tier: string; typeOf: string; attrs: Record<string, unknown> }>; edges: Array<{ kind: string; via: string | null; from: string; to: string }> }`.
+- Consumes: `TodlDocument` (type only) from `@pragmatic-tech-ai/todl` — `{ nodes: Array<{ id: string; tier: string; typeOf: string; attrs: Record<string, unknown> }>; edges: Array<{ kind: string; via: string | null; from: string; to: string }> }`.
 - Produces: `export function projectAnnotations(doc: TodlDocument, targetId: string): Record<string, Record<string, unknown>>` — used by Tasks 2 and 4.
 
 - [ ] **Step 1: Write the failing test**
@@ -45,7 +45,7 @@ Create `tests/annotation-projection.test.ts`:
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 import { projectAnnotations } from '../annotation-projection.js'
 
 const doc: TodlDocument = {
@@ -98,7 +98,7 @@ Create `annotation-projection.ts`:
 // value = the application's scalar param attrs with the `namespace` provenance
 // stamp removed. A target with no annotations → {}. Pure; no I/O. Shared by the
 // concept path (buildEntity) and the package path (publish's manifest write).
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 const ANNOTATED = 'Annotated'
 const NAMESPACE_ATTR = 'namespace'

@@ -45,7 +45,7 @@ resource dictionary.
 ## Background: how mural compiles + evaluates a resources doc
 
 `compile(source, { include, symbols })`
-([compiler/compile.js](../../../node_modules/@pragmatic-lab/mural/dist/compiler/compile.js))
+([compiler/compile.js](../../../node_modules/@pragmatic-tech-ai/mural/dist/compiler/compile.js))
 returns `{ js, imports: Map<module, Set<name>>, resourcesBlocks }`. For a
 `resources` doc the emitted `js` is `<import lines>\n\n<export class Name extends
 ResourceDictionary {…}>`. The `include` resolver inlines each SVG's geometry

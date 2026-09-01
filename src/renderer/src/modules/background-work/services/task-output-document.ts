@@ -1,4 +1,4 @@
-import type { IDocument } from '@pragmatic-lab/mural/framework'
+import type { IDocument } from '@pragmatic-tech-ai/mural/framework'
 import type { TaskHandle } from './task-handle.js'
 
 // A read-only document tab showing one task's live output log. Opened via

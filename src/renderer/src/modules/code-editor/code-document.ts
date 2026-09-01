@@ -1,5 +1,5 @@
-import { MuralBase, MetaData, ObservableCollection, type PropertyDescriptor } from '@pragmatic-lab/mural/runtime'
-import type { IDocument } from '@pragmatic-lab/mural/framework'
+import { MuralBase, MetaData, ObservableCollection, type PropertyDescriptor } from '@pragmatic-tech-ai/mural/runtime'
+import type { IDocument } from '@pragmatic-tech-ai/mural/framework'
 import type { ICodeFile } from './code-file.js'
 import type { EditorDiagnostic } from './editor-diagnostic.js'
 import type { IStorage } from '../../services/storage/storage.js'

@@ -1,4 +1,4 @@
-import { MetaData, MuralBase, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase, ObservableCollection, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 
 // A uniform tree node for the Meta-models panel — one type for every level
 // (model id, version, kind group, entity) so a single HierarchicalDataTemplate

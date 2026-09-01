@@ -28,7 +28,7 @@ The pieces this builds on already exist:
   in `DataTemplate[CodeDocument]`. `CodeEditorService` opens/dedupes file tabs.
 - **Storage seam** — `IStorage` (rooted per project, project-relative POSIX
   paths) and `StorageProviderRegistry` (backend id → rooted-`IStorage` factory).
-- **TODL** — `@pragmatic-lab/todl@0.1.0` provides `check(sources: SourceFile[])
+- **TODL** — `@pragmatic-tech-ai/todl@0.1.0` provides `check(sources: SourceFile[])
   → { model, diagnostics }` (spanned diagnostics) and `toJSON(model) →
   TodlDocument` (a `fromJSON`-loadable `{ nodes, edges }` interchange form).
 
@@ -38,7 +38,7 @@ touched by this work.
 
 ## Global Constraints
 
-- **Dependency floor:** add `@pragmatic-lab/todl@^0.1.0` to Plexus
+- **Dependency floor:** add `@pragmatic-tech-ai/todl@^0.1.0` to Plexus
   `dependencies` and install from Verdaccio.
 - **Tests:** every test file lives in a `tests/` subfolder next to its source
   (Plexus convention). Vitest; no Monaco/DOM in tests — test pure functions and

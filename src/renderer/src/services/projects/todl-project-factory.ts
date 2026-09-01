@@ -1,4 +1,4 @@
-import { ServiceBase, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import todlManual from './scaffold/todl-manual.md?raw'
 import todlRules from './scaffold/todl-rules.md?raw'

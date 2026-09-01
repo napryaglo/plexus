@@ -1,4 +1,4 @@
-import type { Repository } from '@pragmatic-lab/todl'
+import type { Repository } from '@pragmatic-tech-ai/todl'
 import { DropActionKind, type DropAction } from './arch-drop-resolver.js'
 
 // Title-case the last dotted segment of an id: `m365_copilot` -> `M365 Copilot`.

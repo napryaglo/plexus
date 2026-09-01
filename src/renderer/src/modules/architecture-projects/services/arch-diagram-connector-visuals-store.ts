@@ -1,5 +1,5 @@
-import { type Connector, type ConnectorEndpoint, type DiagramDocument, PortSide } from '@pragmatic-lab/mural/framework'
-import { Point } from '@pragmatic-lab/mural/runtime'
+import { type Connector, type ConnectorEndpoint, type DiagramDocument, PortSide } from '@pragmatic-tech-ai/mural/framework'
+import { Point } from '@pragmatic-tech-ai/mural/runtime'
 
 // Bug 1: an architecture connector is MODEL-DERIVED (IsDerived), so mural's
 // .diagram serializer skips it — the model stores only from/to, with nowhere for

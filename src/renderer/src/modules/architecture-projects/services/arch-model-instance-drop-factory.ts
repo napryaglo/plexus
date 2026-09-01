@@ -1,5 +1,5 @@
-import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DiagramDocument, type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-tech-ai/mural/framework'
 
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import { ArchNodeVM, ARCH_TILE_DEFAULT } from './arch-node-vm.js'

@@ -1,5 +1,5 @@
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import type { IDocument } from '@pragmatic-lab/mural/framework'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import type { IDocument } from '@pragmatic-tech-ai/mural/framework'
 
 import type { IDocumentFactory, IRelocatableDocumentFactory } from '../../services/documents/document-factory.js'
 import type { IStorage } from '../../services/storage/storage.js'

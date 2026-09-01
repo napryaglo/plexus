@@ -1,7 +1,7 @@
 import {
     MetaData, MuralBase, ObservableCollection, RelayCommand, type ICommand,
-} from '@pragmatic-lab/mural/runtime'
-import { DialogService } from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/runtime'
+import { DialogService } from '@pragmatic-tech-ai/mural/framework'
 
 import { PresetScope, ScopeOption } from './preset-scope.js'
 

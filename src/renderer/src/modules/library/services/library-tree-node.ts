@@ -1,5 +1,5 @@
-import { DataObject, DragDropEffects, MetaData, MuralBase, ObservableCollection, type ICommand } from '@pragmatic-lab/mural/runtime'
-import { ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT } from '@pragmatic-lab/mural/framework'
+import { DataObject, DragDropEffects, MetaData, MuralBase, ObservableCollection, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
+import { ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT } from '@pragmatic-tech-ai/mural/framework'
 import { TodlVisualResolverKey } from '../../diagram/services/todl-visual-resolver.js'
 
 // The three tiers of the Libraries tree. One node type carries all three, kept

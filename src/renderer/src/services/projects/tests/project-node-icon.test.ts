@@ -1,5 +1,5 @@
 import { test, expect, describe, beforeEach, afterEach, vi } from 'vitest'
-import { Application } from '@pragmatic-lab/mural/runtime'
+import { Application } from '@pragmatic-tech-ai/mural/runtime'
 
 import { iconKeyForKind, KindToGeometry, __resetKindGeometryCache } from '../project-node-icon.js'
 

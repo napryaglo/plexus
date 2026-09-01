@@ -22,9 +22,9 @@
 // DocumentsContentHostService template.
 
 import ExtendedTabControl from "./extended-tab-control.js"
-import TabMenuAction from "@pragmatic-lab/mural/framework"
-import TabMenuSeparator from "@pragmatic-lab/mural/framework"
-import TabMenuDocument from "@pragmatic-lab/mural/framework"
+import TabMenuAction from "@pragmatic-tech-ai/mural/framework"
+import TabMenuSeparator from "@pragmatic-tech-ai/mural/framework"
+import TabMenuDocument from "@pragmatic-tech-ai/mural/framework"
 
 resources DocumentTabsResources {
 

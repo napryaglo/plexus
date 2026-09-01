@@ -32,7 +32,7 @@ async function fireTermDrop(l: Launched, termId: string, x: number, y: number): 
             if (v?.constructor?.name === 'Diagram') { diagram = v; break }
         }
         if (!diagram || typeof diagram._fireItemDropped !== 'function') return false
-        const FORMAT = '@pragmatic-lab/mural/toolbox-item'
+        const FORMAT = '@pragmatic-tech-ai/mural/toolbox-item'
         const data = { Has: (f: string) => f === FORMAT, Get: (f: string) => (f === FORMAT ? termId : undefined) }
         diagram._fireItemDropped({ Data: data, Position: { X: x, Y: y }, TargetContainer: undefined })
         return true

@@ -1,6 +1,6 @@
-import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime'
-import { FlowDocument } from '@pragmatic-lab/mural/basic'
-import type { IDocument } from '@pragmatic-lab/mural/framework'
+import { MetaData, MuralBase } from '@pragmatic-tech-ai/mural/runtime'
+import { FlowDocument } from '@pragmatic-tech-ai/mural/basic'
+import type { IDocument } from '@pragmatic-tech-ai/mural/framework'
 
 import type { IStorage } from '../../services/storage/storage.js'
 import { renderMarkdown } from '../../services/markdown/marked-flow-renderer.js'

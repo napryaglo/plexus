@@ -1,4 +1,4 @@
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { ensureLibrariesBackend } from './libraries-backend.js'
 import { discoverLibraries, type LoadedLibrary, type LoadProblem } from './library-loader.js'

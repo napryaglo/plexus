@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { Size } from '@pragmatic-lab/mural/runtime'
+import { Size } from '@pragmatic-tech-ai/mural/runtime'
 import { MediaKind } from '../media-kind'
 import { LargeFileChoice } from '../media-storage'
 import { buildMediaNode } from '../media-drop-handler'

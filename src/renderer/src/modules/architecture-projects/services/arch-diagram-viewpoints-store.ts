@@ -1,4 +1,4 @@
-import type { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import type { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 import type { IStorage } from '../../../services/storage/storage.js'
 import { readDiagramViewpoints } from './diagram-viewpoints.js'
 

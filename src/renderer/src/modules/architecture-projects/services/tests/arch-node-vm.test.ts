@@ -1,6 +1,6 @@
 import { test, expect, beforeAll } from 'vitest'
-import { Application } from '@pragmatic-lab/mural/runtime'
-import { ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { Application } from '@pragmatic-tech-ai/mural/runtime'
+import { ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
 import { ArchNodeVM } from '../arch-node-vm.js'
 
 beforeAll(() => {

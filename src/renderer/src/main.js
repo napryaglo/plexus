@@ -11,9 +11,9 @@
 // round-trips (was a multi-second white window). See fonts.css.
 import './fonts.css'
 import { app } from './app.mu.js'
-import { HtmlTarget } from '@pragmatic-lab/mural/visual-engine'
-import { ThemeManager, Density, RelayCommand } from '@pragmatic-lab/mural/runtime'
-import { ContentHostService, PanelDockService, DialogService, ApplicationSettings } from '@pragmatic-lab/mural/framework'
+import { HtmlTarget } from '@pragmatic-tech-ai/mural/visual-engine'
+import { ThemeManager, Density, RelayCommand } from '@pragmatic-tech-ai/mural/runtime'
+import { ContentHostService, PanelDockService, DialogService, ApplicationSettings } from '@pragmatic-tech-ai/mural/framework'
 import { confirmCloseDocs } from './services/documents/confirm-close-docs.js'
 import { ChatSessionsService } from './modules/agent-chat/services/chat-sessions-service.js'
 import { ProjectAgentCatalog } from './modules/agent-chat/services/project-agent-catalog.js'

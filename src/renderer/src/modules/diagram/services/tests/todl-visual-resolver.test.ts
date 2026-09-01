@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { Border, Icon, TextBlock } from '@pragmatic-lab/mural/basic'
-import { DiagramSettings, VisualContext, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
-import type { Visual } from '@pragmatic-lab/mural/runtime'
+import { Border, Icon, TextBlock } from '@pragmatic-tech-ai/mural/basic'
+import { DiagramSettings, VisualContext, ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
+import type { Visual } from '@pragmatic-tech-ai/mural/runtime'
 
 import type { TodlPresentationRegistry } from '../todl-presentation-registry.js'
 import { TodlVisualResolver, TodlVisualResolverKey } from '../todl-visual-resolver.js'

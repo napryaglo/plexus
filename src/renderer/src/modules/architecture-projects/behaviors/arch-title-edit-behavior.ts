@@ -1,4 +1,4 @@
-import { Behavior, Key, type KeyEventArgs, Visual } from '@pragmatic-lab/mural/runtime'
+import { Behavior, Key, type KeyEventArgs, Visual } from '@pragmatic-tech-ai/mural/runtime'
 
 // ArchTitleEditBehavior — the commit/cancel half of an arch node's in-place
 // title edit (the focus/select half is FocusOnVisibleBehavior). Attaches to the

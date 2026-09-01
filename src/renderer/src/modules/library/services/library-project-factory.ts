@@ -1,5 +1,5 @@
-import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { checkAgainst, toJSON, Severity, compilePackage, BlobPackageStore, PackageKind, type PackageRef, type TodlDocument } from '@pragmatic-lab/todl'
+import { ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { checkAgainst, toJSON, Severity, compilePackage, BlobPackageStore, PackageKind, type PackageRef, type TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import {
     PROJECT_MANIFEST_FILENAME,

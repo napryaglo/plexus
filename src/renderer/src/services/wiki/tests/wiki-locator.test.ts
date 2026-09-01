@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider, ObservableCollection } from '@pragmatic-lab/mural/runtime'
-import { ModelDraft } from '@pragmatic-lab/todl'
+import { ServiceProvider, ObservableCollection } from '@pragmatic-tech-ai/mural/runtime'
+import { ModelDraft } from '@pragmatic-tech-ai/todl'
 import { ProjectExplorerService } from '../../../modules/project-explorer/services/project-explorer-service.js'
 import { WikiLocator, wikiPathOf } from '../wiki-locator.js'
 

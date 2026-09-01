@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT } from '@pragmatic-lab/mural/framework'
+import { ToolboxVisualDescriptor, TOOLBOX_ITEM_FORMAT } from '@pragmatic-tech-ai/mural/framework'
 import { LibraryTreeNode, LibraryNodeKind } from '../library-tree-node.js'
 import { TodlVisualResolverKey } from '../../../diagram/services/todl-visual-resolver.js'
 

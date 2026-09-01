@@ -1,7 +1,7 @@
 import { test, expect, afterEach } from 'vitest'
-import { Application, type Visual } from '@pragmatic-lab/mural/runtime'
-import { DataTemplate, TextBlock } from '@pragmatic-lab/mural/basic'
-import { ToolboxVisualPresenter } from '@pragmatic-lab/mural/framework'
+import { Application, type Visual } from '@pragmatic-tech-ai/mural/runtime'
+import { DataTemplate, TextBlock } from '@pragmatic-tech-ai/mural/basic'
+import { ToolboxVisualPresenter } from '@pragmatic-tech-ai/mural/framework'
 
 import { LibraryResources } from '../../library.resources.mu.js'
 import { LibraryTreeNode } from '../library-tree-node.js'

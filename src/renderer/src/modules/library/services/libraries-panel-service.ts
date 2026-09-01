@@ -1,5 +1,5 @@
-import { Application, MetaData, MuralBase, ObservableCollection, RelayCommand, ServiceBase, ServiceKey, type IServiceProvider, type PropertyDescriptor, type ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DialogService, type IActivatable } from '@pragmatic-lab/mural/framework'
+import { Application, MetaData, MuralBase, ObservableCollection, RelayCommand, ServiceBase, ServiceKey, type IServiceProvider, type PropertyDescriptor, type ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DialogService, type IActivatable } from '@pragmatic-tech-ai/mural/framework'
 
 import { LibraryRegistry } from './library-registry.js'
 import { LibraryTreeNode, LibraryNodeKind } from './library-tree-node.js'

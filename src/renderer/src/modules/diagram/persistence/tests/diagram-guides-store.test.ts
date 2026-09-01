@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { DiagramDocument } from '@pragmatic-lab/mural/framework'
-import { AlignmentAxis, EdgeKind } from '@pragmatic-lab/mural/runtime'
+import { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
+import { AlignmentAxis, EdgeKind } from '@pragmatic-tech-ai/mural/runtime'
 import { readGuides, writeGuides } from '../diagram-guides-store.js'
 
 test('writeGuides then readGuides round-trips guides (incl. glue) through metadata', () => {

@@ -1,7 +1,7 @@
 # Drop-into-Container Containment — Design
 
 **Date:** 2026-08-24
-**Repos:** Mural (`@pragmatic-lab/mural`) + Plexus (consumer app)
+**Repos:** Mural (`@pragmatic-tech-ai/mural`) + Plexus (consumer app)
 **Status:** Design approved in chat; spec under review.
 
 ## Problem

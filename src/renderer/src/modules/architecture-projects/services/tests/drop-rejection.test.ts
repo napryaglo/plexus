@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { load } from '@pragmatic-lab/todl'
+import { load } from '@pragmatic-tech-ai/todl'
 import { dropRejectionMessage } from '../drop-rejection.js'
 
 // location is framed by Model but NOT Scenarios; component (a materialize root)

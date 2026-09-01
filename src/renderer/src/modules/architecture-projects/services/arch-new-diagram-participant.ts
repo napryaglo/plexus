@@ -1,5 +1,5 @@
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DialogService } from '@pragmatic-lab/mural/framework'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DialogService } from '@pragmatic-tech-ai/mural/framework'
 import type { INewFileParticipant } from '../../../services/documents/new-file-participant.js'
 import type { OpenProject } from '../../../services/projects/open-project.js'
 import { ArchitectureModelService } from './architecture-model-service.js'

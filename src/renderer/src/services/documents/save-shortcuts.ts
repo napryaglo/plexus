@@ -1,4 +1,4 @@
-import type { ICommand } from '@pragmatic-lab/mural/runtime'
+import type { ICommand } from '@pragmatic-tech-ai/mural/runtime'
 
 // The bits of the document host the shortcuts drive.
 interface SaveCommands {

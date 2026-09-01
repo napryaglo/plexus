@@ -1,4 +1,4 @@
-import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime'
+import { MetaData, MuralBase } from '@pragmatic-tech-ai/mural/runtime'
 import type { NewProjectDialogModel } from '../../../services/projects/new-project-dialog-model.js'
 import type { CreateOutcome } from '../../project-explorer/services/project-explorer-service.js'
 

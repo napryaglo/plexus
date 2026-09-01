@@ -2,7 +2,7 @@
 
 **Status:** ✅ Finished
 **Date:** 2026-07-22
-**Depends on:** SP1 (editor/project separation), SP2 (library project type — base bindings, `resolveBases`, base-aware `TodlValidationService`, New-Project meta-model picker, Refresh-Bases), SP3 (`@pragmatic-lab/todl` `checkAgainst`).
+**Depends on:** SP1 (editor/project separation), SP2 (library project type — base bindings, `resolveBases`, base-aware `TodlValidationService`, New-Project meta-model picker, Refresh-Bases), SP3 (`@pragmatic-tech-ai/todl` `checkAgainst`).
 
 ## Goal
 

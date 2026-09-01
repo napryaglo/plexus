@@ -54,7 +54,7 @@ freely** and must never be hand-edited; author customisation lives in separate
 ## Tech Stack
 
 - TypeScript, renderer-side (the meta-model module already runs there).
-- Consumes the published `model.json` shape from `@pragmatic-lab/todl`
+- Consumes the published `model.json` shape from `@pragmatic-tech-ai/todl`
   (`TodlDocument = { nodes: JsonNode[]; edges: JsonEdge[] }`).
 - Emits mural `.mu` source (compiled later by sub-project 2; this sub-project
   emits text only — no compilation here).
@@ -78,7 +78,7 @@ freely** and must never be hand-edited; author customisation lives in separate
 
 ### The compiled model (`model.json`)
 
-Shape (`@pragmatic-lab/todl` `TodlDocument`):
+Shape (`@pragmatic-tech-ai/todl` `TodlDocument`):
 
 ```ts
 interface JsonNode { id: string; tier: string; typeOf: string; attrs: Record<string, Scalar> }

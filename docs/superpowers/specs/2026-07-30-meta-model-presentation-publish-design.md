@@ -24,7 +24,7 @@ a consumer. This sub-project closes that gap.
 ### Why ship source (not compiled JS)
 
 mural's compiler exposes `instantiate(source, ctx, { include, glyphs, symbols })`
-([compiler/compile.d.ts](../../../node_modules/@pragmatic-lab/mural/dist/compiler/compile.d.ts)):
+([compiler/compile.d.ts](../../../node_modules/@pragmatic-tech-ai/mural/dist/compiler/compile.d.ts)):
 it compiles a `.mu` source and builds the objects in-process via `new Function`, with
 `ctx` supplying imported symbols and `include` a resolver for `include "…svg"`. It uses
 no `node:fs` and no dynamic `import`, and Plexus sets **no CSP** (verified: no meta tag,

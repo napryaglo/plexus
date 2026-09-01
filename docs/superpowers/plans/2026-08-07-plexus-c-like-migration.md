@@ -2,15 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Bring Plexus onto TODL's C-like identifier grammar and lift its `@pragmatic-lab/todl` floor to `^0.19.0`.
+**Goal:** Bring Plexus onto TODL's C-like identifier grammar and lift its `@pragmatic-tech-ai/todl` floor to `^0.19.0`.
 
 **Architecture:** Plexus's TODL corpus lives in `.ts` test fixtures (backtick strings) plus two shipped scaffold docs; no product code hard-codes kebab lookups. Migration = one runtime emitter fix (`freshId`), tool-assisted recasing of the fixture corpus with a suite-driven assertion grind, a scaffold-doc rewrite, and the floor bump.
 
-**Tech Stack:** TypeScript, electron-vite, Vitest, `@pragmatic-lab/todl`.
+**Tech Stack:** TypeScript, electron-vite, Vitest, `@pragmatic-tech-ai/todl`.
 
 ## Global Constraints
 
-- `@pragmatic-lab/todl` floor is `^0.19.0` (published to Verdaccio `http://localhost:4873/`).
+- `@pragmatic-tech-ai/todl` floor is `^0.19.0` (published to Verdaccio `http://localhost:4873/`).
 - Convention: user-defined TYPES → PascalCase (concept, taxonomy, primitive, annotation, enum, class, `term`); MEMBERS → camelCase (fields, relationship names, annotation params); keywords and namespaces → lowercase.
 - Every test file lives in a `tests/` subfolder next to its source.
 - Use real enums, never string-literal unions.
@@ -23,7 +23,7 @@
 ### Task 1: Lift the TODL floor to ^0.19.0
 
 **Files:**
-- Modify: `package.json` (dependency `@pragmatic-lab/todl`)
+- Modify: `package.json` (dependency `@pragmatic-tech-ai/todl`)
 - Modify: `package-lock.json` (regenerated)
 
 **Interfaces:**
@@ -34,17 +34,17 @@
 
 In `package.json`, change:
 ```json
-"@pragmatic-lab/todl": "^0.18.0",
+"@pragmatic-tech-ai/todl": "^0.18.0",
 ```
 to:
 ```json
-"@pragmatic-lab/todl": "^0.19.0",
+"@pragmatic-tech-ai/todl": "^0.19.0",
 ```
 
 - [ ] **Step 2: Relock**
 
 Run: `npm install`
-Expected: `package-lock.json` updates to resolve `@pragmatic-lab/todl@0.19.0` from Verdaccio.
+Expected: `package-lock.json` updates to resolve `@pragmatic-tech-ai/todl@0.19.0` from Verdaccio.
 
 - [ ] **Step 3: Confirm the red baseline**
 
@@ -55,7 +55,7 @@ Expected: FAIL — the kebab fixtures (`realised-by`, `stack.azure-openai`, `mod
 
 ```bash
 git add package.json package-lock.json
-git commit -m "chore(deps): bump @pragmatic-lab/todl to ^0.19.0 (C-like identifiers)"
+git commit -m "chore(deps): bump @pragmatic-tech-ai/todl to ^0.19.0 (C-like identifiers)"
 ```
 
 ---
@@ -67,7 +67,7 @@ git commit -m "chore(deps): bump @pragmatic-lab/todl to ^0.19.0 (C-like identifi
 - Test: `src/renderer/src/modules/architecture-projects/services/tests/architecture-instance-model.test.ts`
 
 **Interfaces:**
-- Consumes: `check`, `toJSON` from `@pragmatic-lab/todl`; `ArchInstanceModel.load`, `ArchInstanceModel.createInstance`.
+- Consumes: `check`, `toJSON` from `@pragmatic-tech-ai/todl`; `ArchInstanceModel.load`, `ArchInstanceModel.createInstance`.
 - Produces: `createInstance(concept)` returns a valid C-like camelCase id (`component1`, `component2`, …).
 
 - [ ] **Step 1: Write the failing test**
@@ -83,7 +83,7 @@ test('createInstance generates a valid camelCase C-like id (no hyphen)', () => {
     expect(id).toMatch(/^[A-Za-z_][A-Za-z0-9_]*$/)
 })
 ```
-(Ensure the file imports `check`, `toJSON` from `@pragmatic-lab/todl` — add to the existing import if missing.)
+(Ensure the file imports `check`, `toJSON` from `@pragmatic-tech-ai/todl` — add to the existing import if missing.)
 
 - [ ] **Step 2: Run it to verify it fails**
 

@@ -1,4 +1,4 @@
-import type { DiagramStorage } from '@pragmatic-lab/mural/framework'
+import type { DiagramStorage } from '@pragmatic-tech-ai/mural/framework'
 import type { IStorage } from '../../../services/storage/storage.js'
 
 // Backs a single `.diagram` file through mural's DiagramStorage seam, so a

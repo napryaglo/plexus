@@ -1,5 +1,5 @@
-import { Application, Element, ServiceKey, type Visual } from '@pragmatic-lab/mural/runtime'
-import { ApplicationSettings, DiagramSettings, VisualContext, type IToolboxVisualResolver, type ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { Application, Element, ServiceKey, type Visual } from '@pragmatic-tech-ai/mural/runtime'
+import { ApplicationSettings, DiagramSettings, VisualContext, type IToolboxVisualResolver, type ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
 import { buildCtx, buildDefaultTemplate, buildFigureTemplate } from '../../library/services/visual-library.js'
 import type { TodlPresentationRegistry } from './todl-presentation-registry.js'
 

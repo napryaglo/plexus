@@ -7,8 +7,8 @@ import {
     ServiceKey,
     type ICommand,
     type IServiceProvider,
-} from '@pragmatic-lab/mural/runtime'
-import { Connector, ContentHostService, DialogService, DiagramDocument, DocumentsContentHostService, Figure, type LayoutPreviewNode, type LayoutPreviewEdge } from '@pragmatic-lab/mural/framework'
+} from '@pragmatic-tech-ai/mural/runtime'
+import { Connector, ContentHostService, DialogService, DiagramDocument, DocumentsContentHostService, Figure, type LayoutPreviewNode, type LayoutPreviewEdge } from '@pragmatic-tech-ai/mural/framework'
 import {
     GetPipelineCatalog,
     BuildPipeline,
@@ -18,7 +18,7 @@ import {
     type EdgeRouting,
     type Edge,
     type LayoutStageSpec,
-} from '@pragmatic-lab/fresco'
+} from '@pragmatic-tech-ai/fresco'
 
 import {
     extract,

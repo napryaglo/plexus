@@ -1,5 +1,5 @@
-import type { DiagramDocument } from '@pragmatic-lab/mural/framework'
-import type { PipelineConfiguration } from '@pragmatic-lab/fresco'
+import type { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
+import type { PipelineConfiguration } from '@pragmatic-tech-ai/fresco'
 
 // Per-diagram layout persistence, stored in the document's opaque metadata
 // (DiagramDocument.Metadata) so it travels with the .diagram file and restores

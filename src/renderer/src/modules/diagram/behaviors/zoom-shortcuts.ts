@@ -1,4 +1,4 @@
-import { Diagram, DiagramDocument, type IDocument } from '@pragmatic-lab/mural/framework'
+import { Diagram, DiagramDocument, type IDocument } from '@pragmatic-tech-ai/mural/framework'
 
 // The bit of the document host the shortcuts read.
 interface ZoomHost { readonly ActiveDocument: IDocument | undefined }

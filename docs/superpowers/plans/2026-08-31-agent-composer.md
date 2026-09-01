@@ -17,7 +17,7 @@
 - **Every test file in a `tests/` subfolder** next to source.
 - **`compile:mu` is ground truth** — ignore IDE LSP false-positives (`Border.Fill "not registered"`, unknown `PanelDockService`).
 - **No `Date.now()`/`setInterval`** in main-process code.
-- **Mural publish loop:** bump `Mural/package.json` version → `cd Mural && npm run build` → `npm publish --registry http://localhost:4873/` → `cd Plexus && npm install @pragmatic-lab/mural@X --registry http://localhost:4873/` → `npm run build`.
+- **Mural publish loop:** bump `Mural/package.json` version → `cd Mural && npm run build` → `npm publish --registry http://localhost:4873/` → `cd Plexus && npm install @pragmatic-tech-ai/mural@X --registry http://localhost:4873/` → `npm run build`.
 - **MVVM (renderer):** view-observable state on DPs; VMs never read the view tree or touch `window.api` (inject via callbacks); no host globals in VMs.
 - Commits: author Eugene Napryaglo <evgen.napryaglo@gmail.com>; end message with `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`. Work on `main`, push origin/main when the user asks.
 
@@ -178,11 +178,11 @@ public static readonly PlaceholderBrushKey = MuralBase.RegisterProperty<Brush>(T
 
 **Files:**
 - Modify: `Mural/package.json` (version bump, e.g. `0.44.0` → `0.45.0`)
-- Modify: `Plexus/package.json` (`@pragmatic-lab/mural` dep bump)
+- Modify: `Plexus/package.json` (`@pragmatic-tech-ai/mural` dep bump)
 
 - [ ] **Step 1: Bump** `Mural/package.json` version.
 - [ ] **Step 2: Build + publish.** `cd Mural && npm run build && npm publish --registry http://localhost:4873/`.
-- [ ] **Step 3: Consume.** `cd Plexus && npm install @pragmatic-lab/mural@<new> --registry http://localhost:4873/`.
+- [ ] **Step 3: Consume.** `cd Plexus && npm install @pragmatic-tech-ai/mural@<new> --registry http://localhost:4873/`.
 - [ ] **Step 4: Verify build.** `cd Plexus && npm run build` (must succeed; `compile:mu` runs first).
 - [ ] **Step 5: Commit** both `package.json` (+ `package-lock.json`).
 

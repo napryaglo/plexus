@@ -1,5 +1,5 @@
-import { DiagramDocument, Figure } from '@pragmatic-lab/mural/framework'
-import type { Entity } from '@pragmatic-lab/todl'
+import { DiagramDocument, Figure } from '@pragmatic-tech-ai/mural/framework'
+import type { Entity } from '@pragmatic-tech-ai/todl'
 import { ArchNodeVM } from './arch-node-vm.js'
 import type { ArchModel } from './arch-model.js'
 

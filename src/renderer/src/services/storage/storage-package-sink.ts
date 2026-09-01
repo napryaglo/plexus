@@ -1,4 +1,4 @@
-import type { PackageSink } from '@pragmatic-lab/todl'
+import type { PackageSink } from '@pragmatic-tech-ai/todl'
 
 import type { IStorage } from './storage.js'
 

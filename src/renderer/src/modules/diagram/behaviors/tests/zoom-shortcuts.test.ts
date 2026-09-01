@@ -1,5 +1,5 @@
 import { test, expect, vi } from 'vitest'
-import { Diagram, DiagramDocument } from '@pragmatic-lab/mural/framework'
+import { Diagram, DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 import { attachZoomShortcuts } from '../zoom-shortcuts.js'
 
 // A fake window capturing the single keydown listener.

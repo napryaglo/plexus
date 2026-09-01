@@ -1,4 +1,4 @@
-import type { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import type { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 
 // The scenarios "shown" on an architecture diagram are serialized WITH the
 // diagram, in the document's opaque metadata (DiagramDocument.Metadata) under

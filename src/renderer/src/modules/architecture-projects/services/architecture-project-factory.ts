@@ -1,4 +1,4 @@
-import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import {
     type ProjectFileFormat,

@@ -4,7 +4,7 @@
 **Date:** 2026-08-02
 **Scope:** Plexus (renderer). No TODL change — the `toolbox` annotation is
 author-declared and taxonomy-level annotations already ship in
-`@pragmatic-lab/todl@0.7.0`.
+`@pragmatic-tech-ai/todl@0.7.0`.
 
 ## Goal
 

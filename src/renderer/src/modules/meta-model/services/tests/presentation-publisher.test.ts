@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { publishPresentation } from '../presentation-publisher.js'

@@ -1,5 +1,5 @@
-import { ServiceKey } from '@pragmatic-lab/mural/runtime'
-import type { CommandDefinition, DiagramDocument } from '@pragmatic-lab/mural/framework'
+import { ServiceKey } from '@pragmatic-tech-ai/mural/runtime'
+import type { CommandDefinition, DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 
 // A seam for app-defined diagram toolbar commands whose behavior lives outside
 // mural's built-in DiagramCommandId set. The toolbar dispatches a clicked

@@ -6,13 +6,13 @@
 
 **Architecture:** Arch diagrams are model-authoritative — a hand-drawn connector is reconciled away unless it maps to the model. Today only concept `relationship` members and scenario steps project as edges; standalone `connector` entities (`{from, to, type}`, the meta-model's actual component↔component edge, connector.todl) are neither projected nor creatable by drawing. This feature adds: (A) projection of `connector` entities as labeled edges, (B) a draw→mint path that creates a `connector` entity (default `type: calls`), (C) status feedback when a draw resolves to nothing. All Plexus-side; the `connector` concept already exists in the tech-architecture meta-model.
 
-**Tech Stack:** Plexus renderer (TypeScript), `@pragmatic-lab/todl` (ModelDraft/Repository), `@pragmatic-lab/mural` diagram (Connector, DiagramDocument, StatusService). Vitest.
+**Tech Stack:** Plexus renderer (TypeScript), `@pragmatic-tech-ai/todl` (ModelDraft/Repository), `@pragmatic-tech-ai/mural` diagram (Connector, DiagramDocument, StatusService). Vitest.
 
 **Spec:** this plan (design settled in conversation 2026-08-23).
 
 ## Global Constraints
 
-- **Plexus-only.** No TODL/Mural/publish changes. Consume the installed `@pragmatic-lab/mural@^0.21.4`.
+- **Plexus-only.** No TODL/Mural/publish changes. Consume the installed `@pragmatic-tech-ai/mural@^0.21.4`.
 - **Every test file lives in a `tests/` subfolder** next to its source.
 - **Real enums, never string-literal unions.** Connector `type` values come from the model's `connectors` taxonomy at runtime (data, not a TS union) — read them from the repo; do not hardcode a TS union of type names.
 - **Never mutate the real corpus** at `C:/Users/Eugene/Projects/plexus_tests`. e2e runs against a temp clone (`fs.cpSync` + `seedSession(projects)`), mirroring `arch-containment.spec.ts`.

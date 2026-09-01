@@ -565,7 +565,7 @@ Expected: FAIL — module not found.
 - [ ] **Step 3: Implement `new-project-card.ts`**
 
 ```ts
-import { MetaData, Model } from '@pragmatic-lab/mural/runtime'
+import { MetaData, Model } from '@pragmatic-tech-ai/mural/runtime'
 import type { NewProjectDialogModel } from '../../../services/projects/new-project-dialog-model.js'
 import type { CreateOutcome } from '../../project-explorer/services/project-explorer-service.js'
 
@@ -671,7 +671,7 @@ git commit -m "feat(agent-chat): NewProjectCard view-model + DataTemplate"
 - [ ] **Step 1: Write the failing test** — append to `transcript.test.ts`:
 
 ```ts
-import { Model } from '@pragmatic-lab/mural/runtime'
+import { Model } from '@pragmatic-tech-ai/mural/runtime'
 
 test('addPendingCard adds the card, blocks input, and resets the assistant bubble; releasePending clears it', () => {
     const r = new TranscriptReducer()
@@ -764,7 +764,7 @@ git commit -m "feat(agent-chat): transcript addPendingCard/releasePending + Crea
 - [ ] **Step 1: Write the failing test** — append to `agent-service.test.ts`. It reuses that file's existing `providerWith(fakeStore(...))` builder (registers `OpenProjectsStore` + `EnvironmentService`); add these imports at the top of the file:
 
 ```ts
-import { Model } from '@pragmatic-lab/mural/runtime'
+import { Model } from '@pragmatic-tech-ai/mural/runtime'
 import { ProjectExplorerService } from '../../../project-explorer/services/project-explorer-service.js'
 import { NewProjectCard } from '../new-project-card.js'
 import { AgentEventKind, type AgentEvent, type CreateProjectResult, type IAgentApi } from '../../../../../../shared/agent-api.js'

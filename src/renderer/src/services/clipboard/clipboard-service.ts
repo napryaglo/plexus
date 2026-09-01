@@ -1,4 +1,4 @@
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 // A writer that persists text to the system clipboard. Injected so tests capture
 // the text without touching the real clipboard.

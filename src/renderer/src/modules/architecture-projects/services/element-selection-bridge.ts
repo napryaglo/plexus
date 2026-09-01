@@ -1,5 +1,5 @@
-import { toElement, type Element, type Entity, type ToElementOptions } from '@pragmatic-lab/todl'
-import type { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import { toElement, type Element, type Entity, type ToElementOptions } from '@pragmatic-tech-ai/todl'
+import type { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 import { resolveElementPresentation } from './element-presentation.js'
 import type { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import type { TodlPresentationRegistry } from '../../diagram/services/todl-presentation-registry.js'

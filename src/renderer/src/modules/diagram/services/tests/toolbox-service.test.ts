@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { ToolboxRepository, ToolboxVisualDescriptor } from '@pragmatic-lab/mural/framework'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { ToolboxRepository, ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
 import { ToolboxService } from '../diagram-panel-services.js'
 import { TodlVisualResolverKey } from '../todl-visual-resolver.js'
 import { ArchInstanceDropFactoryKey } from '../../../architecture-projects/services/arch-instance-drop-factory.js'

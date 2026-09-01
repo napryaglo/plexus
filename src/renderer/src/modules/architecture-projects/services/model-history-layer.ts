@@ -1,4 +1,4 @@
-import { HistoryLayerId, type IHistoryLayer } from '@pragmatic-lab/mural/framework'
+import { HistoryLayerId, type IHistoryLayer } from '@pragmatic-tech-ai/mural/framework'
 import type { ArchModel } from './arch-model.js'
 
 // The TODL model as a history layer: snapshots the own .todl files, restores them

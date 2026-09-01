@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { CodeDocument } from '../../../code-editor/code-document.js'

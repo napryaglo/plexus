@@ -6,13 +6,13 @@
 
 **Architecture:** A pure `projectToolbox(doc)` reads a `model.json` into visible taxonomies + their visible terms. `ToolboxService` (the surviving "Tool Box" rail Capability) scans the meta-models and libraries backends, projects each `model.json`, dedupes, and exposes `Pages: ObservableCollection<ToolboxPage>` (Shapes first, then taxonomy pages). A `TabControl`-based `DataTemplate` renders pages of draggable tiles; drag-drop is unchanged. `ArchTermsPaletteService` and `ArchDiagramDocument.Palette` are removed.
 
-**Tech Stack:** TypeScript (strict, ESM), `@pragmatic-lab/mural` (runtime/basic/framework), `@pragmatic-lab/todl` types, Vitest + `FakeStorage`, mural `.mu` markup (compiled via `npm run compile:mu`).
+**Tech Stack:** TypeScript (strict, ESM), `@pragmatic-tech-ai/mural` (runtime/basic/framework), `@pragmatic-tech-ai/todl` types, Vitest + `FakeStorage`, mural `.mu` markup (compiled via `npm run compile:mu`).
 
 ## Global Constraints
 
 - Every test file lives in a `tests/` subfolder next to its source (`src/**/*.test.ts`; Plexus CLAUDE.md).
 - Use real TypeScript `enum`s, never string-literal unions (repo rule). New enum: `ToolboxPageKind`.
-- No TODL change. The `toolbox` annotation is author-declared: `annotation toolbox { visible : boolean; }`. Taxonomy-level annotations already ship in `@pragmatic-lab/todl@0.7.0` (installed).
+- No TODL change. The `toolbox` annotation is author-declared: `annotation toolbox { visible : boolean; }`. Taxonomy-level annotations already ship in `@pragmatic-tech-ai/todl@0.7.0` (installed).
 - Annotation contract: a taxonomy appears **only if** `toolbox { visible = true }`; a term is shown **unless** `toolbox { visible = false }`.
 - Render through templates/bindings from `.mu` — no hardcoded chrome in code (repo rule).
 - Both published meta-models and libraries live at `<id>/<version>/model.json` under their respective backends (`ensureMetaModelsBackend`, `ensureLibrariesBackend`); scan with `scanPublishedModels(storage)`.
@@ -43,7 +43,7 @@
 - Test: `src/renderer/src/modules/meta-model/services/tests/toolbox-projection.test.ts`
 
 **Interfaces:**
-- Consumes: `projectAnnotations(doc, id)` ([annotation-projection.ts](../../../src/renderer/src/modules/meta-model/services/annotation-projection.ts)), `resolveFacets(node, annotations)` ([presentation-generator.ts](../../../src/renderer/src/modules/meta-model/services/presentation-generator.ts#L141-L156)), `termsOf(doc, taxonomyId)` ([meta-model-tree-builder.ts](../../../src/renderer/src/modules/meta-model/services/meta-model-tree-builder.ts#L12-L18)), `TodlDocument`/`JsonNode` from `@pragmatic-lab/todl`.
+- Consumes: `projectAnnotations(doc, id)` ([annotation-projection.ts](../../../src/renderer/src/modules/meta-model/services/annotation-projection.ts)), `resolveFacets(node, annotations)` ([presentation-generator.ts](../../../src/renderer/src/modules/meta-model/services/presentation-generator.ts#L141-L156)), `termsOf(doc, taxonomyId)` ([meta-model-tree-builder.ts](../../../src/renderer/src/modules/meta-model/services/meta-model-tree-builder.ts#L12-L18)), `TodlDocument`/`JsonNode` from `@pragmatic-tech-ai/todl`.
 - Produces:
   ```ts
   export interface ToolboxTermRef { id: string; label: string; icon?: string; concept: string }
@@ -55,7 +55,7 @@
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import type { TodlDocument } from '@pragmatic-lab/todl'
+import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 import { projectToolbox } from '../toolbox-projection.js'
 
 // A doc with: a visible taxonomy `actors` (2 terms, one hidden), and a taxonomy
@@ -109,7 +109,7 @@ Expected: FAIL — `projectToolbox` not found.
 ```ts
 // toolbox-projection.ts — pure: a loaded model.json → the taxonomies an author
 // marked visible for the toolbox, each with its visible terms. No I/O, no mural.
-import type { TodlDocument, JsonNode } from '@pragmatic-lab/todl'
+import type { TodlDocument, JsonNode } from '@pragmatic-tech-ai/todl'
 import { projectAnnotations } from './annotation-projection.js'
 import { resolveFacets } from './presentation-generator.js'
 import { termsOf } from './meta-model-tree-builder.js'
@@ -180,7 +180,7 @@ Expected: PASS.
 ```ts
 import { describe, it, expect } from 'vitest'
 import { ToolboxPage, ToolboxPageKind, TermTile } from '../toolbox-page.js'
-import { DataTemplate } from '@pragmatic-lab/mural/basic'
+import { DataTemplate } from '@pragmatic-tech-ai/mural/basic'
 
 describe('ToolboxPage', () => {
   it('carries a title, kind, and a live Items collection', () => {
@@ -265,7 +265,7 @@ Expected: FAIL — module not found.
 
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import { ToolboxService } from '../diagram-panel-services.js'
 import { ToolboxPageKind } from '../toolbox-page.js'
 import { StorageProviderRegistry } from '../../../../services/storage/storage-provider-registry.js'

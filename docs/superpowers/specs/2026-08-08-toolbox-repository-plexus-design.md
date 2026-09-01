@@ -1,7 +1,7 @@
 # Toolbox Repository (Plexus adapters) — Design
 
 **Date:** 2026-08-08
-**Repo:** Plexus (`@pragmatic-lab/plexus`, renderer)
+**Repo:** Plexus (`@pragmatic-tech-ai/plexus`, renderer)
 **Status:** Design approved; ready for implementation plan.
 
 This is **Spec B** — the Plexus half of the two-spec effort to unify toolbox
@@ -57,10 +57,10 @@ one cutover:
 ## Global Constraints
 
 - **Prerequisite (hard cutover).** Mural is bumped `0.2.9 → 0.3.0` and published
-  to Verdaccio (`http://localhost:4873/`); Plexus's `@pragmatic-lab/mural`
+  to Verdaccio (`http://localhost:4873/`); Plexus's `@pragmatic-tech-ai/mural`
   dependency moves to `^0.3.0`. This is not optional and not gradual: Plexus does
   not compile against the new mural because it imports the deleted `ToolboxShape`
-  and `TOOLBOX_NODE_KIND_FORMAT` from `@pragmatic-lab/mural/framework` and reads
+  and `TOOLBOX_NODE_KIND_FORMAT` from `@pragmatic-tech-ai/mural/framework` and reads
   the removed `DiagramWorkspaceService.ToolboxShapes`.
 - **Enums, never string-literal unions.** Reuse mural's `VisualContext` enum. Any
   new fixed-set type is a real `enum`.

@@ -6,14 +6,14 @@
 
 **Architecture:** Author marks a concept `materialize` (a drop-created root). Drop resolution bounds its scan to marked roots (not every concept), so it yields exactly one action. After wiring the primary member, the engine back-fills the instance's other empty members from the dropped term's own references (deterministic single-match). Icon precedence is derived from propagation direction — a term that references another filled facet's term outranks it — reproducibly from the saved model. A meta-model with zero `materialize` roots falls back to today's behavior unchanged.
 
-**Tech Stack:** TypeScript (strict, ESM), Plexus renderer (electron-vite + vitest), `@pragmatic-lab/todl` repository read API (`resolve`, `classOf`, `represents`, `supertypesOf`, `viewpointsFraming`, `effectiveSchema`, `effectiveRelationships`, `refs`, `allNodes`), `@pragmatic-lab/mural` diagram framework.
+**Tech Stack:** TypeScript (strict, ESM), Plexus renderer (electron-vite + vitest), `@pragmatic-tech-ai/todl` repository read API (`resolve`, `classOf`, `represents`, `supertypesOf`, `viewpointsFraming`, `effectiveSchema`, `effectiveRelationships`, `refs`, `allNodes`), `@pragmatic-tech-ai/mural` diagram framework.
 
 ## Global Constraints
 
 - Tests: Plexus vitest. Run a file with `npx vitest run <path>` (from `Plexus/`). Typecheck with `npm run typecheck`.
 - Every test file lives in a `tests/` subfolder next to its source (e.g. `services/tests/arch-materialize.test.ts`).
 - Real TypeScript `enum`s only — never string-literal union types or bare literals at use sites.
-- Import `@pragmatic-lab/*` from the local Verdaccio; **no TODL source changes** — `materialize` is a per-meta-model annotation convention Plexus reads at runtime.
+- Import `@pragmatic-tech-ai/*` from the local Verdaccio; **no TODL source changes** — `materialize` is a per-meta-model annotation convention Plexus reads at runtime.
 - Annotation name is `materialize` (case-sensitive). An `annotate materialize {}` on target `Foo` produces a node with id `Foo@materialize` whose `attrs` map holds the params (verified: `TODL/src/parse/tests/loader-annotate-targets.test.ts`).
 - Reference members are **relationships** only (`effectiveSchema().relationships`); non-relationship fields are out of scope.
 - **Legacy fallback:** when `materializeRoots(repo).length === 0`, resolution keeps today's scan-and-chooser behavior. The four existing tests in `arch-drop-resolver.test.ts` must stay green unchanged.
@@ -48,7 +48,7 @@
 
 ```ts
 import { test, expect } from 'vitest'
-import { load } from '@pragmatic-lab/todl'
+import { load } from '@pragmatic-tech-ai/todl'
 import { conceptTypeOf, acceptSet } from '../arch-concept-type.js'
 
 const MM = `namespace m {
@@ -80,7 +80,7 @@ Expected: FAIL — cannot find module `../arch-concept-type.js`.
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-import { type Repository } from '@pragmatic-lab/todl'
+import { type Repository } from '@pragmatic-tech-ai/todl'
 
 // The concept a node stands for: the class it instantiates, else the concept its
 // taxonomy represents, else its own typeOf. Mirrors the long-standing derivation
@@ -122,7 +122,7 @@ Expected: no errors.
 
 ```ts
 import { test, expect } from 'vitest'
-import { load } from '@pragmatic-lab/todl'
+import { load } from '@pragmatic-tech-ai/todl'
 import { materializeOf, isMaterializeRoot, materializeRoots } from '../arch-materialize.js'
 
 const MM = `namespace m {
@@ -170,7 +170,7 @@ Expected: FAIL — cannot find module `../arch-materialize.js`.
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-import { MetaKind, type Repository } from '@pragmatic-lab/todl'
+import { MetaKind, type Repository } from '@pragmatic-tech-ai/todl'
 
 export interface MaterializeSpec { concept?: string; via?: string; propagate?: boolean }
 
@@ -228,7 +228,7 @@ Expected: no errors.
 
 ```ts
 import { test, expect } from 'vitest'
-import { load } from '@pragmatic-lab/todl'
+import { load } from '@pragmatic-tech-ai/todl'
 import { resolveDropActions, DropActionKind } from '../arch-drop-resolver.js'
 
 const MM = `namespace m {
@@ -286,7 +286,7 @@ Expected: FAIL — the current resolver scans every concept, so the `other` conc
 - [ ] **Step 3: Write the implementation** (replace the whole file)
 
 ```ts
-import { MetaKind, type Repository } from '@pragmatic-lab/todl'
+import { MetaKind, type Repository } from '@pragmatic-tech-ai/todl'
 import { conceptTypeOf, acceptSet } from './arch-concept-type.js'
 import { materializeOf, materializeRoots } from './arch-materialize.js'
 
@@ -402,14 +402,14 @@ Expected: no errors.
 - Test: `Plexus/src/renderer/src/modules/architecture-projects/services/tests/arch-propagate.test.ts`
 
 **Interfaces:**
-- Consumes: `conceptTypeOf`, `acceptSet` (Task 1). Uses `repo.effectiveRelationships(id): Map<string, string[]>` and `repo.effectiveSchema(id).relationships` — **verify both exist on the installed `@pragmatic-lab/todl` before implementing** (they are in `TODL/src/model/model.ts`; a quick `node -e` import check or the failing test will confirm).
+- Consumes: `conceptTypeOf`, `acceptSet` (Task 1). Uses `repo.effectiveRelationships(id): Map<string, string[]>` and `repo.effectiveSchema(id).relationships` — **verify both exist on the installed `@pragmatic-tech-ai/todl` before implementing** (they are in `TODL/src/model/model.ts`; a quick `node -e` import check or the failing test will confirm).
 - Produces: `interface PropFill { member: string; term: string }`; `propagationFills(repo, targetConcept, termId, primaryMember): PropFill[]`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 import { test, expect } from 'vitest'
-import { load } from '@pragmatic-lab/todl'
+import { load } from '@pragmatic-tech-ai/todl'
 import { propagationFills } from '../arch-propagate.js'
 
 const MM = `namespace m {
@@ -460,7 +460,7 @@ Expected: FAIL — cannot find module `../arch-propagate.js`.
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-import { type Repository } from '@pragmatic-lab/todl'
+import { type Repository } from '@pragmatic-tech-ai/todl'
 import { conceptTypeOf, acceptSet } from './arch-concept-type.js'
 
 export interface PropFill { member: string; term: string }
@@ -513,7 +513,7 @@ Expected: no errors.
 
 ```ts
 import { test, expect } from 'vitest'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 import { iconEntityKey } from '../arch-icon.js'
@@ -565,7 +565,7 @@ Expected: FAIL — current `iconEntityKey` returns `Cats.ai` (schema order) for 
 - [ ] **Step 3: Write the implementation** (replace the file)
 
 ```ts
-import type { Entity, Repository } from '@pragmatic-lab/todl'
+import type { Entity, Repository } from '@pragmatic-tech-ai/todl'
 
 // The entity key whose icon a bound canvas node should draw — an id the presentation
 // registry's index (registry.iconKeyFor) maps to a baked resource key, the SAME index

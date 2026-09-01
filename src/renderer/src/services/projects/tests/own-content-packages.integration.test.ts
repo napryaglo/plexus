@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { compilePackage, checkAgainst, PackageKind, Severity, type PackageRef } from '@pragmatic-lab/todl'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { compilePackage, checkAgainst, PackageKind, Severity, type PackageRef } from '@pragmatic-tech-ai/todl'
 
 import { StorageProviderRegistry } from '../../storage/storage-provider-registry.js'
 import { FakeStorage } from '../../storage/tests/fake-storage.js'

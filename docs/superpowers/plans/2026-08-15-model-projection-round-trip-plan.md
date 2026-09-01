@@ -6,7 +6,7 @@
 
 **Architecture:** Extend the existing per-diagram `ArchDiagramBinding` (attached by `ArchDiagramBindingService`) into a two-way projector; add one active-diagram-reactive toolbox contributor and a place-existing drop factory. Node membership + positions persist in the `.diagram` scene (nodes carry `Id = entityId`); connectors **derive** from the model on every `rescan()` — arch diagrams are connector-authoritative (the only connectors between two bound arch nodes are projected ones). The generic mural `DiagramDocument`/`Diagram` are untouched except one additive event-arg field (SP4).
 
-**Tech Stack:** TypeScript, `@pragmatic-lab/mural` (framework/runtime), `@pragmatic-lab/todl` (`Entity.refs`, `repo.effectiveSchema`), Vitest (jsdom).
+**Tech Stack:** TypeScript, `@pragmatic-tech-ai/mural` (framework/runtime), `@pragmatic-tech-ai/todl` (`Entity.refs`, `repo.effectiveSchema`), Vitest (jsdom).
 
 Design doc: [2026-08-15-model-projection-round-trip-design.md](../specs/2026-08-15-model-projection-round-trip-design.md).
 
@@ -58,12 +58,12 @@ function repoWith(rels: Record<string, string[]>, framing: Record<string, string
     return {
         effectiveSchema: (c: string) => ({ relationships: (rels[c] ?? []).map((name) => ({ name, targets: [] as string[] })) }),
         viewpointsFraming: (c: string) => framing[c] ?? [],
-    } as unknown as import('@pragmatic-lab/todl').Repository
+    } as unknown as import('@pragmatic-tech-ai/todl').Repository
 }
 function entity(id: string, concept: string, refs: Record<string, string[]>) {
-    return { id, concept, refs: (m: string) => (refs[m] ?? []).map((tid) => byId.get(tid)) } as unknown as import('@pragmatic-lab/todl').Entity
+    return { id, concept, refs: (m: string) => (refs[m] ?? []).map((tid) => byId.get(tid)) } as unknown as import('@pragmatic-tech-ai/todl').Entity
 }
-const byId = new Map<string, import('@pragmatic-lab/todl').Entity>()
+const byId = new Map<string, import('@pragmatic-tech-ai/todl').Entity>()
 
 describe('edge projection', () => {
     it('edgeKey is stable and unique per (from, member, to)', () => {
@@ -97,7 +97,7 @@ describe('edge projection', () => {
 - [ ] **Step 3: Implement `edge-projection.ts`.**
 
 ```ts
-import type { Entity, Repository } from '@pragmatic-lab/todl'
+import type { Entity, Repository } from '@pragmatic-tech-ai/todl'
 
 export function edgeKey(from: string, member: string, to: string): string {
     return `${from}|${member}|${to}`
@@ -190,8 +190,8 @@ Add imports (`desiredEdges` from `./edge-projection.js`, `Connector` type, `Enti
 - [ ] **Step 3: Implement the factory.**
 
 ```ts
-import { ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-lab/mural/framework'
+import { ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { type IDocument, type IToolboxDropFactory, type ToolboxDropContext } from '@pragmatic-tech-ai/mural/framework'
 import { ArchDiagramBindingService } from './arch-diagram-binding-service.js'
 import { ArchNodeVM } from './arch-node-vm.js'
 
@@ -309,7 +309,7 @@ export function modelPageItems(model: ArchModel, scope: ReadonlySet<string>, pla
 - [ ] **Step 3: Implement.**
 
 ```ts
-import type { Repository } from '@pragmatic-lab/todl'
+import type { Repository } from '@pragmatic-tech-ai/todl'
 import { acceptSet, conceptTypeOf } from './arch-concept-type.js'
 
 export interface ConnectorAction { member: string; label: string }

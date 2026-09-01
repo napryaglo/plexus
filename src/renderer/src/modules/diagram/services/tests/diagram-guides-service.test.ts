@@ -1,9 +1,9 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { DiagramDocument, ContentHostService, Diagram } from '@pragmatic-lab/mural/framework'
-import { ObservableCollection, AlignmentAxis } from '@pragmatic-lab/mural/runtime'
+import { DiagramDocument, ContentHostService, Diagram } from '@pragmatic-tech-ai/mural/framework'
+import { ObservableCollection, AlignmentAxis } from '@pragmatic-tech-ai/mural/runtime'
 import { DiagramGuidesService } from '../diagram-guides-service.js'
 import { writeGuides, readGuides } from '../../persistence/diagram-guides-store.js'
-import type { PersistentGuide } from '@pragmatic-lab/mural/runtime'
+import type { PersistentGuide } from '@pragmatic-tech-ai/mural/runtime'
 
 // Per-key property-change listener host, standing in for the live Diagram's
 // Guides DP notifications without mounting the mural theme under jsdom.

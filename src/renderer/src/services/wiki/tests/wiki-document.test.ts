@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { FlowDocument } from '@pragmatic-lab/mural/basic'
+import { FlowDocument } from '@pragmatic-tech-ai/mural/basic'
 import { WikiDocument } from '../wiki-document.js'
 
 test('WikiDocument exposes Id (path), Title (file name), read-only IsDirty', () => {

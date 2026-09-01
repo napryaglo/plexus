@@ -6,7 +6,7 @@
 //     return the (filtered, capped) problems list — no re-scan, read-only.
 // Both reply via the agent bridge, which unblocks the tool call in main. Eagerly
 // constructed at startup so the tools work even if the chat panel was never opened.
-import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-lab/mural/runtime'
+import { ServiceBase, ServiceKey, type IServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
 import type { GetProblemsRequest, IAgentApi, RefreshProjectRequest } from '../../../../shared/agent-api.js'
 import { AgentEventKind } from '../../../../shared/agent-api.js'
 import { ProjectExplorerService } from '../../modules/project-explorer/services/project-explorer-service.js'

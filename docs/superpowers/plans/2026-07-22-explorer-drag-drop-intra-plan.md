@@ -297,8 +297,8 @@ Wire the command in `wireProjectCommands` (beside the others):
 - [ ] **Step 1: Implement `tree-drag-drop-behavior.ts`** — pointer-capture drag mirroring mural's `MarqueeSelectionBehavior` (same `AddRoutedEventListener('PointerDown'|'PointerMove'|'PointerUp')`, `args.CapturePointer`/`ReleasePointerCapture`, `args.HostX/HostY/Source`, `GetVisualParent()`, `ArrangedRect`, `AdornerLayer.GetAdornerLayer`):
 
 ```ts
-import { Adorner, AdornerLayer, Behavior, Color, Rect, Size, type Visual } from '@pragmatic-lab/mural/runtime'
-import { Pen, SolidColorBrush } from '@pragmatic-lab/mural/visual-engine'
+import { Adorner, AdornerLayer, Behavior, Color, Rect, Size, type Visual } from '@pragmatic-tech-ai/mural/runtime'
+import { Pen, SolidColorBrush } from '@pragmatic-tech-ai/mural/visual-engine'
 
 import { OpenProject } from './open-project.js'
 import { ProjectNode } from './project.js'

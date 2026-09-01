@@ -1,4 +1,4 @@
-import type { Entity, Repository } from '@pragmatic-lab/todl'
+import type { Entity, Repository } from '@pragmatic-tech-ai/todl'
 
 // "Has an icon": the `<id>@icon` annotation node the meta-model/library SOURCE
 // declares (`annotate icon { path = … }`) — keyed on the annotation's presence, not

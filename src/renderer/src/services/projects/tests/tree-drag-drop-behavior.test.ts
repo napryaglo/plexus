@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { Border } from '@pragmatic-lab/mural/basic'
-import { DragDropEffects, type DragStartSpec } from '@pragmatic-lab/mural/visual-engine'
+import { Border } from '@pragmatic-tech-ai/mural/basic'
+import { DragDropEffects, type DragStartSpec } from '@pragmatic-tech-ai/mural/visual-engine'
 
 import { TreeDragDropBehavior } from '../tree-drag-drop-behavior.js'
 import { ProjectNode } from '../project.js'

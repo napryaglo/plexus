@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { test, expect } from 'vitest'
 import { writeFileSync } from 'node:fs'
-import { check, checkAgainst, toJSON, type TodlDocument } from '@pragmatic-lab/todl'
+import { check, checkAgainst, toJSON, type TodlDocument } from '@pragmatic-tech-ai/todl'
 
 // Opt-in CPU benchmark for the VALIDATION base-resolution path. Not a correctness
 // test — it quantifies the renderer-side cost of loading a library as a base so we

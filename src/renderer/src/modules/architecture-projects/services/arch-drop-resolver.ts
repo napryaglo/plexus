@@ -1,4 +1,4 @@
-import { MetaKind, type Repository } from '@pragmatic-lab/todl'
+import { MetaKind, type Repository } from '@pragmatic-tech-ai/todl'
 import { conceptTypeOf, acceptSet } from './arch-concept-type.js'
 import { materializeOf, materializeRoots } from './arch-materialize.js'
 import { isContainerConcept } from './containment.js'

@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { DiagramDocument } from '@pragmatic-lab/mural/framework'
-import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-lab/todl'
+import { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { ArchModel } from '../arch-model.js'
 import { ArchNodeVM } from '../arch-node-vm.js'

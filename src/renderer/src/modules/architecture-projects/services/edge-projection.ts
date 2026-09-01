@@ -1,4 +1,4 @@
-import type { Entity, Repository } from '@pragmatic-lab/todl'
+import type { Entity, Repository } from '@pragmatic-tech-ai/todl'
 import { isContainmentRelationship } from './containment.js'
 import { isConnectorEntity, connectorTypeOf, CONNECTOR_FROM_MEMBER, CONNECTOR_TO_MEMBER } from './connector-entity.js'
 

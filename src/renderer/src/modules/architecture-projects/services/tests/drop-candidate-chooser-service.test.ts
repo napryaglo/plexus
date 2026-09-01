@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider, type ICommand } from '@pragmatic-lab/mural/runtime'
+import { ServiceProvider, type ICommand } from '@pragmatic-tech-ai/mural/runtime'
 import { DropActionKind, type DropAction } from '../arch-drop-resolver.js'
 import { DropCandidateChooserService, ChooserRow } from '../drop-candidate-chooser-service.js'
 

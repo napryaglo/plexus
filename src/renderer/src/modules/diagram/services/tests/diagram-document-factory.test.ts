@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { ServiceProvider } from '@pragmatic-lab/mural/runtime'
-import { DiagramDocument } from '@pragmatic-lab/mural/framework'
+import { ServiceProvider } from '@pragmatic-tech-ai/mural/runtime'
+import { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 
 import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 import { DiagramDocumentFactory } from '../diagram-document-factory.js'

@@ -1,4 +1,4 @@
-import type { SourceFile } from '@pragmatic-lab/todl'
+import type { SourceFile } from '@pragmatic-tech-ai/todl'
 import type { IStorage } from '../storage/storage.js'
 
 // Shared TODL source-collection + project-relative path helpers, used by both

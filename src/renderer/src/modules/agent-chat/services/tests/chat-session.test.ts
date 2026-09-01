@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { Key } from '@pragmatic-lab/mural/runtime'
+import { Key } from '@pragmatic-tech-ai/mural/runtime'
 import { AgentEventKind, type AgentEvent } from '../../../../../../shared/agent-api.js'
 import { ChatSession, type ChatSessionCallbacks } from '../chat-session.js'
 import { AgentModel } from '../agent-model.js'

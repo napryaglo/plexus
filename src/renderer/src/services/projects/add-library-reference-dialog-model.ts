@@ -4,7 +4,7 @@ import {
     ObservableCollection,
     RelayCommand,
     type ICommand,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 
 import type { BaseRef } from './base-binding.js'
 import { LibraryChoice } from './new-project-dialog-model.js'

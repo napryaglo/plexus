@@ -6,7 +6,7 @@
 
 **Architecture:** TODL contributes schema only — a `ResourceKey` primitive plus a `MuralResource` annotation that `icon` extends — so `projectAnnotations` surfaces a `Key`. All key logic (collision-aware assignment, stamping) lives Plexus-side in the presentation generator, operating on the in-memory `TodlDocument` that both the presentation and `BlobPackageStore.persist` share, so a single stamp reaches `model.json` with no re-serialization.
 
-**Tech Stack:** TypeScript (ESM, strict), `@pragmatic-lab/todl` (reflective typed graph, `node:test`), Plexus (Electron/electron-vite, Vitest), `@pragmatic-lab/mural` compiler, Verdaccio local registry.
+**Tech Stack:** TypeScript (ESM, strict), `@pragmatic-tech-ai/todl` (reflective typed graph, `node:test`), Plexus (Electron/electron-vite, Vitest), `@pragmatic-tech-ai/mural` compiler, Verdaccio local registry.
 
 ## Global Constraints
 
@@ -40,7 +40,7 @@
 
 **Interfaces:**
 - Consumes: nothing (schema authoring only).
-- Produces: prelude now defines `ResourceKey` (primitive), `MuralResource` (annotation with optional `Key : ResourceKey`), and `icon : MuralResource` (adds inherited optional `Key`). Published as `@pragmatic-lab/todl@0.19.0`.
+- Produces: prelude now defines `ResourceKey` (primitive), `MuralResource` (annotation with optional `Key : ResourceKey`), and `icon : MuralResource` (adds inherited optional `Key`). Published as `@pragmatic-tech-ai/todl@0.19.0`.
 
 - [ ] **Step 1: Add the failing schema test**
 
@@ -126,7 +126,7 @@ Expected: PASS — the added optional param/annotation is backward compatible; n
 - [ ] **Step 8: Build, bump, publish to Verdaccio**
 
 Run: `cd TODL && npm run build && npm version minor --no-git-tag-version && npm publish`
-Expected: `@pragmatic-lab/todl@0.19.0` published to `http://localhost:4873/`. (`npm publish` uses the repo's `.npmrc`/`publishConfig` registry; no auth prompt.)
+Expected: `@pragmatic-tech-ai/todl@0.19.0` published to `http://localhost:4873/`. (`npm publish` uses the repo's `.npmrc`/`publishConfig` registry; no auth prompt.)
 
 - [ ] **Step 9: Commit**
 
@@ -149,7 +149,7 @@ EOF
 ### Task 2: Plexus — collision-aware key authority (`assignResourceKeys` / `resourceKeyFor`)
 
 **Files:**
-- Modify: `Plexus/package.json` (raise `@pragmatic-lab/todl` floor)
+- Modify: `Plexus/package.json` (raise `@pragmatic-tech-ai/todl` floor)
 - Modify: `Plexus/src/renderer/src/modules/meta-model/services/presentation-generator.ts`
 - Modify: `Plexus/src/renderer/src/modules/meta-model/services/tests/presentation-generator.test.ts`
 
@@ -161,9 +161,9 @@ EOF
 
 - [ ] **Step 1: Raise the TODL dependency floor and install**
 
-In `Plexus/package.json`, set `"@pragmatic-lab/todl": "^0.19.0"` in `dependencies`. Then:
+In `Plexus/package.json`, set `"@pragmatic-tech-ai/todl": "^0.19.0"` in `dependencies`. Then:
 
-Run: `cd Plexus && npm install @pragmatic-lab/todl@^0.19.0`
+Run: `cd Plexus && npm install @pragmatic-tech-ai/todl@^0.19.0`
 Expected: lockfile resolves `0.19.0` from Verdaccio.
 
 - [ ] **Step 2: Sanity-run the Plexus suite against the new prelude**
@@ -268,7 +268,7 @@ feat(presentation): collision-aware resource-key authority
 
 assignResourceKeys/resourceKeyFor assign a UNIQUE key per distinct icon path,
 suffixing colliding stems _2/_3 in sorted order — fixing the silent overwrite of
-same-stem icons. Bump @pragmatic-lab/todl ^0.19.0.
+same-stem icons. Bump @pragmatic-tech-ai/todl ^0.19.0.
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 EOF
@@ -498,7 +498,7 @@ EOF
 
 ## Notes for the executor
 
-- **Cross-repo ordering is load-bearing:** Task 1 must publish `@pragmatic-lab/todl@0.19.0` to Verdaccio before Task 2's `npm install` can resolve it. Do not start Task 2 until Task 1 Step 8 succeeds.
+- **Cross-repo ordering is load-bearing:** Task 1 must publish `@pragmatic-tech-ai/todl@0.19.0` to Verdaccio before Task 2's `npm install` can resolve it. Do not start Task 2 until Task 1 Step 8 succeeds.
 - **No `.mu` files change** — presentation dictionaries are generated text, not repo `.mu` sources, so `npm run compile:mu` is not needed.
 - **Regression is the safety net for the emit rerouting:** the existing generator/publisher/scaffold tests assert exact single-stem output (`mm_icon_actor`, etc.); Task 3 must leave those byte-identical. If any changes, the rerouting diverged from the base key and is a bug.
 - **Deferred (documented in the spec, not this plan):** `brush`/`geometry`/`embedded` subtypes of `MuralResource`; `deriveClasses`/`PublishedClass` staying path-based; the write-once-stub staleness tail; author-facing validation of the generator-owned `Key`.

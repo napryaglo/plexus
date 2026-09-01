@@ -1,7 +1,7 @@
 import {
     MuralBase, MetaData, ObservableCollection, ServiceBase, ServiceKey, RelayCommand,
     type ICommand, type IServiceProvider, type PropertyDescriptor,
-} from '@pragmatic-lab/mural/runtime'
+} from '@pragmatic-tech-ai/mural/runtime'
 import { DiagnosticsService } from '../../services/diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity, type Diagnostic } from '../../services/diagnostics/diagnostic.js'
 import { ViewportService } from '../../services/viewport/viewport-service.js'
