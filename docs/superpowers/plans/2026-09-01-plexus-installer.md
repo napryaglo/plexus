@@ -409,7 +409,11 @@ git commit -m "feat(updater): wire electron-updater (Linux AppImage auto-update)
 
 ## Phase 3 — CI release matrix + GitHub Packages
 
-> **Prerequisite (manual, outside this repo):** A GitHub org named `pragmatic-lab` must exist and host the `@pragmatic-lab/*` packages (`mural`, `fresco`, `todl`, and their transitive `@pragmatic-lab` deps such as `todl-runtime`) on GitHub Packages (`https://npm.pkg.github.com`). GitHub Packages requires the npm scope to match the owning org. Without this, CI `npm ci` cannot resolve the private deps. This plan wires the consumer side (workflow + CI registry auth); publishing the packages is a separate one-time task.
+> **DEFERRED — blocked on an org/scope rename (owner-driven).** GitHub Packages requires the npm scope to match the owning org login. The current scope `@pragmatic-lab` cannot be used: the `pragmatic-lab` login is owned by an unrelated third party (a 2020 "Holanda Pets" org), and no org the user owns has that login. Decision (2026-09-01): the user will **rename the package scope** across all framework repos (`@pragmatic-lab/*` → a new scope matching a user-owned org, e.g. `@pragmatic-labs-com/*`) once that org is set up, then publish the packages to GitHub Packages under it.
+>
+> Until that rename lands, **Task 7 is on hold**. When it does, revisit this task's `owner`, the scope in the CI `.npmrc` step, and `electron-builder.yml` `publish.owner`/`repo` to match the final names. The scope rename itself is a **separate, larger cross-repo task** (every package name + every `@pragmatic-lab/*` import across Mural/Fresco/TODL/todl-runtime/Plexus, plus a Verdaccio republish) — not part of this plan.
+>
+> Phases 1–2 do NOT depend on any of this and proceed now against local Verdaccio.
 
 ### Task 7: GitHub Actions release workflow
 
