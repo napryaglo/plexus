@@ -20,5 +20,5 @@ linux:
   artifactName: ${productName}-${version}-${arch}.${ext}
 publish:
   provider: github
-  owner: napryaglo
+  owner: pragmatic-tech-ai
   repo: plexus
