@@ -36,6 +36,10 @@ function createWindow(): void {
     width: 1280,
     height: 800,
     show: false,
+    // Near-black base so the very first frame (and any reload/resize gap before
+    // the renderer paints) is never bare white. Matches the SolariaMark boot
+    // splash / #app background; the mural shell paints @Surface over it.
+    backgroundColor: '#0A0A0B',
     autoHideMenuBar: true,
     // Custom title bar (VSCode-style): hide the OS title bar, but keep the
     // native min/max/close buttons as a Window Controls Overlay on Windows/Linux

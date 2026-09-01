@@ -23,6 +23,7 @@ import { attachSaveShortcuts } from './services/documents/save-shortcuts.js'
 import { attachZoomShortcuts } from './modules/diagram/behaviors/zoom-shortcuts.js'
 import { registerThemeSchemePicker } from './theme/register-scheme-picker.js'
 import { attachTitleBar } from './window/title-bar.js'
+import { removeSplash } from './window/splash.js'
 import { TitleService } from './window/title-service.js'
 import { BackgroundWorkService } from './modules/background-work/services/background-work-service.js'
 import { ProjectExplorerService } from './modules/project-explorer/services/project-explorer-service.js'
@@ -75,6 +76,11 @@ await document.fonts.load('24px "Material Symbols Outlined"')
 try {
     const renderTarget = new HtmlTarget(document.getElementById('app'))
     app.initialize(renderTarget)
+    // The shell chrome (title strip + @Surface) has mounted; drop the boot
+    // splash once the browser has flushed a real frame. Double-rAF: the first
+    // callback runs before paint, the second after — so we never reveal a blank
+    // frame between the splash fading and mural's first render.
+    requestAnimationFrame(() => requestAnimationFrame(() => removeSplash()))
     // Contribute the right-aligned status-bar colour-scheme picker (a service-
     // bound shell control) before opening the first document, so the toolbar
     // service surfaces it on the document-open rebuild.
@@ -255,6 +261,9 @@ try {
         attachAutoOpenInspector(host, dock)
     }
 } catch (err) {
+    // Never let the splash hang over a failed mount — drop it so the error
+    // surfaces (console / any error overlay) instead of a frozen loading screen.
+    removeSplash()
     console.error('[plexus] mount failed:', err)
     throw err
 }
