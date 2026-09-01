@@ -491,9 +491,11 @@ export class LayoutPipelineService extends ServiceBase
         try {
             const { graphPipeline, layoutPipeline } = BuildPipeline(this.Config, LoadElementRepository())
             const transformed = graphPipeline.Apply(graph)
-            const positions = layoutPipeline.Apply(transformed)
-            const outcome = computeOutcome(index, transformed, positions, (f) => this.sizeOf(f))
-            return { index, connectorEdges, outcome, lastRoutes: layoutPipeline.LastRoutes }
+            // fresco's pipeline Apply now returns a LayoutResult { positions, routes }
+            // (routes replaced the old `LastRoutes` side-channel on the pipeline).
+            const result = layoutPipeline.Apply(transformed)
+            const outcome = computeOutcome(index, transformed, result.positions, (f) => this.sizeOf(f))
+            return { index, connectorEdges, outcome, lastRoutes: result.routes }
         } catch (err) {
             this.Status = `Pipeline error: ${(err as Error).message}`
             return undefined
