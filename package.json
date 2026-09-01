@@ -1,6 +1,6 @@
 {
   "name": "@pragmatic-tech-ai/plexus",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
   "description": "Plexus - a diagram editor built on mural, packaged as an Electron desktop app (electron-vite). Sibling app in the mural repo: consumes mural through its published package surface (no relative ../src imports, no internals), so extracting to its own repo later is a config change, not a rewrite.",
@@ -18,7 +18,10 @@
     "typecheck:web": "tsc -p tsconfig.web.json --noEmit",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "kill": "powershell -NoProfile -Command \"Get-Process -Name node,cmd,bash -ErrorAction SilentlyContinue | Stop-Process -Force\"",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win",
+    "package:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -38,6 +41,7 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@playwright/test": "^1.62.1",
     "electron": "^43.0.0",
+    "electron-builder": "^25.1.8",
     "electron-vite": "^5.0.0",
     "esbuild": "^0.25.0",
     "playwright": "^1.62.1",

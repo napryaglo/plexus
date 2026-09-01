@@ -98,7 +98,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
-  electronApp.setAppUserModelId('com.plexus.app')
+  electronApp.setAppUserModelId('com.pragmatic-tech-ai.plexus')
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
   // Native file-system capability (open/save dialogs, read/write, listing),

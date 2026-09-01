@@ -1,0 +1,19 @@
+appId: com.pragmatic-tech-ai.plexus
+productName: Plexus
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - package.json
+asar: true
+win:
+  target: [msi]
+linux:
+  target: [AppImage, deb]
+  category: Development
+  maintainer: Pragmatic Lab <evgen.napryaglo@gmail.com>
+publish:
+  provider: github
+  owner: napryaglo
+  repo: plexus
