@@ -8,6 +8,7 @@ import { registerSettingsHandlers } from './settings.js'
 import { registerAgentHandlers } from './agent.js'
 import { registerTodlServerHandlers } from './todl/register.js'
 import { registerWindowHandlers } from './window.js'
+import { initAutoUpdate } from './updater.js'
 import { TITLE_BAR_HEIGHT } from '../shared/window-api.js'
 
 // Initial WCO colours (Windows/Linux). The app boots on MaterialDark, so seed
@@ -125,6 +126,7 @@ app.whenReady().then(async () => {
   registerWindowHandlers()
 
   createWindow()
+  initAutoUpdate()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
