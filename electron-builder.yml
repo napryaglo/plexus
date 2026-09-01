@@ -13,6 +13,11 @@ linux:
   target: [AppImage, deb]
   category: Development
   maintainer: Pragmatic Lab <evgen.napryaglo@gmail.com>
+  # The package name is scoped (@pragmatic-tech-ai/plexus); the deb target's
+  # default artifactName is ${name}_${version}_${arch}.deb, so the scope slash
+  # becomes a path separator and fpm fails ("parent directory does not exist").
+  # Pin the filename to productName so all Linux artifacts stay flat.
+  artifactName: ${productName}-${version}-${arch}.${ext}
 publish:
   provider: github
   owner: napryaglo
