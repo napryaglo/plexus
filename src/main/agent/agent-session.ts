@@ -7,6 +7,14 @@ import type { AiProviderSession } from './ai-provider.js'
 import type { AiProviderService } from './ai-provider-service.js'
 import { AgentEventKind, type AgentEvent } from '../../shared/agent-api.js'
 
+// The CLI's message when --resume targets a conversation it doesn't have. Matched
+// on the whole error text (the provider appends the CLI's stderr tail, which is
+// where this line lands).
+function isResumeFailure(message: string): boolean
+{
+    return /no conversation found with session id/i.test(message)
+}
+
 export class AgentSession
 {
     private current: AiProviderSession | null = null
@@ -31,6 +39,20 @@ export class AgentSession
             this.sessionId, workingDirectory, addDirs,
             (event) => {
                 if (event.Kind === AgentEventKind.SessionStarted) this.resumeToken = event.SessionId
+                // A --resume against a conversation the CLI no longer has ("No
+                // conversation found with session ID …") — e.g. a reopened session
+                // whose headless CLI history is gone. The token is dead: drop it,
+                // reset so the next turn spawns fresh, and surface SessionLost (in
+                // place of the raw error) so the renderer can ask the user whether to
+                // start fresh or replay the stored transcript as context.
+                if (event.Kind === AgentEventKind.Error && this.resumeToken !== undefined && isResumeFailure(event.Message))
+                {
+                    this.resumeToken = undefined
+                    this.current = null
+                    this.target = null
+                    this.emit({ Kind: AgentEventKind.SessionLost })
+                    return
+                }
                 this.emit(event)
             },
             this.resumeToken,

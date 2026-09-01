@@ -12,7 +12,8 @@ import {
     AgentEventKind,
     type AgentEvent, type CreateProjectRequest, type QuestionAnswer, type ToolApprovalAnswer,
 } from '../../../../../shared/agent-api.js'
-import { TranscriptReducer } from './transcript.js'
+import { TranscriptReducer, UserMessage, AssistantMessage } from './transcript.js'
+import type { RecoveryMode } from './session-recovery-card.js'
 import type { ApprovalRulesVM } from './approval-rules.js'
 import { DEFAULT_MODELS, type ModelOption } from './agent-model.js'
 import { ContextItemVM } from './context-item.js'
@@ -93,6 +94,10 @@ export class ChatSession extends MuralBase implements IDockPanel, IDocument
     private readonly reducer = new TranscriptReducer()
     private readonly sessionId: string
     private readonly callbacks: ChatSessionCallbacks
+    // A one-shot context preamble prepended to the CLI text of the next send only
+    // (never echoed) — set by the "replay" recovery path when there is no pending
+    // message to resend immediately.
+    private pendingPreamble = ''
 
     constructor(sessionId: string, title: string, callbacks: ChatSessionCallbacks, approvals?: ApprovalRulesVM)
     {
@@ -126,6 +131,7 @@ export class ChatSession extends MuralBase implements IDockPanel, IDocument
         this.reducer.onPendingChange = () =>
             this.set_property_value(ChatSession.CanInputKey, !this.reducer.HasPendingQuestion)
         this.reducer.onBusyChange = () => this.applyBusy()
+        this.reducer.onSessionRecovery = (mode) => this.recover(mode)
     }
 
     // Mirror the reducer's busy flag onto the IsBusy / IsIdle DPs the composer binds.
@@ -239,8 +245,67 @@ export class ChatSession extends MuralBase implements IDockPanel, IDocument
         if (!this.CanInput) return
         if (this.IsBusy) return            // a turn is already running — stop it first
         this.reducer.beginUserTurn(text)   // optimistic echo (also flips IsBusy)
-        this.callbacks.send(this.sessionId, text)
+        this.callbacks.send(this.sessionId, this.withPreamble(text))
         this.set_property_value(ChatSession.DraftKey, '')
+    }
+
+    // Prepend a pending recovery preamble to what the CLI receives (once), leaving
+    // the on-screen message untouched.
+    private withPreamble(text: string): string
+    {
+        if (this.pendingPreamble === '') return text
+        const combined = `${this.pendingPreamble}\n\n${text}`
+        this.pendingPreamble = ''
+        return combined
+    }
+
+    // The user picked how to recover a lost session (SessionLost → recovery card).
+    // "fresh": wipe the conversation and resend the pending message on a clean
+    // session. "replay": keep the transcript and resend (or defer to the next send)
+    // with the prior conversation stapled on as context so the fresh CLI session
+    // continues aware of it.
+    private recover(mode: RecoveryMode): void
+    {
+        const pending = this.reducer.RecoveryPendingText
+
+        if (mode === 'fresh')
+        {
+            this.reducer.clear()
+            if (pending !== '') { this.reducer.beginUserTurn(pending); this.callbacks.send(this.sessionId, pending) }
+            return
+        }
+
+        // replay
+        const preamble = this.historyPreamble(pending)
+        if (pending !== '')
+        {
+            this.reducer.resumeTurn()
+            this.callbacks.send(this.sessionId, preamble !== '' ? `${preamble}\n\n${pending}` : pending)
+        }
+        else
+        {
+            // Lost outside a turn (e.g. on reopen): nothing to resend now — carry the
+            // preamble into the user's next message.
+            this.pendingPreamble = preamble
+        }
+    }
+
+    // Serialise the visible transcript as a context block for "replay". Skips the
+    // trailing pending user message (it's resent on its own) and only includes the
+    // user/assistant text turns.
+    private historyPreamble(pending: string): string
+    {
+        const items = this.reducer.Transcript.ToArray()
+        const lines: string[] = []
+        for (const it of items)
+        {
+            if (it instanceof UserMessage) lines.push(`User: ${it.Text}`)
+            else if (it instanceof AssistantMessage) lines.push(`Assistant: ${it.Text}`)
+        }
+        // Drop the last line if it's the pending user message we resend separately.
+        if (pending !== '' && lines.length > 0 && lines[lines.length - 1] === `User: ${pending}`) lines.pop()
+        if (lines.length === 0) return ''
+        return `[Earlier conversation, resumed for context — continue from it:]\n\n${lines.join('\n\n')}`
     }
 
     // Interrupt the running turn. A killed CLI turn emits no TurnComplete, so we

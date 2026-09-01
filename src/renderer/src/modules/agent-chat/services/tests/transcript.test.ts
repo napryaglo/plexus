@@ -1,7 +1,8 @@
 import { test, expect } from 'vitest'
 import { MuralBase } from '@pragmatic-tech-ai/mural/runtime'
 import { AgentEventKind, type QuestionAnswer } from '../../../../../../shared/agent-api.js'
-import { TranscriptReducer, UserMessage, AssistantMessage, ToolActivity } from '../transcript.js'
+import { TranscriptReducer, UserMessage, AssistantMessage, ErrorMessage, ToolActivity } from '../transcript.js'
+import { SessionRecoveryCard, type RecoveryMode } from '../session-recovery-card.js'
 import { QuestionCard } from '../question-card.js'
 
 function items(r: TranscriptReducer) { return Array.from(r.Transcript) }
@@ -159,6 +160,51 @@ test('an Error event clears the busy flag', () => {
     r.beginUserTurn('go')
     r.apply({ Kind: AgentEventKind.Error, Message: 'boom' })
     expect(r.IsBusy).toBe(false)
+})
+
+test('a SessionLost event adds a recovery card, gates input, drops busy, and captures the in-flight message', () => {
+    const r = new TranscriptReducer()
+    r.beginUserTurn('go')
+    r.apply({ Kind: AgentEventKind.SessionLost })
+    const list = items(r)
+    expect(list[list.length - 1]).toBeInstanceOf(SessionRecoveryCard)
+    expect(r.HasPendingQuestion).toBe(true)
+    expect(r.IsBusy).toBe(false)
+    expect(r.RecoveryPendingText).toBe('go')
+})
+
+test('choosing on the recovery card fires onSessionRecovery and releases the input gate', () => {
+    const r = new TranscriptReducer()
+    const modes: RecoveryMode[] = []
+    r.onSessionRecovery = (m) => modes.push(m)
+    r.beginUserTurn('go')
+    r.apply({ Kind: AgentEventKind.SessionLost })
+    const card = items(r).find((m) => m instanceof SessionRecoveryCard) as SessionRecoveryCard
+    card.StartFreshCommand.Execute(undefined)
+    expect(modes).toEqual(['fresh'])
+    expect(r.HasPendingQuestion).toBe(false)
+})
+
+test('clear() empties the transcript and resets busy + pending state', () => {
+    const r = new TranscriptReducer()
+    r.beginUserTurn('a')
+    r.apply({ Kind: AgentEventKind.SessionLost })
+    r.clear()
+    expect(items(r)).toHaveLength(0)
+    expect(r.HasPendingQuestion).toBe(false)
+    expect(r.IsBusy).toBe(false)
+})
+
+test('an Error event renders a plain-text ErrorMessage that keeps the text verbatim', () => {
+    const r = new TranscriptReducer()
+    r.beginUserTurn('go')
+    // A message with underscores would be mangled by markdown; ErrorMessage is a
+    // plain-text bubble (TextBlock, not RichTextBlock), so it stays verbatim.
+    r.apply({ Kind: AgentEventKind.Error, Message: 'error_during_execution' })
+    const list = items(r)
+    const bubble = list[list.length - 1]
+    expect(bubble).toBeInstanceOf(ErrorMessage)
+    expect((bubble as ErrorMessage).Text).toContain('error_during_execution')
 })
 
 test('endTurn clears busy once (used when the user stops a run)', () => {

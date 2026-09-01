@@ -2,6 +2,8 @@ import { test, expect } from 'vitest'
 import { Key } from '@pragmatic-tech-ai/mural/runtime'
 import { AgentEventKind, type AgentEvent } from '../../../../../../shared/agent-api.js'
 import { ChatSession, type ChatSessionCallbacks } from '../chat-session.js'
+import { UserMessage, AssistantMessage } from '../transcript.js'
+import { SessionRecoveryCard } from '../session-recovery-card.js'
 import { AgentModel } from '../agent-model.js'
 
 function fakeCallbacks() {
@@ -55,6 +57,39 @@ test('a pending question gates input; send is a no-op while gated', () => {
     s.Draft = 'nope'
     s.SendCommand.Execute(undefined)
     expect(calls.sent).toHaveLength(0)
+})
+
+test('recovery "start fresh" wipes the transcript and resends the pending message clean', () => {
+    const { cb, calls } = fakeCallbacks()
+    const s = new ChatSession('sess-1', 'Chat 1', cb)
+    s.apply({ Kind: AgentEventKind.AssistantText, Text: 'old reply' })       // a prior exchange
+    s.apply({ Kind: AgentEventKind.TurnComplete })
+    s.Draft = 'go'; s.SendCommand.Execute(undefined)                          // the message that loses the session
+    s.apply({ Kind: AgentEventKind.SessionLost })
+    const card = s.Transcript.ToArray().find((m) => m instanceof SessionRecoveryCard) as SessionRecoveryCard
+    card.StartFreshCommand.Execute(undefined)
+    const items = s.Transcript.ToArray()
+    expect(items.some((m) => m instanceof AssistantMessage)).toBe(false)      // old history gone
+    expect(items.some((m) => m instanceof UserMessage && (m as UserMessage).Text === 'go')).toBe(true)
+    expect(calls.sent).toEqual([{ id: 'sess-1', text: 'go' }, { id: 'sess-1', text: 'go' }]) // resent, no preamble
+})
+
+test('recovery "replay" keeps history and resends the pending message with a context preamble', () => {
+    const { cb, calls } = fakeCallbacks()
+    const s = new ChatSession('sess-1', 'Chat 1', cb)
+    s.Draft = 'first'; s.SendCommand.Execute(undefined)
+    s.apply({ Kind: AgentEventKind.AssistantText, Text: 'reply one' })
+    s.apply({ Kind: AgentEventKind.TurnComplete })
+    s.Draft = 'go'; s.SendCommand.Execute(undefined)
+    s.apply({ Kind: AgentEventKind.SessionLost })
+    const card = s.Transcript.ToArray().find((m) => m instanceof SessionRecoveryCard) as SessionRecoveryCard
+    card.ReplayCommand.Execute(undefined)
+    const last = calls.sent[calls.sent.length - 1]
+    expect(last.text).toContain('User: first')
+    expect(last.text).toContain('Assistant: reply one')
+    expect(last.text.trimEnd().endsWith('go')).toBe(true)                     // pending message at the end
+    expect(last.text).not.toContain('User: go')                              // not duplicated inside the preamble
+    expect(s.Transcript.ToArray().some((m) => m instanceof UserMessage && (m as UserMessage).Text === 'first')).toBe(true) // history kept
 })
 
 test('CloseCommand asks the manager to close this session', () => {

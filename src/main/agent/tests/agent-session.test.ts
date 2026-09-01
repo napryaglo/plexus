@@ -129,6 +129,45 @@ test('abort disposes the running session so the next turn respawns, resuming', (
     expect(started[1].resumeToken).toBe('cli-1')     // resumes the same conversation
 })
 
+test('a stale --resume ("No conversation found") surfaces SessionLost, clears the token, and does not auto-restart', () => {
+    const { provider, started } = recordingProvider()
+    const emitted: AgentEvent[] = []
+    const session = new AgentSession(serviceWith(provider), 'sess-1', (e) => emitted.push(e))
+    // A reopened conversation resumes a CLI session the CLI no longer has.
+    session.start('/proj', [], 'stale-cli-id')
+    session.send('/proj', [], 'go')
+    expect(started[0].resumeToken).toBe('stale-cli-id')
+    started[0].onEvent({ Kind: AgentEventKind.Error,
+        Message: 'The agent hit an error during execution.\n\nNo conversation found with session ID: stale-cli-id' })
+    // The raw error is replaced by SessionLost (the renderer drives recovery)…
+    expect(emitted.some((e) => e.Kind === AgentEventKind.Error)).toBe(false)
+    expect(emitted.some((e) => e.Kind === AgentEventKind.SessionLost)).toBe(true)
+    // …and no fresh session is auto-spawned.
+    expect(started).toHaveLength(1)
+})
+
+test('after a lost session the next send spawns fresh, with no resume token', () => {
+    const { provider, started } = recordingProvider()
+    const session = new AgentSession(serviceWith(provider), 'sess-1', () => {})
+    session.start('/proj', [], 'stale-cli-id')
+    session.send('/proj', [], 'go')
+    started[0].onEvent({ Kind: AgentEventKind.Error, Message: 'No conversation found with session ID: stale-cli-id' })
+    session.send('/proj', [], 'go')                  // the renderer re-drives after the user chooses
+    expect(started).toHaveLength(2)
+    expect(started[1].resumeToken).toBeUndefined()   // the dead token was dropped
+    expect(started[1].sent).toEqual(['go'])
+})
+
+test('a normal (non-resume) error is surfaced, not turned into SessionLost', () => {
+    const { provider, started } = recordingProvider()
+    const emitted: AgentEvent[] = []
+    const session = new AgentSession(serviceWith(provider), 'sess-1', (e) => emitted.push(e))
+    session.send('/proj', [], 'go')
+    started[0].onEvent({ Kind: AgentEventKind.Error, Message: 'The agent hit an error during execution.' })
+    expect(started).toHaveLength(1)                                        // no fresh restart
+    expect(emitted.some((e) => e.Kind === AgentEventKind.Error)).toBe(true)
+})
+
 test('the session id is forwarded to the provider', () => {
     const { provider, started } = recordingProvider()
     new AgentSession(serviceWith(provider), 'sess-9', () => {}).start('/proj', [])

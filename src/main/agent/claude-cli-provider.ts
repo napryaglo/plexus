@@ -76,6 +76,24 @@ export class ClaudeCliProvider implements IAiProvider
         const parser = new StreamJsonParser()
         let buffer = ''
 
+        // The CLI prints the real failure reason (auth, network, a crashing MCP
+        // tool, a stack trace, …) to stderr; the stdout `result` line only carries
+        // a generic subtype. Keep a bounded tail of stderr and staple it onto any
+        // Error event so the cause is visible instead of a bare, unhelpful code.
+        let stderrTail = ''
+        const STDERR_TAIL_MAX = 4000
+        const forward = (event: AgentEvent): void =>
+        {
+            if (event.Kind === AgentEventKind.Error && stderrTail.trim() !== '')
+                onEvent({ ...event, Message: `${event.Message}\n\n${stderrTail.trim()}` })
+            else
+                onEvent(event)
+        }
+
+        child.stderr.on('data', (chunk) => {
+            stderrTail = (stderrTail + chunk.toString()).slice(-STDERR_TAIL_MAX)
+        })
+
         child.stdout.on('data', (chunk) => {
             buffer += chunk.toString()
             let newline = buffer.indexOf('\n')
@@ -83,13 +101,13 @@ export class ClaudeCliProvider implements IAiProvider
             {
                 const line = buffer.slice(0, newline)
                 buffer = buffer.slice(newline + 1)
-                for (const event of parser.push(line)) onEvent(event)
+                for (const event of parser.push(line)) forward(event)
                 newline = buffer.indexOf('\n')
             }
         })
 
         child.on('error', (err) => {
-            onEvent({ Kind: AgentEventKind.Error, Message: err.message })
+            forward({ Kind: AgentEventKind.Error, Message: err.message })
         })
 
         return {

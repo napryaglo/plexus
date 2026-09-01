@@ -7,12 +7,14 @@
 import ChatSession from "./services/chat-session.js"
 import UserMessage from "./services/transcript.js"
 import AssistantMessage from "./services/transcript.js"
+import ErrorMessage from "./services/transcript.js"
 import ToolActivity from "./services/transcript.js"
 import QuestionCard from "./services/question-card.js"
 import QuestionVM from "./services/question-card.js"
 import OptionVM from "./services/question-card.js"
 import NewProjectCard from "./services/new-project-card.js"
 import ToolApprovalCard from "./services/approval-card.js"
+import SessionRecoveryCard from "./services/session-recovery-card.js"
 import ApprovalRuleRow from "./services/approval-rules.js"
 import TemplateGalleryService from "./services/template-gallery-service.js"
 import ContextItemVM from "./services/context-item.js"
@@ -157,6 +159,15 @@ resources AgentChatResources {
     DataTemplate [ DataType = AssistantMessage ] {
         Border [ Padding = (10,6,10,6), Margin = (0,3,40,3) ] {
             RichTextBlock [ Document = $Document, Foreground = @OnSurface ]
+        }
+    }
+
+    // A failed turn: PLAIN text (not a markdown RichTextBlock — raw codes and
+    // stack traces stay verbatim instead of being mangled), tinted @Error. Same
+    // left-bubble geometry as the assistant message.
+    DataTemplate [ DataType = ErrorMessage ] {
+        Border [ Padding = (10,6,10,6), Margin = (0,3,40,3) ] {
+            TextBlock [ Style = @BodyMedium, Text = $Text, Foreground = @Error, TextWrapping = Wrap ]
         }
     }
 
@@ -311,6 +322,32 @@ resources AgentChatResources {
                     }
                 }
                 TextBlock [ Text = $Recap, Visibility = $IsAnswered << ToVisibility,
+                            Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
+            }
+        }
+    }
+
+    // ── session-recovery card ───────────────────────────────────────────────────
+    // The CLI lost this conversation's session (AgentEventKind.SessionLost). While
+    // pending, a warning message (tinted @Error like an error bubble) + two choices:
+    // Start fresh (clears the conversation) or Continue (replay the stored transcript
+    // to the agent as context). Collapses to a one-line summary after choosing.
+    DataTemplate [ DataType = SessionRecoveryCard ] {
+        Border [ Stroke = Pen [ Brush = @OutlineVariant ], CornerRadius = 10,
+                 Fill = @SurfaceContainer, Padding = (12,10,12,12), Margin = (0,4,20,4), ClipToBounds = true ] {
+            StackPanel [ Orientation = Vertical ] {
+                StackPanel [ Orientation = Vertical, Visibility = $IsPending << ToVisibility ] {
+                    TextBlock [ Text = $Message, Foreground = @Error, Style = @BodyMedium, TextWrapping = Wrap ]
+                    StackPanel [ Orientation = Horizontal, Margin = (0,10,0,0) ] {
+                        PanelButton [ Command = $StartFreshCommand, Template = @CompactButton, Margin = (0,0,6,0) ] {
+                            TextBlock [ Text = "Start fresh", TextWrapping = Wrap ]
+                        }
+                        PanelButton [ Command = $ReplayCommand, Template = @CompactButton, Margin = (0,0,6,0) ] {
+                            TextBlock [ Text = "Continue (replay history)", TextWrapping = Wrap ]
+                        }
+                    }
+                }
+                TextBlock [ Text = $Choice, Visibility = $IsDone << ToVisibility,
                             Foreground = @OnSurfaceVariant, TextWrapping = Wrap ]
             }
         }

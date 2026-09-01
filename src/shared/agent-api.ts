@@ -60,6 +60,10 @@ export enum AgentEventKind
     ToolApproval   = 'tool-approval',
     TurnComplete   = 'turn-complete',
     Error          = 'error',
+    // A --resume targeted a conversation the CLI no longer has ("No conversation
+    // found with session ID …"). The renderer shows a recovery card so the user
+    // can start fresh (clear history) or replay the stored transcript as context.
+    SessionLost    = 'session-lost',
 }
 
 // One selectable choice within a Question. `description` is optional helper text.
@@ -208,6 +212,7 @@ export interface GetProblemsEvent    { Kind: AgentEventKind.GetProblems; Request
 export interface ToolApprovalEvent   { Kind: AgentEventKind.ToolApproval; Request: ToolApprovalRequest }
 export interface TurnCompleteEvent   { Kind: AgentEventKind.TurnComplete }
 export interface AgentErrorEvent     { Kind: AgentEventKind.Error; Message: string }
+export interface SessionLostEvent    { Kind: AgentEventKind.SessionLost }
 
 export type AgentEvent =
     | SessionStartedEvent
@@ -221,6 +226,7 @@ export type AgentEvent =
     | ToolApprovalEvent
     | TurnCompleteEvent
     | AgentErrorEvent
+    | SessionLostEvent
 
 // A pushed agent event tagged with the Plexus conversation it belongs to. NB:
 // `SessionId` here is Plexus's own conversation id (see AgentSessionManager); a

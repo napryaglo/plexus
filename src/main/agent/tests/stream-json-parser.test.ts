@@ -15,6 +15,24 @@ test('suppresses the ask-user-question tool_use (the card is its surface), keeps
     expect(normal[0]!.Kind).toBe(AgentEventKind.ToolUse)
 })
 
+test('maps a raw error subtype to a readable sentence (no snake_case leaking into markdown)', () => {
+    const parser = new StreamJsonParser()
+    const line = JSON.stringify({ type: 'result', subtype: 'error_during_execution', is_error: true, result: null })
+    const events = parser.push(line)
+    expect(events.length).toBe(1)
+    expect(events[0]!.Kind).toBe(AgentEventKind.Error)
+    const msg = (events[0] as { Message: string }).Message
+    expect(msg).not.toContain('_')
+    expect(msg.toLowerCase()).toContain('error during execution')
+})
+
+test('prefers the CLI result text over the subtype code when the result is present', () => {
+    const parser = new StreamJsonParser()
+    const line = JSON.stringify({ type: 'result', subtype: 'error_during_execution', is_error: true, result: 'Rate limit reached' })
+    const events = parser.push(line)
+    expect((events[0] as { Message: string }).Message).toBe('Rate limit reached')
+})
+
 function parseFixture(name: string): AgentEvent[] {
     const text = readFileSync(join(__dirname, 'fixtures', name), 'utf8')
     const parser = new StreamJsonParser()

@@ -11,6 +11,19 @@ import {
     type AgentEvent,
 } from '../../shared/agent-api.js'
 
+// A readable sentence for a CLI error result subtype (used only when the CLI
+// gave no `result` text of its own). Keeps machine codes out of the markdown-
+// rendered chat bubble.
+function friendlyErrorMessage(subtype: unknown): string
+{
+    switch (subtype)
+    {
+        case 'error_max_turns':        return 'The agent reached its turn limit and stopped.'
+        case 'error_during_execution': return 'The agent hit an error during execution.'
+        default:                       return 'The agent stopped with an error.'
+    }
+}
+
 // Capture a tool_result's content (a string or an array of text blocks) as the
 // OUT block: the first ~20 lines, capped at ~2000 chars, with a trailing ellipsis
 // when clipped. Enough to read typical command output without pasting a whole log.
@@ -97,7 +110,14 @@ export class StreamJsonParser
 
             case 'result':
                 if (msg.is_error === true || msg.subtype === 'error_max_turns' || msg.subtype === 'error_during_execution')
-                    out.push({ Kind: AgentEventKind.Error, Message: String(msg.result ?? msg.subtype ?? 'agent error') })
+                {
+                    // Prefer the CLI's own result text; else a readable sentence for
+                    // the subtype. Never surface the raw snake_case code — it's shown
+                    // in a markdown view where `error_during_execution` renders as
+                    // "error<italic>during</italic>execution" (underscores eaten).
+                    const result = typeof msg.result === 'string' ? msg.result.trim() : ''
+                    out.push({ Kind: AgentEventKind.Error, Message: result !== '' ? result : friendlyErrorMessage(msg.subtype) })
+                }
                 else
                     out.push({ Kind: AgentEventKind.TurnComplete })
                 break

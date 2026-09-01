@@ -8,6 +8,7 @@ import { AgentEventKind, type AgentEvent, type QuestionAnswer, type ToolApproval
 import { buildFlowDocument } from '../../../services/markdown/markdown-document.js'
 import { QuestionCard } from './question-card.js'
 import { ToolApprovalCard } from './approval-card.js'
+import { SessionRecoveryCard, type RecoveryMode } from './session-recovery-card.js'
 
 export enum TranscriptRole { User = 'user', Assistant = 'assistant', Tool = 'tool' }
 
@@ -39,6 +40,18 @@ export class AssistantMessage extends MuralBase
         this.set_property_value(AssistantMessage.TextKey, text)
         this.set_property_value(AssistantMessage.DocumentKey, buildFlowDocument(text))
     }
+}
+
+// A failed turn, surfaced inline. Unlike AssistantMessage this is PLAIN text
+// (rendered by a TextBlock, not a markdown RichTextBlock): error text is often a
+// raw code or a stack trace, and markdown would mangle it — e.g.
+// `error_during_execution` renders as "error<i>during</i>execution" (underscores
+// eaten). Keeping it verbatim also means a stderr tail shows exactly as printed.
+export class ErrorMessage extends MuralBase
+{
+    public static readonly TextKey = MuralBase.RegisterProperty<string>(ErrorMessage, 'Text', '', MetaData.None)
+    constructor(text: string) { super(); this.set_property_value(ErrorMessage.TextKey, text) }
+    public get Text(): string { return this.get_property_value(ErrorMessage.TextKey) }
 }
 
 // A tool the agent invoked. The header (Name + Description + Status) is always
@@ -152,6 +165,17 @@ export class TranscriptReducer
     public onToolApprovalSubmitted: ((answer: ToolApprovalAnswer) => void) | undefined
     // Fired whenever IsBusy flips — the composer swaps its send/stop button on it.
     public onBusyChange: (() => void) | undefined
+    // Set by ChatSession: the user picked how to recover a lost session (see the
+    // SessionLost case) — start fresh (clear + resend) or replay history as context.
+    public onSessionRecovery: ((mode: RecoveryMode) => void) | undefined
+
+    // The most recent user turn's text — replayed when a session is recovered.
+    private lastUserText = ''
+    // The user text that was in flight when the session was lost (empty if the loss
+    // happened outside a turn, e.g. eagerly on reopen). Read by ChatSession to know
+    // whether there's a pending message to resend.
+    private recoveryPending = ''
+    public get RecoveryPendingText(): string { return this.recoveryPending }
 
     // True while a turn is in flight: from the user turn until TurnComplete /
     // Error (or an explicit endTurn when the user stops the run).
@@ -177,8 +201,32 @@ export class TranscriptReducer
     public beginUserTurn(text: string): void
     {
         this.currentAssistant = null
+        this.lastUserText = text
         this.Transcript.Add(new UserMessage(text))
         this.setBusy(true)
+    }
+
+    // Resume a turn without echoing a fresh user message — used by the "replay"
+    // recovery path, where the pending user message is already on screen and we
+    // just re-send it (with a history preamble) to the fresh CLI session.
+    public resumeTurn(): void
+    {
+        this.currentAssistant = null
+        this.setBusy(true)
+    }
+
+    // Wipe the conversation — used by the "start fresh" recovery path. Leaves the
+    // reducer ready for a new turn (persistence catches up on the next flush).
+    public clear(): void
+    {
+        this.Transcript.Clear()
+        this.currentAssistant = null
+        this.pendingTools.clear()
+        this.pendingQuestions.clear()
+        this.lastUserText = ''
+        this.recoveryPending = ''
+        this.setBusy(false)
+        this.onPendingChange?.()
     }
 
     // Add a card built outside the reducer (e.g. the create_project card, whose
@@ -295,13 +343,33 @@ export class TranscriptReducer
 
             case AgentEventKind.Error:
             {
-                // Surface the error inline as its own assistant bubble; the turn is
-                // over, so drop out of the busy state.
+                // Surface the error inline as a PLAIN-text bubble (not markdown, so
+                // codes/stack traces aren't mangled); the turn is over, so drop out
+                // of the busy state.
                 this.currentAssistant = null
-                const bubble = new AssistantMessage()
-                bubble.appendText(`⚠ ${event.Message}`)
-                this.Transcript.Add(bubble)
+                this.Transcript.Add(new ErrorMessage(`⚠ ${event.Message}`))
                 this.setBusy(false)
+                break
+            }
+
+            case AgentEventKind.SessionLost:
+            {
+                // The CLI lost this conversation's session. Capture the in-flight user
+                // text (if a turn was running) so ChatSession can resend it, drop out
+                // of busy, and show a recovery card that gates input until the user
+                // chooses to start fresh or replay the stored history.
+                this.recoveryPending = this.busy ? this.lastUserText : ''
+                this.currentAssistant = null
+                this.setBusy(false)
+                const card = new SessionRecoveryCard((mode) =>
+                {
+                    this.pendingQuestions.delete(card.Id)
+                    this.onSessionRecovery?.(mode)
+                    this.onPendingChange?.()
+                })
+                this.pendingQuestions.add(card.Id)
+                this.Transcript.Add(card)
+                this.onPendingChange?.()
                 break
             }
         }

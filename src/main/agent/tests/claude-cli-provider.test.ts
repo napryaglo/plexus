@@ -9,12 +9,13 @@ import type { CatalogIo } from '../claude-catalog.js'
 // A fake child that lets the test drive stdout/error and observe stdin/kill.
 function fakeChild() {
     const stdoutListeners: Array<(c: string) => void> = []
+    const stderrListeners: Array<(c: string) => void> = []
     const errorListeners: Array<(e: Error) => void> = []
     const writes: string[] = []
     let killed = false
     const child = {
         stdout: { on: (_e: 'data', l: (c: Buffer | string) => void) => stdoutListeners.push(l as (c: string) => void) },
-        stderr: { on: () => {} },
+        stderr: { on: (_e: 'data', l: (c: Buffer | string) => void) => stderrListeners.push(l as (c: string) => void) },
         stdin:  { write: (d: string) => writes.push(d) },
         on: (e: 'error' | 'close', l: (arg: never) => void) => { if (e === 'error') errorListeners.push(l as (err: Error) => void) },
         kill: () => { killed = true },
@@ -24,6 +25,7 @@ function fakeChild() {
         writes,
         get killed() { return killed },
         emitStdout: (s: string) => stdoutListeners.forEach((l) => l(s)),
+        emitStderr: (s: string) => stderrListeners.forEach((l) => l(s)),
         emitError:  (e: Error) => errorListeners.forEach((l) => l(e)),
     }
 }
@@ -185,6 +187,30 @@ test('forwards parsed events from a real stdout line', () => {
     // The init line carries session_id → SessionStarted.
     f.emitStdout(initLine + '\n')
     expect(events[0].Kind).toBe(AgentEventKind.SessionStarted)
+})
+
+test('appends captured stderr to an error event so the real cause is visible', () => {
+    const f = fakeChild()
+    const events: AgentEvent[] = []
+    new ClaudeCliProvider('claude', () => f.child).start('s1', '/proj', [], (e) => events.push(e))
+    // The CLI prints the real reason to stderr; the stdout result only carries a
+    // generic subtype. Both arrive; the Error event should carry the reason.
+    f.emitStderr('AuthenticationError: invalid x-api-key\n')
+    f.emitStdout(JSON.stringify({ type: 'result', subtype: 'error_during_execution', is_error: true, result: null }) + '\n')
+    const err = events.find((e) => e.Kind === AgentEventKind.Error) as { Message: string } | undefined
+    expect(err).toBeTruthy()
+    expect(err!.Message).toContain('The agent hit an error during execution.')
+    expect(err!.Message).toContain('AuthenticationError: invalid x-api-key')
+})
+
+test('a non-error turn does not get stderr noise appended', () => {
+    const f = fakeChild()
+    const events: AgentEvent[] = []
+    new ClaudeCliProvider('claude', () => f.child).start('s1', '/proj', [], (e) => events.push(e))
+    f.emitStderr('warning: some deprecation notice\n')
+    f.emitStdout(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'done' }) + '\n')
+    expect(events.some((e) => e.Kind === AgentEventKind.Error)).toBe(false)
+    expect(events.some((e) => e.Kind === AgentEventKind.TurnComplete)).toBe(true)
 })
 
 test('buffers a stdout chunk split mid-line until the newline arrives', () => {
