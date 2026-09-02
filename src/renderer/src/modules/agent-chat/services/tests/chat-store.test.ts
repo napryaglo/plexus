@@ -21,7 +21,7 @@ function providerWith(fs: unknown): ServiceProvider {
     return provider
 }
 
-const rec: StoredConversation = { Id: 's1', Title: 'Chat 1', ResumeToken: 'cli-1', UpdatedAt: 1234, Transcript: [{ Role: TranscriptRole.User, Text: 'hi' }] }
+const rec: StoredConversation = { Id: 's1', Title: 'Chat 1', ResumeToken: 'cli-1', Cwd: '/proj', UpdatedAt: 1234, Transcript: [{ Role: TranscriptRole.User, Text: 'hi' }] }
 
 test('upsert then list round-trips a record', async () => {
     const store = new ChatStore(providerWith(fakeFs()))

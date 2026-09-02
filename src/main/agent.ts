@@ -88,9 +88,8 @@ export async function registerAgentHandlers(): Promise<void>
     ipcMain.handle(AgentChannel.Abort, (_e, sessionId: string): void => {
         manager.get(sessionId)?.abort()
     })
-    ipcMain.handle(AgentChannel.CloseSession, (_e, sessionId: string): void => {
-        manager.close(sessionId)
-    })
+    ipcMain.handle(AgentChannel.CloseSession, (_e, sessionId: string): Promise<void> =>
+        manager.close(sessionId))
     ipcMain.handle(AgentChannel.IsResumable, (): boolean => providers.active().Resumable)
     ipcMain.handle(AgentChannel.ListAgentsAndSkills, (_e, projectDir: string): Promise<ProjectCatalog> =>
         providers.active().listAgentsAndSkills(projectDir))
@@ -119,4 +118,24 @@ export async function registerAgentHandlers(): Promise<void>
     ipcMain.handle(AgentChannel.RevokeApprovalRule, (_e, projectKey: string, rule: ApprovalRule): void => {
         store.remove(projectKey, rule)
     })
+
+    // On app-quit, gracefully shut down every live CLI session so each flushes its
+    // conversation transcript to disk before the process dies — without this the
+    // children are orphaned/hard-killed on quit and `--resume` fails next launch
+    // ("No conversation found …"). Defer the quit until they've flushed, bounded so a
+    // hung child never blocks it, and re-quit (the guard lets the re-entry through).
+    let shuttingDown = false
+    app.on('before-quit', (event) => {
+        if (shuttingDown) return
+        shuttingDown = true
+        event.preventDefault()
+        const flushed = manager.disposeAll()
+        const timeout = new Promise<void>((resolve) => setTimeout(resolve, SHUTDOWN_TIMEOUT_MS))
+        void Promise.race([flushed, timeout]).then(() => app.quit(), () => app.quit())
+    })
 }
+
+// Upper bound on how long app-quit waits for all CLI sessions to flush + exit. Above
+// each session's own force-kill fallback, so in the worst case every child is killed
+// and this still resolves promptly rather than hanging the quit.
+const SHUTDOWN_TIMEOUT_MS = 4000

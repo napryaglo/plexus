@@ -20,6 +20,10 @@ const defaultCatalogIo: CatalogIo = {
     readFile: (p) => readFile(p, 'utf8'),
 }
 
+// How long a graceful shutdown waits for the CLI to flush + exit on its own before
+// the fallback tree-kill fires, so app-quit is never blocked by a hung child.
+const SHUTDOWN_GRACE_MS = 3000
+
 const CLI_ARGS = [
     '-p',
     '--output-format', 'stream-json',
@@ -116,8 +120,26 @@ export class ClaudeCliProvider implements IAiProvider
                 child.stdin.write(JSON.stringify(message) + '\n')
             },
             abort:   () => this.terminate(child),
-            dispose: () => this.terminate(child),
+            dispose: () => this.shutdown(child),
         }
+    }
+
+    // Graceful shutdown for session-close / app-quit. Ending stdin sends EOF: the
+    // CLI reads stream-json turns from stdin until EOF, so this makes it finish any
+    // in-flight turn, FLUSH its session transcript to disk (so `--resume` works next
+    // launch), and exit — where a bare kill would leave the transcript unfinalized
+    // and the conversation unrecoverable. Resolves on the child's 'close'; a bounded
+    // fallback tree-kills a child that doesn't exit in time so quit never hangs.
+    private shutdown(child: ChildLike): Promise<void>
+    {
+        return new Promise<void>((resolve) => {
+            let settled = false
+            const finish = (): void => { if (!settled) { settled = true; clearTimeout(timer); resolve() } }
+            child.on('close', () => finish())
+            const timer = setTimeout(() => { this.terminate(child); finish() }, SHUTDOWN_GRACE_MS)
+            try { child.stdin.end() }
+            catch { this.terminate(child); finish() }   // stdin already gone → just kill
+        })
     }
 
     // Terminate the spawned turn. On Windows the child is `cmd.exe /c claude.cmd`

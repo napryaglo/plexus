@@ -166,7 +166,10 @@ export class ChatSessionsService extends ServiceBase
         return {
             send: (id, text) => {
                 const s = this.sessionById(id)
-                void this.agent.sendTurn(id, this.currentCwd(), this.contextDirsFor(s), text, s?.Model() ?? '')
+                // The conversation's bound cwd — NOT currentCwd(): a turn sent under a
+                // different cwd respawns --resume in the wrong directory and loses the
+                // session (the backend keys sessions by cwd).
+                void this.agent.sendTurn(id, this.cwdFor(id), this.contextDirsFor(s), text, s?.Model() ?? '')
             },
             answerQuestion: (_id, answer) => { void this.agent.answerQuestion(answer) },
             answerToolApproval: (_id, answer) => { void this.agent.answerToolApproval(answer) },
@@ -238,7 +241,13 @@ export class ChatSessionsService extends ServiceBase
                 void Promise.resolve().then(() => { if (this.primary === chat) this.dock.Add(chat) })
         })
         const resume = rec !== undefined && rec.ResumeToken !== '' ? rec.ResumeToken : undefined
-        void this.agent.startSession(PRIMARY_ID, this.currentCwd(), this.contextDirsFor(chat), resume, chat.Model())
+        // Resume in the cwd the session was created under (the backend keys sessions
+        // by cwd) — NOT the current workspace cwd, which at startup may not have been
+        // repopulated yet and would send --resume to the wrong directory ("No
+        // conversation found"). A fresh primary (or an old record) binds to now().
+        const cwd = rec !== undefined && rec.Cwd ? rec.Cwd : this.currentCwd()
+        this.cwds.set(PRIMARY_ID, cwd)
+        void this.agent.startSession(PRIMARY_ID, cwd, this.contextDirsFor(chat), resume, chat.Model())
         return chat
     }
 
@@ -262,7 +271,11 @@ export class ChatSessionsService extends ServiceBase
         this.Open.Add(chat)
         this.contentHost.Open(chat)
         this.set_property_value(ChatSessionsService.ActiveChatKey, chat)
-        void this.agent.startSession(sessionId, this.currentCwd(), this.contextDirsFor(chat), undefined, chat.Model())
+        // Bind this conversation to the cwd it's created under, so every later turn +
+        // its persisted record use the same directory the CLI session lives in.
+        const cwd = this.currentCwd()
+        this.cwds.set(sessionId, cwd)
+        void this.agent.startSession(sessionId, cwd, this.contextDirsFor(chat), undefined, chat.Model())
         return chat
     }
 
@@ -277,7 +290,7 @@ export class ChatSessionsService extends ServiceBase
         const seed = seedInvocation(item)
         // Optimistic echo + send through the shared bridge (same path as a user turn).
         chat.Reducer.beginUserTurn(seed)
-        void this.agent.sendTurn(chat.Id, this.currentCwd(), this.contextDirsFor(chat), seed, chat.Model())
+        void this.agent.sendTurn(chat.Id, this.cwdFor(chat.Id), this.contextDirsFor(chat), seed, chat.Model())
 
         const turnDone = new Promise<void>((resolve) => this.pendingRuns.set(chat.Id, resolve))
         const bg = this.Provider.get(BackgroundWorkService.Key)
@@ -308,7 +321,11 @@ export class ChatSessionsService extends ServiceBase
         // SessionStarted, so without this a later TurnComplete (and close/quit flush)
         // would find no token and skip persisting the resumed conversation's new turns.
         if (rec.ResumeToken !== '') this.tokens.set(rec.Id, rec.ResumeToken)
-        void this.agent.startSession(rec.Id, this.currentCwd(), this.contextDirsFor(chat), rec.ResumeToken, chat.Model())
+        // Resume under the conversation's bound cwd (the backend keys sessions by
+        // cwd); fall back to the current cwd for older records without a stored one.
+        const cwd = rec.Cwd || this.currentCwd()
+        this.cwds.set(rec.Id, cwd)
+        void this.agent.startSession(rec.Id, cwd, this.contextDirsFor(chat), rec.ResumeToken, chat.Model())
         return chat
     }
 
@@ -437,12 +454,27 @@ export class ChatSessionsService extends ServiceBase
     // TurnComplete re-persist without waiting for another SessionStarted.
     private readonly tokens = new Map<string, string>()
 
+    // The working directory each conversation's CLI session is bound to, set when
+    // the session is first started (new = the current workspace cwd; restored = the
+    // stored cwd). The backend keys resumable sessions BY cwd, so every start/turn
+    // of a conversation MUST use its bound cwd — resuming or respawning under a
+    // different cwd fails with "No conversation found". Kept per-conversation rather
+    // than reading the volatile currentCwd() so restore is deterministic.
+    private readonly cwds = new Map<string, string>()
+
+    // The bound cwd for a conversation, or the current workspace cwd if it has none
+    // yet (a fresh conversation, or an older stored record without a persisted cwd).
+    private cwdFor(sessionId: string): string
+    {
+        return this.cwds.get(sessionId) ?? this.currentCwd()
+    }
+
     // Persist only when the provider can resume AND we have a token (per spec §6.4).
     private async persist(chat: ChatSession, resumeToken: string): Promise<void>
     {
         if (!this.resumable || resumeToken === '') return
         await this.chatStore.Upsert({
-            Id: chat.Id, Title: chat.Title, ResumeToken: resumeToken, UpdatedAt: now(),
+            Id: chat.Id, Title: chat.Title, ResumeToken: resumeToken, Cwd: this.cwdFor(chat.Id), UpdatedAt: now(),
             Transcript: serializeTranscript(chat.Transcript.ToArray()),
         })
     }

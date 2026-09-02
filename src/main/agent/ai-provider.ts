@@ -8,8 +8,15 @@ import type { AgentEvent, ProjectCatalog } from '../../shared/agent-api.js'
 export interface AiProviderSession
 {
     send(text: string): void;
+    // Interrupt NOW — hard-stop the running turn (user pressed stop, or a respawn
+    // supersedes this session). Fire-and-forget; the conversation is resumed later
+    // via the retained resume token.
     abort(): void;
-    dispose(): void;
+    // Graceful teardown for session-close / app-quit: let the backend finish and
+    // FLUSH its transcript to disk (so the conversation can be resumed next launch),
+    // then exit. Resolves once the child has exited (bounded by a force-kill
+    // fallback), so callers can await it before quitting.
+    dispose(): Promise<void>;
 }
 
 export interface IAiProvider
@@ -67,7 +74,10 @@ export interface ChildLike
     pid?: number;
     stdout: { on(event: 'data', listener: (chunk: Buffer | string) => void): void };
     stderr: { on(event: 'data', listener: (chunk: Buffer | string) => void): void };
-    stdin:  { write(data: string): void };
+    // end() closes stdin (EOF) — the graceful-shutdown signal: the CLI reads
+    // stream-json turns from stdin until EOF, so ending it makes the CLI finish,
+    // flush its session transcript, and exit cleanly.
+    stdin:  { write(data: string): void; end(): void };
     on(event: 'error', listener: (err: Error) => void): void;
     on(event: 'close', listener: (code: number | null) => void): void;
     kill(): void;

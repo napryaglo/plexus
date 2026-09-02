@@ -6,7 +6,7 @@ function fakeProvider(id: string): IAiProvider {
     return {
         Id: id, Resumable: true,
         listAgentsAndSkills: () => Promise.resolve({ agents: [], skills: [] }),
-        start: (): AiProviderSession => ({ send: () => {}, abort: () => {}, dispose: () => {} }),
+        start: (): AiProviderSession => ({ send: () => {}, abort: () => {}, dispose: () => Promise.resolve() }),
     }
 }
 

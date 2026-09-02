@@ -1,4 +1,4 @@
-import { test, expect } from 'vitest'
+import { test, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ClaudeCliProvider } from '../claude-cli-provider.js'
@@ -6,27 +6,34 @@ import type { ChildLike, SpawnFn } from '../ai-provider.js'
 import { AgentEventKind, AgentSkillKind, type AgentEvent } from '../../../shared/agent-api.js'
 import type { CatalogIo } from '../claude-catalog.js'
 
-// A fake child that lets the test drive stdout/error and observe stdin/kill.
+// A fake child that lets the test drive stdout/error/close and observe stdin/kill.
 function fakeChild() {
     const stdoutListeners: Array<(c: string) => void> = []
     const stderrListeners: Array<(c: string) => void> = []
     const errorListeners: Array<(e: Error) => void> = []
+    const closeListeners: Array<(code: number | null) => void> = []
     const writes: string[] = []
     let killed = false
+    let ended = false
     const child = {
         stdout: { on: (_e: 'data', l: (c: Buffer | string) => void) => stdoutListeners.push(l as (c: string) => void) },
         stderr: { on: (_e: 'data', l: (c: Buffer | string) => void) => stderrListeners.push(l as (c: string) => void) },
-        stdin:  { write: (d: string) => writes.push(d) },
-        on: (e: 'error' | 'close', l: (arg: never) => void) => { if (e === 'error') errorListeners.push(l as (err: Error) => void) },
+        stdin:  { write: (d: string) => writes.push(d), end: () => { ended = true } },
+        on: (e: 'error' | 'close', l: (arg: never) => void) => {
+            if (e === 'error') errorListeners.push(l as (err: Error) => void)
+            else closeListeners.push(l as (code: number | null) => void)
+        },
         kill: () => { killed = true },
     } satisfies ChildLike
     return {
         child,
         writes,
         get killed() { return killed },
+        get ended() { return ended },
         emitStdout: (s: string) => stdoutListeners.forEach((l) => l(s)),
         emitStderr: (s: string) => stderrListeners.forEach((l) => l(s)),
         emitError:  (e: Error) => errorListeners.forEach((l) => l(e)),
+        emitClose:  (code: number | null = 0) => closeListeners.forEach((l) => l(code)),
     }
 }
 
@@ -40,7 +47,7 @@ function captureSpawn() {
         calls.push({ command, args: [...args], cwd: options.cwd })
         return {
             stdout: { on: () => {} }, stderr: { on: () => {} },
-            stdin: { write: () => {} }, on: () => {}, kill: () => {},
+            stdin: { write: () => {}, end: () => {} }, on: () => {}, kill: () => {},
         } as ChildLike
     }
     return { spawn, calls }
@@ -239,6 +246,34 @@ test('abort kills the child', () => {
     const session = new ClaudeCliProvider('claude', () => f.child).start('s1', '/proj', [], () => {})
     session.abort()
     expect(f.killed).toBe(true)
+})
+
+test('dispose gracefully ends stdin (EOF → flush) instead of killing, and resolves when the child exits', async () => {
+    const f = fakeChild()
+    const session = new ClaudeCliProvider('claude', () => f.child).start('s1', '/proj', [], () => {})
+    const done = session.dispose()
+    // Graceful: stdin is ended (the CLI flushes + exits on EOF); NOT hard-killed.
+    expect(f.ended).toBe(true)
+    expect(f.killed).toBe(false)
+    // The promise settles once the child reports it has exited.
+    f.emitClose(0)
+    await done
+})
+
+test('dispose falls back to a force-kill if the child does not exit within the grace window', async () => {
+    vi.useFakeTimers()
+    try {
+        const f = fakeChild()
+        const session = new ClaudeCliProvider('claude', () => f.child).start('s1', '/proj', [], () => {})
+        const done = session.dispose()
+        expect(f.ended).toBe(true)
+        expect(f.killed).toBe(false)     // still waiting for a clean exit
+        await vi.advanceTimersByTimeAsync(3000)
+        expect(f.killed).toBe(true)      // grace elapsed → tree-kill fallback
+        await done
+    } finally {
+        vi.useRealTimers()
+    }
 })
 
 test('emits an Error event when the child errors (e.g. claude not found)', () => {

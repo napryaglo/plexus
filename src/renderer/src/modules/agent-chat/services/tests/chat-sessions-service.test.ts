@@ -11,15 +11,16 @@ import { AgentModel } from '../agent-model.js'
 
 function fakeAgent() {
     const turns: Array<{ sessionId: string; text: string }> = []
-    const sends: Array<{ id: string; dirs: string[]; text: string; model: string }> = []
+    const sends: Array<{ id: string; cwd: string; dirs: string[]; text: string; model: string }> = []
     const started: string[] = []
+    const starts: Array<{ id: string; cwd: string; resume: string | undefined }> = []
     let push: ((m: TaggedAgentEvent) => void) | undefined
     const api: IAgentApi = {
-        startSession: (id) => { started.push(id); return Promise.resolve() },
+        startSession: (id, cwd, _dirs, resume) => { started.push(id); starts.push({ id, cwd, resume }); return Promise.resolve() },
         closeSession: () => Promise.resolve(),
-        sendTurn: (id, _c, dirs, text, model) => {
+        sendTurn: (id, cwd, dirs, text, model) => {
             turns.push({ sessionId: id, text })
-            sends.push({ id, dirs: [...dirs], text, model: model ?? '' })
+            sends.push({ id, cwd, dirs: [...dirs], text, model: model ?? '' })
             return Promise.resolve()
         },
         abort: () => Promise.resolve(),
@@ -34,7 +35,7 @@ function fakeAgent() {
         revokeApprovalRule: () => Promise.resolve(),
         onEvent: (h) => { push = h; return () => {} },
     }
-    return { api, turns, sends, started, emit: (m: TaggedAgentEvent) => push?.(m) }
+    return { api, turns, sends, started, starts, emit: (m: TaggedAgentEvent) => push?.(m) }
 }
 
 function fakeStore(initial: string[] = []) {
@@ -51,7 +52,7 @@ let bridge: ReturnType<typeof fakeAgent>
 beforeEach(() => { bridge = fakeAgent(); (globalThis as unknown as { api: unknown }).api = { agent: bridge.api } })
 afterEach(() => { delete (globalThis as unknown as { api?: unknown }).api })
 
-function makeService(store = fakeStore(['/A']), stored: Array<{ Id: string; Title: string }> = []) {
+function makeService(store = fakeStore(['/A']), stored: Array<{ Id: string; Title: string; Cwd?: string }> = []) {
     const provider = new ServiceProvider()
     provider.registerInstance(OpenProjectsStore.Key, store as unknown as OpenProjectsStore)
     provider.registerInstance(EnvironmentService.Key, { CurrentDirectory: '/fallback' } as EnvironmentService)
@@ -231,6 +232,42 @@ test('a resumed conversation seeds its token, so a later turn is persisted', asy
     bridge.emit({ SessionId: 'r1', Event: { Kind: AgentEventKind.TurnComplete } })
     await Promise.resolve()
     expect(upserts.some((u) => u.Id === 'r1')).toBe(true)
+})
+
+test('a resumed conversation starts under its persisted cwd, not the current workspace cwd', async () => {
+    // The record's session was created under /project; the current workspace is /A.
+    // The backend keys resumable sessions by cwd, so resume MUST spawn at /project —
+    // resuming at /A fails with "No conversation found" (the restore bug this fixes).
+    const { svc } = makeService(fakeStore(['/A']), [{ Id: 'r1', Title: 'Past chat', Cwd: '/project' }])
+    await Promise.resolve()
+    await svc.OpenStored('r1')
+    const start = bridge.starts.find((s) => s.id === 'r1')
+    expect(start?.cwd).toBe('/project')
+    expect(start?.resume).toBe('t')
+})
+
+test('the docked primary resumes under its persisted cwd even before the workspace dirs load', async () => {
+    const { svc } = makeService(fakeStore(['/A']), [{ Id: 'agent-chat-primary', Title: 'Agent Chat', Cwd: '/project' }])
+    await svc.EnsurePrimary()
+    const start = bridge.starts.find((s) => s.id === 'agent-chat-primary')
+    expect(start?.cwd).toBe('/project')
+})
+
+test('turns of a bound conversation go to its cwd, so a respawn resumes in the right directory', async () => {
+    const { svc } = makeService(fakeStore(['/A']), [{ Id: 'r1', Title: 'Past chat', Cwd: '/project' }])
+    await Promise.resolve()
+    const chat = await svc.OpenStored('r1')
+    chat!.Draft = 'hello'
+    chat!.SendCommand.Execute(undefined)
+    const send = bridge.sends.find((s) => s.id === 'r1')
+    expect(send?.cwd).toBe('/project')
+})
+
+test('a record without a stored cwd falls back to the current workspace cwd', async () => {
+    const { svc } = makeService(fakeStore(['/A']), [{ Id: 'r1', Title: 'Past chat' }])   // no Cwd
+    await Promise.resolve()
+    await svc.OpenStored('r1')
+    expect(bridge.starts.find((s) => s.id === 'r1')?.cwd).toBe('/A')
 })
 
 test('seedInvocation builds a slash command for a skill and a subagent instruction for an agent', () => {

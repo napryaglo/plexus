@@ -29,11 +29,22 @@ export class AgentSessionManager
 
     public get(sessionId: string): AgentSession | undefined { return this.sessions.get(sessionId) }
 
-    public close(sessionId: string): void
+    public async close(sessionId: string): Promise<void>
     {
         const session = this.sessions.get(sessionId)
         if (session === undefined) return
-        session.dispose()
         this.sessions.delete(sessionId)
+        await session.dispose()
+    }
+
+    // Gracefully tear down every live session — each flushes its transcript so the
+    // conversation resumes next launch. Awaited on app-quit (bounded upstream), so a
+    // slow backend can't hang the process; each session's own force-kill fallback
+    // guarantees this settles. Runs all shutdowns concurrently.
+    public async disposeAll(): Promise<void>
+    {
+        const sessions = [...this.sessions.values()]
+        this.sessions.clear()
+        await Promise.all(sessions.map((s) => s.dispose()))
     }
 }

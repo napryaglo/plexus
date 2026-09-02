@@ -14,6 +14,13 @@ export interface StoredConversation
     Title: string
     Transcript: SerializedMessage[]
     ResumeToken: string
+    // The working directory the CLI session was created under. The backend keys its
+    // resumable session store BY cwd, so `--resume` only finds the conversation when
+    // spawned at this exact directory — resuming with the (volatile) current
+    // workspace cwd instead fails with "No conversation found". Persisted so restore
+    // is deterministic regardless of which projects are open. Older records without
+    // it read as '' (→ the caller falls back to the current cwd).
+    Cwd: string
     // Epoch ms of the last activity (set on every Upsert). Drives the "12h / 2d"
     // relative-time label in the Conversations list. Records written before this
     // field existed parse as 0 (normalised on read) → no time label.
@@ -70,11 +77,15 @@ export class ChatStore extends ServiceBase
     }
 }
 
-// Back-fill UpdatedAt on records written before the field existed, so time-ago
-// gets a number (0 → no label) rather than undefined.
+// Back-fill fields added after records were first written: UpdatedAt (0 → no
+// time label) and Cwd ('' → the caller resumes at the current cwd).
 function normalize(rec: StoredConversation): StoredConversation
 {
-    return typeof rec.UpdatedAt === 'number' ? rec : { ...rec, UpdatedAt: 0 }
+    return {
+        ...rec,
+        UpdatedAt: typeof rec.UpdatedAt === 'number' ? rec.UpdatedAt : 0,
+        Cwd: typeof rec.Cwd === 'string' ? rec.Cwd : '',
+    }
 }
 
 // Join with the directory's own separator (no node:path in the renderer). Copied

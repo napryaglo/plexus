@@ -22,7 +22,7 @@ function recordingProvider() {
             return {
                 send: (t) => rec.sent.push(t),
                 abort: () => { rec.aborted = true },
-                dispose: () => { rec.disposed = true },
+                dispose: () => { rec.disposed = true; return Promise.resolve() },
             }
         },
     }
@@ -51,12 +51,12 @@ test('provider events are relayed to the emit sink', () => {
     expect(emitted).toEqual([{ Kind: AgentEventKind.TurnComplete }])
 })
 
-test('an explicit start disposes the previous session', () => {
+test('an explicit start hard-stops the previous session', () => {
     const { provider, started } = recordingProvider()
     const session = new AgentSession(serviceWith(provider), 'sess-1', () => {})
     session.start('/a', [])
     session.start('/b', [])
-    expect(started[0].disposed).toBe(true)
+    expect(started[0].aborted).toBe(true)   // superseded process is aborted, not gracefully flushed
     expect(started[1].cwd).toBe('/b')
 })
 
@@ -83,7 +83,7 @@ test('send restarts the session when the cwd changes', () => {
     session.send('/a', [], 'one')
     session.send('/b', [], 'two')
     expect(started).toHaveLength(2)
-    expect(started[0].disposed).toBe(true)
+    expect(started[0].aborted).toBe(true)   // superseded process is aborted, not gracefully flushed
     expect(started[1].cwd).toBe('/b')
 })
 
@@ -103,7 +103,7 @@ test('send restarts the session when the model changes, keeping the resume token
     started[0].onEvent({ Kind: AgentEventKind.SessionStarted, SessionId: 'cli-1' })
     session.send('/proj', [], 'two', 'opus')                                      // switch model
     expect(started).toHaveLength(2)
-    expect(started[0].disposed).toBe(true)
+    expect(started[0].aborted).toBe(true)                                         // superseded process hard-stopped
     expect(started[1].model).toBe('opus')
     expect(started[1].resumeToken).toBe('cli-1')                                  // resumes the same conversation
 })

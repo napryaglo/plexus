@@ -33,7 +33,11 @@ export class AgentSession
 
     public start(workingDirectory: string, addDirs: readonly string[], resumeToken?: string, model: string = ''): void
     {
-        this.current?.dispose()
+        // Respawn: hard-abort the superseded process (fast + race-free — a graceful
+        // stdin-EOF shutdown would leave it flushing while the new `--resume` child
+        // spawns against the same session dir). History is preserved via the retained
+        // resume token, not this process's flush.
+        this.current?.abort()
         if (resumeToken !== undefined) this.resumeToken = resumeToken
         this.current = this.providers.active().start(
             this.sessionId, workingDirectory, addDirs,
@@ -78,11 +82,15 @@ export class AgentSession
         this.target = null
     }
 
-    public dispose(): void
+    // Graceful teardown (session-close / app-quit): let the backend flush its
+    // transcript to disk and exit, awaited so the caller can hold quit until the
+    // conversation is safely resumable. Retains the resume token for a later reopen.
+    public async dispose(): Promise<void>
     {
-        this.current?.dispose()
+        const current = this.current
         this.current = null
         this.target = null
+        await current?.dispose()
     }
 
     // True when the running session already targets exactly (cwd, addDirs, model)
