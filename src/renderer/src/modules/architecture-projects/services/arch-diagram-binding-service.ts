@@ -35,6 +35,12 @@ export class ArchDiagramBindingService extends ServiceBase
     // the binding once it is set — a plain "already attaching?" guard would let the
     // second caller resolve before the first finished creating the binding.
     private readonly attaching = new Map<IDocument, Promise<void>>()
+    // Listeners notified after a document's ToolboxContexts are stamped. The
+    // ToolboxService subscribes to re-apply page visibility: the stamp is async
+    // (it awaits the model + referenced refs), so it lands AFTER the document's
+    // ActiveDocument change already ran the visibility pass against an unstamped
+    // doc — this signal is what re-shows the now-in-context library / model pages.
+    private readonly contextsChangedListeners = new Set<() => void>()
 
     public constructor(provider: IServiceProvider)
     {
@@ -103,7 +109,14 @@ export class ArchDiagramBindingService extends ServiceBase
         const op = this.projectFor(doc)
         if (op === undefined) return
         const model = await this.Provider.getRequired(ArchitectureModelService.Key).modelFor(op)
-        if (host.OpenDocuments.ToArray().includes(doc)) {
+        // Liveness guard: bind only if the doc is still live after the async gap
+        // (it may have closed). The active document is definitionally live — accept
+        // it even before it lands in OpenDocuments, since ActiveDocument can fire
+        // BEFORE OpenDocuments when opening a diagram. Missing this made ensureBound
+        // (called from the active-doc change) bail without stamping ToolboxContexts,
+        // so the toolbox's visibility pass ran against an empty context — hiding then
+        // re-showing every in-context page and churning ~400 tiles per switch.
+        if (host.OpenDocuments.ToArray().includes(doc) || host.ActiveDocument === doc) {
             const chooser = this.Provider.get(DropCandidateChooserService.Key)
             const wiki = this.Provider.get(WikiService.Key)
             const status = this.Provider.get(StatusService.Key)
@@ -132,6 +145,9 @@ export class ArchDiagramBindingService extends ServiceBase
             ;(doc as unknown as ToolboxContextTarget).ToolboxContexts = contexts
             binding.model.notifyChanged()
             this.bindings.set(doc, binding)
+            // Contexts are now on the document — re-run the toolbox visibility pass
+            // (the ActiveDocument change already ran it against the unstamped doc).
+            for (const cb of this.contextsChangedListeners) cb()
         }
     }
 
@@ -143,6 +159,28 @@ export class ArchDiagramBindingService extends ServiceBase
         if (this.bindings.has(doc)) return
         const host = this.Provider.get(ContentHostService.Key) as DocumentsContentHostService | undefined
         if (host !== undefined) await this.attachDoc(host, doc)
+    }
+
+    // True while `doc` is an architecture diagram that WILL be stamped with
+    // ToolboxContexts but isn't yet — the window between it becoming active and the
+    // async attach completing. The ToolboxService gates its visibility pass on this:
+    // running against a pending (unstamped) doc would compute an empty context and
+    // collapse every in-context page, only to re-show them when the stamp lands a
+    // tick later (destroying + regenerating ~400 tiles). A non-architecture or
+    // already-bound doc is NOT pending — the pass runs normally.
+    public isBindingPending(doc: IDocument): boolean
+    {
+        if (this.bindings.has(doc)) return false
+        return doc instanceof DiagramDocument && this.projectFor(doc) !== undefined
+    }
+
+    // Subscribe to be notified when a document's toolbox contexts are stamped
+    // (see contextsChangedListeners). Returns an unsubscribe. The ToolboxService
+    // uses this to re-apply page visibility once the async stamp lands.
+    public onContextsChanged(cb: () => void): () => void
+    {
+        this.contextsChangedListeners.add(cb)
+        return () => { this.contextsChangedListeners.delete(cb) }
     }
 
     // The ArchModel bound to an open document, if it is an attached architecture

@@ -111,7 +111,11 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
         services.get(LibrariesPanelService.Key)?.onLibrariesChanged(() => { void this.syncPageSet() })
         services.get(MetaModelsService.Key)?.onMetaModelsChanged(() => { void this.syncPageSet() })
         const host = services.get(ContentHostService.Key) as DocumentsContentHostService | undefined
-        host?.AddPropertyChangedListener(DocumentsContentHostService.ActiveDocumentKey, () => this.applyContexts())
+        host?.AddPropertyChangedListener(DocumentsContentHostService.ActiveDocumentKey, () => { void this.onActiveDocChanged() })
+        // Belt-and-suspenders: a document bound via the OpenDocuments sync path
+        // (not the active-doc path) also gets its contexts stamped — re-apply so
+        // its pages settle. Idempotent when the active doc is already stamped.
+        services.get(ArchDiagramBindingService.Key)?.onContextsChanged(() => this.applyContexts())
     }
 
     // Mirror the toolbox item size settings into app resources (@ToolboxItemWidth /
@@ -146,6 +150,20 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
     // IActivatable: on re-activation just re-apply visibility (the page set is kept
     // live by its own triggers — no rebuild).
     public OnActivated(): void { this.applyContexts() }
+
+    // The active document changed. If it is an architecture diagram, ensure its
+    // binding is attached FIRST — the binding stamps the doc's ToolboxContexts,
+    // and running the visibility pass against an unstamped doc would compute an
+    // empty context, transiently collapsing the in-context library pages and
+    // destroying + regenerating their tiles when the stamp lands a tick later.
+    // Awaiting the (idempotent, instant-for-bound) ensureBound gives one clean
+    // transition. A non-architecture doc no-ops the ensureBound.
+    private async onActiveDocChanged(): Promise<void>
+    {
+        const doc = this.activeDoc() as IDocument | undefined
+        if (doc !== undefined) await this.services().get(ArchDiagramBindingService.Key)?.ensureBound(doc)
+        this.applyContexts()
+    }
 
     // Reconcile the PAGE SET to the current sources: static pages, one published-
     // taxonomy page per library/meta-model taxonomy, and a Model + Scenarios page
@@ -247,7 +265,14 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
     // pages recompute cheaply (by key) only if they are the now-active context.
     public applyContexts(): void
     {
-        const ctx = toolboxContextsOf(this.activeDoc())
+        const doc = this.activeDoc()
+        // Skip while the active doc is an architecture diagram still pending its
+        // async ToolboxContexts stamp — running now would see an empty context and
+        // collapse every in-context page, only for the stamp's onContextsChanged to
+        // re-show them a tick later (churning ~400 tiles). The stamp re-runs this.
+        const binding = this.services().get(ArchDiagramBindingService.Key)
+        if (binding?.isBindingPending(doc as IDocument) === true) return
+        const ctx = toolboxContextsOf(doc)
         for (const p of this.Repository.Pages.ToArray()) p.applyContext(ctx)
     }
 

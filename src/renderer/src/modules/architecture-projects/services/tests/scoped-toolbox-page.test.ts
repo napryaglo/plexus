@@ -1,9 +1,12 @@
 import { describe, it, expect } from 'vitest'
+import { load, toJSON, Repository, graphFromJSON, ModelDraft } from '@pragmatic-tech-ai/todl'
 import { ToolboxVisualDescriptor } from '@pragmatic-tech-ai/mural/framework'
 import { ArchToolboxItem } from '../../../diagram/services/arch-toolbox-item.js'
 import { TodlVisualResolverKey } from '../../../diagram/services/todl-visual-resolver.js'
 import { ArchModelInstanceDropFactoryKey } from '../arch-model-instance-drop-factory.js'
 import { ModelToolboxPage, ScenarioToolboxPage } from '../scoped-toolbox-page.js'
+import { ArchModel } from '../arch-model.js'
+import { FakeStorage } from '../../../../services/storage/tests/fake-storage.js'
 
 const item = (id: string): ArchToolboxItem =>
     new ArchToolboxItem('instance:' + id, id, new ToolboxVisualDescriptor(TodlVisualResolverKey, id), ArchModelInstanceDropFactoryKey, 'component')
@@ -30,6 +33,27 @@ describe('context-scoped model / scenario pages', () => {
         page.applyContext(new Set(['model:proj']))     // becomes the active context
         expect(page.IsVisible).toBe(true)
         expect(page.Items.ToArray().map((i) => i.Id)).toEqual(['instance:e2'])
+    })
+
+    it('a model page wired to a real ArchModel updates its items when the TODL repo reloads from disk', () => {
+        // The model page listens to the model's change signal; an external .todl
+        // edit (surfaced as a file-watch reload) must flow through to its tiles.
+        const MM = 'namespace archmm { concept Component {} viewpoint V : frames Component }'
+        const fileWeb = { uri: 'a.todl', text: 'namespace archmm { model Arch : archmm conforms V { Component web {} } }' }
+        const fileApi = { uri: 'b.todl', text: 'namespace archmm { model Arch : archmm conforms V { Component api {} } }' }
+        const baseRepo = new Repository(graphFromJSON(toJSON(load([{ uri: 'mm.todl', text: MM }]).model)))
+        const draft = ModelDraft.fromSources([baseRepo], [fileWeb], { namespace: 'archmm' })
+        const model = new ArchModel(draft, new FakeStorage('fake://Arch'), 'archmm', baseRepo)
+
+        const page = new ModelToolboxPage('arch:model:archmm', 'Model: archmm', 'model:archmm', {
+            resolveItems: () => model.entities().map((e) => item(e.id)),
+            onSourceChanged: (cb) => model.onChanged(cb),
+        })
+        page.attach()
+        expect(page.Items.ToArray().map((i) => i.Id)).toEqual(['instance:web'])
+
+        model.reloadFromDisk([fileWeb, fileApi])   // the .todl on disk gained an entity
+        expect(page.Items.ToArray().map((i) => i.Id).sort()).toEqual(['instance:api', 'instance:web'])
     })
 
     it('does not recompute items while hidden by context', () => {
