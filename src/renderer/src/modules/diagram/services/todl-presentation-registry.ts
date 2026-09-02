@@ -80,6 +80,13 @@ export class TodlPresentationRegistry extends ServiceBase
             Application.current?.Resources.ReplaceMergedDictionary(this.merged, next)
             this.merged = next
         }
+        // Diff the new index against the prior one BEFORE overwriting it, so only
+        // entities whose icon actually changed re-resolve — the first discover
+        // (empty prior index) treats every key as new.
+        const prevIndex = this.index
+        const changed = new Set<string>()
+        for (const [k, v] of nextIndex) { if (prevIndex.get(k) !== v) changed.add(k) }
+        for (const k of prevIndex.keys()) { if (!nextIndex.has(k)) changed.add(k) }   // removed → fall back to default glyph
         this.aggregate = next
         this.index = nextIndex
 
@@ -87,8 +94,9 @@ export class TodlPresentationRegistry extends ServiceBase
         // aggregate, not Application.Resources).
         setIconResourceResolver((k) => this.aggregate.Resolve(k))
 
-        // Notify subscribers so live presenters re-resolve their icon.
-        for (const key of nextIndex.keys()) {
+        // Notify subscribers so live presenters re-resolve their icon — only for
+        // the keys whose mapping changed this discover.
+        for (const key of changed) {
             for (const cb of [...this.listeners]) cb(key)
         }
     }

@@ -105,6 +105,33 @@ test('a second discover re-runs sources and swaps — new index resolves correct
     expect(registry.iconKeyFor('e1')).toBe('rv2')
 })
 
+test('a re-discover notifies only keys whose icon mapping changed (added or remapped)', async () => {
+    const registry = new TodlPresentationRegistry(new ServiceProvider())
+    registry.registerSource(src('s', [['r1', {}], ['r2', {}]], [['a', 'r1'], ['b', 'r2']]))
+    await registry.discover()
+
+    const fired: string[] = []
+    registry.onChanged((k) => fired.push(k))
+    // a unchanged (r1), b remapped (r2 → r3), c new (r4)
+    registry.registerSource(src('s', [['r1', {}], ['r3', {}], ['r4', {}]], [['a', 'r1'], ['b', 'r3'], ['c', 'r4']]))
+    await registry.discover()
+
+    expect(fired.sort()).toEqual(['b', 'c'])   // 'a' unchanged → not fired
+})
+
+test('a re-discover notifies a removed key so its presenter falls back to the default glyph', async () => {
+    const registry = new TodlPresentationRegistry(new ServiceProvider())
+    registry.registerSource(src('s', [['r1', {}], ['r2', {}]], [['a', 'r1'], ['b', 'r2']]))
+    await registry.discover()
+
+    const fired: string[] = []
+    registry.onChanged((k) => fired.push(k))
+    registry.registerSource(src('s', [['r1', {}]], [['a', 'r1']]))   // b removed from the index
+    await registry.discover()
+
+    expect(fired).toEqual(['b'])
+})
+
 test('populating N assets fires O(1) app-resource notifications, not one per key', async () => {
     const prior = Application.current
     try {
