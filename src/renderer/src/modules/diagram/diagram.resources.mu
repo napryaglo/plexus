@@ -566,7 +566,7 @@ resources DiagramResources {
     // single [DataType = ToolboxItem] template above; the outer ScrollViewer scrolls
     // the whole stack.
     DataTemplate x:key="ToolboxAccordionItem" [DataType = ToolboxPage] {
-        StackPanel [ Orientation = Vertical, Margin = (0,0,0,2) ] {
+        StackPanel [ Orientation = Vertical, Margin = (0,0,0,2), Visibility = $IsVisible << ToVisibility ] {
             ToggleButton
                 [ Template            = @ToolboxAccordionHeaderChrome,
                   IsChecked           = $IsExpanded,
