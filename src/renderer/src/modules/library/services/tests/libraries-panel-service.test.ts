@@ -145,6 +145,18 @@ test('Reload() calls TodlPresentationRegistry.discover() when storage is wired',
     expect(discoverCalled).toBe(true)
 })
 
+test('onLibrariesChanged notifies subscribers after Reload completes, and unsubscribes', async () => {
+    const svc = new LibrariesPanelService(providerWith(() => {}))
+    await svc.Reload()                 // settle the constructor's reload first
+    let fired = 0
+    const off = svc.onLibrariesChanged(() => { fired++ })
+    await svc.Reload()
+    expect(fired).toBe(1)
+    off()
+    await svc.Reload()
+    expect(fired).toBe(1)
+})
+
 test('a Library node carries a Delete command that uninstalls it; Concept/Class nodes do not', async () => {
     const provider = providerWith((b) => {
         void b.WriteText('microsoft/0.1.0/library.json', JSON.stringify({

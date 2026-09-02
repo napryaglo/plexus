@@ -44,6 +44,7 @@ export class MetaModelsService extends ServiceBase implements IActivatable
     // Bumped each reload; a slower earlier scan whose seq is stale is discarded,
     // so overlapping OnActivated/ctor reloads can't clobber the newest result.
     private reloadSeq = 0
+    private readonly changedListeners = new Set<() => void>()
 
     constructor(provider: IServiceProvider)
     {
@@ -51,6 +52,16 @@ export class MetaModelsService extends ServiceBase implements IActivatable
         this.set_property_value(MetaModelsService.NodesKey, new ObservableCollection<MetaModelTreeNode>())
         void this.reload()
     }
+
+    // Fires after every completed reload() (publish / delete). The toolbox's
+    // ModelToolboxPages subscribe to self-reconcile instead of a global rebuild.
+    public onMetaModelsChanged(cb: () => void): () => void
+    {
+        this.changedListeners.add(cb)
+        return () => { this.changedListeners.delete(cb) }
+    }
+
+    private fireMetaModelsChanged(): void { for (const l of [...this.changedListeners]) l() }
 
     public get Nodes(): ObservableCollection<MetaModelTreeNode>
     {
@@ -82,6 +93,10 @@ export class MetaModelsService extends ServiceBase implements IActivatable
         for (const n of built) nodes.Add(n)
         this.set_property_value(MetaModelsService.IsEmptyKey, built.length === 0)
         await this.Provider.get(TodlPresentationRegistry.Key)?.discover()
+
+        // A newer reload may have superseded this one across the discover await;
+        // only the latest announces so subscribers reconcile once.
+        if (seq === this.reloadSeq) this.fireMetaModelsChanged()
     }
 
     // Asynchronously flag which entity rows have an openable wiki page (→ their

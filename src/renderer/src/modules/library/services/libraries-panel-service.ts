@@ -40,6 +40,18 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
     public static readonly HasPreviewKey = MuralBase.RegisterProperty<boolean>(LibrariesPanelService, 'HasPreview', false, MetaData.None)
 
     private reloadSeq = 0
+    private readonly changedListeners = new Set<() => void>()
+
+    // Fires after every completed Reload() (install / uninstall / publish). The
+    // toolbox's LibraryToolboxPages subscribe to self-reconcile instead of a
+    // global toolbox rebuild being pushed at them.
+    public onLibrariesChanged(cb: () => void): () => void
+    {
+        this.changedListeners.add(cb)
+        return () => { this.changedListeners.delete(cb) }
+    }
+
+    private fireLibrariesChanged(): void { for (const l of [...this.changedListeners]) l() }
 
     constructor(provider: IServiceProvider)
     {
@@ -130,6 +142,10 @@ export class LibrariesPanelService extends ServiceBase implements IActivatable
             registerArchToolboxAdapters(services)
             await services.get(TodlPresentationRegistry.Key)?.discover()
         }
+
+        // A newer Reload may have superseded this one across the awaits; only the
+        // latest announces the change so subscribers reconcile once.
+        if (seq === this.reloadSeq) this.fireLibrariesChanged()
     }
 
     // Asynchronously flag which class leaves have an openable wiki page (→ their

@@ -32,6 +32,23 @@ test('buildCatalog on an empty backend yields no nodes (drives IsEmpty)', async 
     expect(nodes).toHaveLength(0)
 })
 
+test('onMetaModelsChanged notifies subscribers after reload completes, and unsubscribes', async () => {
+    const provider = new ServiceProvider()
+    const reg = new StorageProviderRegistry(provider)
+    const backend = new FakeStorage('fake://meta-models')
+    reg.Register(META_MODELS_BACKEND_ID, () => backend)
+    provider.registerInstance(StorageProviderRegistry.Key, reg)
+    const svc = new MetaModelsService(provider)
+    await svc.reload()                 // settle the constructor's reload first
+    let fired = 0
+    const off = svc.onMetaModelsChanged(() => { fired++ })
+    await svc.reload()
+    expect(fired).toBe(1)
+    off()
+    await svc.reload()
+    expect(fired).toBe(1)
+})
+
 // ── delete ───────────────────────────────────────────────────────────────
 
 function lib(id: string, mmId: string, mmVersion: string): LoadedLibrary {
