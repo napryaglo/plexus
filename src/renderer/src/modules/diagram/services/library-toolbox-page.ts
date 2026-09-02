@@ -3,55 +3,37 @@ import { ArchToolboxItem } from './arch-toolbox-item.js'
 import { TodlVisualResolverKey } from './todl-visual-resolver.js'
 import { ArchInstanceDropFactoryKey } from '../../architecture-projects/services/arch-instance-drop-factory.js'
 
-// What a library page needs from its host: how to enumerate a library ref's terms,
-// and how to learn the library set changed (install / uninstall / publish).
-export interface LibraryPageDeps
-{
-    termsFor(sourceRef: string): ReadonlyArray<{ id: string; label: string }>
-    onLibrariesChanged(cb: () => void): () => void
-}
-
-// One toolbox page per published library ref. Content trigger: any library change
-// (coarse — reconcile-by-key makes an unchanged library a no-op). Visible when the
-// active document's ToolboxContexts contains this library's ref.
+// One toolbox page per published source ref (a library OR meta-model taxonomy).
+// Content is publish-driven and pushed by the ToolboxService (which owns the
+// publish trigger and the content scan): `setTerms` reconciles by key, so an
+// unchanged republish leaves the live tiles untouched. Visible when the active
+// document's ToolboxContexts contains this source's ref.
 export class LibraryToolboxPage extends ToolboxPage
 {
-    private off: (() => void) | undefined
-
-    constructor(
-        private readonly sourceRef: string,
-        id: string,
-        label: string,
-        private readonly deps: LibraryPageDeps,
-    )
+    // `keyPrefix` matches contributeTaxonomy's descriptor keying: '' for library
+    // terms (bare id), 'mm:' for meta-model terms.
+    constructor(id: string, label: string, sourceRef: string, private readonly keyPrefix: string)
     {
         super(id, label)
         this.Context = sourceRef
     }
 
-    public override attach(): void
+    public setTerms(terms: ReadonlyArray<{ id: string; label: string }>): void
     {
-        this.off = this.deps.onLibrariesChanged(() => this.refresh())
-        this.refresh()
-    }
-
-    public override detach(): void
-    {
-        this.off?.()
-        this.off = undefined
-    }
-
-    private refresh(): void
-    {
-        // Library terms key their descriptor on the bare term id (meta-model terms
-        // use the `mm:` prefix — see contributeTaxonomy).
-        const desired = this.deps.termsFor(this.sourceRef).map((t) =>
-            new ArchToolboxItem(
+        // Dedup by term id — a term two sources both carry is one entity, so one
+        // tile (and reconcile-by-key requires unique keys in the desired list).
+        const seen = new Set<string>()
+        const items: ArchToolboxItem[] = []
+        for (const t of terms) {
+            if (seen.has(t.id)) continue
+            seen.add(t.id)
+            items.push(new ArchToolboxItem(
                 'term:' + t.id,
                 t.label,
-                new ToolboxVisualDescriptor(TodlVisualResolverKey, t.id),
+                new ToolboxVisualDescriptor(TodlVisualResolverKey, this.keyPrefix + t.id),
                 ArchInstanceDropFactoryKey,
             ))
-        this.reconcileItems(desired)
+        }
+        this.reconcileItems(items)
     }
 }

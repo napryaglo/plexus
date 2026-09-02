@@ -123,10 +123,12 @@ export class ArchDiagramBindingService extends ServiceBase
             // Publish the document's toolbox-context tokens (the ToolboxService reads
             // these on activation to show the relevant library / model / scenario
             // pages): every published ref the project references, plus its own model.
-            const resolver = this.Provider.get(WorkspaceBaseResolver.Key)
-            const refs = resolver !== undefined ? await resolver.referencedPublishedRefs(model.Storage) : new Set<string>()
-            const contexts = new Set<string>(refs)
-            contexts.add('model:' + model.namespace)
+            // Best-effort — a missing/partial resolver must not break the binding.
+            const contexts = new Set<string>(['model:' + model.namespace])
+            try {
+                const resolver = this.Provider.get(WorkspaceBaseResolver.Key)
+                if (resolver !== undefined) for (const r of await resolver.referencedPublishedRefs(model.Storage)) contexts.add(r)
+            } catch { /* leave contexts at just the model token */ }
             ;(doc as unknown as ToolboxContextTarget).ToolboxContexts = contexts
             binding.model.notifyChanged()
             this.bindings.set(doc, binding)

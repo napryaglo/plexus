@@ -158,7 +158,6 @@ import TodlLanguageClient from "./services/todl/todl-language-client.js"
 import WorkspaceBaseResolver from "./services/projects/workspace-base-resolver.js"
 import ArchitectureModelService from "./modules/architecture-projects/services/architecture-model-service.js"
 import ArchDiagramBindingService from "./modules/architecture-projects/services/arch-diagram-binding-service.js"
-import ArchModelToolboxContributor from "./modules/architecture-projects/services/arch-model-toolbox-contributor.js"
 import DropCandidateChooserService from "./modules/architecture-projects/services/drop-candidate-chooser-service.js"
 import ChooserResources from "./modules/architecture-projects/services/chooser.resources.mu.js"
 import ViewpointPickerResources from "./modules/architecture-projects/services/viewpoint-picker.resources.mu.js"
@@ -298,10 +297,8 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
         // their ArchModel (label sync + orphan removal); eagerly resolved in
         // main.js so its OpenDocuments subscription is live from boot.
         ArchDiagramBindingService
-        // Contributes the dynamic "Model: <name>" toolbox page for the active
-        // architecture diagram (in-scope, not-yet-placed entities → place-existing
-        // drops); eagerly resolved in main.js so it observes from boot.
-        ArchModelToolboxContributor
+        // (ArchModelToolboxContributor retired — the ToolboxService now owns the
+        // Model/Scenario pages via ModelToolboxPage/ScenarioToolboxPage.)
         // Popup for ambiguous term-drops: lists candidate (X,m) actions and
         // completes the drop with the chosen one. Mounted as a diagram-canvas
         // overlay (see DiagramResources); resolved on demand by the drop factory.

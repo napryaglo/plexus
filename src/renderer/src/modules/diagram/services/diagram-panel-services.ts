@@ -27,25 +27,35 @@ import {
     Setting,
     ToolboxRepository,
     ToolboxPage,
-    ToolboxVisualDescriptor,
     type IActivatable,
+    type IDocument,
+    type ToolboxItem,
 } from '@pragmatic-tech-ai/mural/framework'
 import type { TodlDocument } from '@pragmatic-tech-ai/todl'
 
 import { PlexusPanelService } from '../../../services/panels/panel-services.js'
 import { StorageProviderRegistry } from '../../../services/storage/storage-provider-registry.js'
-import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base-resolver.js'
 import { ArchDiagramBindingService } from '../../architecture-projects/services/arch-diagram-binding-service.js'
+import { ArchitectureModelService } from '../../architecture-projects/services/architecture-model-service.js'
+import type { ArchModel } from '../../architecture-projects/services/arch-model.js'
+import { ProjectExplorerService } from '../../project-explorer/services/project-explorer-service.js'
+import { LibrariesPanelService } from '../../library/services/libraries-panel-service.js'
+import { MetaModelsService } from '../../meta-model/services/meta-models-service.js'
+import { LibraryToolboxPage } from './library-toolbox-page.js'
+import { ModelToolboxPage, ScenarioToolboxPage } from '../../architecture-projects/services/scoped-toolbox-page.js'
+import { modelPageItems, scenarioPageItems } from '../../architecture-projects/services/arch-model-toolbox-contributor.js'
+import { toolboxContextsOf } from '../../architecture-projects/services/toolbox-contexts.js'
 import type { IStorage } from '../../../services/storage/storage.js'
 import { ensureMetaModelsBackend } from '../../meta-model/services/meta-models-backend.js'
 import { ensureLibrariesBackend } from '../../library/services/libraries-backend.js'
 import { scanPublishedModels } from '../../meta-model/services/meta-model-tree-builder.js'
 import { projectToolbox, type ToolboxTaxonomy } from '../../meta-model/services/toolbox-projection.js'
-import { ArchToolboxItem } from './arch-toolbox-item.js'
-import { ArchInstanceDropFactoryKey } from '../../architecture-projects/services/arch-instance-drop-factory.js'
 import { registerArchToolboxAdapters } from './register-arch-toolbox-adapters.js'
 import { TodlPresentationRegistry } from './todl-presentation-registry.js'
-import { TodlVisualResolverKey } from './todl-visual-resolver.js'
+
+// The mural static pages (Shapes + Callouts/Text/Containers) ensureToolboxDefaults
+// creates — context-free, always visible, kept as-is across page-set reconciles.
+const STATIC_PAGE_IDS = new Set(['shapes', 'annotate'])
 
 // Setting keys (match the SettingDefinitions in diagram.module.mu) and the app
 // resource keys the toolbox tile template binds via @ToolboxItemWidth/@ToolboxItemHeight.
@@ -66,27 +76,6 @@ export function applyToolboxItemSize(settings: { Get(key: string): unknown }, re
     resources.Set(ITEM_HEIGHT_RESOURCE, typeof h === 'number' ? h : ITEM_SIZE_FALLBACK)
 }
 
-// Add one taxonomy's page + items to the repository. Both library and meta-model
-// terms are keyed through TodlVisualResolver; library terms use the term id as
-// key, meta-model terms are prefixed 'mm:' to avoid collisions. `seen` is
-// caller-owned so a term appearing in more than one source is added once.
-// EnsurePage merges terms from repeated taxonomy ids.
-export function contributeTaxonomy(
-    repo: ToolboxRepository,
-    tax: ToolboxTaxonomy,
-    isLibrary: boolean,
-    seen: Set<string>,
-): void
-{
-    const page = repo.EnsurePage(tax.id, tax.label)
-    for (const term of tax.terms) {
-        if (seen.has(term.id)) continue
-        seen.add(term.id)
-        const key = isLibrary ? term.id : 'mm:' + term.id
-        const descriptor = new ToolboxVisualDescriptor(TodlVisualResolverKey, key)
-        page.Items.Add(new ArchToolboxItem('term:' + term.id, term.label, descriptor, ArchInstanceDropFactoryKey))
-    }
-}
 
 export class ToolboxService extends PlexusPanelService implements IActivatable
 {
@@ -98,27 +87,31 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
         ToolboxService, 'Pages',
         undefined as unknown as ObservableCollection<ToolboxPage>, MetaData.None)
 
-    private reloadSeq = 0
-    private contributedPageIds: string[] = []
+    // Bumped each syncPageSet; a slower earlier pass whose seq is stale skips its
+    // mutation, so overlapping ctor / trigger reconciles can't interleave.
+    private syncSeq = 0
 
     constructor(provider: IServiceProvider)
     {
         super(provider, [])
         this.set_property_value(ToolboxService.PagesKey, new ObservableCollection<ToolboxPage>())
         this.syncItemSize()
-        this.watchActiveDocument()
-        void this.reload()
+        this.wireTriggers()
+        void this.syncPageSet()
     }
 
-    // Re-scope on active-document change so the library / meta-model pages track
-    // the active diagram's model. No-op headless / before the content host is
-    // wired (tests, early startup) — the toolbox then stays global until a
-    // document is active.
-    private watchActiveDocument(): void
+    // Wire each concern to its own trigger. The page SET changes rarely (a project
+    // opened/closed, a library/meta-model published) → syncPageSet. The active
+    // document changes often → applyContexts flips page visibility ONLY (no content
+    // work). All no-ops headless / before the services are wired.
+    private wireTriggers(): void
     {
-        const host = this.services().get(ContentHostService.Key) as DocumentsContentHostService | undefined
-        if (host === undefined) return
-        host.AddPropertyChangedListener(DocumentsContentHostService.ActiveDocumentKey, () => { void this.reload() })
+        const services = this.services()
+        services.get(ProjectExplorerService.Key)?.OpenProjects.Subscribe(() => { void this.syncPageSet() })
+        services.get(LibrariesPanelService.Key)?.onLibrariesChanged(() => { void this.syncPageSet() })
+        services.get(MetaModelsService.Key)?.onMetaModelsChanged(() => { void this.syncPageSet() })
+        const host = services.get(ContentHostService.Key) as DocumentsContentHostService | undefined
+        host?.AddPropertyChangedListener(DocumentsContentHostService.ActiveDocumentKey, () => this.applyContexts())
     }
 
     // Mirror the toolbox item size settings into app resources (@ToolboxItemWidth /
@@ -150,59 +143,153 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
 
     public get Pages(): ObservableCollection<ToolboxPage> { return this.get_property_value(ToolboxService.PagesKey) }
 
-    // IActivatable: re-scan whenever the Toolbox becomes the active capability, so
-    // a just-published meta-model/library shows up without a restart.
-    public OnActivated(): void { void this.reload() }
+    // IActivatable: on re-activation just re-apply visibility (the page set is kept
+    // live by its own triggers — no rebuild).
+    public OnActivated(): void { this.applyContexts() }
 
-    // Rebuild the repository's taxonomy pages: ensure the repo + Shapes exist, then
-    // replace only our contributed taxonomy pages (leaving mural's Shapes page) with
-    // one deduped page per visible taxonomy across all published meta-models +
-    // libraries.
-    public async reload(): Promise<void>
+    // Reconcile the PAGE SET to the current sources: static pages, one published-
+    // taxonomy page per library/meta-model taxonomy, and a Model + Scenarios page
+    // per open architecture project. Existing page instances are reused by id (so
+    // their collapse state and live tiles survive), pages for vanished sources are
+    // detached + removed. Content is pushed by key (setTerms) / self-reconciled by
+    // the model pages — never a Clear()+rebuild. Runs on project-set / publish
+    // changes, NOT on every active-document change.
+    public async syncPageSet(): Promise<void>
     {
-        const seq = ++this.reloadSeq
-        const scope = await this.activeScope()
-        const collected = await this.collectTaxonomies()
-        if (seq !== this.reloadSeq) return                                 // a newer reload superseded this one
-        // Narrow to the active diagram's referenced bases when there is one; else
-        // (no active architecture diagram) show every published taxonomy.
-        const scoped = scope === undefined ? collected : collected.filter((c) => scope.has(c.sourceRef))
-
+        const seq = ++this.syncSeq
         const services = this.services()
         ensureToolboxDefaults(services)
-        const repo = services.getRequired(ToolboxRepository.Key)
         registerArchToolboxAdapters(services)
-        // Only discover when storage is wired — sourceBackends() already skips
-        // meta-model/library backends when StorageProviderRegistry is absent, so
-        // guard here with the same check to avoid errors in headless tests.
+        const repo = this.Repository
+
+        // Gather everything async FIRST, then mutate synchronously under a seq guard
+        // — so two overlapping syncPageSet calls (e.g. ctor + a trigger) can't
+        // interleave their reconciles on the shared repo.Pages.
         if (services.get(StorageProviderRegistry.Key) !== undefined) {
             await services.get(TodlPresentationRegistry.Key)?.discover()
         }
+        const taxonomies = await this.collectTaxonomies()
+        const archModels = await this.openArchModels()
+        if (seq !== this.syncSeq) return   // a newer syncPageSet superseded this one
+
         this.set_property_value(ToolboxService.PagesKey, repo.Pages)
+        const byId = new Map(repo.Pages.ToArray().map((p) => [p.Id, p]))
+        const desired: ToolboxPage[] = []
 
-        // Preserve the user's per-section collapse state across the rebuild: the
-        // contributed pages are removed and recreated as fresh ToolboxPage models
-        // (IsExpanded back at its `true` default), so without this a reload — which
-        // runs on every rail re-activation (OnActivated) — re-expands sections the
-        // user collapsed. Snapshot by page id, restore after re-contributing.
-        const expandedById = new Map<string, boolean>()
-        for (const p of repo.Pages.ToArray()) expandedById.set(p.Id, p.IsExpanded)
+        // Static pages (Shapes, Callouts) — context-free, always visible.
+        for (const p of repo.Pages.ToArray()) if (STATIC_PAGE_IDS.has(p.Id)) desired.push(p)
 
-        for (const pid of this.contributedPageIds) repo.RemovePage(pid)
-        this.contributedPageIds = []
-
-        const seen = new Set<string>()
-        const pageIds = new Set<string>()
-        for (const { tax, isLibrary } of scoped) {
-            contributeTaxonomy(repo, tax, isLibrary, seen)
-            pageIds.add(tax.id)
+        // Published-taxonomy pages (library + meta-model). A page id seen across
+        // sources merges their terms (no cross-source term dedup — each source
+        // contributes its own; reconcile-by-key collapses a genuinely shared term).
+        const termsByPage = new Map<LibraryToolboxPage, Array<{ id: string; label: string }>>()
+        const builtTax = new Map<string, LibraryToolboxPage>()   // by page id, across this pass
+        for (const { tax, isLibrary, sourceRef } of taxonomies) {
+            const id = 'tax:' + tax.id
+            let page = builtTax.get(id)
+            if (page === undefined) {
+                const existing = byId.get(id)
+                page = existing instanceof LibraryToolboxPage
+                    ? existing
+                    : new LibraryToolboxPage(id, tax.label, sourceRef, isLibrary ? '' : 'mm:')
+                builtTax.set(id, page)
+                desired.push(page)
+            }
+            const acc = termsByPage.get(page) ?? []
+            acc.push(...tax.terms)
+            termsByPage.set(page, acc)
         }
-        this.contributedPageIds = [...pageIds]
 
-        for (const p of repo.Pages.ToArray()) {
-            const was = expandedById.get(p.Id)
-            if (was !== undefined && p.IsExpanded !== was) p.IsExpanded = was
+        // Model + Scenarios page per open architecture project (context = its model).
+        for (const { model, namespace } of archModels) {
+            const mid = 'arch:model:' + namespace
+            const sid = 'arch:scenarios:' + namespace
+            const mExisting = byId.get(mid)
+            desired.push(mExisting instanceof ModelToolboxPage ? mExisting
+                : new ModelToolboxPage(mid, 'Model: ' + namespace, 'model:' + namespace, {
+                    resolveItems: () => this.modelItems(model),
+                    onSourceChanged: (cb) => model.onChanged(cb),
+                }))
+            const sExisting = byId.get(sid)
+            desired.push(sExisting instanceof ScenarioToolboxPage ? sExisting
+                : new ScenarioToolboxPage(sid, 'Scenarios: ' + namespace, 'model:' + namespace, {
+                    resolveItems: () => this.scenarioItems(model),
+                    onSourceChanged: (cb) => model.onChanged(cb),
+                }))
         }
+
+        this.reconcilePages(desired)
+        for (const [page, terms] of termsByPage) page.setTerms(terms)
+        this.applyContexts()
+    }
+
+    // Reconcile repo.Pages to `desired` by id: detach + remove pages no longer
+    // desired, insert + attach new ones, move to match order. Reused instances keep
+    // their subscriptions and state.
+    private reconcilePages(desired: readonly ToolboxPage[]): void
+    {
+        const pages = this.Repository.Pages
+        const desiredIds = new Set(desired.map((p) => p.Id))
+        for (let i = pages.Count - 1; i >= 0; i--) {
+            const p = pages.Get(i)!
+            if (!desiredIds.has(p.Id)) { p.detach(); pages.RemoveAt(i) }
+        }
+        for (let target = 0; target < desired.length; target++) {
+            const next = desired[target]!
+            let live = -1
+            for (let i = 0; i < pages.Count; i++) if (pages.Get(i)!.Id === next.Id) { live = i; break }
+            if (live === -1) { pages.Insert(target, next); next.attach() }
+            else if (live !== target) pages.Move(live, target)
+        }
+    }
+
+    // Flip each page's visibility for the active document's context tokens. Content
+    // pages recompute cheaply (by key) only if they are the now-active context.
+    public applyContexts(): void
+    {
+        const ctx = toolboxContextsOf(this.activeDoc())
+        for (const p of this.Repository.Pages.ToArray()) p.applyContext(ctx)
+    }
+
+    // The active document, or undefined. Overridable seam for tests.
+    protected activeDoc(): unknown
+    {
+        const host = this.services().get(ContentHostService.Key) as DocumentsContentHostService | undefined
+        return host?.ActiveDocument
+    }
+
+    // The models of every open architecture project (stable per project via the
+    // model service's cache). Overridable seam for tests.
+    protected async openArchModels(): Promise<Array<{ model: ArchModel; namespace: string }>>
+    {
+        const explorer = this.services().get(ProjectExplorerService.Key)
+        const modelSvc = this.services().get(ArchitectureModelService.Key)
+        if (explorer === undefined || modelSvc === undefined) return []
+        const out: Array<{ model: ArchModel; namespace: string }> = []
+        for (const op of explorer.OpenProjects.ToArray()) {
+            if (op.Project.Type !== 'architecture') continue
+            try { const model = await modelSvc.modelFor(op); out.push({ model, namespace: model.namespace }) }
+            catch { /* project not loadable yet — skip */ }
+        }
+        return out
+    }
+
+    // A model page's items: its in-scope, unplaced entities — but only when its
+    // diagram is the active document (scope + placed are active-diagram state).
+    private modelItems(model: ArchModel): ToolboxItem[]
+    {
+        const binding = this.services().get(ArchDiagramBindingService.Key)
+        const doc = this.activeDoc() as IDocument | undefined
+        if (binding === undefined || doc === undefined || binding.modelForDocument(doc) !== model) return []
+        return modelPageItems(model, binding.scopeForDocument(doc) ?? new Set<string>(), binding.placedIds(doc))
+    }
+
+    private scenarioItems(model: ArchModel): ToolboxItem[]
+    {
+        const binding = this.services().get(ArchDiagramBindingService.Key)
+        const doc = this.activeDoc() as IDocument | undefined
+        if (binding === undefined || doc === undefined || binding.modelForDocument(doc) !== model) return []
+        return scenarioPageItems(model, binding.scopeForDocument(doc) ?? new Set<string>())
     }
 
     // Scan the published-content backends into (taxonomy, source) triples. Overridable
@@ -225,26 +312,6 @@ export class ToolboxService extends PlexusPanelService implements IActivatable
             }
         }
         return out
-    }
-
-    // The referenced-base scope for the active document: when the active document
-    // is an architecture diagram, the set of published base keys (`<id>@<version>`)
-    // its model references (WorkspaceBaseResolver.referencedPublishedRefs), so the
-    // library / meta-model pages narrow to just those. undefined when there is no
-    // active architecture diagram (or the wiring is headless) — the toolbox then
-    // shows every published taxonomy (the global fallback). Overridable seam for tests.
-    protected async activeScope(): Promise<Set<string> | undefined>
-    {
-        const services = this.services()
-        const host = services.get(ContentHostService.Key) as DocumentsContentHostService | undefined
-        const doc = host?.ActiveDocument
-        const bindingSvc = services.get(ArchDiagramBindingService.Key)
-        const resolver = services.get(WorkspaceBaseResolver.Key)
-        if (doc === undefined || bindingSvc === undefined || resolver === undefined) return undefined
-        await bindingSvc.ensureBound(doc)
-        const model = bindingSvc.modelForDocument(doc)
-        if (model === undefined) return undefined                          // not an architecture diagram → global
-        return resolver.referencedPublishedRefs(model.Storage)
     }
 
     private services(): ServiceProvider
