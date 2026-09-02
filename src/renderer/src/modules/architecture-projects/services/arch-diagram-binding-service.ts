@@ -3,6 +3,7 @@ import { ContentHostService, DiagramDocument, DialogService, StatusService, type
 
 import { FileDiagramStorage } from '../../diagram/persistence/file-diagram-storage.js'
 import { ProjectExplorerService } from '../../project-explorer/services/project-explorer-service.js'
+import { WorkspaceBaseResolver } from '../../../services/projects/workspace-base-resolver.js'
 import type { OpenProject } from '../../../services/projects/open-project.js'
 import { ArchitectureModelService } from './architecture-model-service.js'
 import { ArchDiagramBinding } from './arch-diagram-binding.js'
@@ -20,6 +21,10 @@ import { registerArchNodeSerializer } from './arch-node-serializer.js'
 // DiagramDocument whose owning project is an architecture project, attaches an
 // ArchDiagramBinding against that project's ArchModel; disposes it on close.
 // The generic diagram is untouched — a standalone diagram simply has no binding.
+// The framework's IToolboxContextTarget is readonly; this mutable shape is the
+// typed cast the binding uses to stamp the live context set onto the document.
+interface ToolboxContextTarget { ToolboxContexts: Set<string> }
+
 export class ArchDiagramBindingService extends ServiceBase
 {
     public static readonly Key = new ServiceKey<ArchDiagramBindingService>('ArchDiagramBindingService')
@@ -115,6 +120,14 @@ export class ArchDiagramBindingService extends ServiceBase
             // Restore the diagram's shown scenarios so their step connectors
             // re-project on open (the metadata is already deserialized).
             binding.setScenarios(readScenarios(doc))
+            // Publish the document's toolbox-context tokens (the ToolboxService reads
+            // these on activation to show the relevant library / model / scenario
+            // pages): every published ref the project references, plus its own model.
+            const resolver = this.Provider.get(WorkspaceBaseResolver.Key)
+            const refs = resolver !== undefined ? await resolver.referencedPublishedRefs(model.Storage) : new Set<string>()
+            const contexts = new Set<string>(refs)
+            contexts.add('model:' + model.namespace)
+            ;(doc as unknown as ToolboxContextTarget).ToolboxContexts = contexts
             binding.model.notifyChanged()
             this.bindings.set(doc, binding)
         }
