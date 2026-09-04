@@ -1,6 +1,6 @@
 // E2E coverage for SVG export: the DiagramExportService resolves from the
-// running renderer, `renderDiagramSvg` is called on the active diagram, and the
-// result string starts with '<svg'. The save dialog is stubbed (the real
+// running renderer, DiagramSvgRenderer renders the active diagram, and the result
+// is a valid, non-degenerate '<svg'. The save dialog is stubbed (the real
 // Electron dialog cannot be driven headlessly) so the test asserts on the SVG
 // string itself rather than a written file.
 //
@@ -47,50 +47,45 @@ async function openDiagram(l: Launched): Promise<void> {
   await l.win.waitForTimeout(5000)
 }
 
-// Resolve DiagramExportService from the running renderer and call
-// renderDiagramSvg directly (bypassing the save dialog) to get the SVG string.
-async function callRenderDiagramSvg(l: Launched): Promise<string | null> {
-  return l.win.evaluate(() => {
+// Resolve a service by its ServiceKey description. The ServiceProvider resolves
+// by token (ServiceKey object / constructor), not by string, so there is no
+// `getByKey`; instead we scan the provider's registrations for a token whose
+// `.description` matches, then `get(token)`. Runs inside the page.
+// Locate a service by its ServiceKey description without a string-keyed lookup
+// API. Walks EVERY visual carrying a .Services provider, and for each walks the
+// provider's parent chain scanning registration tokens (the token is Ctor.Key, a
+// ServiceKey). get() itself walks parents, so a found token resolves correctly.
+const RESOLVE_BY_DESC = `
+  (desc) => {
     const S = Symbol.for('mural:visual-backref')
-    // Walk the visual tree to find the EditorShell (has .Services).
-    let services: any
+    const matches = (token) => token && (token.description === desc || token.name === desc || String(token) === 'ServiceKey(' + desc + ')')
     for (const el of document.querySelectorAll('*')) {
-      const v = (el as any)[S]
-      if (v && v.Services) { services = v.Services; break }
-    }
-    if (!services) return null
-
-    // Resolve DiagramExportService by its string key.
-    const svc: any = services.getByKey?.('DiagramExportService')
-    if (!svc) return null
-    if (!svc.canExportActive()) return null
-
-    // Call activeDiagram() (it's protected, but accessible at runtime).
-    const doc = svc.activeDiagram?.()
-    if (!doc) return null
-
-    // Import renderDiagramSvg at runtime via the module registry — not available
-    // here; fall back to calling exportSvg indirectly by stubbing the FS service.
-    // Instead, use the service's own renderDiagramSvg via reflection:
-    try {
-      // The renderer module is available in the window's module graph; reach it
-      // by calling a test-hook that the service exposes via its prototype.
-      // renderDiagramSvg is a pure function in diagram-svg-renderer — we call it
-      // by importing it through the app's already-loaded module.
-      //
-      // This approach works because Vite/ESM keeps module identity stable within
-      // the running app, but there is no global registration seam for it.
-      // We therefore call svc._renderSvgForTest if it exists (a light test hook),
-      // or fall back to the internal exportActive path with a stubbed FS:
-      if (typeof svc._renderSvgForTest === 'function') {
-        return svc._renderSvgForTest()
+      const services = (el[S] || {}).Services
+      if (!services || typeof services.get !== 'function') continue
+      for (let p = services; p; p = p._parent) {
+        const regs = p._registrations
+        if (!regs || typeof regs.forEach !== 'function') continue
+        let found
+        regs.forEach((_v, token) => { if (!found && matches(token)) found = token })
+        if (found) { const svc = services.get(found); if (svc) return svc }
       }
-      return '__no_test_hook__'
     }
-    catch (e: unknown) {
-      return '__error__: ' + String(e)
-    }
-  })
+    return undefined
+  }
+`
+
+// Resolve DiagramExportService from the running renderer and call its test hook
+// (bypassing the save dialog) to get the SVG string.
+async function callRenderDiagramSvg(l: Launched): Promise<string | null> {
+  return l.win.evaluate((resolveSrc) => {
+    const resolveByDesc = (0, eval)(resolveSrc) as (d: string) => any
+    const svc: any = resolveByDesc('DiagramExportService')
+    if (!svc) return '__unresolved__'
+    if (!svc.canExportActive()) return '__cannot_export__'
+    if (typeof svc._renderSvgForTest !== 'function') return '__no_test_hook__'
+    try { return svc._renderSvgForTest() }
+    catch (e: unknown) { return '__error__: ' + String(e) }
+  }, RESOLVE_BY_DESC)
 }
 
 // Check whether any diagram node is present in the active diagram.
@@ -134,25 +129,29 @@ test.describe.serial('export-svg', () => {
   })
 
   test('DiagramExportService.canExportActive() is true once a diagram is open', async () => {
-    const canExport = await l.win.evaluate(() => {
-      const S = Symbol.for('mural:visual-backref')
-      let services: any
-      for (const el of document.querySelectorAll('*')) {
-        const v = (el as any)[S]
-        if (v && v.Services) { services = v.Services; break }
-      }
-      if (!services) return false
-      const svc: any = services.getByKey?.('DiagramExportService')
-      return svc?.canExportActive?.() ?? false
-    })
-    expect(canExport, 'canExportActive').toBe(true)
+    const canExport = await l.win.evaluate((resolveSrc) => {
+      const resolveByDesc = (0, eval)(resolveSrc) as (d: string) => any
+      const svc: any = resolveByDesc('DiagramExportService')
+      if (!svc) return '__unresolved__'
+      return svc.canExportActive?.() ?? false
+    }, RESOLVE_BY_DESC)
+    expect(canExport, 'canExportActive (or resolution)').toBe(true)
   })
 
-  test('_renderSvgForTest returns a valid SVG string', async () => {
+  test('_renderSvgForTest returns a valid, non-degenerate SVG', async () => {
     const svg = await callRenderDiagramSvg(l)
     expect(svg, '_renderSvgForTest result').not.toBeNull()
+    expect(svg, 'service should resolve').not.toBe('__unresolved__')
     expect(svg, 'should not fall back to __no_test_hook__').not.toBe('__no_test_hook__')
     expect(svg!.startsWith('<svg'), 'svg starts with <svg').toBe(true)
+
+    // Regression guard for the "renders nothing" bug: the whole-diagram export
+    // took bounds from geometry-less content VMs (doc.Nodes) → a 1×1 viewBox →
+    // a blank SVG. A real diagram must be many times larger than a pixel.
+    const w = Number(/width="(\d+)"/.exec(svg!)?.[1] ?? '0')
+    const h = Number(/height="(\d+)"/.exec(svg!)?.[1] ?? '0')
+    expect(w, `svg width (${w}) must be non-degenerate`).toBeGreaterThan(10)
+    expect(h, `svg height (${h}) must be non-degenerate`).toBeGreaterThan(10)
   })
 
   test('no app errors', async () => {

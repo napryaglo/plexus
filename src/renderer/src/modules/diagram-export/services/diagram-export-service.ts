@@ -7,9 +7,16 @@ import {
   type DocumentsContentHostService,
 } from '@pragmatic-tech-ai/mural/framework'
 import { FileSystemService } from '../../../services/file-system/file-system-service.js'
-import { renderDiagramSvg } from './diagram-svg-renderer.js'
+import { DiagramSvgRenderer } from './diagram-svg-renderer.js'
 import { rasterizeSvgToPng, pngToDataUrl } from './svg-raster.js'
 import { buildPptx } from './pptx-builder.js'
+
+// The two diagram export formats.
+export enum ExportFormat
+{
+  Svg  = 'svg',
+  Pptx = 'pptx',
+}
 
 // Exports the active diagram's visual (selection if any, else the whole diagram)
 // to SVG or PPTX. Exposes two ICommands bound by the diagram context menu (and,
@@ -28,9 +35,9 @@ export class DiagramExportService extends ServiceBase
     super(provider)
     const gate = (): boolean => this.canExportActive()
     this.set_property_value(DiagramExportService.ExportSvgCommandKey,
-      new RelayCommand(() => { void this.exportActive('svg') }, gate))
+      new RelayCommand(() => { void this.exportActive(ExportFormat.Svg) }, gate))
     this.set_property_value(DiagramExportService.ExportPptxCommandKey,
-      new RelayCommand(() => { void this.exportActive('pptx') }, gate))
+      new RelayCommand(() => { void this.exportActive(ExportFormat.Pptx) }, gate))
   }
 
   public get ExportSvgCommand(): ICommand { return this.get_property_value(DiagramExportService.ExportSvgCommandKey) }
@@ -51,20 +58,20 @@ export class DiagramExportService extends ServiceBase
   public _renderSvgForTest(): string | undefined
   {
     const doc = this.activeDiagram()
-    return doc ? renderDiagramSvg(doc).svg : undefined
+    return doc ? DiagramSvgRenderer.renderDocument(doc).svg : undefined
   }
 
-  protected async exportActive(format: 'svg' | 'pptx'): Promise<void>
+  protected async exportActive(format: ExportFormat): Promise<void>
   {
     const doc = this.activeDiagram()
     if (doc === undefined) return
-    if (format === 'svg') return this.exportSvg(doc)
+    if (format === ExportFormat.Svg) return this.exportSvg(doc)
     return this.exportPptx(doc) // Task 3
   }
 
   private async exportSvg(doc: DiagramDocument): Promise<void>
   {
-    const { svg } = renderDiagramSvg(doc)
+    const { svg } = DiagramSvgRenderer.renderDocument(doc)
     const fs = this.Provider.getRequired(FileSystemService.Key)
     await fs.SaveFileAs(svg, {
       Title:       'Export as SVG',
@@ -75,7 +82,7 @@ export class DiagramExportService extends ServiceBase
 
   private async exportPptx(doc: DiagramDocument): Promise<void>
   {
-    const { svg, width, height } = renderDiagramSvg(doc)
+    const { svg, width, height } = DiagramSvgRenderer.renderDocument(doc)
     const png = await rasterizeSvgToPng(svg, width, height, 2)
     const pptx = await buildPptx(pngToDataUrl(png), width, height)
     const fs = this.Provider.getRequired(FileSystemService.Key)
