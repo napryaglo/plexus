@@ -1,15 +1,45 @@
-import { Rect, HeadlessTarget, SvgDrawingContext, TranslateTransform } from '@pragmatic-tech-ai/mural/visual-engine'
+import { Visual, Visibility, type DrawingContext } from '@pragmatic-tech-ai/mural/runtime'
+import { Rect, SvgDrawingContext, TranslateTransform } from '@pragmatic-tech-ai/mural/visual-engine'
 import type { DiagramDocument } from '@pragmatic-tech-ai/mural/framework'
 
-// ── Translation approach (SPIKE result) ───────────────────────────────────────
-// HeadlessTarget.renderTree renders every child at its canvas-space ArrangedRect
-// coordinates — it does NOT auto-translate to a content origin. Therefore we
-// must shift the drawing context by (-bounds.X, -bounds.Y) before calling
-// target.Render(dc) so that the bounds' top-left maps to (0,0) in the SVG.
-// We chose Fallback 1: dc.PushTransform(new TranslateTransform(-x, -y)) around
-// target.Render(dc). ToSvg(width, height) then emits viewBox="0 0 w h" and the
-// SVG is correctly cropped to the chosen bounds.
+// ── Rendering approach ─────────────────────────────────────────────────────────
+// We CANNOT hand the live diagram's ItemsPanelInstance to a HeadlessTarget:
+// PresentationTarget's ctor calls SetTarget on the content visual, which throws
+// "Visual is already attached to a host" because that panel is still mounted in
+// the live diagram. Instead we walk the (already-arranged) visual tree in place
+// and paint each node into an SvgDrawingContext — a faithful, read-only replica
+// of HeadlessTarget.renderTree (translate by ArrangedRect, honour Clip/ChildClip,
+// call Render, recurse). Nothing is reparented, so the live view is untouched.
+//
+// The tree is rendered at canvas-space coordinates (the panel sits BELOW the
+// camera transform), so we shift the context by (-bounds.X, -bounds.Y) first,
+// mapping the chosen bounds' top-left to (0,0); ToSvg(w,h) then emits
+// viewBox="0 0 w h", cropping the SVG to those bounds.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Paint a visual subtree into `dc` without taking ownership of it — mirrors
+// HeadlessTarget.renderTree using only public Visual APIs. Exported for tests.
+export function paintVisualTree(visual: Visual, dc: DrawingContext): void
+{
+  if (visual.Visibility !== Visibility.Visible) return
+
+  const rect = visual.ArrangedRect
+  const needsTranslate = rect.X !== 0 || rect.Y !== 0
+  if (needsTranslate) dc.PushTransform(new TranslateTransform(rect.X, rect.Y))
+
+  const clip = visual.Clip
+  if (clip !== undefined) dc.PushClip(clip)
+
+  visual.Render(dc)
+
+  const childClip = visual.ChildClip
+  if (childClip !== undefined) dc.PushClip(childClip)
+  for (const child of visual.visualChildren) paintVisualTree(child, dc)
+  if (childClip !== undefined) dc.Pop()
+
+  if (clip !== undefined) dc.Pop()
+  if (needsTranslate) dc.Pop()
+}
 
 interface NodeBox { Left: number; Top: number; BaseWidth: number; BaseHeight: number }
 
@@ -48,16 +78,15 @@ export function renderDiagramSvg(
   const width  = Math.max(1, Math.ceil(bounds.Width))
   const height = Math.max(1, Math.ceil(bounds.Height))
 
-  const panel = diagram.ItemsPanelInstance
-  const content = panel ?? diagram
+  const content = (diagram.ItemsPanelInstance ?? diagram) as unknown as Visual
 
-  const target = new HeadlessTarget(width, height, content)
   const dc = new SvgDrawingContext()
 
   // Map content origin → (0,0): translate by -bounds.X / -bounds.Y so the
-  // chosen bounds' top-left lands at the SVG's coordinate origin.
+  // chosen bounds' top-left lands at the SVG's coordinate origin, then paint the
+  // live tree in place (no reparenting — see the header note).
   dc.PushTransform(new TranslateTransform(-bounds.X, -bounds.Y))
-  target.Render(dc)
+  paintVisualTree(content, dc)
   dc.Pop()
 
   return { svg: dc.ToSvg(width, height), width, height }

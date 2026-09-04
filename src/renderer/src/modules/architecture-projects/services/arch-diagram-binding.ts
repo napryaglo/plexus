@@ -295,6 +295,10 @@ export class ArchDiagramBinding
                 // reads IsContainer duck-typed); its `in` refs project as nesting.
                 node.IsContainer = isContainerConcept(this.model.repository(), entity.concept)
                 node.HasWiki = this.conceptHasWiki(entity.concept)
+                // Hand the node its document so its right-click menu can reuse the
+                // shared @DiagramContextMenu ($ActiveView / $Inspector resolve via
+                // ArchNodeVM's HostDocument aliases).
+                node.HostDocument = this.doc
             } else if (node instanceof Figure) {
                 // Back-compat for any freeform Figure with a matching entity id.
                 const id = node.Id

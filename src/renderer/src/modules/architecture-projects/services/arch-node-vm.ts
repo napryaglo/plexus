@@ -1,5 +1,5 @@
 import { MetaData, MuralBase, type PropertyKey } from '@pragmatic-tech-ai/mural/runtime'
-import { DiagramSettings, NodeViewModel, ToolboxVisualDescriptor, type ITextStyleTarget } from '@pragmatic-tech-ai/mural/framework'
+import { DiagramSettings, NodeViewModel, ToolboxVisualDescriptor, type Diagram, type DiagramDocument, type DiagramInspector, type ITextStyleTarget } from '@pragmatic-tech-ai/mural/framework'
 import { Brush, FontFamily, FontStyle, FontWeight, TextAlignment, TextDecorations } from '@pragmatic-tech-ai/mural/visual-engine'
 
 // Initial box for a freshly-dropped arch tile. The container fits its content
@@ -40,6 +40,23 @@ export class ArchNodeVM extends NodeViewModel {
     // node as a ContentContainerFigure instead of a plain content tile. Set from
     // the concept by ArchDiagramBinding.rescan.
     static readonly IsContainerKey = MuralBase.RegisterProperty<boolean>(ArchNodeVM, 'IsContainer', false, MetaData.None)
+
+    // The document this node lives in, set by ArchDiagramBinding.rescan. Lets the
+    // node's right-click menu reuse the SHARED @DiagramContextMenu (Copy/Cut/Align/
+    // Export/Format), whose items bind $ActiveView / $Inspector — properties of the
+    // document. Exposing them here (delegating to the live document) means the same
+    // menu resource works whether its data context is the document (empty-canvas
+    // right-click) or a node (node right-click), with no per-node menu duplication.
+    static readonly HostDocumentKey = MuralBase.RegisterProperty<DiagramDocument | undefined>(
+        ArchNodeVM, 'HostDocument', undefined, MetaData.None)
+
+    get HostDocument(): DiagramDocument | undefined { return this.get_property_value(ArchNodeVM.HostDocumentKey) }
+    set HostDocument(v: DiagramDocument | undefined) { this.set_property_value(ArchNodeVM.HostDocumentKey, v) }
+
+    // Menu-facing aliases so $ActiveView / $Inspector resolve on a node exactly as
+    // they do on the DiagramDocument (the shared context menu binds these names).
+    get ActiveView(): Diagram | undefined { return this.HostDocument?.ActiveView }
+    get Inspector(): DiagramInspector | undefined { return this.HostDocument?.Inspector }
 
     // ── In-place title editing (F2 / double-click) ──────────────────────────
     // An arch node's editable text is its TITLE ($Label), NOT the container
