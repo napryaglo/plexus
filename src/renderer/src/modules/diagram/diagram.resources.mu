@@ -336,7 +336,6 @@ resources DiagramResources {
             [ Header  = "Send to Back",
               Command = $ActiveView.SendToBackCommand,
               Icon    = Shape [ Geometry = @sendToBack, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
-        MenuSeparator
         MenuItem [ Header = "Export" ] {
             MenuItem [ Header = "Vector Graphics (SVG)", Command = $service(DiagramExportService).ExportSvgCommand ]
             MenuItem [ Header = "PowerPoint (PPTX)",     Command = $service(DiagramExportService).ExportPptxCommand ]

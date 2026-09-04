@@ -14,7 +14,9 @@ export async function rasterizeSvgToPng(svg: string, width: number, height: numb
   canvas.height = Math.max(1, Math.round(height * scale))
   const ctx = canvas.getContext('2d')!
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-  const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), 'image/png'))
+  const blob: Blob = await new Promise<Blob>((res, reject) =>
+    canvas.toBlob((b) => b ? res(b) : reject(new Error('canvas.toBlob returned null')), 'image/png')
+  )
   return new Uint8Array(await blob.arrayBuffer())
 }
 

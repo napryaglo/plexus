@@ -148,6 +148,13 @@ test.describe.serial('export-svg', () => {
     expect(canExport, 'canExportActive').toBe(true)
   })
 
+  test('_renderSvgForTest returns a valid SVG string', async () => {
+    const svg = await callRenderDiagramSvg(l)
+    expect(svg, '_renderSvgForTest result').not.toBeNull()
+    expect(svg, 'should not fall back to __no_test_hook__').not.toBe('__no_test_hook__')
+    expect(svg!.startsWith('<svg'), 'svg starts with <svg').toBe(true)
+  })
+
   test('no app errors', async () => {
     expect(appErrors(l.errors), appErrors(l.errors).join('\n')).toEqual([])
   })

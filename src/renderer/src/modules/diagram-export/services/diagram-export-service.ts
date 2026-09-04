@@ -47,6 +47,13 @@ export class DiagramExportService extends ServiceBase
 
   public canExportActive(): boolean { return this.activeDiagram() !== undefined }
 
+  // Test-only: render the active diagram's SVG synchronously for e2e assertions.
+  public _renderSvgForTest(): string | undefined
+  {
+    const doc = this.activeDiagram()
+    return doc ? renderDiagramSvg(doc).svg : undefined
+  }
+
   protected async exportActive(format: 'svg' | 'pptx'): Promise<void>
   {
     const doc = this.activeDiagram()
@@ -74,7 +81,7 @@ export class DiagramExportService extends ServiceBase
     const fs = this.Provider.getRequired(FileSystemService.Key)
     const path = await fs.SaveFileAs('', {
       Title:       'Export as PowerPoint',
-      DefaultPath: `${doc.Title ?? 'diagram'}.pptx`,
+      DefaultPath: `${doc.Title || 'diagram'}.pptx`,
       Filters:     [{ Name: 'PowerPoint Presentation', Extensions: ['pptx'] }],
     })
     if (path !== null) await fs.WriteBytes(path, pptx)
