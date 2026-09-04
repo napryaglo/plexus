@@ -6,6 +6,8 @@ import {
   ContentHostService, DiagramDocument,
   type DocumentsContentHostService,
 } from '@pragmatic-tech-ai/mural/framework'
+import { FileSystemService } from '../../../services/file-system/file-system-service.js'
+import { renderDiagramSvg } from './diagram-svg-renderer.js'
 
 // Exports the active diagram's visual (selection if any, else the whole diagram)
 // to SVG or PPTX. Exposes two ICommands bound by the diagram context menu (and,
@@ -43,6 +45,25 @@ export class DiagramExportService extends ServiceBase
 
   public canExportActive(): boolean { return this.activeDiagram() !== undefined }
 
-  // Fleshed out in Tasks 2 (svg) and 3 (pptx).
-  protected async exportActive(_format: 'svg' | 'pptx'): Promise<void> { /* Task 2/3 */ }
+  protected async exportActive(format: 'svg' | 'pptx'): Promise<void>
+  {
+    const doc = this.activeDiagram()
+    if (doc === undefined) return
+    if (format === 'svg') return this.exportSvg(doc)
+    return this.exportPptx(doc) // Task 3
+  }
+
+  private async exportSvg(doc: DiagramDocument): Promise<void>
+  {
+    const { svg } = renderDiagramSvg(doc)
+    const fs = this.Provider.getRequired(FileSystemService.Key)
+    await fs.SaveFileAs(svg, {
+      Title:       'Export as SVG',
+      DefaultPath: `${doc.Title || 'diagram'}.svg`,
+      Filters:     [{ Name: 'SVG Image', Extensions: ['svg'] }],
+    })
+  }
+
+  // Task 3 will fill this in.
+  private async exportPptx(_doc: DiagramDocument): Promise<void> { /* Task 3 */ }
 }
