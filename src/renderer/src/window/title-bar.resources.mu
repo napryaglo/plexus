@@ -106,13 +106,22 @@ resources PlexusTitleBar {
 
     // Compact menu row for the icon-less File menu: no 24dp leading-icon gutter,
     // no wide min label — just a tight padded row with the label filling and the
-    // submenu ▶ pinned right (PART_Chevron is populated by MenuItem.refreshRow when
-    // the item has children). Hover/press/disabled use the same OnSurfaceVariant
-    // state layers as the File trigger.
+    // submenu chevron pinned right (PART_Chevron is a @ChevronRight Shape whose
+    // Visibility MenuItem.refreshRow toggles when the item has children — mural
+    // 0.46.0 made the chevron a Shape, not a ▶ TextBlock). Hover/press/disabled
+    // use the same OnSurfaceVariant state layers as the File trigger.
     Template x:key="CompactMenuItemRow" [ TargetType = MenuItem ] {
         Border x:name="PART_Row" [ Fill = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (10,4,10,4) ] {
             DockPanel [ LastChildFill = true ] {
-                TextBlock x:name="PART_Chevron" [ DockPanel.Dock = Right, Width = 12, Margin = (12,0,0,0), Foreground = @OnSurfaceVariant ]
+                Shape x:name="PART_Chevron"
+                    [ DockPanel.Dock   = Right,
+                      Geometry          = @ChevronRight,
+                      Fill              = @OnSurfaceVariant,
+                      Width             = 5,
+                      Height            = 10,
+                      Margin            = (12,0,0,0),
+                      VerticalAlignment = Center,
+                      Visibility        = Collapsed ]
                 TextBlock x:name="PART_Gesture" [ DockPanel.Dock = Right, Foreground = @OnSurfaceVariant ]
                 TextBlock x:name="PART_Label"   [ Foreground = @OnSurface ]
             }
