@@ -8,6 +8,8 @@ import {
 } from '@pragmatic-tech-ai/mural/framework'
 import { FileSystemService } from '../../../services/file-system/file-system-service.js'
 import { renderDiagramSvg } from './diagram-svg-renderer.js'
+import { rasterizeSvgToPng, pngToDataUrl } from './svg-raster.js'
+import { buildPptx } from './pptx-builder.js'
 
 // Exports the active diagram's visual (selection if any, else the whole diagram)
 // to SVG or PPTX. Exposes two ICommands bound by the diagram context menu (and,
@@ -64,6 +66,17 @@ export class DiagramExportService extends ServiceBase
     })
   }
 
-  // Task 3 will fill this in.
-  private async exportPptx(_doc: DiagramDocument): Promise<void> { /* Task 3 */ }
+  private async exportPptx(doc: DiagramDocument): Promise<void>
+  {
+    const { svg, width, height } = renderDiagramSvg(doc)
+    const png = await rasterizeSvgToPng(svg, width, height, 2)
+    const pptx = await buildPptx(pngToDataUrl(png), width, height)
+    const fs = this.Provider.getRequired(FileSystemService.Key)
+    const path = await fs.SaveFileAs('', {
+      Title:       'Export as PowerPoint',
+      DefaultPath: `${doc.Title ?? 'diagram'}.pptx`,
+      Filters:     [{ Name: 'PowerPoint Presentation', Extensions: ['pptx'] }],
+    })
+    if (path !== null) await fs.WriteBytes(path, pptx)
+  }
 }
