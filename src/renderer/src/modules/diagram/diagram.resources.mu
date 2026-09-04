@@ -11,6 +11,7 @@
 
 import ToolboxService from "./services/diagram-panel-services.js"
 import LayoutPipelineService from "./layout/layout-pipeline-service.js"
+import DiagramExportService from "../diagram-export/services/diagram-export-service.js"
 import DropCandidateChooserService from "../architecture-projects/services/drop-candidate-chooser-service.js"
 import ArchNodeVM from "../architecture-projects/services/arch-node-vm.js"
 import MediaNodeVM from "./media/media-node-vm.js"
@@ -335,6 +336,11 @@ resources DiagramResources {
             [ Header  = "Send to Back",
               Command = $ActiveView.SendToBackCommand,
               Icon    = Shape [ Geometry = @sendToBack, Width = 16, Height = 16, HorizontalAlignment = Center, VerticalAlignment = Center ] ]
+        MenuSeparator
+        MenuItem [ Header = "Export" ] {
+            MenuItem [ Header = "Vector Graphics (SVG)", Command = $service(DiagramExportService).ExportSvgCommand ]
+            MenuItem [ Header = "PowerPoint (PPTX)",     Command = $service(DiagramExportService).ExportPptxCommand ]
+        }
         MenuSeparator
         MenuItem
             [ Header           = "Format Shape",

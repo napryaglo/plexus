@@ -34,6 +34,7 @@ import Shell from "@pragmatic-tech-ai/mural/framework/shell/shell.js"
 // every capability's Name (and, later, Icon) becomes a root-nav entry, and
 // the NavigationService surfaces the active capability's Panel.
 import DiagramModule from "./modules/diagram/diagram.module.mu.js"
+import DiagramExportModule from "./modules/diagram-export/diagram-export.module.mu.js"
 import ArchitectureProjectsModule from "./modules/architecture-projects/architecture-projects.module.mu.js"
 import ProjectExplorerModule from "./modules/project-explorer/project-explorer.module.mu.js"
 import MetaModelModule from "./modules/meta-model/meta-model.module.mu.js"
@@ -326,6 +327,7 @@ Application [ Theme = Material, Scheme = MaterialDark ] {
 
     .modules: {
         DiagramModule
+        DiagramExportModule
         ArchitectureProjectsModule
         ProjectExplorerModule
         MetaModelModule
