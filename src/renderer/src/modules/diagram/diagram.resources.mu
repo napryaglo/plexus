@@ -12,6 +12,7 @@
 import ToolboxService from "./services/diagram-panel-services.js"
 import LayoutPipelineService from "./layout/layout-pipeline-service.js"
 import DiagramExportService from "../diagram-export/services/diagram-export-service.js"
+import WikiService from "../../services/wiki/wiki-service.js"
 import DropCandidateChooserService from "../architecture-projects/services/drop-candidate-chooser-service.js"
 import ArchNodeVM from "../architecture-projects/services/arch-node-vm.js"
 import MediaNodeVM from "./media/media-node-vm.js"
@@ -353,6 +354,16 @@ resources DiagramResources {
             [ Header           = "Layout…",
               Command          = $service(PanelDockService).AddPanelCommand,
               CommandParameter = $service(LayoutPipelineService).Inspector ]
+        // Node-only: "Open Wiki" for an arch node whose concept has a wiki page.
+        // Hidden on the empty-canvas right-click (the document data-context has no
+        // $HasWiki → ToVisibility(undefined) → Collapsed) and on wiki-less nodes.
+        // $Concept / $HasWiki resolve against the ArchNodeVM when this shared menu
+        // is shown on a node.
+        MenuItem
+            [ Header           = "Open Wiki",
+              Command          = $service(WikiService).OpenWikiCommand,
+              CommandParameter = $Concept,
+              Visibility       = $HasWiki << ToVisibility ]
     }
 
     // ── Toolbox ItemsPanel — a uniform-cell wrap grid so the tiles fit a
@@ -409,7 +420,13 @@ resources DiagramResources {
     // Figure context (same resolver path as the toolbox tile, but sized for the
     // canvas); the TextBlock shows the entity's display label below the icon.
     DataTemplate [DataType = ArchNodeVM] {
-        StackPanel x:name="PART_TileStack" [ Orientation = Vertical, HorizontalAlignment = Center ] {
+        // Right-click a node → the SHARED diagram menu (Copy/Cut/Align/Export/Format
+        // + a node-only "Open Wiki"). Its $ActiveView / $Inspector items resolve via
+        // ArchNodeVM's HostDocument aliases, so the node keeps the full menu instead
+        // of the bare Open-Wiki menu it used to swap in.
+        StackPanel x:name="PART_TileStack"
+            [ Orientation = Vertical, HorizontalAlignment = Center,
+              ContextMenuService.ContextMenu = @DiagramContextMenu ] {
             ToolboxVisualPresenter x:name="PART_Icon"
                 [ Descriptor          = $Descriptor,
                   Context             = VisualContext.Figure,
@@ -456,8 +473,8 @@ resources DiagramResources {
                       MaxWidth            = 120 ]
             }
         }
-        // "Open Wiki" when this node's concept has an openable wiki page.
-        when ( $HasWiki = true ) { ContextMenuService.ContextMenu = @OpenWikiMenu; }
+        // (Open Wiki now lives inside the shared @DiagramContextMenu, gated on
+        // $HasWiki, so nodes keep the full diagram menu — see PART_TileStack above.)
         // Reveal the inline title editor while this node is being renamed (data
         // trigger — `$IsEditing`, not a root-property trigger — so it fires on the
         // ArchNodeVM's DP; see the project-explorer rename template for the idiom).
