@@ -63,20 +63,30 @@ test.describe.serial('arch-node-context-menu', () => {
 
     const menu = await l.win.evaluate(() => {
       const S = Symbol.for('mural:visual-backref')
+      // A header can appear on more than one MenuItem instance (e.g. a hidden,
+      // pre-instantiated template plus the visible shown one), so OR visibility
+      // and hasCmd across all instances of each header.
       const items: Record<string, { visible: boolean; hasCmd: boolean }> = {}
       for (const el of document.querySelectorAll('*')) {
         const v = (el as any)[S]
         if (v?.constructor?.name !== 'MenuItem') continue
         const r = (el as Element).getBoundingClientRect()
-        items[String(v.Header)] = { visible: r.width > 0 && r.height > 0, hasCmd: !!v.Command }
+        const key = String(v.Header)
+        const prev = items[key] ?? { visible: false, hasCmd: false }
+        items[key] = {
+          visible: prev.visible || (r.width > 0 && r.height > 0),
+          hasCmd: prev.hasCmd || !!v.Command,
+        }
       }
       return items
     })
 
-    // Full diagram menu is present on the node (not the bare Open-Wiki menu).
-    expect(menu['Copy'], 'Copy present').toBeTruthy()
-    expect(menu['Export'], 'Export present').toBeTruthy()
-    expect(menu['Format Shape'], 'Format Shape present').toBeTruthy()
+    // The full diagram menu actually RENDERS on the node (visible, not just
+    // instantiated in the DOM) — i.e. the node shows this menu, not the bare
+    // Open-Wiki menu it used to swap in.
+    expect(menu['Copy']?.visible, 'Copy visible').toBe(true)
+    expect(menu['Export']?.visible, 'Export visible on the node menu').toBe(true)
+    expect(menu['Format Shape']?.visible, 'Format Shape visible').toBe(true)
     // $ActiveView resolved through the node's HostDocument alias (Command bound).
     expect(menu['Copy'].hasCmd, 'Copy Command resolved via HostDocument').toBe(true)
     // Open Wiki exists, visible iff the node has a wiki.
