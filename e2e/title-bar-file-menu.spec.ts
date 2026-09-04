@@ -30,6 +30,21 @@ async function rectByHeader(win: Page, ctor: string, header: string): Promise<Re
   }, { ctor, header })
 }
 
+// The rendered chevron text + on-screen width of the MenuItem with this Header.
+async function menuItemChevronAndWidth(win: Page, header: string): Promise<{ chevron: string; width: number } | null> {
+  return win.evaluate((header) => {
+    const S = Symbol.for('mural:visual-backref')
+    for (const el of document.querySelectorAll('*')) {
+      const v = (el as any)[S]
+      if (v?.constructor?.name !== 'MenuItem' || v.Header !== header) continue
+      const r = (el as Element).getBoundingClientRect()
+      if (r.width === 0) continue
+      return { chevron: v._chevronLabel?.Text ?? '', width: Math.round(r.width) }
+    }
+    return null
+  }, header)
+}
+
 // Count visible Visuals matching ctor name + Header.
 async function countByHeader(win: Page, ctor: string, header: string): Promise<number> {
   return win.evaluate(({ ctor, header }) => {
@@ -72,6 +87,16 @@ test.describe.serial('title-bar-file-menu', () => {
     await l.win.waitForTimeout(500)
 
     expect(await countByHeader(l.win, 'MenuItem', 'Export'), 'Export present after opening File').toBeGreaterThan(0)
+  })
+
+  test('Export shows a submenu chevron and the row is compact', async () => {
+    // Menu is already open from the previous test. The Export item has children,
+    // so the chevron (▶) must show — guards the mural refreshRow-on-HasItems fix.
+    // The compact row (no icon gutter / wide min-label) keeps it shrink-wrapped.
+    const info = await menuItemChevronAndWidth(l.win, 'Export')
+    expect(info, 'Export item metrics').not.toBeNull()
+    expect(info!.chevron, 'submenu chevron ▶').toBe('▶')
+    expect(info!.width, 'compact row width (not stretched)').toBeLessThan(140)
   })
 
   test('no app errors', async () => {

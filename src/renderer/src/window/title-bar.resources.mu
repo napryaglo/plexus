@@ -104,6 +104,25 @@ resources PlexusTitleBar {
         when ( IsPressed )   { PART_PrimaryState.Fill = @OnSurfaceVariantPressLayer; }
     }
 
+    // Compact menu row for the icon-less File menu: no 24dp leading-icon gutter,
+    // no wide min label — just a tight padded row with the label filling and the
+    // submenu ▶ pinned right (PART_Chevron is populated by MenuItem.refreshRow when
+    // the item has children). Hover/press/disabled use the same OnSurfaceVariant
+    // state layers as the File trigger.
+    Template x:key="CompactMenuItemRow" [ TargetType = MenuItem ] {
+        Border x:name="PART_Row" [ Fill = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (10,4,10,4) ] {
+            DockPanel [ LastChildFill = true ] {
+                TextBlock x:name="PART_Chevron" [ DockPanel.Dock = Right, Width = 12, Margin = (12,0,0,0), Foreground = @OnSurfaceVariant ]
+                TextBlock x:name="PART_Gesture" [ DockPanel.Dock = Right, Foreground = @OnSurfaceVariant ]
+                TextBlock x:name="PART_Label"   [ Foreground = @OnSurface ]
+            }
+        }
+        when ( IsMouseOver )       { PART_Row.Fill = @OnSurfaceVariantHoverLayer; }
+        when ( IsSubmenuOpen )     { PART_Row.Fill = @OnSurfaceVariantHoverLayer; }
+        when ( IsPressed )         { PART_Row.Fill = @OnSurfaceVariantPressLayer; }
+        when ( IsEnabled = false ) { PART_Row.Opacity = @DisabledContentOpacity; }
+    }
+
     // The File dropdown: MenuPopupHost = PART_PopupHost, a PART_Scrim ClickAwayScrim,
     // a PART_PopupContainer Border. The Export MenuItem sits in a plain vertical
     // StackPanel so its submenu cascades RIGHT (a MenuStrip parent would anchor it
@@ -114,10 +133,16 @@ resources PlexusTitleBar {
             Border x:name="PART_PopupContainer"
                 [ Fill = @SurfaceContainerHigh, Stroke = Pen [ Brush = @OutlineVariant ],
                   CornerRadius = @ShapeExtraSmall, Effect = @Elevation2, Padding = (4) ] {
-                StackPanel [ Orientation = Vertical, MinWidth = 200 ] {
-                    MenuItem [ Header = "Export" ] {
-                        MenuItem [ Header = "Vector Graphics (SVG)", Command = $service(DiagramExportService).ExportSvgCommand ]
-                        MenuItem [ Header = "PowerPoint (PPTX)",     Command = $service(DiagramExportService).ExportPptxCommand ]
+                // Shrink-wrap to the items (like the diagram context menu). The
+                // default menu row reserves a 24dp leading-icon gutter + an 80dp
+                // min label — right for icon-bearing menus, but these export items
+                // carry no icons, so it read as an oversized, sparsely-padded menu.
+                // @CompactMenuItemRow drops the icon gutter and the wide min label
+                // (keeping the ▶ chevron slot) so the rows shrink-wrap to the text.
+                StackPanel [ Orientation = Vertical ] {
+                    MenuItem [ Header = "Export", RowTemplate = @CompactMenuItemRow ] {
+                        MenuItem [ Header = "Vector Graphics (SVG)", RowTemplate = @CompactMenuItemRow, Command = $service(DiagramExportService).ExportSvgCommand ]
+                        MenuItem [ Header = "PowerPoint (PPTX)",     RowTemplate = @CompactMenuItemRow, Command = $service(DiagramExportService).ExportPptxCommand ]
                     }
                 }
             }
