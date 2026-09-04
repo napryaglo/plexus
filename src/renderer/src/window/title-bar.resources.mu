@@ -21,6 +21,7 @@
 // The title feed the strip binds ($service(TitleService).Title) — imported so
 // the compiler knows the symbol.
 import TitleService from "./title-service.js"
+import DiagramExportService from "../modules/diagram-export/services/diagram-export-service.js"
 
 resources PlexusTitleBar {
     Border x:key="PlexusTitleBar" [ Height = 32, Fill = @Surface ] {
@@ -60,6 +61,15 @@ resources PlexusTitleBar {
             }
             // 1dp divider continuing the rail's right edge up through the strip.
             Line [ DockPanel.Dock = Left, Orientation = Vertical, Stroke = (@OutlineVariant, 1) ]
+            // File menu — click-to-open dropdown; Export ▸ SVG / PPTX bound to the
+            // same commands the diagram context menu uses. MenuButton self-manages
+            // open/close (trigger toggles IsOpen; scrim + item activation close it).
+            MenuButton
+                [ DockPanel.Dock    = Left,
+                  Header            = "File",
+                  Template          = @FileMenuPopup,
+                  TriggerTemplate   = @FileMenuTrigger,
+                  VerticalAlignment = Center ]
             // Title — active document / open project / "Plexus". Right margin keeps
             // it clear of the ~138dp Window-Controls-Overlay caption buttons.
             TextBlock
@@ -68,6 +78,49 @@ resources PlexusTitleBar {
                   FontSize          = 12,
                   VerticalAlignment = Center,
                   Margin            = (12,0,140,0) ]
+        }
+    }
+
+    // The File trigger: PART_Trigger (Button) + PART_TriggerStack + PART_HeaderText
+    // are the parts MenuButton keeps in sync with Header ("File").
+    Template x:key="FileMenuTrigger" [ TargetType = MenuButton ] {
+        Button x:name="PART_Trigger" [ Template = @FileMenuTriggerChrome ] {
+            StackPanel x:name="PART_TriggerStack" [ Orientation = Horizontal, VerticalAlignment = Center ] {
+                TextBlock x:name="PART_HeaderText"
+                    [ FontSize = 12, Foreground = @OnSurfaceVariant, VerticalAlignment = Center ]
+            }
+        }
+    }
+
+    // Flat rectangular menu-bar button face with @OnSurfaceVariant hover/press layers
+    // (no pill — this is a menu-bar button, not a status pill).
+    Template x:key="FileMenuTriggerChrome" [ TargetType = Button ] {
+        Border x:name="PART_Primary" [ Fill = #00000000, CornerRadius = @ShapeExtraSmall ] {
+            Border x:name="PART_PrimaryState" [ Fill = #00000000, CornerRadius = @ShapeExtraSmall, Padding = (10,4,10,4) ] {
+                ContentPresenter [ HorizontalAlignment = Center, VerticalAlignment = Center ]
+            }
+        }
+        when ( IsMouseOver ) { PART_PrimaryState.Fill = @OnSurfaceVariantHoverLayer; }
+        when ( IsPressed )   { PART_PrimaryState.Fill = @OnSurfaceVariantPressLayer; }
+    }
+
+    // The File dropdown: MenuPopupHost = PART_PopupHost, a PART_Scrim ClickAwayScrim,
+    // a PART_PopupContainer Border. The Export MenuItem sits in a plain vertical
+    // StackPanel so its submenu cascades RIGHT (a MenuStrip parent would anchor it
+    // below). SVG/PPTX bind to the SP1 export commands via $service.
+    Template x:key="FileMenuPopup" [ TargetType = MenuButton ] {
+        MenuPopupHost x:name="PART_PopupHost" {
+            ClickAwayScrim x:name="PART_Scrim"
+            Border x:name="PART_PopupContainer"
+                [ Fill = @SurfaceContainerHigh, Stroke = Pen [ Brush = @OutlineVariant ],
+                  CornerRadius = @ShapeExtraSmall, Effect = @Elevation2, Padding = (4) ] {
+                StackPanel [ Orientation = Vertical, MinWidth = 200 ] {
+                    MenuItem [ Header = "Export" ] {
+                        MenuItem [ Header = "Vector Graphics (SVG)", Command = $service(DiagramExportService).ExportSvgCommand ]
+                        MenuItem [ Header = "PowerPoint (PPTX)",     Command = $service(DiagramExportService).ExportPptxCommand ]
+                    }
+                }
+            }
         }
     }
 }
