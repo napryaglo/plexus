@@ -65,30 +65,47 @@ export class DiagramExportService extends ServiceBase
   {
     const doc = this.activeDiagram()
     if (doc === undefined) return
-    if (format === ExportFormat.Svg) return this.exportSvg(doc)
-    return this.exportPptx(doc) // Task 3
+    await this.exportRendered(format, DiagramSvgRenderer.renderDocument(doc), doc.Title || 'diagram')
   }
 
-  private async exportSvg(doc: DiagramDocument): Promise<void>
+  // Save an ALREADY-rendered diagram (svg + content size) as SVG or PPTX,
+  // prompting for a location with `baseName` as the default filename. Shared by
+  // the active-document commands (which render the live diagram) and the
+  // project-explorer surface (which renders a .diagram file headlessly via
+  // DiagramHeadlessRenderer, without opening it). Renderer-only — the existing
+  // fs IPC owns the dialog + write.
+  public async exportRendered(
+    format: ExportFormat,
+    rendered: { svg: string; width: number; height: number },
+    baseName: string,
+  ): Promise<void>
   {
-    const { svg } = DiagramSvgRenderer.renderDocument(doc)
+    if (format === ExportFormat.Svg) return this.saveSvg(rendered.svg, baseName)
+    return this.savePptx(rendered, baseName)
+  }
+
+  private async saveSvg(svg: string, baseName: string): Promise<void>
+  {
     const fs = this.Provider.getRequired(FileSystemService.Key)
     await fs.SaveFileAs(svg, {
       Title:       'Export as SVG',
-      DefaultPath: `${doc.Title || 'diagram'}.svg`,
+      DefaultPath: `${baseName}.svg`,
       Filters:     [{ Name: 'SVG Image', Extensions: ['svg'] }],
     })
   }
 
-  private async exportPptx(doc: DiagramDocument): Promise<void>
+  private async savePptx(
+    rendered: { svg: string; width: number; height: number },
+    baseName: string,
+  ): Promise<void>
   {
-    const { svg, width, height } = DiagramSvgRenderer.renderDocument(doc)
+    const { svg, width, height } = rendered
     const png = await rasterizeSvgToPng(svg, width, height, 2)
     const pptx = await buildPptx(pngToDataUrl(png), width, height)
     const fs = this.Provider.getRequired(FileSystemService.Key)
     const path = await fs.SaveFileAs('', {
       Title:       'Export as PowerPoint',
-      DefaultPath: `${doc.Title || 'diagram'}.pptx`,
+      DefaultPath: `${baseName}.pptx`,
       Filters:     [{ Name: 'PowerPoint Presentation', Extensions: ['pptx'] }],
     })
     if (path !== null) await fs.WriteBytes(path, pptx)

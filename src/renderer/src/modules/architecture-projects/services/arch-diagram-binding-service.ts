@@ -161,6 +161,31 @@ export class ArchDiagramBindingService extends ServiceBase
         if (host !== undefined) await this.attachDoc(host, doc)
     }
 
+    // Bind a diagram document for a ONE-SHOT, off-editor purpose (e.g. headless
+    // export rendering). Runs the same core binding attachDocInner does — model
+    // lookup, ArchDiagramBinding.attach() (which rescans synchronously, stamping
+    // node concepts/descriptors), viewpoint scope + scenarios — but WITHOUT the
+    // liveness guard (the caller owns a freshly-loaded, definitely-live doc) and
+    // WITHOUT the open-time toolbox-context side effects (which would perturb the
+    // live UI). The caller MUST dispose() the returned binding when done.
+    public async bindForRender(op: OpenProject, doc: DiagramDocument): Promise<ArchDiagramBinding>
+    {
+        const model = await this.Provider.getRequired(ArchitectureModelService.Key).modelFor(op)
+        const chooser = this.Provider.get(DropCandidateChooserService.Key)
+        const wiki = this.Provider.get(WikiService.Key)
+        const status = this.Provider.get(StatusService.Key)
+        const dialogs = this.Provider.get(DialogService.Key)
+        const binding = new ArchDiagramBinding(doc, model, chooser, wiki, status, dialogs)
+        binding.attach()
+        const store = doc.Storage
+        if (store instanceof FileDiagramStorage) {
+            const vps = await loadViewpoints(doc, store.ProjectStorage, store.Path)
+            if (vps !== undefined) binding.setScope(vps)
+        }
+        binding.setScenarios(readScenarios(doc))
+        return binding
+    }
+
     // True while `doc` is an architecture diagram that WILL be stamped with
     // ToolboxContexts but isn't yet — the window between it becoming active and the
     // async attach completing. The ToolboxService gates its visibility pass on this:

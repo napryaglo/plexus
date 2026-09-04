@@ -62,6 +62,16 @@ export class ProjectNode extends MuralBase
         ProjectNode, 'NodeActionCommand', undefined, MetaData.None)
     static readonly HasNodeActionKey = MuralBase.RegisterProperty<boolean>(
         ProjectNode, 'HasNodeAction', false, MetaData.None)
+    // Diagram export — an "Export ▸ SVG / PPTX" submenu shown on .diagram nodes
+    // (HasExport gates its visibility). The commands render the file HEADLESSLY
+    // (DiagramHeadlessRenderer) and save via DiagramExportService, so a diagram
+    // exports straight from the tree without being opened in the editor.
+    static readonly ExportSvgCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
+        ProjectNode, 'ExportSvgCommand', undefined, MetaData.None)
+    static readonly ExportPptxCommandKey = MuralBase.RegisterProperty<ICommand | undefined>(
+        ProjectNode, 'ExportPptxCommand', undefined, MetaData.None)
+    static readonly HasExportKey = MuralBase.RegisterProperty<boolean>(
+        ProjectNode, 'HasExport', false, MetaData.None)
     // Self-reference so a row can hand the whole node to a ContentControl's
     // Content (`Content = $Data`). The rename editor is stamped lazily through
     // that ContentControl — see the ProjectNodeTemplate — so the heavy TextBox
@@ -123,6 +133,13 @@ export class ProjectNode extends MuralBase
     public set NodeActionCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.NodeActionCommandKey, v) }
     public get HasNodeAction(): boolean { return this.get_property_value(ProjectNode.HasNodeActionKey) }
     public set HasNodeAction(v: boolean) { this.set_property_value(ProjectNode.HasNodeActionKey, v) }
+
+    public get ExportSvgCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.ExportSvgCommandKey) }
+    public set ExportSvgCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.ExportSvgCommandKey, v) }
+    public get ExportPptxCommand(): ICommand | undefined { return this.get_property_value(ProjectNode.ExportPptxCommandKey) }
+    public set ExportPptxCommand(v: ICommand | undefined) { this.set_property_value(ProjectNode.ExportPptxCommandKey, v) }
+    public get HasExport(): boolean { return this.get_property_value(ProjectNode.HasExportKey) }
+    public set HasExport(v: boolean) { this.set_property_value(ProjectNode.HasExportKey, v) }
 }
 
 export class Project extends MuralBase

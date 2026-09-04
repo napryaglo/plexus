@@ -117,6 +117,12 @@ resources ProjectExplorerResources {
         // Optional module-contributed action (e.g. arch "Edit Viewpoints…"),
         // shown only for nodes a contributor acted on (HasNodeAction).
         MenuItem [ Header = $NodeActionLabel, Command = $NodeActionCommand, Visibility = $HasNodeAction << ToVisibility ]
+        // Export a .diagram file straight from the tree (rendered headlessly, no
+        // editor open). Shown only for diagram nodes (HasExport).
+        MenuItem [ Header = "Export", Visibility = $HasExport << ToVisibility ] {
+            MenuItem [ Header = "Vector Graphics (SVG)", Command = $ExportSvgCommand ]
+            MenuItem [ Header = "PowerPoint (PPTX)",     Command = $ExportPptxCommand ]
+        }
         MenuItem [ Header = "Rename", Command = $BeginRenameCommand ]
         MenuItem [ Header = "Delete", Command = $DeleteCommand ]
     }

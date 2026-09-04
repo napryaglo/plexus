@@ -50,6 +50,8 @@ import {
 import { isRelocatable, isRelocatableAcrossStorage, type IDocumentFactory } from '../../../services/documents/document-factory.js'
 import { NewFileParticipantKey } from '../../../services/documents/new-file-participant.js'
 import { NodeCommandContributorKey } from '../../../services/documents/node-command-contributor.js'
+import { DiagramExportService, ExportFormat } from '../../diagram-export/services/diagram-export-service.js'
+import { DiagramHeadlessRenderer } from '../../diagram-export/services/diagram-headless-renderer.js'
 import { ProjectAgentCatalog } from '../../agent-chat/services/project-agent-catalog.js'
 import { ChatSessionsService } from '../../agent-chat/services/chat-sessions-service.js'
 import { AgentSkillChoice, buildAgentSkillChoices } from '../../agent-chat/services/agent-skill-choice.js'
@@ -1294,7 +1296,37 @@ export class ProjectExplorerService extends ServiceBase
             node.NodeActionCommand = action.command
             node.HasNodeAction = true
         }
+        // Diagram export — a .diagram file can be exported straight from the tree
+        // (SVG / PPTX) without being opened, when the diagram-export module is
+        // loaded. The commands render the file headlessly then save via the shared
+        // export pipeline; HasExport gates the context-menu submenu.
+        if (node.Kind === 'diagram'
+            && this.Provider.get(DiagramHeadlessRenderer.Key) !== undefined
+            && this.Provider.get(DiagramExportService.Key) !== undefined) {
+            node.ExportSvgCommand  = new RelayCommand(() => void this.exportNode(node, op, ExportFormat.Svg))
+            node.ExportPptxCommand = new RelayCommand(() => void this.exportNode(node, op, ExportFormat.Pptx))
+            node.HasExport = true
+        }
         for (const child of node.Children.ToArray()) this.wireNodes(child, op)
+    }
+
+    // Render a .diagram node HEADLESSLY (no editor open) and save it in the chosen
+    // format through the export service's shared save pipeline. Render returning
+    // undefined (empty / unrenderable diagram) or a thrown error surfaces on the
+    // status strip rather than silently failing.
+    private async exportNode(node: ProjectNode, op: OpenProject, format: ExportFormat): Promise<void>
+    {
+        const renderer = this.Provider.get(DiagramHeadlessRenderer.Key)
+        const exporter = this.Provider.get(DiagramExportService.Key)
+        if (renderer === undefined || exporter === undefined) return
+        try {
+            const rendered = await renderer.renderFile(op, node.Path)
+            if (rendered === undefined) { this.Status = `Nothing to export in ${node.Name}.`; return }
+            const dot = node.Name.lastIndexOf('.')
+            await exporter.exportRendered(format, rendered, dot > 0 ? node.Name.slice(0, dot) : node.Name)
+        } catch (e) {
+            this.Status = `Export failed: ${(e as Error).message}`
+        }
     }
 }
 

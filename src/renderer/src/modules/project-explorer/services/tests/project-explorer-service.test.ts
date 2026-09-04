@@ -20,6 +20,8 @@ import { MetaModelProjectFactory } from '../../../meta-model/services/meta-model
 import { TodlLanguageClient } from '../../../../services/todl/todl-language-client.js'
 import { DiagnosticsService } from '../../../../services/diagnostics/diagnostics-service.js'
 import { DiagnosticSeverity } from '../../../../services/diagnostics/diagnostic.js'
+import { DiagramExportService } from '../../../diagram-export/services/diagram-export-service.js'
+import { DiagramHeadlessRenderer } from '../../../diagram-export/services/diagram-headless-renderer.js'
 
 // A picked file as the OS dialog would hand it back (absolute path + raw bytes).
 type Picked = { Path: string; Bytes: Uint8Array }
@@ -1111,6 +1113,38 @@ test('Import commands are wired on the project and on each node', async () => {
     const child = op.Root.Children.ToArray()[0]!   // the 'core.todl' node
     expect(child.ImportFileCommand).toBeDefined()
     expect(child.ImportFolderCommand).toBeDefined()
+})
+
+// A project whose tree holds one .diagram file and one .todl file — for the
+// explorer-export wiring (only diagram nodes get the Export submenu).
+function projectWithDiagram(folder: string): Project
+{
+    const root = new ProjectNode('A', '', 'folder')
+    root.Children.Add(new ProjectNode('flow.diagram', 'flow.diagram', 'diagram'))
+    root.Children.Add(new ProjectNode('core.todl', 'core.todl', 'todl'))
+    return new Project('diagram', 'A', folder, root)
+}
+
+test('a .diagram node is wired with an Export submenu (SVG + PPTX); a non-diagram node is not', async () => {
+    const { priv, provider } = makeExplorer()
+    // Gating requires both diagram-export services present in the provider.
+    provider.registerInstance(DiagramHeadlessRenderer.Key, {} as never)
+    provider.registerInstance(DiagramExportService.Key, {} as never)
+    const op = await priv.addOpenProject(projectWithDiagram('C:/a'), fakeProjectFactory(), new FakeStorage('C:/a'))
+
+    const [diagram, todl] = op.Root.Children.ToArray()
+    expect(diagram!.HasExport).toBe(true)
+    expect(diagram!.ExportSvgCommand).toBeDefined()
+    expect(diagram!.ExportPptxCommand).toBeDefined()
+    expect(todl!.HasExport).toBe(false)            // a .todl node gets no Export submenu
+    expect(todl!.ExportSvgCommand).toBeUndefined()
+})
+
+test('without the diagram-export services loaded, a .diagram node gets no Export submenu', async () => {
+    const { priv } = makeExplorer()                // services NOT registered
+    const op = await priv.addOpenProject(projectWithDiagram('C:/a'), fakeProjectFactory(), new FakeStorage('C:/a'))
+    const diagram = op.Root.Children.ToArray()[0]!
+    expect(diagram.HasExport).toBe(false)
 })
 
 test('bumpVersion writes the incremented version to the manifest', async () => {
