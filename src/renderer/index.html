@@ -64,20 +64,33 @@
             #splash .so-dot, #splash .so-holo { animation: none; }
         }
         /* Window-drag affordance: `-webkit-app-region: drag` only works on HTML
-           elements, and CSS can't mark a sub-region of mural's SVG — so this thin,
-           fully transparent strip sits over the top 32px (the mural-painted header)
-           purely to let the OS move the window. The native min/max/close buttons
-           (Window Controls Overlay) draw above everything and keep their own hit
-           area, so no no-drag hole is needed. The header has no interactive
-           elements, so covering it is harmless. */
-        #drag-strip {
-            position: absolute; top: 0; left: 0; right: 0; height: 32px;
+           elements, and CSS can't mark a sub-region of mural's SVG — so these
+           thin, fully transparent strips sit over the top 32px (the mural-painted
+           header) purely to let the OS move the window. The native min/max/close
+           buttons (Window Controls Overlay) draw above everything and keep their
+           own hit area.
+           The header now hosts an INTERACTIVE File menu (mural-painted SVG). A
+           drag region would swallow its clicks (drag regions consume mouse events
+           at the compositor, and a no-drag overlay won't reliably pass clicks
+           through to the SVG beneath), so the affordance is split into two strips
+           that FLANK the menu region: the 48px logo box stays draggable on the
+           left, the title area stays draggable on the right, and the menu hole
+           (48px..112px) is left uncovered so its clicks reach mural. Sized for the
+           current File menu; a future task adding Edit/View widens the hole. */
+        #drag-logo {
+            position: absolute; top: 0; left: 0; width: 48px; height: 32px;
             -webkit-app-region: drag;
             background: transparent; z-index: 10;
         }
-        /* macOS floats its traffic lights top-LEFT (no WCO): keep the strip clear
-           of them so their hit area wins. */
-        body.is-mac #drag-strip { left: 78px; }
+        #drag-strip {
+            position: absolute; top: 0; left: 112px; right: 0; height: 32px;
+            -webkit-app-region: drag;
+            background: transparent; z-index: 10;
+        }
+        /* macOS floats its traffic lights top-LEFT (no WCO): drop the left logo
+           drag zone so their hit area wins; the title strip on the right still
+           drags. */
+        body.is-mac #drag-logo { display: none; }
     </style>
 </head>
 <body>
@@ -123,6 +136,7 @@
             <div class="splash-word">Plexus</div>
         </div>
     </div>
+    <div id="drag-logo"></div>
     <div id="drag-strip"></div>
     <script type="module" src="./src/main.js"></script>
 </body>
